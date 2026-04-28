@@ -3,6 +3,8 @@
 Trading research workspace organized around reusable concepts and future
 strategies.
 
+Start a new handover or Codex session with `PROJECT_STATE.md`.
+
 ## Structure
 
 - `concepts/`: reusable indicators, signals, and market-structure modules.
@@ -22,6 +24,16 @@ strategies.
 
 - `strategies/lp_force_strike_strategy_lab`: signal study combining LP level
   traps with raw Force Strike patterns.
+
+## Dashboards
+
+Static research dashboards are published from `docs/`:
+
+- Local entry point: `docs/index.html`
+- GitHub Pages: `https://codychew.github.io/TradeAutomation/`
+
+The latest current comparison is V6, which adds native MT5 H12 to the H4/H8/D1/W1
+timeframe study.
 
 ## Current Shared Labs
 
