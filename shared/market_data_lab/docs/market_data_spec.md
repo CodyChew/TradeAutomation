@@ -41,7 +41,7 @@ Every stored rates dataset must use these columns:
 - `real_volume`
 
 `time_utc` is UTC. `symbol` is uppercase. `timeframe` is the normalized internal
-label, for example `M30`, `H4`, `H8`, `D1`, or `W1`.
+label, for example `M30`, `H4`, `H8`, `H12`, `D1`, or `W1`.
 
 ## Validation Rules
 

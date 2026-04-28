@@ -68,6 +68,9 @@ FOREX pairs on `M30`, `H4`, `D1`, and `W1` for 10 years into
 universe on native MT5 `H8` only. H8 is stored alongside the other timeframes
 under `data/raw/ftmo/forex/SYMBOL/H8`.
 
+The timeframe registry also supports native MT5 `H12` for future pulls and
+backtests, but no H12 dataset has been pulled yet.
+
 ## Local Availability Check
 
 On 2026-04-28, the local MetaTrader5 Python package initialized successfully

@@ -13,7 +13,7 @@ import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REPORT_ROOT = REPO_ROOT / "reports" / "strategies" / "lp_force_strike_experiment_v1"
-TIMEFRAME_ORDER = ["M30", "H4", "H8", "D1", "W1"]
+TIMEFRAME_ORDER = ["M30", "H4", "H8", "H12", "D1", "W1"]
 
 
 def _latest_run(report_root: Path) -> Path:
@@ -261,7 +261,7 @@ def _timeframe_leaders(summary_tf: pd.DataFrame) -> str:
 
 
 def _robust_candidates(summary_tf: pd.DataFrame, *, focus_timeframes: list[str] | None = None) -> str:
-    preferred_focus = focus_timeframes or ["H4", "H8", "D1", "W1"]
+    preferred_focus = focus_timeframes or ["H4", "H8", "H12", "D1", "W1"]
     present = set(summary_tf["timeframe"].dropna().astype(str))
     focus = [timeframe for timeframe in preferred_focus if timeframe in present]
     data = summary_tf[summary_tf["timeframe"].isin(focus)].copy()
@@ -316,7 +316,7 @@ def _top_robust_candidate_ids(
     focus_timeframes: list[str] | None = None,
     limit: int = 3,
 ) -> list[str]:
-    preferred_focus = focus_timeframes or ["H4", "H8", "D1", "W1"]
+    preferred_focus = focus_timeframes or ["H4", "H8", "H12", "D1", "W1"]
     present = set(summary_tf["timeframe"].dropna().astype(str))
     focus = [timeframe for timeframe in preferred_focus if timeframe in present]
     data = summary_tf[summary_tf["timeframe"].isin(focus)].copy()
@@ -662,7 +662,7 @@ def _html_document(
     best_label = _candidate_short(top_overall.iloc[0]["candidate_id"]) if not top_overall.empty else "n/a"
     timeframes = sorted(datasets["timeframe"].dropna().astype(str).unique(), key=_tf_sort_key)
     timeframe_note = (
-        "M30 contributes most signals and can dominate the aggregate; H4, H8, D1, and W1 should be judged on their own."
+        "M30 contributes most signals and can dominate the aggregate; H4, H8, H12, D1, and W1 should be judged on their own."
         if "M30" in timeframes
         else "Overall metrics are weighted by trade count. Read each timeframe separately before making strategy decisions."
     )

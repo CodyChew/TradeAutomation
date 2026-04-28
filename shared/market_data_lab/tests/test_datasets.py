@@ -107,7 +107,7 @@ class DatasetTests(unittest.TestCase):
                         "dataset_name": "fx",
                         "data_root": "data/raw/ftmo/forex",
                         "symbol_universe": "forex_major_cross_pairs",
-                        "timeframes": ["30m", "4h", "8h"],
+                        "timeframes": ["30m", "4h", "8h", "12h"],
                         "history_years": 10,
                     }
                 ),
@@ -119,7 +119,7 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(config.dataset_name, "fx")
             self.assertEqual(len(config.symbols), 28)
             self.assertIn("EURUSD", config.symbols)
-            self.assertEqual(config.timeframes, ("M30", "H4", "H8"))
+            self.assertEqual(config.timeframes, ("M30", "H4", "H8", "H12"))
 
     def test_resolve_date_window_uses_history_years(self) -> None:
         config = DatasetConfig(

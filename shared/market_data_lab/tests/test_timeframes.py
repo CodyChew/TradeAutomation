@@ -17,6 +17,7 @@ class FakeMT5:
     TIMEFRAME_M30 = 30
     TIMEFRAME_H4 = 240
     TIMEFRAME_H8 = 16392
+    TIMEFRAME_H12 = 16396
 
 
 class TimeframeTests(unittest.TestCase):
@@ -30,6 +31,9 @@ class TimeframeTests(unittest.TestCase):
             "8h": "H8",
             "480": "H8",
             "TIMEFRAME_H8": "H8",
+            "12h": "H12",
+            "720": "H12",
+            "TIMEFRAME_H12": "H12",
             "D": "D1",
             "1D": "D1",
             "W": "W1",
@@ -48,6 +52,7 @@ class TimeframeTests(unittest.TestCase):
         self.assertEqual(mt5_timeframe_value(FakeMT5, "M30"), 30)
         self.assertEqual(mt5_timeframe_value(FakeMT5, "H4"), 240)
         self.assertEqual(mt5_timeframe_value(FakeMT5, "H8"), 16392)
+        self.assertEqual(mt5_timeframe_value(FakeMT5, "H12"), 16396)
 
 
 if __name__ == "__main__":
