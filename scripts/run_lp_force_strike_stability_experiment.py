@@ -202,29 +202,44 @@ def _html_report(run_dir: Path, config: dict[str, Any], filter_results: pd.DataF
       --bad: #a23b3b;
     }}
     * {{ box-sizing: border-box; }}
-    body {{ margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 Inter, Segoe UI, Roboto, Arial, sans-serif; }}
-    header {{ background: #17202a; color: white; padding: 28px max(24px, 5vw); border-bottom: 4px solid #57a773; }}
-    header h1 {{ margin: 0 0 8px; font-size: 28px; }}
-    header p {{ margin: 0; color: #d8e0e8; max-width: 980px; }}
+    html {{ -webkit-text-size-adjust: 100%; }}
+    body {{ margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 Inter, Segoe UI, Roboto, Arial, sans-serif; min-width: 0; overflow-x: hidden; }}
+    header {{ background: #17202a; color: white; padding: 28px max(18px, 5vw); border-bottom: 4px solid #57a773; }}
+    header h1 {{ margin: 0 0 8px; font-size: clamp(22px, 4vw, 28px); }}
+    header p {{ margin: 0; color: #d8e0e8; max-width: 980px; overflow-wrap: anywhere; }}
     nav {{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }}
-    nav a {{ color: white; text-decoration: none; border: 1px solid rgba(255,255,255,.25); padding: 7px 10px; border-radius: 6px; background: rgba(255,255,255,.08); }}
+    nav a {{ color: white; text-decoration: none; border: 1px solid rgba(255,255,255,.25); padding: 7px 10px; border-radius: 6px; background: rgba(255,255,255,.08); min-height: 34px; }}
     nav a.active {{ background: #57a773; border-color: #57a773; color: #17202a; font-weight: 700; }}
-    main {{ padding: 24px max(24px, 5vw) 48px; }}
-    section {{ margin: 0 0 22px; padding: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 2px rgba(23,32,42,.05); }}
+    main {{ padding: 24px max(18px, 5vw) 48px; }}
+    section {{ margin: 0 0 22px; padding: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 2px rgba(23,32,42,.05); max-width: 100%; overflow-x: auto; }}
     h2 {{ margin: 0 0 14px; font-size: 20px; }}
-    .kpis {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }}
+    .kpis {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 12px; margin-bottom: 16px; }}
     .kpi {{ background: #f9fbfc; border: 1px solid var(--line); border-radius: 8px; padding: 14px; }}
     .kpi span {{ display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }}
     .kpi strong {{ display: block; margin-top: 4px; font-size: 22px; }}
     .note {{ background: #f6f8f2; border-left: 4px solid #8aa936; padding: 12px 14px; color: #34412d; margin-bottom: 14px; }}
-    .scroll {{ overflow-x: auto; }}
-    table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+    .scroll {{ overflow-x: auto; max-width: 100%; }}
+    table {{ width: 100%; min-width: 720px; border-collapse: collapse; font-size: 13px; }}
     th, td {{ padding: 8px 9px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; vertical-align: top; }}
     th:first-child, td:first-child {{ text-align: left; }}
     th {{ color: #455464; background: #f7f9fb; font-weight: 700; position: sticky; top: 0; z-index: 1; }}
     .positive {{ color: var(--good); font-weight: 700; }}
     .negative {{ color: var(--bad); font-weight: 700; }}
     .neutral {{ color: var(--muted); }}
+    @media (max-width: 760px) {{
+      header {{ padding: 22px 16px; }}
+      nav a {{ flex: 1 1 auto; text-align: center; }}
+      main {{ padding: 16px 12px 34px; }}
+      section {{ padding: 14px; margin-bottom: 16px; }}
+      h2 {{ font-size: 18px; }}
+      .kpis {{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }}
+      .kpi {{ padding: 10px; }}
+      .kpi strong {{ font-size: 20px; }}
+      th, td {{ padding: 6px 7px; font-size: 12px; }}
+    }}
+    @media (max-width: 480px) {{
+      .kpis {{ grid-template-columns: 1fr; }}
+    }}
   </style>
 </head>
 <body>

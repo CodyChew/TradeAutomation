@@ -15,26 +15,29 @@
       --good: #2e7d50;
     }
     * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
     body {
       margin: 0;
       background: var(--bg);
       color: var(--ink);
       font: 15px/1.5 Inter, Segoe UI, Roboto, Arial, sans-serif;
+      overflow-x: hidden;
     }
     header {
       background: #17202a;
       color: white;
-      padding: 34px max(24px, 6vw);
+      padding: 34px max(18px, 6vw);
       border-bottom: 4px solid #57a773;
     }
     header h1 {
       margin: 0 0 8px;
-      font-size: 30px;
+      font-size: clamp(24px, 5vw, 30px);
     }
     header p {
       margin: 0;
       color: #d8e0e8;
       max-width: 920px;
+      overflow-wrap: anywhere;
     }
     nav {
       display: flex;
@@ -49,6 +52,7 @@
       padding: 7px 10px;
       border-radius: 6px;
       background: rgba(255,255,255,.08);
+      min-height: 34px;
     }
     nav a.active {
       background: #57a773;
@@ -57,10 +61,10 @@
       font-weight: 700;
     }
     main {
-      padding: 28px max(24px, 6vw) 48px;
+      padding: 28px max(18px, 6vw) 48px;
       display: grid;
       gap: 18px;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
     }
     .card {
       background: var(--panel);
@@ -110,8 +114,16 @@
       margin-bottom: 12px;
     }
     footer {
-      padding: 0 max(24px, 6vw) 32px;
+      padding: 0 max(18px, 6vw) 32px;
       color: var(--muted);
+    }
+    @media (max-width: 720px) {
+      header { padding: 24px 16px; }
+      nav a { flex: 1 1 auto; text-align: center; }
+      main { padding: 18px 12px 36px; }
+      .card { padding: 16px; }
+      .facts { grid-template-columns: 1fr; }
+      a.button { display: block; text-align: center; }
     }
   </style>
 </head>

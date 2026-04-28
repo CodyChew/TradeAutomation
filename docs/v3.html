@@ -18,20 +18,24 @@
       --good: #2e7d50;
     }
     * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
     body {
       margin: 0;
       background: var(--bg);
       color: var(--ink);
       font: 14px/1.45 Inter, Segoe UI, Roboto, Arial, sans-serif;
+      min-width: 0;
+      overflow-x: hidden;
     }
     header {
       background: #17202a;
       color: white;
-      padding: 28px max(24px, 5vw);
+      padding: 28px max(18px, 5vw);
       border-bottom: 4px solid #57a773;
     }
-    header h1 { margin: 0 0 8px; font-size: 28px; font-weight: 700; }
-    header p { margin: 0; color: #d8e0e8; max-width: 980px; }
+    header h1 { margin: 0 0 8px; font-size: clamp(22px, 4vw, 28px); font-weight: 700; }
+    header p { margin: 0; color: #d8e0e8; max-width: 980px; overflow-wrap: anywhere; }
+    code { overflow-wrap: anywhere; }
     nav {
       display: flex;
       flex-wrap: wrap;
@@ -45,6 +49,7 @@
       padding: 7px 10px;
       border-radius: 6px;
       background: rgba(255,255,255,.08);
+      min-height: 34px;
     }
     nav.page-nav a.active {
       background: #57a773;
@@ -55,7 +60,7 @@
     nav.report-nav {
       margin-top: 10px;
     }
-    main { padding: 24px max(24px, 5vw) 48px; }
+    main { padding: 24px max(18px, 5vw) 48px; }
     section {
       margin: 0 0 22px;
       padding: 20px;
@@ -63,12 +68,14 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       box-shadow: 0 1px 2px rgba(23,32,42,.05);
+      max-width: 100%;
+      overflow-x: auto;
     }
     h2 { margin: 0 0 14px; font-size: 20px; }
     h3 { margin: 18px 0 8px; font-size: 15px; color: #34495e; }
     .kpis {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
       gap: 12px;
       margin-bottom: 18px;
     }
@@ -90,12 +97,13 @@
     }
     .split {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
       gap: 18px;
       align-items: start;
     }
     table {
       width: 100%;
+      min-width: 720px;
       border-collapse: collapse;
       font-size: 13px;
     }
@@ -115,6 +123,7 @@
       top: 0;
       z-index: 1;
     }
+    .compact { min-width: 560px; }
     .compact td, .compact th { font-size: 12px; padding: 6px 7px; }
     .positive { color: var(--good); font-weight: 700; }
     .negative { color: var(--bad); font-weight: 700; }
@@ -152,8 +161,25 @@
     .heat-neg-3 { background: #df9b9b; color: #612020; }
     .heat-neg-4 { background: #bd5b5b; color: white; }
     .heat-neutral { background: #f1f4f6; color: #5a6875; }
-    .scroll { overflow-x: auto; }
-    footer { color: var(--muted); padding: 0 max(24px, 5vw) 28px; }
+    .scroll { overflow-x: auto; max-width: 100%; }
+    footer { color: var(--muted); padding: 0 max(18px, 5vw) 28px; }
+    @media (max-width: 760px) {
+      header { padding: 22px 16px; }
+      nav a { flex: 1 1 auto; text-align: center; }
+      main { padding: 16px 12px 34px; }
+      section { padding: 14px; margin-bottom: 16px; }
+      h2 { font-size: 18px; }
+      h3 { font-size: 14px; }
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .kpi { padding: 10px; }
+      .kpi-value { font-size: 20px; }
+      th, td { padding: 6px 7px; font-size: 12px; }
+      .bar-wrap { min-width: 96px; }
+    }
+    @media (max-width: 480px) {
+      .kpis { grid-template-columns: 1fr; }
+      nav.report-nav a { flex-basis: calc(50% - 4px); }
+    }
   </style>
 </head>
 <body>
