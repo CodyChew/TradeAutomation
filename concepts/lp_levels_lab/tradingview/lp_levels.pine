@@ -1,0 +1,170 @@
+//@version=6
+indicator(
+     "LP Levels",
+     "LP Levels",
+     overlay = true,
+     max_bars_back = 5000,
+     max_lines_count = 500,
+     max_labels_count = 20)
+
+// Left Precedence levels are historical swing highs/lows that remain
+// unbreached by later wick action inside the current chart timeframe window.
+// This script is visual-only; execution research can port the same state rules
+// into Python/MT5 later.
+
+string groupDetection = "Detection"
+pivotStrength = input.int(3, "Pivot strength", minval = 1, maxval = 50, group = groupDetection)
+maxRetainedLevels = input.int(150, "Max retained levels", minval = 10, maxval = 450, group = groupDetection)
+
+string groupDisplay = "Display"
+activeResistanceColor = input.color(color.new(color.red, 0), "Active resistance", group = groupDisplay)
+activeSupportColor = input.color(color.new(color.lime, 0), "Active support", group = groupDisplay)
+lineWidth = input.int(1, "Line width", minval = 1, maxval = 4, group = groupDisplay)
+
+var array<line> activeHighLines = array.new<line>()
+var array<float> activeHighPrices = array.new<float>()
+var array<int> activeHighTimes = array.new<int>()
+
+var array<line> activeLowLines = array.new<line>()
+var array<float> activeLowPrices = array.new<float>()
+var array<int> activeLowTimes = array.new<int>()
+
+f_lookback_days() =>
+    int seconds = timeframe.in_seconds(timeframe.period)
+    int days = 365
+    if not na(seconds)
+        if seconds <= 135 * 60
+            days := 5
+        else if seconds <= 14 * 60 * 60
+            days := 30
+        else if seconds <= 4 * 24 * 60 * 60 + 12 * 60 * 60
+            days := 365
+        else
+            days := 1460
+    days
+
+f_strict_pivot_high(int strength) =>
+    bool isPivot = not na(high[strength * 2]) and not na(high[strength])
+    float pivotHigh = high[strength]
+    if isPivot
+        for distance = 1 to strength
+            isPivot := isPivot and pivotHigh > high[strength + distance] and pivotHigh > high[strength - distance]
+    isPivot
+
+f_strict_pivot_low(int strength) =>
+    bool isPivot = not na(low[strength * 2]) and not na(low[strength])
+    float pivotLow = low[strength]
+    if isPivot
+        for distance = 1 to strength
+            isPivot := isPivot and pivotLow < low[strength + distance] and pivotLow < low[strength - distance]
+    isPivot
+
+f_delete_old_active(array<line> levelLines, array<float> levelPrices, array<int> levelTimes, int cutoffTime) =>
+    int count = array.size(levelLines)
+    if count > 0
+        for stepIndex = 0 to count - 1
+            int idx = count - 1 - stepIndex
+            if array.get(levelTimes, idx) < cutoffTime
+                line.delete(array.get(levelLines, idx))
+                array.remove(levelLines, idx)
+                array.remove(levelPrices, idx)
+                array.remove(levelTimes, idx)
+
+f_breach_active_levels(
+     array<line> levelLines,
+     array<float> levelPrices,
+     array<int> levelTimes,
+     bool isResistance) =>
+    int count = array.size(levelLines)
+    if count > 0
+        for stepIndex = 0 to count - 1
+            int idx = count - 1 - stepIndex
+            float price = array.get(levelPrices, idx)
+            bool breached = isResistance ? high >= price : low <= price
+            if breached
+                line.delete(array.get(levelLines, idx))
+                array.remove(levelLines, idx)
+                array.remove(levelPrices, idx)
+                array.remove(levelTimes, idx)
+
+int lookbackDays = f_lookback_days()
+int lookbackMs = lookbackDays * 24 * 60 * 60 * 1000
+int cutoffTime = time - lookbackMs
+
+f_delete_old_active(activeHighLines, activeHighPrices, activeHighTimes, cutoffTime)
+f_delete_old_active(activeLowLines, activeLowPrices, activeLowTimes, cutoffTime)
+
+f_breach_active_levels(activeHighLines, activeHighPrices, activeHighTimes, true)
+f_breach_active_levels(activeLowLines, activeLowPrices, activeLowTimes, false)
+
+bool highPivot = f_strict_pivot_high(pivotStrength)
+bool lowPivot = f_strict_pivot_low(pivotStrength)
+int pivotTime = time[pivotStrength]
+int pivotBarIndex = bar_index - pivotStrength
+bool pivotInsideLookback = not na(pivotTime) and pivotTime >= cutoffTime
+
+if pivotInsideLookback and highPivot
+    float resistancePrice = high[pivotStrength]
+    line resistanceLine = line.new(
+         x1 = pivotBarIndex,
+         y1 = resistancePrice,
+         x2 = bar_index,
+         y2 = resistancePrice,
+         xloc = xloc.bar_index,
+         extend = extend.right,
+         color = activeResistanceColor,
+         width = lineWidth)
+    array.push(activeHighLines, resistanceLine)
+    array.push(activeHighPrices, resistancePrice)
+    array.push(activeHighTimes, pivotTime)
+
+if pivotInsideLookback and lowPivot
+    float supportPrice = low[pivotStrength]
+    line supportLine = line.new(
+         x1 = pivotBarIndex,
+         y1 = supportPrice,
+         x2 = bar_index,
+         y2 = supportPrice,
+         xloc = xloc.bar_index,
+         extend = extend.right,
+         color = activeSupportColor,
+         width = lineWidth)
+    array.push(activeLowLines, supportLine)
+    array.push(activeLowPrices, supportPrice)
+    array.push(activeLowTimes, pivotTime)
+
+while array.size(activeHighLines) + array.size(activeLowLines) > maxRetainedLevels
+    int oldestGroup = na
+    int oldestIndex = na
+    int oldestTime = na
+
+    int highCount = array.size(activeHighTimes)
+    if highCount > 0
+        for idx = 0 to highCount - 1
+            int candidateTime = array.get(activeHighTimes, idx)
+            if na(oldestTime) or candidateTime < oldestTime
+                oldestTime := candidateTime
+                oldestGroup := 1
+                oldestIndex := idx
+
+    int lowCount = array.size(activeLowTimes)
+    if lowCount > 0
+        for idx = 0 to lowCount - 1
+            int candidateTime = array.get(activeLowTimes, idx)
+            if na(oldestTime) or candidateTime < oldestTime
+                oldestTime := candidateTime
+                oldestGroup := 2
+                oldestIndex := idx
+
+    if na(oldestGroup)
+        break
+    else if oldestGroup == 1
+        line.delete(array.get(activeHighLines, oldestIndex))
+        array.remove(activeHighLines, oldestIndex)
+        array.remove(activeHighPrices, oldestIndex)
+        array.remove(activeHighTimes, oldestIndex)
+    else if oldestGroup == 2
+        line.delete(array.get(activeLowLines, oldestIndex))
+        array.remove(activeLowLines, oldestIndex)
+        array.remove(activeLowPrices, oldestIndex)
+        array.remove(activeLowTimes, oldestIndex)
