@@ -375,6 +375,128 @@ def _weak_symbol_timeframes(by_candidate_symbol_tf: pd.DataFrame, summary_tf: pd
     return _table(["Candidate", "Symbol", "TF", "Trades", "Avg R", "Total R", "PF"], rows)
 
 
+def _load_candidate_trades(trades_path: Path, candidate_id: str) -> pd.DataFrame:
+    available = set(pd.read_csv(trades_path, nrows=0).columns)
+    required = {"candidate_id", "symbol", "timeframe", "entry_time_utc", "exit_time_utc", "net_r"}
+    if required.difference(available):
+        return pd.DataFrame()
+    usecols = ["candidate_id", "symbol", "timeframe", "entry_time_utc", "exit_time_utc", "net_r"]
+    rows: list[pd.DataFrame] = []
+    for chunk in pd.read_csv(trades_path, usecols=usecols, chunksize=200_000):
+        selected = chunk[chunk["candidate_id"].astype(str) == str(candidate_id)].copy()
+        if not selected.empty:
+            rows.append(selected)
+    if not rows:
+        return pd.DataFrame(columns=usecols)
+    data = pd.concat(rows, ignore_index=True)
+    data["entry_time_utc"] = pd.to_datetime(data["entry_time_utc"], utc=True)
+    data["exit_time_utc"] = pd.to_datetime(data["exit_time_utc"], utc=True)
+    data["net_r"] = pd.to_numeric(data["net_r"], errors="coerce").fillna(0.0)
+    return data.sort_values(["exit_time_utc", "entry_time_utc", "symbol", "timeframe"]).reset_index(drop=True)
+
+
+def _timestamp(value: Any) -> str:
+    if value is None or pd.isna(value):
+        return ""
+    return pd.Timestamp(value).strftime("%Y-%m-%d")
+
+
+def _drawdown_section(trades_path: Path, candidate_id: str) -> str:
+    trades = _load_candidate_trades(trades_path, candidate_id)
+    if trades.empty:
+        return "<p>No trade rows are available for the best overall candidate.</p>"
+
+    trades["equity_r"] = trades["net_r"].cumsum()
+    trades["peak_r"] = trades["equity_r"].cummax().clip(lower=0.0)
+    trades["drawdown_r"] = trades["peak_r"] - trades["equity_r"]
+    max_idx = int(trades["drawdown_r"].idxmax())
+    max_row = trades.loc[max_idx]
+    peak_value = float(max_row["peak_r"])
+    if peak_value > 0:
+        peak_idx = int(trades.loc[:max_idx][trades.loc[:max_idx, "equity_r"].eq(peak_value)].index[0])
+    else:
+        peak_idx = 0
+    peak_time = trades.loc[peak_idx, "exit_time_utc"]
+    trough_time = max_row["exit_time_utc"]
+    recovery = trades[(trades.index > max_idx) & (trades["equity_r"] >= peak_value)]
+    recovery_time = None if recovery.empty else recovery.iloc[0]["exit_time_utc"]
+    peak_to_recovery_days = None if recovery_time is None else (recovery_time - peak_time).total_seconds() / 86400
+    trough_to_recovery_days = None if recovery_time is None else (recovery_time - trough_time).total_seconds() / 86400
+
+    periods = []
+    in_drawdown = False
+    start_time = None
+    trough_drawdown = 0.0
+    period_trough_time = None
+    for _, row in trades.iterrows():
+        drawdown = float(row["drawdown_r"])
+        current_time = row["exit_time_utc"]
+        if drawdown > 1e-12 and not in_drawdown:
+            in_drawdown = True
+            start_time = current_time
+            trough_drawdown = drawdown
+            period_trough_time = current_time
+        elif drawdown > 1e-12 and in_drawdown:
+            if drawdown > trough_drawdown:
+                trough_drawdown = drawdown
+                period_trough_time = current_time
+        elif drawdown <= 1e-12 and in_drawdown:
+            periods.append(
+                {
+                    "start": start_time,
+                    "end": current_time,
+                    "days": (current_time - start_time).total_seconds() / 86400,
+                    "max_dd_r": trough_drawdown,
+                    "trough_time": period_trough_time,
+                    "recovered": True,
+                }
+            )
+            in_drawdown = False
+    if in_drawdown:
+        current_time = trades.iloc[-1]["exit_time_utc"]
+        periods.append(
+            {
+                "start": start_time,
+                "end": current_time,
+                "days": (current_time - start_time).total_seconds() / 86400,
+                "max_dd_r": trough_drawdown,
+                "trough_time": period_trough_time,
+                "recovered": False,
+            }
+        )
+
+    periods_frame = pd.DataFrame(periods)
+    longest_days = 0.0 if periods_frame.empty else float(periods_frame["days"].max())
+    avg_days = 0.0 if periods_frame.empty else float(periods_frame["days"].mean())
+    max_drawdown_r = float(max_row["drawdown_r"])
+    total_r = float(trades["net_r"].sum())
+    rows = []
+    if not periods_frame.empty:
+        for _, row in periods_frame.sort_values(["days", "max_dd_r"], ascending=False).head(8).iterrows():
+            rows.append(
+                [
+                    _timestamp(row["start"]),
+                    _timestamp(row["end"]),
+                    _fmt_num(row["days"], 1),
+                    (_fmt_num(row["max_dd_r"]), "negative"),
+                    _timestamp(row["trough_time"]),
+                    "yes" if bool(row["recovered"]) else "no",
+                ]
+            )
+
+    return f"""
+      <div class="kpis">
+        {_kpi("Candidate", _candidate_short(candidate_id), "best overall Avg R")}
+        {_kpi("Max Drawdown", f"{max_drawdown_r:.2f}R", f"{max_drawdown_r * 0.5:.1f}% at 0.5% risk/trade")}
+        {_kpi("Peak To Recovery", "n/a" if peak_to_recovery_days is None else f"{peak_to_recovery_days:.0f} days", f"trough recovery: {'n/a' if trough_to_recovery_days is None else f'{trough_to_recovery_days:.0f} days'}")}
+        {_kpi("Longest Underwater", f"{longest_days:.0f} days", f"{len(periods_frame)} periods, avg {avg_days:.1f} days")}
+        {_kpi("Closed-Trade Total", f"{total_r:.1f}R", f"{_fmt_int(len(trades))} trades")}
+      </div>
+      <div class="note">This is a closed-trade R equity curve for one candidate. It is not yet a portfolio simulation with max open trades, position sizing, daily drawdown limits, or overlapping exposure.</div>
+      {_table(["Start", "End", "Days", "Max DD", "Trough", "Recovered?"], rows)}
+    """
+
+
 def _candidate_heatmap(summary_tf: pd.DataFrame) -> str:
     pivot = summary_tf.pivot_table(index="candidate_id", columns="timeframe", values="avg_net_r", aggfunc="mean")
     columns = [tf for tf in TIMEFRAME_ORDER if tf in pivot.columns] + [tf for tf in pivot.columns if tf not in TIMEFRAME_ORDER]
@@ -530,6 +652,7 @@ def _html_document(
     by_exit: pd.DataFrame,
     by_target: pd.DataFrame,
     by_candidate_symbol_tf: pd.DataFrame,
+    drawdown_html: str,
     skips: pd.DataFrame,
 ) -> str:
     del candidates
@@ -712,6 +835,7 @@ def _html_document(
       <a href="#guide">Metric Guide</a>
       <a href="#timeframes">Timeframes</a>
       <a href="#robustness">Robustness</a>
+      <a href="#drawdown">Drawdown</a>
       <a href="#stability">Stability</a>
       <a href="#candidates">Candidates</a>
       <a href="#models">Model Families</a>
@@ -749,6 +873,11 @@ def _html_document(
       <h2>Robust Candidates Across H4, D1, And W1</h2>
       <div class="note">This section ignores M30 because it dominates the sample count and currently behaves differently. Favor rows with positive Avg R and PF above 1 across all focused timeframes.</div>
       {_robust_candidates(summary_tf)}
+    </section>
+
+    <section id="drawdown">
+      <h2>Best Overall Candidate Drawdown</h2>
+      {drawdown_html}
     </section>
 
     <section id="stability">
@@ -821,6 +950,9 @@ def build_dashboard(run_dir: Path, output: Path) -> Path:
     by_exit = _trade_group_summary(trades_path, ["timeframe", "meta_exit_model"])
     by_target = _trade_group_summary(trades_path, ["timeframe", "meta_target_r"])
     by_candidate_symbol_tf = _trade_group_summary(trades_path, ["candidate_id", "symbol", "timeframe"])
+    top_overall = summary_candidate.sort_values(["avg_net_r", "total_net_r"], ascending=False).head(1)
+    top_candidate_id = "" if top_overall.empty else str(top_overall.iloc[0]["candidate_id"])
+    drawdown_html = _drawdown_section(trades_path, top_candidate_id) if top_candidate_id else "<p>No top candidate is available.</p>"
     skips = _skip_reason_summary(skipped_path)
 
     html_text = _html_document(
@@ -840,6 +972,7 @@ def build_dashboard(run_dir: Path, output: Path) -> Path:
         by_exit=by_exit,
         by_target=by_target,
         by_candidate_symbol_tf=by_candidate_symbol_tf,
+        drawdown_html=drawdown_html,
         skips=skips,
     )
     html_text = "\n".join(line.rstrip() for line in html_text.splitlines()) + "\n"

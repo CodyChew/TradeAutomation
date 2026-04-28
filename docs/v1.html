@@ -172,6 +172,7 @@
       <a href="#guide">Metric Guide</a>
       <a href="#timeframes">Timeframes</a>
       <a href="#robustness">Robustness</a>
+      <a href="#drawdown">Drawdown</a>
       <a href="#stability">Stability</a>
       <a href="#candidates">Candidates</a>
       <a href="#models">Model Families</a>
@@ -239,6 +240,51 @@
       <h2>Robust Candidates Across H4, D1, And W1</h2>
       <div class="note">This section ignores M30 because it dominates the sample count and currently behaves differently. Favor rows with positive Avg R and PF above 1 across all focused timeframes.</div>
       <table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>+ Avg R TFs</th><th>PF &gt; 1 TFs</th><th>Avg Focus R</th><th>Worst Focus R</th><th>H4</th><th>D1</th><th>W1</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>5,870</td><td>3/3</td><td>3/3</td><td class="positive">0.191</td><td class="positive">0.080</td><td class="positive">0.080</td><td class="positive">0.212</td><td class="positive">0.283</td></tr><tr><td>midpoint / structure / 1R</td><td>6,667</td><td>3/3</td><td>3/3</td><td class="positive">0.181</td><td class="positive">0.084</td><td class="positive">0.084</td><td class="positive">0.208</td><td class="positive">0.252</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.25R</td><td>5,870</td><td>3/3</td><td>3/3</td><td class="positive">0.151</td><td class="positive">0.061</td><td class="positive">0.061</td><td class="positive">0.156</td><td class="positive">0.237</td></tr><tr><td>midpoint / structure / 1.25R</td><td>6,667</td><td>3/3</td><td>3/3</td><td class="positive">0.141</td><td class="positive">0.065</td><td class="positive">0.065</td><td class="positive">0.174</td><td class="positive">0.185</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.5R</td><td>5,870</td><td>3/3</td><td>3/3</td><td class="positive">0.110</td><td class="positive">0.037</td><td class="positive">0.037</td><td class="positive">0.133</td><td class="positive">0.161</td></tr><tr><td>midpoint / structure / 1.5R</td><td>6,667</td><td>3/3</td><td>3/3</td><td class="positive">0.102</td><td class="positive">0.046</td><td class="positive">0.046</td><td class="positive">0.148</td><td class="positive">0.111</td></tr><tr><td>midpoint / structure / 2R</td><td>6,667</td><td>3/3</td><td>3/3</td><td class="positive">0.100</td><td class="positive">0.008</td><td class="positive">0.008</td><td class="positive">0.114</td><td class="positive">0.179</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.7R</td><td>5,870</td><td>3/3</td><td>3/3</td><td class="positive">0.100</td><td class="positive">0.009</td><td class="positive">0.009</td><td class="positive">0.107</td><td class="positive">0.183</td></tr><tr><td>midpoint / structure / 1.7R</td><td>6,667</td><td>3/3</td><td>3/3</td><td class="positive">0.094</td><td class="positive">0.023</td><td class="positive">0.023</td><td class="positive">0.121</td><td class="positive">0.137</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 2R</td><td>5,870</td><td>2/3</td><td>2/3</td><td class="positive">0.106</td><td class="negative">-0.003</td><td class="negative">-0.003</td><td class="positive">0.100</td><td class="positive">0.223</td></tr></tbody></table>
+    </section>
+
+    <section id="drawdown">
+      <h2>Best Overall Candidate Drawdown</h2>
+
+      <div class="kpis">
+
+    <div class="kpi">
+      <div class="kpi-label">Candidate</div>
+      <div class="kpi-value">midpoint / structure / 1R</div>
+      <div class="kpi-note">best overall Avg R</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Max Drawdown</div>
+      <div class="kpi-value">3337.18R</div>
+      <div class="kpi-note">1668.6% at 0.5% risk/trade</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Peak To Recovery</div>
+      <div class="kpi-value">n/a</div>
+      <div class="kpi-note">trough recovery: n/a</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Longest Underwater</div>
+      <div class="kpi-value">3638 days</div>
+      <div class="kpi-note">5 periods, avg 729.0 days</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Closed-Trade Total</div>
+      <div class="kpi-value">-3299.2R</div>
+      <div class="kpi-note">46,836 trades</div>
+    </div>
+
+      </div>
+      <div class="note">This is a closed-trade R equity curve for one candidate. It is not yet a portfolio simulation with max open trades, position sizing, daily drawdown limits, or overlapping exposure.</div>
+      <table class=""><thead><tr><th>Start</th><th>End</th><th>Days</th><th>Max DD</th><th>Trough</th><th>Recovered?</th></tr></thead><tbody><tr><td>2016-05-12</td><td>2026-04-28</td><td>3,638.2</td><td class="negative">3,337.178</td><td>2026-01-30</td><td>no</td></tr><tr><td>2016-05-02</td><td>2016-05-06</td><td>4.2</td><td class="negative">8.366</td><td>2016-05-04</td><td>yes</td></tr><tr><td>2016-05-10</td><td>2016-05-11</td><td>1.8</td><td class="negative">9.921</td><td>2016-05-10</td><td>yes</td></tr><tr><td>2016-05-09</td><td>2016-05-09</td><td>0.8</td><td class="negative">3.480</td><td>2016-05-09</td><td>yes</td></tr><tr><td>2016-05-06</td><td>2016-05-06</td><td>0.0</td><td class="negative">1.091</td><td>2016-05-06</td><td>yes</td></tr></tbody></table>
+
     </section>
 
     <section id="stability">
