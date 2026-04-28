@@ -14,6 +14,7 @@ with other entry, filter, risk, and exit concepts in future strategy labs.
 - TradingView usage notes: `tradingview/README.md`
 - Canonical rules/spec: `docs/lp_levels_spec.md`
 - Python strategy/backtest module: `src/lp_levels_lab/levels.py`
+- Python break-event helper: `lp_break_events_by_bar(...)`
 
 The Pine script is for TradingView chart inspection and publication. It should
 not be treated as the live trading source of truth because TradingView candles
@@ -40,6 +41,7 @@ mirror the same LP rules rather than becoming a separate source of truth.
 - Resistance breach: wick touch, `high >= level`
 - Support breach: wick touch, `low <= level`
 - Breached LPs: deleted from active state
+- LP break events are exposed before deletion for strategy signal studies.
 - Timeframe windows:
   - 30 minute: 5 days
   - 4 hour: 30 days

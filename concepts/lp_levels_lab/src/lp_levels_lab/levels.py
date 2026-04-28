@@ -30,6 +30,20 @@ class LPLevel:
     confirmed_time_utc: pd.Timestamp
 
 
+@dataclass(frozen=True)
+class LPBreakEvent:
+    """One active LP level broken by wick touch on a bar."""
+
+    side: LPSide
+    price: float
+    pivot_index: int
+    pivot_time_utc: pd.Timestamp
+    confirmed_index: int
+    confirmed_time_utc: pd.Timestamp
+    break_index: int
+    break_time_utc: pd.Timestamp
+
+
 def _timeframe_seconds(timeframe: str | int | float) -> int | None:
     """Parse common MT5 and TradingView timeframe strings into seconds."""
 
@@ -132,26 +146,31 @@ def _level_is_breached(level: LPLevel, *, high: float, low: float) -> bool:
     return low <= level.price
 
 
-def active_lp_levels_by_bar(
+def _break_event_from_level(level: LPLevel, *, break_index: int, break_time: pd.Timestamp) -> LPBreakEvent:
+    return LPBreakEvent(
+        side=level.side,
+        price=level.price,
+        pivot_index=level.pivot_index,
+        pivot_time_utc=level.pivot_time_utc,
+        confirmed_index=level.confirmed_index,
+        confirmed_time_utc=level.confirmed_time_utc,
+        break_index=break_index,
+        break_time_utc=break_time,
+    )
+
+
+def _lp_state_by_bar(
     frame: pd.DataFrame,
     timeframe: str | int | float,
     *,
     pivot_strength: int = 3,
-) -> list[list[LPLevel]]:
-    """Return active LP levels available after each bar is processed.
-
-    The function sorts input by ``time_utc`` and resets indexes internally. A
-    pivot at index ``i`` is only added on bar ``i + pivot_strength``. Active
-    levels are expired by rolling timeframe window and deleted on wick-touch
-    breach before newly confirmed pivots are added.
-    """
-
+) -> tuple[list[list[LPLevel]], list[list[LPBreakEvent]]]:
     if pivot_strength < 1:
         raise ValueError("pivot_strength must be >= 1.")
 
     data = _normalise_frame(frame)
     if data.empty:
-        return []
+        return [], []
 
     lookback_delta = pd.Timedelta(days=lookback_days_for_timeframe(timeframe))
     highs = data["high"].tolist()
@@ -160,18 +179,23 @@ def active_lp_levels_by_bar(
 
     active: list[LPLevel] = []
     levels_by_bar: list[list[LPLevel]] = []
+    breaks_by_bar: list[list[LPBreakEvent]] = []
 
     for current_index, current_time in enumerate(times):
         cutoff_time = current_time - lookback_delta
         current_high = highs[current_index]
         current_low = lows[current_index]
 
-        active = [
-            level
-            for level in active
-            if level.pivot_time_utc >= cutoff_time
-            and not _level_is_breached(level, high=current_high, low=current_low)
-        ]
+        current_breaks: list[LPBreakEvent] = []
+        still_active: list[LPLevel] = []
+        for level in active:
+            if level.pivot_time_utc < cutoff_time:
+                continue
+            if _level_is_breached(level, high=current_high, low=current_low):
+                current_breaks.append(_break_event_from_level(level, break_index=current_index, break_time=current_time))
+            else:
+                still_active.append(level)
+        active = still_active
 
         pivot_index = current_index - pivot_strength
         if pivot_index >= pivot_strength:
@@ -201,5 +225,36 @@ def active_lp_levels_by_bar(
                     )
 
         levels_by_bar.append(list(active))
+        breaks_by_bar.append(current_breaks)
 
+    return levels_by_bar, breaks_by_bar
+
+
+def active_lp_levels_by_bar(
+    frame: pd.DataFrame,
+    timeframe: str | int | float,
+    *,
+    pivot_strength: int = 3,
+) -> list[list[LPLevel]]:
+    """Return active LP levels available after each bar is processed.
+
+    The function sorts input by ``time_utc`` and resets indexes internally. A
+    pivot at index ``i`` is only added on bar ``i + pivot_strength``. Active
+    levels are expired by rolling timeframe window and deleted on wick-touch
+    breach before newly confirmed pivots are added.
+    """
+
+    levels_by_bar, _ = _lp_state_by_bar(frame, timeframe, pivot_strength=pivot_strength)
     return levels_by_bar
+
+
+def lp_break_events_by_bar(
+    frame: pd.DataFrame,
+    timeframe: str | int | float,
+    *,
+    pivot_strength: int = 3,
+) -> list[list[LPBreakEvent]]:
+    """Return LP wick-break events by bar before breached levels are deleted."""
+
+    _, breaks_by_bar = _lp_state_by_bar(frame, timeframe, pivot_strength=pivot_strength)
+    return breaks_by_bar

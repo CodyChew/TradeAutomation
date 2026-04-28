@@ -63,6 +63,10 @@ Breaches use wick touch.
 Breached LPs are deleted from active state immediately. They are not retained as
 inactive levels in the Python strategy engine.
 
+Python strategies that need trap timing can use the break-event helper to read
+which active LP levels were breached on each bar before those levels are removed
+from active state.
+
 ## Backtesting Rule
 
 LP state must be calculated bar by bar with no future leakage.

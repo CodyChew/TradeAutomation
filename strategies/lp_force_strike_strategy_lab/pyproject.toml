@@ -1,0 +1,16 @@
+[project]
+name = "lp-force-strike-strategy-lab"
+version = "0.1.0"
+description = "Signal study combining LP level traps with raw Force Strike patterns."
+requires-python = ">=3.11"
+dependencies = [
+  "pandas"
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src",
+  "../../concepts/lp_levels_lab/src",
+  "../../concepts/force_strike_pattern_lab/src"
+]
+testpaths = ["tests"]

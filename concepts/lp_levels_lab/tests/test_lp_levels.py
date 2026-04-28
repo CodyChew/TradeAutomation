@@ -12,7 +12,7 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from lp_levels_lab import LPLevel, active_lp_levels_by_bar, lookback_days_for_timeframe
+from lp_levels_lab import LPBreakEvent, LPLevel, active_lp_levels_by_bar, lookback_days_for_timeframe, lp_break_events_by_bar
 
 
 def _frame(highs: list[float], lows: list[float], *, times: list[str] | None = None) -> pd.DataFrame:
@@ -23,6 +23,10 @@ def _frame(highs: list[float], lows: list[float], *, times: list[str] | None = N
 
 def _levels_with_side(levels: list[LPLevel], side: str) -> list[LPLevel]:
     return [level for level in levels if level.side == side]
+
+
+def _breaks_with_side(events: list[LPBreakEvent], side: str) -> list[LPBreakEvent]:
+    return [event for event in events if event.side == side]
 
 
 class LPLevelsTests(unittest.TestCase):
@@ -93,11 +97,29 @@ class LPLevelsTests(unittest.TestCase):
         self.assertEqual(len(_levels_with_side(levels[2], "resistance")), 1)
         self.assertEqual(_levels_with_side(levels[3], "resistance"), [])
 
+    def test_resistance_breach_event_is_exposed_before_deletion(self) -> None:
+        events = lp_break_events_by_bar(_frame([1.0, 3.0, 2.0, 3.0], [1.0, 1.0, 1.0, 1.0]), "M30", pivot_strength=1)
+
+        resistance_breaks = _breaks_with_side(events[3], "resistance")
+        self.assertEqual(len(resistance_breaks), 1)
+        self.assertEqual(resistance_breaks[0].price, 3.0)
+        self.assertEqual(resistance_breaks[0].pivot_index, 1)
+        self.assertEqual(resistance_breaks[0].break_index, 3)
+
     def test_support_breach_deletes_level_on_wick_touch(self) -> None:
         levels = active_lp_levels_by_bar(_frame([5.0, 5.0, 5.0, 5.0], [3.0, 1.0, 2.0, 1.0]), "M30", pivot_strength=1)
 
         self.assertEqual(len(_levels_with_side(levels[2], "support")), 1)
         self.assertEqual(_levels_with_side(levels[3], "support"), [])
+
+    def test_support_breach_event_is_exposed_before_deletion(self) -> None:
+        events = lp_break_events_by_bar(_frame([5.0, 5.0, 5.0, 5.0], [3.0, 1.0, 2.0, 1.0]), "M30", pivot_strength=1)
+
+        support_breaks = _breaks_with_side(events[3], "support")
+        self.assertEqual(len(support_breaks), 1)
+        self.assertEqual(support_breaks[0].price, 1.0)
+        self.assertEqual(support_breaks[0].pivot_index, 1)
+        self.assertEqual(support_breaks[0].break_index, 3)
 
     def test_lookback_expiry_is_rolling_by_current_bar(self) -> None:
         times = [
