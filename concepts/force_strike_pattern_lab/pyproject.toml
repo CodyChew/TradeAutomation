@@ -1,0 +1,12 @@
+[project]
+name = "force-strike-pattern-lab"
+version = "0.1.0"
+description = "Reusable raw Force Strike pattern logic for TradingView inspection and MT5-data strategy research."
+requires-python = ">=3.11"
+dependencies = [
+  "pandas"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

@@ -12,3 +12,5 @@ strategies.
 
 - `concepts/lp_levels_lab`: Left Precedence support/resistance concept with
   TradingView visualization and Python strategy/backtest logic.
+- `concepts/force_strike_pattern_lab`: raw Force Strike pattern concept with
+  TradingView visualization and Python strategy/backtest logic.

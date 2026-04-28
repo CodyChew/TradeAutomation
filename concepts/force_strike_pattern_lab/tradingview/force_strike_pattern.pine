@@ -1,0 +1,121 @@
+//@version=6
+indicator(
+     "Force Strike Pattern",
+     "FS Pattern",
+     overlay = true,
+     max_bars_back = 500,
+     max_boxes_count = 200)
+
+// Raw Force Strike pattern visual. This script only marks the bar pattern.
+
+string groupDisplay = "Display"
+showBullish = input.bool(true, "Show bullish patterns", group = groupDisplay)
+showBearish = input.bool(true, "Show bearish patterns", group = groupDisplay)
+showMotherRange = input.bool(true, "Draw mother range", group = groupDisplay)
+confirmOnClose = input.bool(true, "Confirm on candle close", group = groupDisplay)
+maxDrawings = input.int(80, "Max mother boxes to keep", minval = 10, maxval = 180, group = groupDisplay)
+
+string groupPattern = "Pattern"
+minTotalBarsInput = input.int(3, "Minimum formation bars", minval = 3, maxval = 6, group = groupPattern)
+maxTotalBarsInput = input.int(6, "Maximum formation bars", minval = 3, maxval = 6, group = groupPattern)
+
+int minBars = math.min(minTotalBarsInput, maxTotalBarsInput)
+int maxBars = math.max(minTotalBarsInput, maxTotalBarsInput)
+
+var array<box> motherBoxes = array.new<box>()
+
+f_close_location(int off) =>
+    float barRange = high[off] - low[off]
+    barRange <= 0.0 ? 0.5 : (close[off] - low[off]) / barRange
+
+f_is_bullish_bar(int off) =>
+    (high[off] > low[off]) and f_close_location(off) >= (2.0 / 3.0)
+
+f_is_bearish_bar(int off) =>
+    (high[off] > low[off]) and f_close_location(off) <= (1.0 / 3.0)
+
+f_pattern_at(int motherOff, int signalOff) =>
+    bool ok = false
+    int side = 0
+    float motherHigh = high[motherOff]
+    float motherLow = low[motherOff]
+    float structureHigh = na
+    float structureLow = na
+    if not na(motherHigh) and not na(motherLow) and motherOff - signalOff + 1 >= minBars
+        int firstBabyOff = motherOff - 1
+        bool barTwoInside = high[firstBabyOff] <= motherHigh and low[firstBabyOff] >= motherLow
+        if barTwoInside
+            bool brokeLow = false
+            bool brokeHigh = false
+            for off = signalOff to motherOff
+                if not na(high[off]) and not na(low[off])
+                    structureHigh := na(structureHigh) ? high[off] : math.max(structureHigh, high[off])
+                    structureLow := na(structureLow) ? low[off] : math.min(structureLow, low[off])
+            for off = signalOff to motherOff - 1
+                brokeLow := brokeLow or low[off] < motherLow
+                brokeHigh := brokeHigh or high[off] > motherHigh
+            bool closeInside = close[signalOff] >= motherLow and close[signalOff] <= motherHigh
+            if closeInside and not (brokeLow and brokeHigh)
+                if brokeLow and f_is_bullish_bar(signalOff)
+                    ok := true
+                    side := 1
+                else if brokeHigh and f_is_bearish_bar(signalOff)
+                    ok := true
+                    side := -1
+    [ok, side, motherHigh, motherLow, structureHigh, structureLow]
+
+f_has_prior_signal(int motherOff) =>
+    bool found = false
+    int oldestSignalOff = motherOff - minBars + 1
+    if oldestSignalOff >= 1
+        for stepIndex = 0 to oldestSignalOff - 1
+            int sigOff = oldestSignalOff - stepIndex
+            if not found
+                [priorOk, priorSide, priorMotherHigh, priorMotherLow, priorStructureHigh, priorStructureLow] = f_pattern_at(motherOff, sigOff)
+                found := priorOk
+    found
+
+bool rawSignal = false
+int foundSide = 0
+int foundMotherOff = na
+float foundMotherHigh = na
+float foundMotherLow = na
+
+for stepIndex = 0 to maxBars - minBars
+    int totalBars = maxBars - stepIndex
+    if not rawSignal
+        int motherOff = totalBars - 1
+        [patternOk, patternSide, motherHigh, motherLow, structureHigh, structureLow] = f_pattern_at(motherOff, 0)
+        bool priorRaw = patternOk ? f_has_prior_signal(motherOff) : false
+        if patternOk and not priorRaw
+            rawSignal := true
+            foundSide := patternSide
+            foundMotherOff := motherOff
+            foundMotherHigh := motherHigh
+            foundMotherLow := motherLow
+
+bool closeConfirmed = not confirmOnClose or barstate.isconfirmed
+bool showSignal = rawSignal and closeConfirmed
+bool showBullishSignal = showBullish and showSignal and foundSide > 0
+bool showBearishSignal = showBearish and showSignal and foundSide < 0
+color signalColor = foundSide > 0 ? color.lime : color.red
+
+plotshape(showBullishSignal, "Bullish Raw Force Strike", style = shape.triangleup, location = location.belowbar, color = color.lime, text = "FS", textcolor = color.white, size = size.small)
+plotshape(showBearishSignal, "Bearish Raw Force Strike", style = shape.triangledown, location = location.abovebar, color = color.red, text = "FS", textcolor = color.white, size = size.small)
+
+if showSignal and showMotherRange and not na(foundMotherOff)
+    box setupBox = box.new(
+         left = bar_index - foundMotherOff,
+         top = foundMotherHigh,
+         right = bar_index,
+         bottom = foundMotherLow,
+         xloc = xloc.bar_index,
+         border_color = color.new(signalColor, 0),
+         bgcolor = color.new(signalColor, 88))
+    array.push(motherBoxes, setupBox)
+
+while array.size(motherBoxes) > maxDrawings
+    box.delete(array.shift(motherBoxes))
+
+alertcondition(showBullishSignal, "Bullish Raw Force Strike", "Bullish raw Force Strike pattern on {{ticker}} {{interval}}")
+alertcondition(showBearishSignal, "Bearish Raw Force Strike", "Bearish raw Force Strike pattern on {{ticker}} {{interval}}")
