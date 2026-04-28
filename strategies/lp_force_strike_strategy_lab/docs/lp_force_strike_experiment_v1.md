@@ -46,6 +46,16 @@ folder and commit that HTML file:
 Use the report-folder copy for local research and a `docs/` copy for public or
 shared snapshots.
 
+Recommended reading order:
+
+1. `Metric Guide`: confirm what each column means.
+2. `Best Candidates By Timeframe`: judge M30, H4, D1, and W1 separately.
+3. `Robust Candidates Across H4, D1, And W1`: look for candidates that stay
+   positive outside the M30-heavy aggregate.
+4. `Best Candidates By Timeframe And Side`: check whether bullish or bearish
+   signals are carrying the result.
+5. `Symbol Outliers`: identify pairs to include, exclude, or inspect manually.
+
 ## Trade Models
 
 Entry models:
@@ -115,6 +125,35 @@ First-pass observation:
 Do not treat this as a finished strategy conclusion. Next passes should slice by
 symbol, side, session, spread, signal quality, and market regime before deciding
 what to keep.
+
+## Experiment V2 Focus Plan
+
+The next focused config is
+`configs/strategies/lp_force_strike_experiment_v2_focus.json`.
+
+Purpose:
+
+- remove M30 from the main decision set;
+- keep H4, D1, and W1;
+- test only the midpoint-pullback entry;
+- keep the FS structure stop baseline;
+- test max-risk filters at `0.5`, `0.75`, `1.0`, and `1.25` ATR;
+- keep target candidates at `1R`, `1.25R`, `1.5R`, `1.7R`, and `2R`.
+
+Run it with:
+
+```powershell
+.\venv\Scripts\python scripts\run_lp_force_strike_experiment.py --config configs\strategies\lp_force_strike_experiment_v2_focus.json
+```
+
+Then build its dashboard with:
+
+```powershell
+.\venv\Scripts\python scripts\build_lp_force_strike_dashboard.py --run-dir reports\strategies\lp_force_strike_experiment_v2_focus\<run_folder>
+```
+
+The first completed V2 focus run is documented in
+`strategies/lp_force_strike_strategy_lab/docs/lp_force_strike_experiment_v2_focus.md`.
 
 ## Dashboard Stack Recommendation
 

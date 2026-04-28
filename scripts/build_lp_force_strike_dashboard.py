@@ -247,6 +247,57 @@ def _timeframe_leaders(summary_tf: pd.DataFrame) -> str:
     return "".join(sections)
 
 
+def _robust_candidates(summary_tf: pd.DataFrame, *, focus_timeframes: list[str] | None = None) -> str:
+    focus = focus_timeframes or ["H4", "D1", "W1"]
+    data = summary_tf[summary_tf["timeframe"].isin(focus)].copy()
+    if data.empty:
+        return "<p>No focused timeframe rows are available.</p>"
+
+    grouped = data.groupby("candidate_id", dropna=False)
+    rows_data = []
+    for candidate_id, group in grouped:
+        by_tf = group.set_index("timeframe")
+        available = [timeframe for timeframe in focus if timeframe in by_tf.index]
+        avg_values = [float(by_tf.loc[timeframe, "avg_net_r"]) for timeframe in available]
+        pf_values = [float(by_tf.loc[timeframe, "profit_factor"]) for timeframe in available]
+        rows_data.append(
+            {
+                "candidate_id": candidate_id,
+                "timeframes": len(available),
+                "positive_timeframes": sum(value > 0 for value in avg_values),
+                "pf_above_one": sum(value > 1 for value in pf_values),
+                "avg_focus_r": sum(avg_values) / len(avg_values) if avg_values else 0.0,
+                "worst_focus_r": min(avg_values) if avg_values else 0.0,
+                "total_trades": int(group["trades"].sum()),
+                "h4_avg_r": by_tf.loc["H4", "avg_net_r"] if "H4" in by_tf.index else None,
+                "d1_avg_r": by_tf.loc["D1", "avg_net_r"] if "D1" in by_tf.index else None,
+                "w1_avg_r": by_tf.loc["W1", "avg_net_r"] if "W1" in by_tf.index else None,
+            }
+        )
+
+    robust = pd.DataFrame(rows_data)
+    robust = robust.sort_values(["positive_timeframes", "pf_above_one", "avg_focus_r"], ascending=False).head(10)
+    rows = []
+    for _, row in robust.iterrows():
+        rows.append(
+            [
+                _escape(_candidate_short(row["candidate_id"])),
+                _fmt_int(row["total_trades"]),
+                f"{_fmt_int(row['positive_timeframes'])}/{_fmt_int(row['timeframes'])}",
+                f"{_fmt_int(row['pf_above_one'])}/{_fmt_int(row['timeframes'])}",
+                (_fmt_num(row["avg_focus_r"]), _metric_class(row["avg_focus_r"])),
+                (_fmt_num(row["worst_focus_r"]), _metric_class(row["worst_focus_r"])),
+                (_fmt_num(row["h4_avg_r"]), _metric_class(row["h4_avg_r"])),
+                (_fmt_num(row["d1_avg_r"]), _metric_class(row["d1_avg_r"])),
+                (_fmt_num(row["w1_avg_r"]), _metric_class(row["w1_avg_r"])),
+            ]
+        )
+    return _table(
+        ["Candidate", "Trades", "+ Avg R TFs", "PF > 1 TFs", "Avg Focus R", "Worst Focus R", "H4", "D1", "W1"],
+        rows,
+    )
+
+
 def _candidate_heatmap(summary_tf: pd.DataFrame) -> str:
     pivot = summary_tf.pivot_table(index="candidate_id", columns="timeframe", values="avg_net_r", aggfunc="mean")
     columns = [tf for tf in TIMEFRAME_ORDER if tf in pivot.columns] + [tf for tf in pivot.columns if tf not in TIMEFRAME_ORDER]
@@ -261,6 +312,47 @@ def _candidate_heatmap(summary_tf: pd.DataFrame) -> str:
             cells.append((_fmt_num(value), f"heat-cell {_heat_class(value, max_abs)}"))
         rows.append(cells)
     return _table(headers, rows, classes="compact")
+
+
+def _metric_guide() -> str:
+    rows = [
+        ["Avg R", "Average net result per trade in risk units. This is the first metric to check."],
+        ["Total R", "Sum of net R across all trades in the row. Useful, but high-trade-count groups dominate it."],
+        ["PF", "Profit factor: gross wins divided by gross losses. Above 1.0 means profitable before deeper checks."],
+        ["Win Rate", "Share of positive trades. It must be read together with target size and Avg R."],
+        ["Bars", "Average candles held per trade. On H4, 5 bars is about 20 hours; on D1, 5 bars is about 5 days."],
+        ["Trades", "Number of simulated trades. More trades give more confidence; tiny samples can mislead."],
+        ["Skipped", "Signal/candidate attempts that did not become trades, usually because midpoint entry was not reached or risk was too wide."],
+    ]
+    return _table(["Metric", "How To Read It"], rows)
+
+
+def _side_candidate_leaders(by_candidate_side: pd.DataFrame) -> str:
+    if by_candidate_side.empty:
+        return "<p>No side/candidate rows are available.</p>"
+    sections = []
+    for timeframe in sorted(by_candidate_side["timeframe"].dropna().unique(), key=_tf_sort_key):
+        for side in sorted(by_candidate_side.loc[by_candidate_side["timeframe"] == timeframe, "side"].dropna().unique()):
+            data = by_candidate_side[
+                (by_candidate_side["timeframe"] == timeframe) & (by_candidate_side["side"] == side)
+            ].sort_values(["avg_net_r", "total_net_r"], ascending=False).head(3)
+            rows = []
+            for _, row in data.iterrows():
+                rows.append(
+                    [
+                        _escape(_candidate_short(row["candidate_id"])),
+                        _fmt_int(row["trades"]),
+                        _fmt_pct(row["win_rate"]),
+                        (_fmt_num(row["avg_net_r"]), _metric_class(row["avg_net_r"])),
+                        (_fmt_num(row["total_net_r"], 1), _metric_class(row["total_net_r"])),
+                        _fmt_num(row["profit_factor"], 2),
+                    ]
+                )
+            sections.append(
+                f"<h3>{_escape(timeframe)} {_escape(side.title())}</h3>"
+                + _table(["Candidate", "Trades", "Win Rate", "Avg R", "Total R", "PF"], rows)
+            )
+    return "".join(sections)
 
 
 def _model_table(frame: pd.DataFrame, group_field: str, label: str) -> str:
@@ -336,6 +428,7 @@ def _html_document(
     summary_tf: pd.DataFrame,
     summary_symbol: pd.DataFrame,
     by_side: pd.DataFrame,
+    by_candidate_side: pd.DataFrame,
     by_entry: pd.DataFrame,
     by_stop: pd.DataFrame,
     by_target: pd.DataFrame,
@@ -500,9 +593,12 @@ def _html_document(
     <p>Static analysis report generated from <code>{_escape(run_dir)}</code>. Use this page to choose the next research slice; do not treat the aggregate result as a final strategy verdict.</p>
     <nav>
       <a href="#overview">Overview</a>
+      <a href="#guide">Metric Guide</a>
       <a href="#timeframes">Timeframes</a>
+      <a href="#robustness">Robustness</a>
       <a href="#candidates">Candidates</a>
       <a href="#models">Model Families</a>
+      <a href="#side">Side</a>
       <a href="#symbols">Symbols</a>
       <a href="#skips">Skipped</a>
     </nav>
@@ -521,9 +617,21 @@ def _html_document(
       {_timeframe_overview(datasets)}
     </section>
 
+    <section id="guide">
+      <h2>Metric Guide</h2>
+      <div class="note">Start with Avg R and PF, then confirm the sample size with Trades. Bars is duration, not profit.</div>
+      {_metric_guide()}
+    </section>
+
     <section id="timeframes">
       <h2>Best Candidates By Timeframe</h2>
       {_timeframe_leaders(summary_tf)}
+    </section>
+
+    <section id="robustness">
+      <h2>Robust Candidates Across H4, D1, And W1</h2>
+      <div class="note">This section ignores M30 because it dominates the sample count and currently behaves differently. Favor rows with positive Avg R and PF above 1 across all focused timeframes.</div>
+      {_robust_candidates(summary_tf)}
     </section>
 
     <section id="candidates">
@@ -543,6 +651,12 @@ def _html_document(
         <div>{_model_table(by_target, "meta_target_r", "Target R")}</div>
         <div>{_model_table(by_side, "side", "Side")}</div>
       </div>
+    </section>
+
+    <section id="side">
+      <h2>Best Candidates By Timeframe And Side</h2>
+      <div class="note">Use this to see whether bullish force bottoms or bearish force tops are carrying the result. If one side is weak, it should become a filter candidate before execution work.</div>
+      {_side_candidate_leaders(by_candidate_side)}
     </section>
 
     <section id="symbols">
@@ -573,6 +687,7 @@ def build_dashboard(run_dir: Path, output: Path) -> Path:
     skipped_path = run_dir / "skipped.csv"
 
     by_side = _trade_group_summary(trades_path, ["timeframe", "side"])
+    by_candidate_side = _trade_group_summary(trades_path, ["candidate_id", "timeframe", "side"])
     by_entry = _trade_group_summary(trades_path, ["timeframe", "meta_entry_model"])
     by_stop = _trade_group_summary(trades_path, ["timeframe", "meta_stop_model"])
     by_target = _trade_group_summary(trades_path, ["timeframe", "meta_target_r"])
@@ -587,6 +702,7 @@ def build_dashboard(run_dir: Path, output: Path) -> Path:
         summary_tf=summary_tf,
         summary_symbol=summary_symbol,
         by_side=by_side,
+        by_candidate_side=by_candidate_side,
         by_entry=by_entry,
         by_stop=by_stop,
         by_target=by_target,

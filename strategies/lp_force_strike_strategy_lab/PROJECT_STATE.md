@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-28 local time after adding the first configurable
-trade-model experiment harness.
+Last updated: 2026-04-29 local time after running the focused H4/D1/W1
+midpoint-entry experiment.
 
 ## Purpose
 
@@ -76,6 +76,33 @@ Early read: midpoint-pullback entries are materially better than next-open
 entries. M30 was negative across the tested candidates, while H4, D1, and W1
 showed positive average R for the midpoint-pullback structure-stop candidates.
 Treat this as a first pass only; it is not yet a final strategy decision.
+
+## Experiment V2 Focus
+
+Experiment V2 focus is configured by
+`../../configs/strategies/lp_force_strike_experiment_v2_focus.json`.
+
+Latest local focused run:
+
+- report folder:
+  `reports/strategies/lp_force_strike_experiment_v2_focus/20260428_161441`
+- scope: 24 clean FOREX major/cross pairs x H4/D1/W1
+- entry model: midpoint pullback only
+- stop models: FS structure and FS structure with max ATR risk filters
+- signals: 8,203
+- simulated candidate trades: 128,685
+- failed datasets: 0
+
+Current best robust family:
+
+- `signal_midpoint_pullback__fs_structure_max_1atr__1r`
+- positive Avg R on H4, D1, and W1
+- average focus R: about 0.191R
+- worst focused timeframe Avg R: about 0.080R on H4
+
+The 1.25 ATR max-risk version is very close. The next research pass should
+inspect symbol/side stability and entry/stop quality before adding execution
+complexity.
 
 ## Boundary
 
