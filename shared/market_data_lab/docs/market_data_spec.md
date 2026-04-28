@@ -135,6 +135,18 @@ Coverage readiness allows normal market-closure boundary gaps. For M30, H4, and
 D1 this tolerance is 72 hours; for W1 it is one weekly bar. The report includes
 the actual start/end gap in hours so true missing history remains visible.
 
+## Visual Verification
+
+Build a static weekly candlestick webpage from local Parquet data:
+
+```powershell
+.\venv\Scripts\python scripts\build_weekly_chart_page.py --config configs\datasets\forex_major_crosses_10y.json --output reports\datasets\forex_weekly_charts.html
+```
+
+The page is self-contained and can be opened directly in a browser. It is
+intended for fast human inspection of the broker candle history before running
+strategy backtests.
+
 ## Manifest
 
 Each dataset should have a manifest containing:

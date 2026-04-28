@@ -38,3 +38,5 @@ strategies.
   datasets and writes manifests.
 - `scripts/report_dataset_coverage.py`: reports availability, coverage, and
   backtest readiness for configured datasets.
+- `scripts/build_weekly_chart_page.py`: builds a static weekly candlestick
+  webpage from local Parquet data for visual verification.
