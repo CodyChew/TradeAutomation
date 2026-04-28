@@ -179,6 +179,20 @@ class BacktestEngineTests(unittest.TestCase):
         self.assertEqual(len(dropped), 1)
         self.assertEqual(len(complete), 2)
 
+    def test_drop_incomplete_last_bar_supports_h8(self) -> None:
+        frame = _frame(
+            [
+                ("2026-01-01T00:00:00Z", 100.0, 101.0, 99.0, 100.0),
+                ("2026-01-01T08:00:00Z", 101.0, 102.0, 100.0, 101.0),
+            ]
+        )
+
+        incomplete = is_latest_bar_complete(frame, "H8", as_of_time_utc="2026-01-01T12:00:00Z")
+        complete = is_latest_bar_complete(frame, "H8", as_of_time_utc="2026-01-01T16:00:00Z")
+
+        self.assertFalse(incomplete.latest_bar_complete)
+        self.assertTrue(complete.latest_bar_complete)
+
     def test_normalize_sorts_by_time(self) -> None:
         frame = _frame(
             [

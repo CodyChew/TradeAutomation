@@ -41,7 +41,7 @@ Every stored rates dataset must use these columns:
 - `real_volume`
 
 `time_utc` is UTC. `symbol` is uppercase. `timeframe` is the normalized internal
-label, for example `M30`, `H4`, `D1`, or `W1`.
+label, for example `M30`, `H4`, `H8`, `D1`, or `W1`.
 
 ## Validation Rules
 
@@ -103,6 +103,15 @@ It requests:
 - `history_years`: `10`
 - `data_root`: `data/raw/ftmo/forex`
 
+Native MT5 H8 is available as a separate add-on pull config:
+
+```text
+configs/datasets/forex_major_crosses_10y_h8.json
+```
+
+It requests the same 28-symbol universe on `H8` only. Use this config when the
+research needs H8 without repulling the original M30/H4/D1/W1 dataset.
+
 If `date_end_utc` is null, the pull resolves the end to the current UTC time.
 If `date_start_utc` is null, the start is resolved from `history_years`.
 
@@ -118,6 +127,12 @@ Pull the configured dataset:
 
 ```powershell
 .\venv\Scripts\python scripts\pull_mt5_dataset.py --config configs\datasets\forex_major_crosses_10y.json --output reports\datasets\forex_major_crosses_10y_pull.json
+```
+
+Pull the native MT5 H8 add-on dataset:
+
+```powershell
+.\venv\Scripts\python scripts\pull_mt5_dataset.py --config configs\datasets\forex_major_crosses_10y_h8.json --output reports\datasets\forex_major_crosses_10y_h8_pull.json
 ```
 
 Report availability and consistency:
@@ -176,6 +191,11 @@ For the current 10-year FTMO FOREX pull, the automated verdict was
 
 Initial strategy backtests should either exclude the four gap symbols or treat
 their results separately, and should ignore the current incomplete tail bar.
+
+For the native H8 add-on pull, 28/28 pairs were pulled successfully and 28/28
+coverage rows were backtest-ready. Its quality verdict was also
+`OK_WITH_WARNINGS`, with the same known gap-symbol profile and incomplete
+live-tail warning.
 
 ## Manifest
 

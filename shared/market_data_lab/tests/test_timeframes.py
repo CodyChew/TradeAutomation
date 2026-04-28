@@ -16,6 +16,7 @@ from market_data_lab import get_timeframe_spec, mt5_timeframe_value, normalize_t
 class FakeMT5:
     TIMEFRAME_M30 = 30
     TIMEFRAME_H4 = 240
+    TIMEFRAME_H8 = 16392
 
 
 class TimeframeTests(unittest.TestCase):
@@ -26,6 +27,9 @@ class TimeframeTests(unittest.TestCase):
             "TIMEFRAME_M30": "M30",
             "4h": "H4",
             "240": "H4",
+            "8h": "H8",
+            "480": "H8",
+            "TIMEFRAME_H8": "H8",
             "D": "D1",
             "1D": "D1",
             "W": "W1",
@@ -35,14 +39,15 @@ class TimeframeTests(unittest.TestCase):
                 self.assertEqual(normalize_timeframe(raw), expected)
 
     def test_get_timeframe_spec_has_expected_delta(self) -> None:
-        spec = get_timeframe_spec("H4")
+        spec = get_timeframe_spec("H8")
 
-        self.assertEqual(spec.label, "H4")
-        self.assertEqual(str(spec.expected_delta), "0 days 04:00:00")
+        self.assertEqual(spec.label, "H8")
+        self.assertEqual(str(spec.expected_delta), "0 days 08:00:00")
 
     def test_mt5_timeframe_value_uses_constant_name(self) -> None:
         self.assertEqual(mt5_timeframe_value(FakeMT5, "M30"), 30)
         self.assertEqual(mt5_timeframe_value(FakeMT5, "H4"), 240)
+        self.assertEqual(mt5_timeframe_value(FakeMT5, "H8"), 16392)
 
 
 if __name__ == "__main__":

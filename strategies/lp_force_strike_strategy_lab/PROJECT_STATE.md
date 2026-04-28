@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-29 local time after running the V3 H4/D1/W1 entry-zone,
-ATR-filter, and partial-exit experiment.
+Last updated: 2026-04-29 local time after running the V5 native H8 bridge
+experiment.
 
 ## Purpose
 
@@ -173,6 +173,38 @@ Current read:
 - Do not add symbol/timeframe filtering yet. The weak pockets are real, but
   this filtering method looks like in-sample cleanup rather than a robust
   improvement.
+
+## Experiment V5 H8 Bridge
+
+Experiment V5 H8 bridge is configured by
+`../../configs/strategies/lp_force_strike_experiment_v5_h8_bridge.json`.
+
+Latest local H8 bridge run:
+
+- report folder:
+  `reports/strategies/lp_force_strike_experiment_v5_h8_bridge/20260428_184554`
+- dashboard: `docs/v5.html`
+- scope: 24 clean FOREX major/cross pairs x H4/H8/D1/W1
+- candidate: `signal_zone_0p5_pullback__fs_structure__1r`
+- native MT5 H8 data: 28/28 pairs pulled, 28/28 coverage-ready
+- signals: 11,391
+- simulated trades: 9,221
+- failed datasets: 0
+
+Timeframe read:
+
+- H4: 5,642 trades, about 0.084R average, about 1.185 PF.
+- H8: 2,554 trades, about 0.092R average, about 1.203 PF.
+- D1: 855 trades, about 0.208R average, about 1.527 PF.
+- W1: 170 trades, about 0.252R average, about 1.678 PF.
+
+Current conclusion:
+
+- H8 is a modest improvement over H4, but not a clean midpoint between H4 and
+  D1.
+- The D1 quality step remains much larger than the H4-to-H8 improvement.
+- Keep H8 available for future comparison, but do not pivot the main strategy
+  research around H8 yet.
 
 ## Boundary
 

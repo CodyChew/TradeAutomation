@@ -13,7 +13,7 @@ import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REPORT_ROOT = REPO_ROOT / "reports" / "strategies" / "lp_force_strike_experiment_v1"
-TIMEFRAME_ORDER = ["M30", "H4", "D1", "W1"]
+TIMEFRAME_ORDER = ["M30", "H4", "H8", "D1", "W1"]
 
 
 def _latest_run(report_root: Path) -> Path:
@@ -261,7 +261,9 @@ def _timeframe_leaders(summary_tf: pd.DataFrame) -> str:
 
 
 def _robust_candidates(summary_tf: pd.DataFrame, *, focus_timeframes: list[str] | None = None) -> str:
-    focus = focus_timeframes or ["H4", "D1", "W1"]
+    preferred_focus = focus_timeframes or ["H4", "H8", "D1", "W1"]
+    present = set(summary_tf["timeframe"].dropna().astype(str))
+    focus = [timeframe for timeframe in preferred_focus if timeframe in present]
     data = summary_tf[summary_tf["timeframe"].isin(focus)].copy()
     if data.empty:
         return "<p>No focused timeframe rows are available.</p>"
@@ -273,40 +275,37 @@ def _robust_candidates(summary_tf: pd.DataFrame, *, focus_timeframes: list[str] 
         available = [timeframe for timeframe in focus if timeframe in by_tf.index]
         avg_values = [float(by_tf.loc[timeframe, "avg_net_r"]) for timeframe in available]
         pf_values = [float(by_tf.loc[timeframe, "profit_factor"]) for timeframe in available]
-        rows_data.append(
-            {
-                "candidate_id": candidate_id,
-                "timeframes": len(available),
-                "positive_timeframes": sum(value > 0 for value in avg_values),
-                "pf_above_one": sum(value > 1 for value in pf_values),
-                "avg_focus_r": sum(avg_values) / len(avg_values) if avg_values else 0.0,
-                "worst_focus_r": min(avg_values) if avg_values else 0.0,
-                "total_trades": int(group["trades"].sum()),
-                "h4_avg_r": by_tf.loc["H4", "avg_net_r"] if "H4" in by_tf.index else None,
-                "d1_avg_r": by_tf.loc["D1", "avg_net_r"] if "D1" in by_tf.index else None,
-                "w1_avg_r": by_tf.loc["W1", "avg_net_r"] if "W1" in by_tf.index else None,
-            }
-        )
+        row_data = {
+            "candidate_id": candidate_id,
+            "timeframes": len(available),
+            "positive_timeframes": sum(value > 0 for value in avg_values),
+            "pf_above_one": sum(value > 1 for value in pf_values),
+            "avg_focus_r": sum(avg_values) / len(avg_values) if avg_values else 0.0,
+            "worst_focus_r": min(avg_values) if avg_values else 0.0,
+            "total_trades": int(group["trades"].sum()),
+        }
+        for timeframe in focus:
+            row_data[f"{timeframe}_avg_r"] = by_tf.loc[timeframe, "avg_net_r"] if timeframe in by_tf.index else None
+        rows_data.append(row_data)
 
     robust = pd.DataFrame(rows_data)
     robust = robust.sort_values(["positive_timeframes", "pf_above_one", "avg_focus_r"], ascending=False).head(10)
     rows = []
     for _, row in robust.iterrows():
-        rows.append(
-            [
-                _escape(_candidate_short(row["candidate_id"])),
-                _fmt_int(row["total_trades"]),
-                f"{_fmt_int(row['positive_timeframes'])}/{_fmt_int(row['timeframes'])}",
-                f"{_fmt_int(row['pf_above_one'])}/{_fmt_int(row['timeframes'])}",
-                (_fmt_num(row["avg_focus_r"]), _metric_class(row["avg_focus_r"])),
-                (_fmt_num(row["worst_focus_r"]), _metric_class(row["worst_focus_r"])),
-                (_fmt_num(row["h4_avg_r"]), _metric_class(row["h4_avg_r"])),
-                (_fmt_num(row["d1_avg_r"]), _metric_class(row["d1_avg_r"])),
-                (_fmt_num(row["w1_avg_r"]), _metric_class(row["w1_avg_r"])),
-            ]
-        )
+        base_cells = [
+            _escape(_candidate_short(row["candidate_id"])),
+            _fmt_int(row["total_trades"]),
+            f"{_fmt_int(row['positive_timeframes'])}/{_fmt_int(row['timeframes'])}",
+            f"{_fmt_int(row['pf_above_one'])}/{_fmt_int(row['timeframes'])}",
+            (_fmt_num(row["avg_focus_r"]), _metric_class(row["avg_focus_r"])),
+            (_fmt_num(row["worst_focus_r"]), _metric_class(row["worst_focus_r"])),
+        ]
+        timeframe_cells = [
+            (_fmt_num(row.get(f"{timeframe}_avg_r")), _metric_class(row.get(f"{timeframe}_avg_r"))) for timeframe in focus
+        ]
+        rows.append(base_cells + timeframe_cells)
     return _table(
-        ["Candidate", "Trades", "+ Avg R TFs", "PF > 1 TFs", "Avg Focus R", "Worst Focus R", "H4", "D1", "W1"],
+        ["Candidate", "Trades", "+ Avg R TFs", "PF > 1 TFs", "Avg Focus R", "Worst Focus R"] + focus,
         rows,
     )
 
@@ -317,7 +316,9 @@ def _top_robust_candidate_ids(
     focus_timeframes: list[str] | None = None,
     limit: int = 3,
 ) -> list[str]:
-    focus = focus_timeframes or ["H4", "D1", "W1"]
+    preferred_focus = focus_timeframes or ["H4", "H8", "D1", "W1"]
+    present = set(summary_tf["timeframe"].dropna().astype(str))
+    focus = [timeframe for timeframe in preferred_focus if timeframe in present]
     data = summary_tf[summary_tf["timeframe"].isin(focus)].copy()
     if data.empty:
         return []
@@ -626,6 +627,7 @@ def _page_links(current_page: str) -> str:
         ("v2.html", "V2"),
         ("v3.html", "V3"),
         ("v4.html", "V4"),
+        ("v5.html", "V5"),
     ]
     links = []
     for href, label in pages:
@@ -660,7 +662,7 @@ def _html_document(
     best_label = _candidate_short(top_overall.iloc[0]["candidate_id"]) if not top_overall.empty else "n/a"
     timeframes = sorted(datasets["timeframe"].dropna().astype(str).unique(), key=_tf_sort_key)
     timeframe_note = (
-        "M30 contributes most signals and can dominate the aggregate; H4, D1, and W1 should be judged on their own."
+        "M30 contributes most signals and can dominate the aggregate; H4, H8, D1, and W1 should be judged on their own."
         if "M30" in timeframes
         else "Overall metrics are weighted by trade count. Read each timeframe separately before making strategy decisions."
     )
@@ -870,7 +872,7 @@ def _html_document(
     </section>
 
     <section id="robustness">
-      <h2>Robust Candidates Across H4, D1, And W1</h2>
+      <h2>Robust Candidates Across Focus Timeframes</h2>
       <div class="note">This section ignores M30 because it dominates the sample count and currently behaves differently. Favor rows with positive Avg R and PF above 1 across all focused timeframes.</div>
       {_robust_candidates(summary_tf)}
     </section>

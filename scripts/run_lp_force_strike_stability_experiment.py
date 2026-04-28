@@ -126,7 +126,14 @@ def _table(headers: list[str], rows: list[list[Any]], *, classes: str = "") -> s
 
 
 def _page_nav(current_page: str) -> str:
-    pages = [("index.html", "Home"), ("v1.html", "V1"), ("v2.html", "V2"), ("v3.html", "V3"), ("v4.html", "V4")]
+    pages = [
+        ("index.html", "Home"),
+        ("v1.html", "V1"),
+        ("v2.html", "V2"),
+        ("v3.html", "V3"),
+        ("v4.html", "V4"),
+        ("v5.html", "V5"),
+    ]
     return "\n      ".join(
         f'<a class="{"active" if href == current_page else ""}" href="{href}">{label}</a>' for href, label in pages
     )

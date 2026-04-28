@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LP + Force Strike Dashboard - by Cody</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #627181;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --accent-2: #3a7d44;
+      --warn: #9b5f00;
+      --bad: #a23b3b;
+      --good: #2e7d50;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.45 Inter, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    header {
+      background: #17202a;
+      color: white;
+      padding: 28px max(24px, 5vw);
+      border-bottom: 4px solid #57a773;
+    }
+    header h1 { margin: 0 0 8px; font-size: 28px; font-weight: 700; }
+    header p { margin: 0; color: #d8e0e8; max-width: 980px; }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.25);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255,255,255,.08);
+    }
+    nav.page-nav a.active {
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }
+    nav.report-nav {
+      margin-top: 10px;
+    }
+    main { padding: 24px max(24px, 5vw) 48px; }
+    section {
+      margin: 0 0 22px;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(23,32,42,.05);
+    }
+    h2 { margin: 0 0 14px; font-size: 20px; }
+    h3 { margin: 18px 0 8px; font-size: 15px; color: #34495e; }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi {
+      background: #f9fbfc;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .kpi-value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+    .kpi-note { color: var(--muted); font-size: 12px; min-height: 18px; }
+    .note {
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+      margin-bottom: 14px;
+    }
+    .split {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+    th:first-child, td:first-child { text-align: left; }
+    th {
+      color: #455464;
+      background: #f7f9fb;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .compact td, .compact th { font-size: 12px; padding: 6px 7px; }
+    .positive { color: var(--good); font-weight: 700; }
+    .negative { color: var(--bad); font-weight: 700; }
+    .neutral { color: var(--muted); }
+    .bar-wrap {
+      position: relative;
+      min-width: 130px;
+      height: 22px;
+      border-radius: 5px;
+      background: #edf1f4;
+      overflow: hidden;
+    }
+    .bar {
+      position: absolute;
+      inset: 0 auto 0 0;
+      background: #7aa6c2;
+    }
+    .bar-wrap span {
+      position: relative;
+      z-index: 1;
+      display: block;
+      text-align: right;
+      padding: 2px 6px;
+      color: #17202a;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .heat-cell { font-weight: 700; text-align: center; border-left: 1px solid white; }
+    .heat-pos-1 { background: #e9f5ee; color: #1f5e3a; }
+    .heat-pos-2 { background: #cfe9da; color: #1f5e3a; }
+    .heat-pos-3 { background: #9bd0b2; color: #173f2a; }
+    .heat-pos-4 { background: #5eae7d; color: white; }
+    .heat-neg-1 { background: #faeeee; color: #8a2d2d; }
+    .heat-neg-2 { background: #f2d1d1; color: #8a2d2d; }
+    .heat-neg-3 { background: #df9b9b; color: #612020; }
+    .heat-neg-4 { background: #bd5b5b; color: white; }
+    .heat-neutral { background: #f1f4f6; color: #5a6875; }
+    .scroll { overflow-x: auto; }
+    footer { color: var(--muted); padding: 0 max(24px, 5vw) 28px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>LP + Force Strike Dashboard - by Cody</h1>
+    <p>Static analysis report generated from <code>reports\strategies\lp_force_strike_experiment_v5_h8_bridge\20260428_184554</code>. Use this page to choose the next research slice; do not treat the aggregate result as a final strategy verdict.</p>
+    <nav class="page-nav" aria-label="Dashboard pages">
+      <a class="page-link" href="index.html">Home</a>
+      <a class="page-link" href="v1.html">V1</a>
+      <a class="page-link" href="v2.html">V2</a>
+      <a class="page-link" href="v3.html">V3</a>
+      <a class="page-link" href="v4.html">V4</a>
+      <a class="page-link active" href="v5.html">V5</a>
+    </nav>
+    <nav class="report-nav" aria-label="Report sections">
+      <a href="#overview">Overview</a>
+      <a href="#guide">Metric Guide</a>
+      <a href="#timeframes">Timeframes</a>
+      <a href="#robustness">Robustness</a>
+      <a href="#drawdown">Drawdown</a>
+      <a href="#stability">Stability</a>
+      <a href="#candidates">Candidates</a>
+      <a href="#models">Model Families</a>
+      <a href="#side">Side</a>
+      <a href="#symbols">Symbols</a>
+      <a href="#skips">Skipped</a>
+    </nav>
+  </header>
+  <main>
+    <section id="overview">
+      <h2>Overview</h2>
+      <div class="kpis">
+
+    <div class="kpi">
+      <div class="kpi-label">Datasets</div>
+      <div class="kpi-value">96</div>
+      <div class="kpi-note">0 failed</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Signals</div>
+      <div class="kpi-value">11,391</div>
+      <div class="kpi-note">LP break + raw FS</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Trades</div>
+      <div class="kpi-value">9,221</div>
+      <div class="kpi-note">simulated candidates</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Skipped</div>
+      <div class="kpi-value">2,170</div>
+      <div class="kpi-note">filtered attempts</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Best Overall Avg R</div>
+      <div class="kpi-value">zone 0.5 pullback / structure / 1R</div>
+      <div class="kpi-note">overall is trade-count weighted</div>
+    </div>
+
+      </div>
+      <div class="note">Read by timeframe first. Overall metrics are weighted by trade count. Read each timeframe separately before making strategy decisions.</div>
+      <table class=""><thead><tr><th>Timeframe</th><th>Signals</th><th>Signal Share</th><th>Trades</th><th>Skipped</th></tr></thead><tbody><tr><td>H4</td><td>6,940</td><td><div class="bar-wrap"><div class="bar" style="width:60.93%"></div><span>60.9%</span></div></td><td>5,642</td><td>1,298</td></tr><tr><td>H8</td><td>3,188</td><td><div class="bar-wrap"><div class="bar" style="width:27.99%"></div><span>28.0%</span></div></td><td>2,554</td><td>634</td></tr><tr><td>D1</td><td>1,058</td><td><div class="bar-wrap"><div class="bar" style="width:9.29%"></div><span>9.3%</span></div></td><td>855</td><td>203</td></tr><tr><td>W1</td><td>205</td><td><div class="bar-wrap"><div class="bar" style="width:1.80%"></div><span>1.8%</span></div></td><td>170</td><td>35</td></tr></tbody></table>
+    </section>
+
+    <section id="guide">
+      <h2>Metric Guide</h2>
+      <div class="note">Start with Avg R and PF, then confirm the sample size with Trades. Bars is duration, not profit.</div>
+      <table class=""><thead><tr><th>Metric</th><th>How To Read It</th></tr></thead><tbody><tr><td>Avg R</td><td>Average net result per trade in risk units. This is the first metric to check.</td></tr><tr><td>Total R</td><td>Sum of net R across all trades in the row. Useful, but high-trade-count groups dominate it.</td></tr><tr><td>PF</td><td>Profit factor: gross wins divided by gross losses. Above 1.0 means profitable before deeper checks.</td></tr><tr><td>Win Rate</td><td>Share of positive trades. It must be read together with target size and Avg R.</td></tr><tr><td>Bars</td><td>Average candles held per trade. On H4, 5 bars is about 20 hours; on D1, 5 bars is about 5 days.</td></tr><tr><td>Trades</td><td>Number of simulated trades. More trades give more confidence; tiny samples can mislead.</td></tr><tr><td>Skipped</td><td>Signal/candidate attempts that did not become trades, usually because midpoint entry was not reached or risk was too wide.</td></tr></tbody></table>
+    </section>
+
+    <section id="timeframes">
+      <h2>Best Candidates By Timeframe</h2>
+      <h3>H4</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>5,642</td><td>56.9%</td><td class="positive">0.084</td><td class="positive">475.9</td><td>1.19</td><td>2.0</td></tr></tbody></table><h3>H8</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>2,554</td><td>56.3%</td><td class="positive">0.092</td><td class="positive">235.0</td><td>1.20</td><td>2.2</td></tr></tbody></table><h3>D1</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>855</td><td>61.2%</td><td class="positive">0.208</td><td class="positive">177.5</td><td>1.53</td><td>2.0</td></tr></tbody></table><h3>W1</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>170</td><td>62.9%</td><td class="positive">0.252</td><td class="positive">42.9</td><td>1.68</td><td>1.9</td></tr></tbody></table>
+    </section>
+
+    <section id="robustness">
+      <h2>Robust Candidates Across Focus Timeframes</h2>
+      <div class="note">This section ignores M30 because it dominates the sample count and currently behaves differently. Favor rows with positive Avg R and PF above 1 across all focused timeframes.</div>
+      <table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>+ Avg R TFs</th><th>PF &gt; 1 TFs</th><th>Avg Focus R</th><th>Worst Focus R</th><th>H4</th><th>H8</th><th>D1</th><th>W1</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>9,221</td><td>4/4</td><td>4/4</td><td class="positive">0.159</td><td class="positive">0.084</td><td class="positive">0.084</td><td class="positive">0.092</td><td class="positive">0.208</td><td class="positive">0.252</td></tr></tbody></table>
+    </section>
+
+    <section id="drawdown">
+      <h2>Best Overall Candidate Drawdown</h2>
+
+      <div class="kpis">
+
+    <div class="kpi">
+      <div class="kpi-label">Candidate</div>
+      <div class="kpi-value">zone 0.5 pullback / structure / 1R</div>
+      <div class="kpi-note">best overall Avg R</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Max Drawdown</div>
+      <div class="kpi-value">30.87R</div>
+      <div class="kpi-note">15.4% at 0.5% risk/trade</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Peak To Recovery</div>
+      <div class="kpi-value">119 days</div>
+      <div class="kpi-note">trough recovery: 93 days</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Longest Underwater</div>
+      <div class="kpi-value">144 days</div>
+      <div class="kpi-note">377 periods, avg 8.6 days</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Closed-Trade Total</div>
+      <div class="kpi-value">931.4R</div>
+      <div class="kpi-note">9,221 trades</div>
+    </div>
+
+      </div>
+      <div class="note">This is a closed-trade R equity curve for one candidate. It is not yet a portfolio simulation with max open trades, position sizing, daily drawdown limits, or overlapping exposure.</div>
+      <table class=""><thead><tr><th>Start</th><th>End</th><th>Days</th><th>Max DD</th><th>Trough</th><th>Recovered?</th></tr></thead><tbody><tr><td>2022-08-26</td><td>2023-01-17</td><td>143.5</td><td class="negative">26.640</td><td>2022-10-26</td><td>yes</td></tr><tr><td>2022-04-04</td><td>2022-08-23</td><td>141.3</td><td class="negative">24.561</td><td>2022-05-17</td><td>yes</td></tr><tr><td>2017-07-06</td><td>2017-11-09</td><td>125.8</td><td class="negative">27.314</td><td>2017-09-26</td><td>yes</td></tr><tr><td>2017-03-07</td><td>2017-07-05</td><td>120.0</td><td class="negative">24.975</td><td>2017-04-20</td><td>yes</td></tr><tr><td>2019-11-15</td><td>2020-03-12</td><td>117.7</td><td class="negative">30.873</td><td>2019-12-10</td><td>yes</td></tr><tr><td>2023-02-23</td><td>2023-05-26</td><td>91.8</td><td class="negative">27.205</td><td>2023-04-10</td><td>yes</td></tr><tr><td>2019-04-22</td><td>2019-07-10</td><td>79.3</td><td class="negative">9.558</td><td>2019-05-23</td><td>yes</td></tr><tr><td>2016-10-04</td><td>2016-12-21</td><td>78.5</td><td class="negative">13.045</td><td>2016-10-28</td><td>yes</td></tr></tbody></table>
+
+    </section>
+
+    <section id="stability">
+      <h2>Symbol-Timeframe Stability</h2>
+      <div class="note">Profit factor cannot be negative. PF below 1.0 or negative Avg R is the warning condition. This table checks weak symbol/timeframe rows for the top robust candidates.</div>
+      <table class=""><thead><tr><th>Candidate</th><th>Symbol</th><th>TF</th><th>Trades</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>GBPJPY</td><td>H4</td><td>202</td><td class="negative">-0.036</td><td class="negative">-7.3</td><td>0.93</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>GBPCAD</td><td>H4</td><td>253</td><td class="negative">-0.013</td><td class="negative">-3.4</td><td>0.97</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>AUDNZD</td><td>H4</td><td>261</td><td class="negative">-0.006</td><td class="negative">-1.5</td><td>0.99</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>NZDJPY</td><td>H8</td><td>86</td><td class="negative">-0.115</td><td class="negative">-9.9</td><td>0.79</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>USDCAD</td><td>H8</td><td>130</td><td class="negative">-0.077</td><td class="negative">-10.0</td><td>0.86</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>EURNZD</td><td>H8</td><td>94</td><td class="negative">-0.055</td><td class="negative">-5.2</td><td>0.90</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>USDJPY</td><td>H8</td><td>83</td><td class="negative">-0.028</td><td class="negative">-2.3</td><td>0.95</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>NZDUSD</td><td>H8</td><td>86</td><td class="negative">-0.022</td><td class="negative">-1.9</td><td>0.96</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>GBPCAD</td><td>H8</td><td>122</td><td class="negative">-0.017</td><td class="negative">-2.0</td><td>0.97</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>USDCAD</td><td>D1</td><td>29</td><td class="negative">-0.179</td><td class="negative">-5.2</td><td>0.70</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>CHFJPY</td><td>D1</td><td>33</td><td class="negative">-0.045</td><td class="negative">-1.5</td><td>0.91</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>AUDUSD</td><td>W1</td><td>7</td><td class="negative">-0.433</td><td class="negative">-3.0</td><td>0.40</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>GBPCAD</td><td>W1</td><td>6</td><td class="negative">-0.338</td><td class="negative">-2.0</td><td>0.50</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>USDCAD</td><td>W1</td><td>8</td><td class="negative">-0.253</td><td class="negative">-2.0</td><td>0.60</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>AUDNZD</td><td>W1</td><td>5</td><td class="negative">-0.214</td><td class="negative">-1.1</td><td>0.65</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>GBPUSD</td><td>W1</td><td>7</td><td class="negative">-0.146</td><td class="negative">-1.0</td><td>0.75</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>EURCAD</td><td>W1</td><td>6</td><td class="negative">-0.006</td><td class="negative">-0.0</td><td>0.99</td></tr><tr><td>zone 0.5 pullback / structure / 1R</td><td>USDCHF</td><td>W1</td><td>8</td><td class="negative">-0.004</td><td class="negative">-0.0</td><td>0.99</td></tr></tbody></table>
+    </section>
+
+    <section id="candidates">
+      <h2>Candidate Heatmap</h2>
+      <div class="scroll"><table class="compact"><thead><tr><th>Candidate</th><th>H4</th><th>H8</th><th>D1</th><th>W1</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td class="heat-cell heat-pos-2">0.084</td><td class="heat-cell heat-pos-2">0.092</td><td class="heat-cell heat-pos-4">0.208</td><td class="heat-cell heat-pos-4">0.252</td></tr></tbody></table></div>
+      <h3>Overall Leaderboard</h3>
+      <table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>9,221</td><td>57.3%</td><td class="positive">0.101</td><td class="positive">931.4</td><td>1.23</td><td>2.0</td></tr></tbody></table>
+    </section>
+
+    <section id="models">
+      <h2>Model Family Slices</h2>
+      <div class="split">
+        <div><h3>Entry Model</h3><table class=""><thead><tr><th>TF</th><th>Entry Model</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>signal_zone_pullback</td><td>5,642</td><td>56.9%</td><td class="positive">0.084</td><td class="positive">475.9</td><td>1.19</td></tr><tr><td>H8</td><td>signal_zone_pullback</td><td>2,554</td><td>56.3%</td><td class="positive">0.092</td><td class="positive">235.0</td><td>1.20</td></tr><tr><td>D1</td><td>signal_zone_pullback</td><td>855</td><td>61.2%</td><td class="positive">0.208</td><td class="positive">177.5</td><td>1.53</td></tr><tr><td>W1</td><td>signal_zone_pullback</td><td>170</td><td>62.9%</td><td class="positive">0.252</td><td class="positive">42.9</td><td>1.68</td></tr></tbody></table></div>
+        <div><h3>Entry Zone</h3><table class=""><thead><tr><th>TF</th><th>Entry Zone</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>0.5</td><td>5,642</td><td>56.9%</td><td class="positive">0.084</td><td class="positive">475.9</td><td>1.19</td></tr><tr><td>H8</td><td>0.5</td><td>2,554</td><td>56.3%</td><td class="positive">0.092</td><td class="positive">235.0</td><td>1.20</td></tr><tr><td>D1</td><td>0.5</td><td>855</td><td>61.2%</td><td class="positive">0.208</td><td class="positive">177.5</td><td>1.53</td></tr><tr><td>W1</td><td>0.5</td><td>170</td><td>62.9%</td><td class="positive">0.252</td><td class="positive">42.9</td><td>1.68</td></tr></tbody></table></div>
+      </div>
+      <div class="split">
+        <div><h3>Stop Model</h3><table class=""><thead><tr><th>TF</th><th>Stop Model</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>fs_structure</td><td>5,642</td><td>56.9%</td><td class="positive">0.084</td><td class="positive">475.9</td><td>1.19</td></tr><tr><td>H8</td><td>fs_structure</td><td>2,554</td><td>56.3%</td><td class="positive">0.092</td><td class="positive">235.0</td><td>1.20</td></tr><tr><td>D1</td><td>fs_structure</td><td>855</td><td>61.2%</td><td class="positive">0.208</td><td class="positive">177.5</td><td>1.53</td></tr><tr><td>W1</td><td>fs_structure</td><td>170</td><td>62.9%</td><td class="positive">0.252</td><td class="positive">42.9</td><td>1.68</td></tr></tbody></table></div>
+        <div><h3>Exit Model</h3><table class=""><thead><tr><th>TF</th><th>Exit Model</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>single_target</td><td>5,642</td><td>56.9%</td><td class="positive">0.084</td><td class="positive">475.9</td><td>1.19</td></tr><tr><td>H8</td><td>single_target</td><td>2,554</td><td>56.3%</td><td class="positive">0.092</td><td class="positive">235.0</td><td>1.20</td></tr><tr><td>D1</td><td>single_target</td><td>855</td><td>61.2%</td><td class="positive">0.208</td><td class="positive">177.5</td><td>1.53</td></tr><tr><td>W1</td><td>single_target</td><td>170</td><td>62.9%</td><td class="positive">0.252</td><td class="positive">42.9</td><td>1.68</td></tr></tbody></table></div>
+      </div>
+      <div class="split">
+        <div><h3>Target R</h3><table class=""><thead><tr><th>TF</th><th>Target R</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>1.0</td><td>5,642</td><td>56.9%</td><td class="positive">0.084</td><td class="positive">475.9</td><td>1.19</td></tr><tr><td>H8</td><td>1.0</td><td>2,554</td><td>56.3%</td><td class="positive">0.092</td><td class="positive">235.0</td><td>1.20</td></tr><tr><td>D1</td><td>1.0</td><td>855</td><td>61.2%</td><td class="positive">0.208</td><td class="positive">177.5</td><td>1.53</td></tr><tr><td>W1</td><td>1.0</td><td>170</td><td>62.9%</td><td class="positive">0.252</td><td class="positive">42.9</td><td>1.68</td></tr></tbody></table></div>
+        <div><h3>Side</h3><table class=""><thead><tr><th>TF</th><th>Side</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>short</td><td>2,665</td><td>57.5%</td><td class="positive">0.094</td><td class="positive">250.1</td><td>1.21</td></tr><tr><td>H4</td><td>long</td><td>2,977</td><td>56.5%</td><td class="positive">0.076</td><td class="positive">225.8</td><td>1.17</td></tr><tr><td>H8</td><td>short</td><td>1,208</td><td>57.0%</td><td class="positive">0.108</td><td class="positive">130.4</td><td>1.24</td></tr><tr><td>H8</td><td>long</td><td>1,346</td><td>55.6%</td><td class="positive">0.078</td><td class="positive">104.6</td><td>1.17</td></tr><tr><td>D1</td><td>long</td><td>452</td><td>63.1%</td><td class="positive">0.247</td><td class="positive">111.4</td><td>1.66</td></tr><tr><td>D1</td><td>short</td><td>403</td><td>59.1%</td><td class="positive">0.164</td><td class="positive">66.1</td><td>1.39</td></tr><tr><td>W1</td><td>long</td><td>81</td><td>66.7%</td><td class="positive">0.327</td><td class="positive">26.5</td><td>1.97</td></tr><tr><td>W1</td><td>short</td><td>89</td><td>59.6%</td><td class="positive">0.185</td><td class="positive">16.5</td><td>1.45</td></tr></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="side">
+      <h2>Best Candidates By Timeframe And Side</h2>
+      <div class="note">Use this to see whether bullish force bottoms or bearish force tops are carrying the result. If one side is weak, it should become a filter candidate before execution work.</div>
+      <h3>H4 Long</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>2,977</td><td>56.5%</td><td class="positive">0.076</td><td class="positive">225.8</td><td>1.17</td></tr></tbody></table><h3>H4 Short</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>2,665</td><td>57.5%</td><td class="positive">0.094</td><td class="positive">250.1</td><td>1.21</td></tr></tbody></table><h3>H8 Long</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>1,346</td><td>55.6%</td><td class="positive">0.078</td><td class="positive">104.6</td><td>1.17</td></tr></tbody></table><h3>H8 Short</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>1,208</td><td>57.0%</td><td class="positive">0.108</td><td class="positive">130.4</td><td>1.24</td></tr></tbody></table><h3>D1 Long</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>452</td><td>63.1%</td><td class="positive">0.247</td><td class="positive">111.4</td><td>1.66</td></tr></tbody></table><h3>D1 Short</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>403</td><td>59.1%</td><td class="positive">0.164</td><td class="positive">66.1</td><td>1.39</td></tr></tbody></table><h3>W1 Long</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>81</td><td>66.7%</td><td class="positive">0.327</td><td class="positive">26.5</td><td>1.97</td></tr></tbody></table><h3>W1 Short</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>zone 0.5 pullback / structure / 1R</td><td>89</td><td>59.6%</td><td class="positive">0.185</td><td class="positive">16.5</td><td>1.45</td></tr></tbody></table>
+    </section>
+
+    <section id="symbols">
+      <h2>Symbol Outliers</h2>
+      <div class="split"><div><h3>Best Symbol/Candidate Rows</h3><table class=""><thead><tr><th>Symbol</th><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th></tr></thead><tbody><tr><td>EURGBP</td><td>zone 0.5 pullback / structure / 1R</td><td>429</td><td>62.9%</td><td class="positive">0.228</td><td class="positive">97.9</td></tr><tr><td>EURAUD</td><td>zone 0.5 pullback / structure / 1R</td><td>408</td><td>61.3%</td><td class="positive">0.195</td><td class="positive">79.4</td></tr><tr><td>EURJPY</td><td>zone 0.5 pullback / structure / 1R</td><td>365</td><td>59.7%</td><td class="positive">0.170</td><td class="positive">62.0</td></tr><tr><td>USDJPY</td><td>zone 0.5 pullback / structure / 1R</td><td>333</td><td>58.6%</td><td class="positive">0.151</td><td class="positive">50.4</td></tr><tr><td>AUDUSD</td><td>zone 0.5 pullback / structure / 1R</td><td>366</td><td>58.7%</td><td class="positive">0.149</td><td class="positive">54.5</td></tr><tr><td>EURNZD</td><td>zone 0.5 pullback / structure / 1R</td><td>375</td><td>59.5%</td><td class="positive">0.129</td><td class="positive">48.4</td></tr><tr><td>EURCHF</td><td>zone 0.5 pullback / structure / 1R</td><td>489</td><td>57.9%</td><td class="positive">0.112</td><td class="positive">54.7</td></tr><tr><td>EURCAD</td><td>zone 0.5 pullback / structure / 1R</td><td>411</td><td>57.2%</td><td class="positive">0.105</td><td class="positive">43.3</td></tr><tr><td>CHFJPY</td><td>zone 0.5 pullback / structure / 1R</td><td>392</td><td>57.1%</td><td class="positive">0.104</td><td class="positive">40.9</td></tr><tr><td>AUDJPY</td><td>zone 0.5 pullback / structure / 1R</td><td>356</td><td>57.0%</td><td class="positive">0.104</td><td class="positive">36.9</td></tr><tr><td>NZDJPY</td><td>zone 0.5 pullback / structure / 1R</td><td>354</td><td>57.6%</td><td class="positive">0.103</td><td class="positive">36.5</td></tr><tr><td>USDCHF</td><td>zone 0.5 pullback / structure / 1R</td><td>376</td><td>56.4%</td><td class="positive">0.103</td><td class="positive">38.6</td></tr><tr><td>AUDNZD</td><td>zone 0.5 pullback / structure / 1R</td><td>385</td><td>59.2%</td><td class="positive">0.096</td><td class="positive">36.8</td></tr><tr><td>CADJPY</td><td>zone 0.5 pullback / structure / 1R</td><td>345</td><td>56.8%</td><td class="positive">0.095</td><td class="positive">32.6</td></tr><tr><td>AUDCAD</td><td>zone 0.5 pullback / structure / 1R</td><td>373</td><td>57.9%</td><td class="positive">0.092</td><td class="positive">34.4</td></tr></tbody></table></div><div><h3>Worst Symbol/Candidate Rows</h3><table class=""><thead><tr><th>Symbol</th><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th></tr></thead><tbody><tr><td>GBPCAD</td><td>zone 0.5 pullback / structure / 1R</td><td>424</td><td>51.7%</td><td class="negative">-0.007</td><td class="negative">-3.0</td></tr><tr><td>GBPJPY</td><td>zone 0.5 pullback / structure / 1R</td><td>321</td><td>54.2%</td><td class="positive">0.047</td><td class="positive">15.0</td></tr><tr><td>AUDCHF</td><td>zone 0.5 pullback / structure / 1R</td><td>406</td><td>55.9%</td><td class="positive">0.048</td><td class="positive">19.7</td></tr><tr><td>EURUSD</td><td>zone 0.5 pullback / structure / 1R</td><td>391</td><td>54.7%</td><td class="positive">0.052</td><td class="positive">20.2</td></tr><tr><td>USDCAD</td><td>zone 0.5 pullback / structure / 1R</td><td>415</td><td>53.7%</td><td class="positive">0.054</td><td class="positive">22.3</td></tr><tr><td>NZDUSD</td><td>zone 0.5 pullback / structure / 1R</td><td>341</td><td>55.4%</td><td class="positive">0.061</td><td class="positive">20.8</td></tr><tr><td>CADCHF</td><td>zone 0.5 pullback / structure / 1R</td><td>441</td><td>58.5%</td><td class="positive">0.072</td><td class="positive">31.7</td></tr><tr><td>GBPUSD</td><td>zone 0.5 pullback / structure / 1R</td><td>295</td><td>54.9%</td><td class="positive">0.078</td><td class="positive">23.0</td></tr><tr><td>GBPCHF</td><td>zone 0.5 pullback / structure / 1R</td><td>430</td><td>56.5%</td><td class="positive">0.080</td><td class="positive">34.3</td></tr><tr><td>AUDCAD</td><td>zone 0.5 pullback / structure / 1R</td><td>373</td><td>57.9%</td><td class="positive">0.092</td><td class="positive">34.4</td></tr><tr><td>CADJPY</td><td>zone 0.5 pullback / structure / 1R</td><td>345</td><td>56.8%</td><td class="positive">0.095</td><td class="positive">32.6</td></tr><tr><td>AUDNZD</td><td>zone 0.5 pullback / structure / 1R</td><td>385</td><td>59.2%</td><td class="positive">0.096</td><td class="positive">36.8</td></tr><tr><td>USDCHF</td><td>zone 0.5 pullback / structure / 1R</td><td>376</td><td>56.4%</td><td class="positive">0.103</td><td class="positive">38.6</td></tr><tr><td>NZDJPY</td><td>zone 0.5 pullback / structure / 1R</td><td>354</td><td>57.6%</td><td class="positive">0.103</td><td class="positive">36.5</td></tr><tr><td>AUDJPY</td><td>zone 0.5 pullback / structure / 1R</td><td>356</td><td>57.0%</td><td class="positive">0.104</td><td class="positive">36.9</td></tr></tbody></table></div></div>
+    </section>
+
+    <section id="skips">
+      <h2>Skipped Trade Attempts</h2>
+      <div class="note">Skipped attempts are not failed backtests. They usually mean midpoint entry was not reached, risk was wider than the ATR filter, or no next candle existed.</div>
+      <table class=""><thead><tr><th>Timeframe</th><th>Reason</th><th>Skipped</th></tr></thead><tbody><tr><td>H4</td><td>entry_not_reached</td><td>1,298</td></tr><tr><td>H8</td><td>entry_not_reached</td><td>633</td></tr><tr><td>H8</td><td>no_next_candle</td><td>1</td></tr><tr><td>D1</td><td>entry_not_reached</td><td>203</td></tr><tr><td>W1</td><td>entry_not_reached</td><td>35</td></tr></tbody></table>
+    </section>
+  </main>
+  <footer>Generated from LP Force Strike experiment reports. Source CSVs remain the audit trail.</footer>
+</body>
+</html>
