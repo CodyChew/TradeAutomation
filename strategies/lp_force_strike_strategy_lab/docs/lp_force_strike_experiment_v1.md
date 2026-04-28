@@ -21,6 +21,31 @@ For a quick smoke run:
 Reports are written under `reports/strategies/lp_force_strike_experiment_v1/`
 with a timestamped run folder.
 
+Build the static analysis dashboard for the latest completed run:
+
+```powershell
+.\venv\Scripts\python scripts\build_lp_force_strike_dashboard.py
+```
+
+Or for a specific run:
+
+```powershell
+.\venv\Scripts\python scripts\build_lp_force_strike_dashboard.py --run-dir reports\strategies\lp_force_strike_experiment_v1\20260428_144145
+```
+
+The generated `dashboard.html` is self-contained. It can be opened directly in
+a browser without a local webserver.
+
+To publish one snapshot through GitHub Pages, generate it into a Pages-served
+folder and commit that HTML file:
+
+```powershell
+.\venv\Scripts\python scripts\build_lp_force_strike_dashboard.py --run-dir reports\strategies\lp_force_strike_experiment_v1\20260428_144145 --output docs\index.html
+```
+
+Use the report-folder copy for local research and a `docs/` copy for public or
+shared snapshots.
+
 ## Trade Models
 
 Entry models:
@@ -90,3 +115,15 @@ First-pass observation:
 Do not treat this as a finished strategy conclusion. Next passes should slice by
 symbol, side, session, spread, signal quality, and market regime before deciding
 what to keep.
+
+## Dashboard Stack Recommendation
+
+Use this progression:
+
+1. Static generated HTML from pandas summaries for repeatable research reports.
+2. DuckDB over Parquet/CSV when experiment history grows and cross-run queries
+   become slow.
+3. Streamlit only when interactive parameter exploration becomes useful.
+
+Do not move the core research logic into a dashboard app. Strategy logic should
+remain in tested Python modules, and dashboards should read generated reports.
