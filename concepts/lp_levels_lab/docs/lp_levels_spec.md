@@ -41,13 +41,18 @@ window are kept.
 
 - 30 minute charts: 5 days.
 - 4 hour charts: 30 days.
+- 8 hour charts: 60 days.
+- 12 hour charts: 180 days.
 - Daily or 2 day charts: 1 year.
 - Weekly charts: 4 years.
 
 Unsupported timeframes use nearest-duration buckets:
 
 - Up to 135 minutes: 5 days.
-- Above 135 minutes through 14 hours: 30 days.
+- Exact 8 hour charts: 60 days.
+- Exact 12 hour charts: 180 days.
+- Above 135 minutes through 14 hours, excluding the exact 8 hour and 12 hour
+  overrides: 30 days.
 - Above 14 hours through 4.5 days: 1 year.
 - Above 4.5 days: 4 years.
 

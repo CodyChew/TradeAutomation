@@ -182,19 +182,21 @@ Experiment V5 H8 bridge is configured by
 Latest local H8 bridge run:
 
 - report folder:
-  `reports/strategies/lp_force_strike_experiment_v5_h8_bridge/20260428_184554`
+  `reports/strategies/lp_force_strike_experiment_v5_h8_bridge/20260428_190048`
 - dashboard: `docs/v5.html`
 - scope: 24 clean FOREX major/cross pairs x H4/H8/D1/W1
 - candidate: `signal_zone_0p5_pullback__fs_structure__1r`
+- LP lookback windows: H4 uses 30 days, H8 uses 60 days, D1 uses 1 year,
+  and W1 uses 4 years
 - native MT5 H8 data: 28/28 pairs pulled, 28/28 coverage-ready
-- signals: 11,391
-- simulated trades: 9,221
+- signals: 11,533
+- simulated trades: 9,341
 - failed datasets: 0
 
 Timeframe read:
 
 - H4: 5,642 trades, about 0.084R average, about 1.185 PF.
-- H8: 2,554 trades, about 0.092R average, about 1.203 PF.
+- H8: 2,674 trades, about 0.099R average, about 1.221 PF.
 - D1: 855 trades, about 0.208R average, about 1.527 PF.
 - W1: 170 trades, about 0.252R average, about 1.678 PF.
 

@@ -27,7 +27,7 @@ Run the focused H8 bridge test:
 Build the dashboard:
 
 ```powershell
-.\venv\Scripts\python scripts\build_lp_force_strike_dashboard.py --run-dir reports\strategies\lp_force_strike_experiment_v5_h8_bridge\20260428_184554 --output docs\v5.html
+.\venv\Scripts\python scripts\build_lp_force_strike_dashboard.py --run-dir reports\strategies\lp_force_strike_experiment_v5_h8_bridge\20260428_190048 --output docs\v5.html
 ```
 
 The GitHub Pages snapshot is `docs/v5.html`, linked from `docs/index.html`.
@@ -37,6 +37,8 @@ The GitHub Pages snapshot is `docs/v5.html`, linked from `docs/index.html`.
 - Symbols: clean FOREX major/cross subset.
 - Excluded known-gap symbols: `GBPAUD`, `GBPNZD`, `NZDCAD`, `NZDCHF`.
 - Timeframes: `H4`, `H8`, `D1`, `W1`.
+- LP lookback windows: `H4` uses 30 days, `H8` uses 60 days, `D1` uses 1
+  year, and `W1` uses 4 years.
 - Entry: `0.5` signal-candle zone pullback.
 - Stop: full Force Strike structure.
 - Target: single `1R`.
@@ -58,22 +60,22 @@ Native MT5 `TIMEFRAME_H8` is available in the local FTMO terminal.
 
 Run folder:
 
-`reports/strategies/lp_force_strike_experiment_v5_h8_bridge/20260428_184554`
+`reports/strategies/lp_force_strike_experiment_v5_h8_bridge/20260428_190048`
 
 High-level totals:
 
 - datasets: 96
 - failed datasets: 0
-- signals: 11,391
-- simulated trades: 9,221
-- skipped setups: 2,170
+- signals: 11,533
+- simulated trades: 9,341
+- skipped setups: 2,192
 
 Timeframe result for `signal_zone_0p5_pullback__fs_structure__1r`:
 
 | Timeframe | Trades | Total R | Avg R | Win Rate | PF | Avg Bars |
 |---|---:|---:|---:|---:|---:|---:|
 | H4 | 5,642 | 475.9R | 0.084R | 56.9% | 1.185 | 2.0 |
-| H8 | 2,554 | 235.0R | 0.092R | 56.3% | 1.203 | 2.2 |
+| H8 | 2,674 | 265.6R | 0.099R | 56.7% | 1.221 | 2.2 |
 | D1 | 855 | 177.5R | 0.208R | 61.2% | 1.527 | 2.0 |
 | W1 | 170 | 42.9R | 0.252R | 62.9% | 1.678 | 1.9 |
 
@@ -82,9 +84,9 @@ Timeframe result for `signal_zone_0p5_pullback__fs_structure__1r`:
 H8 is only a modest improvement over H4 in this specific model, not a clean
 midpoint between H4 and D1.
 
-- H8 reduces trade count by about 55% versus H4.
-- H8 PF improves from 1.185 to 1.203.
-- H8 average R improves from 0.084R to 0.092R.
+- H8 reduces trade count by about 53% versus H4.
+- H8 PF improves from 1.185 to 1.221.
+- H8 average R improves from 0.084R to 0.099R.
 - D1 remains a much larger quality step at 1.527 PF and 0.208R average.
 
 The result does not invalidate H8, but it does not currently justify treating

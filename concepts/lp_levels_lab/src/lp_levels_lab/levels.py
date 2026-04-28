@@ -103,6 +103,10 @@ def lookback_days_for_timeframe(timeframe: str | int | float) -> int:
         return 365
     if seconds <= 135 * 60:
         return 5
+    if seconds == 8 * 60 * 60:
+        return 60
+    if seconds == 12 * 60 * 60:
+        return 180
     if seconds <= 14 * 60 * 60:
         return 30
     if seconds <= 4 * 24 * 60 * 60 + 12 * 60 * 60:

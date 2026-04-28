@@ -1,6 +1,7 @@
 # LP Levels Lab Project State
 
-Last updated: 2026-04-28 local time after adding the TradingView LP indicator.
+Last updated: 2026-04-29 local time after adding H8 and H12 LP lookback
+overrides.
 
 ## Purpose
 
@@ -45,6 +46,8 @@ mirror the same LP rules rather than becoming a separate source of truth.
 - Timeframe windows:
   - 30 minute: 5 days
   - 4 hour: 30 days
+  - 8 hour: 60 days
+  - 12 hour: 180 days
   - Daily or 2 day: 1 year
   - Weekly: 4 years
 
