@@ -15,7 +15,8 @@ Build the dashboard for the completed run:
 .\venv\Scripts\python scripts\build_lp_force_strike_dashboard.py --run-dir reports\strategies\lp_force_strike_experiment_v2_focus\20260428_161441
 ```
 
-The GitHub Pages snapshot is generated from this run into `docs/index.html`.
+The GitHub Pages snapshot is generated from this run into `docs/v2.html`.
+`docs/index.html` is the landing page that links the available versions.
 
 ## Scope
 

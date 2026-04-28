@@ -36,15 +36,16 @@ Or for a specific run:
 The generated `dashboard.html` is self-contained. It can be opened directly in
 a browser without a local webserver.
 
-To publish one snapshot through GitHub Pages, generate it into a Pages-served
-folder and commit that HTML file:
+To publish one snapshot through GitHub Pages, generate it into a versioned
+Pages-served file and commit that HTML file:
 
 ```powershell
-.\venv\Scripts\python scripts\build_lp_force_strike_dashboard.py --run-dir reports\strategies\lp_force_strike_experiment_v1\20260428_144145 --output docs\index.html
+.\venv\Scripts\python scripts\build_lp_force_strike_dashboard.py --run-dir reports\strategies\lp_force_strike_experiment_v1\20260428_144145 --output docs\v1.html
 ```
 
 Use the report-folder copy for local research and a `docs/` copy for public or
-shared snapshots.
+shared snapshots. Keep `docs/index.html` as the landing page that links all
+published versions.
 
 Recommended reading order:
 
