@@ -27,6 +27,9 @@ strategies.
 
 - `shared/market_data_lab`: canonical MT5 candle schema, validation, Parquet
   dataset storage, manifests, and MT5 pull helpers for all future backtests.
+- `shared/backtest_engine_lab`: strategy-neutral OHLC bracket-trade simulation
+  with spread, slippage, commission, same-bar stop-first handling, and incomplete
+  latest-candle removal.
 
 ## Dataset Workflow
 

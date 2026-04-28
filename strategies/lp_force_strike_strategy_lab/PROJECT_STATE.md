@@ -22,6 +22,10 @@ Future PnL backtests should load candles through
 `../../shared/market_data_lab` so this strategy uses the same broker data and
 validation contract as other strategies.
 
+Future trade simulation should use `../../shared/backtest_engine_lab` so entry,
+stop, target, spread, slippage, commission, and same-bar assumptions stay
+consistent across strategy labs.
+
 ## Current Signal Rules
 
 - Bullish force bottom starts when price wick-breaks active support LP.

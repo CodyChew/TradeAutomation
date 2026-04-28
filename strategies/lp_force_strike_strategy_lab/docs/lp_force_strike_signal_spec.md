@@ -16,6 +16,8 @@ Input is sorted by `time_utc` internally.
 
 For backtests, candles should come from `../../shared/market_data_lab` so all
 strategies share the same dataset storage, validation, and broker metadata.
+Trade simulation should use `../../shared/backtest_engine_lab` so cost and
+same-bar assumptions stay consistent.
 
 ## Force Bottom
 

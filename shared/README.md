@@ -7,6 +7,9 @@ strategy research.
 
 - `market_data_lab`: canonical MT5 candle schema, validation, Parquet storage,
   manifests, pull helpers, and reusable symbol universes.
+- `backtest_engine_lab`: strategy-neutral OHLC bracket-trade simulation,
+  conservative same-bar handling, spread/slippage/commission costs, and
+  incomplete latest-candle removal.
 
 ## Rule
 

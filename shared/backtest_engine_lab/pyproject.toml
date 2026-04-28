@@ -1,0 +1,12 @@
+[project]
+name = "backtest-engine-lab"
+version = "0.1.0"
+description = "Shared OHLC bracket-trade backtest engine for TradeAutomation strategy research."
+requires-python = ">=3.11"
+dependencies = [
+  "pandas"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
