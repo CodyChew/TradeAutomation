@@ -437,6 +437,12 @@ def _html_document(
     del candidates
     top_overall = summary_candidate.sort_values(["avg_net_r", "total_net_r"], ascending=False).head(1)
     best_label = _candidate_short(top_overall.iloc[0]["candidate_id"]) if not top_overall.empty else "n/a"
+    timeframes = sorted(datasets["timeframe"].dropna().astype(str).unique(), key=_tf_sort_key)
+    timeframe_note = (
+        "M30 contributes most signals and can dominate the aggregate; H4, D1, and W1 should be judged on their own."
+        if "M30" in timeframes
+        else "Overall metrics are weighted by trade count. Read each timeframe separately before making strategy decisions."
+    )
 
     return f"""<!doctype html>
 <html lang="en">
@@ -611,9 +617,9 @@ def _html_document(
         {_kpi("Signals", _fmt_int(summary.get("signals")), "LP break + raw FS")}
         {_kpi("Trades", _fmt_int(summary.get("trades")), "simulated candidates")}
         {_kpi("Skipped", _fmt_int(summary.get("skipped")), "filtered attempts")}
-        {_kpi("Best Overall Avg R", best_label, "overall is M30-weighted")}
+        {_kpi("Best Overall Avg R", best_label, "overall is trade-count weighted")}
       </div>
-      <div class="note">Read by timeframe first. M30 contributes most signals and can dominate the aggregate; H4, D1, and W1 should be judged on their own.</div>
+      <div class="note">Read by timeframe first. {_escape(timeframe_note)}</div>
       {_timeframe_overview(datasets)}
     </section>
 
