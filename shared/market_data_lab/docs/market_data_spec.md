@@ -112,6 +112,14 @@ configs/datasets/forex_major_crosses_10y_h8.json
 It requests the same 28-symbol universe on `H8` only. Use this config when the
 research needs H8 without repulling the original M30/H4/D1/W1 dataset.
 
+Native MT5 H12 is available as another add-on pull config:
+
+```text
+configs/datasets/forex_major_crosses_10y_h12.json
+```
+
+It requests the same 28-symbol universe on `H12` only.
+
 If `date_end_utc` is null, the pull resolves the end to the current UTC time.
 If `date_start_utc` is null, the start is resolved from `history_years`.
 
@@ -133,6 +141,12 @@ Pull the native MT5 H8 add-on dataset:
 
 ```powershell
 .\venv\Scripts\python scripts\pull_mt5_dataset.py --config configs\datasets\forex_major_crosses_10y_h8.json --output reports\datasets\forex_major_crosses_10y_h8_pull.json
+```
+
+Pull the native MT5 H12 add-on dataset:
+
+```powershell
+.\venv\Scripts\python scripts\pull_mt5_dataset.py --config configs\datasets\forex_major_crosses_10y_h12.json --output reports\datasets\forex_major_crosses_10y_h12_pull.json
 ```
 
 Report availability and consistency:
@@ -193,6 +207,11 @@ Initial strategy backtests should either exclude the four gap symbols or treat
 their results separately, and should ignore the current incomplete tail bar.
 
 For the native H8 add-on pull, 28/28 pairs were pulled successfully and 28/28
+coverage rows were backtest-ready. Its quality verdict was also
+`OK_WITH_WARNINGS`, with the same known gap-symbol profile and incomplete
+live-tail warning.
+
+For the native H12 add-on pull, 28/28 pairs were pulled successfully and 28/28
 coverage rows were backtest-ready. Its quality verdict was also
 `OK_WITH_WARNINGS`, with the same known gap-symbol profile and incomplete
 live-tail warning.

@@ -133,6 +133,7 @@ def _page_nav(current_page: str) -> str:
         ("v3.html", "V3"),
         ("v4.html", "V4"),
         ("v5.html", "V5"),
+        ("v6.html", "V6"),
     ]
     return "\n      ".join(
         f'<a class="{"active" if href == current_page else ""}" href="{href}">{label}</a>' for href, label in pages

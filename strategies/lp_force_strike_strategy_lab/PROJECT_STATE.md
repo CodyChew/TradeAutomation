@@ -1,6 +1,6 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-29 local time after running the V5 native H8 bridge
+Last updated: 2026-04-29 local time after running the V6 native H12 bridge
 experiment.
 
 ## Purpose
@@ -207,6 +207,40 @@ Current conclusion:
 - The D1 quality step remains much larger than the H4-to-H8 improvement.
 - Keep H8 available for future comparison, but do not pivot the main strategy
   research around H8 yet.
+
+## Experiment V6 H12 Bridge
+
+Experiment V6 H12 bridge is configured by
+`../../configs/strategies/lp_force_strike_experiment_v6_h12_bridge.json`.
+
+Latest local H12 bridge run:
+
+- report folder:
+  `reports/strategies/lp_force_strike_experiment_v6_h12_bridge/20260428_191017`
+- dashboard: `docs/v6.html`
+- scope: 24 clean FOREX major/cross pairs x H4/H8/H12/D1/W1
+- candidate: `signal_zone_0p5_pullback__fs_structure__1r`
+- LP lookback windows: H4 uses 30 days, H8 uses 60 days, H12 uses 180 days,
+  D1 uses 1 year, and W1 uses 4 years
+- native MT5 H12 data: 28/28 pairs pulled, 28/28 coverage-ready
+- signals: 13,815
+- simulated trades: 11,185
+- failed datasets: 0
+
+Timeframe read:
+
+- H4: 5,642 trades, about 0.084R average, about 1.185 PF.
+- H8: 2,674 trades, about 0.099R average, about 1.221 PF.
+- H12: 1,844 trades, about 0.157R average, about 1.375 PF.
+- D1: 855 trades, about 0.208R average, about 1.527 PF.
+- W1: 170 trades, about 0.252R average, about 1.678 PF.
+
+Current conclusion:
+
+- H12 is a materially better bridge than H8 for this model.
+- H12 does not fully reach D1 quality, but it provides more than twice D1's
+  trade count while sitting closer to D1 than to H8 by PF and average R.
+- Keep H12 in the forward research set.
 
 ## Boundary
 

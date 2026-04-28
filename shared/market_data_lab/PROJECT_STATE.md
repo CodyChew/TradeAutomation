@@ -1,6 +1,6 @@
 # Market Data Lab Project State
 
-Last updated: 2026-04-29 after adding and quality-checking the native MT5 H8
+Last updated: 2026-04-29 after adding and quality-checking the native MT5 H12
 FOREX add-on dataset.
 
 ## Purpose
@@ -68,8 +68,9 @@ FOREX pairs on `M30`, `H4`, `D1`, and `W1` for 10 years into
 universe on native MT5 `H8` only. H8 is stored alongside the other timeframes
 under `data/raw/ftmo/forex/SYMBOL/H8`.
 
-The timeframe registry also supports native MT5 `H12` for future pulls and
-backtests, but no H12 dataset has been pulled yet.
+`configs/datasets/forex_major_crosses_10y_h12.json` requests the same 28-symbol
+universe on native MT5 `H12` only. H12 is stored alongside the other timeframes
+under `data/raw/ftmo/forex/SYMBOL/H12`.
 
 ## Local Availability Check
 
@@ -97,6 +98,14 @@ The native MT5 H8 add-on dataset has also been pulled locally:
 - 28/28 coverage rows marked backtest-ready after market-closure boundary
   tolerance.
 
+The native MT5 H12 add-on dataset has also been pulled locally:
+
+- 28 symbols.
+- 1 timeframe: `H12`.
+- 28 symbol/timeframe datasets.
+- 28/28 coverage rows marked backtest-ready after market-closure boundary
+  tolerance.
+
 ## Current Quality Verdict
 
 `scripts/report_data_quality.py` produced `OK_WITH_WARNINGS`.
@@ -114,7 +123,7 @@ and `NZDCHF`, or report them separately. Backtests should also ignore the latest
 incomplete tail bar unless the strategy explicitly supports live in-progress
 candles.
 
-The H8 add-on dataset produced the same overall quality class,
+The H8 and H12 add-on datasets produced the same overall quality class,
 `OK_WITH_WARNINGS`: no validation/load failures, the same known long-gap
 symbols, several large one-bar moves for manual review, and incomplete latest
-bars from the live-ended pull.
+bars from the live-ended pulls.

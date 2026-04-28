@@ -137,6 +137,7 @@ def _timeframe_delta(timeframe: str | int | float) -> pd.Timedelta:
         "H1": pd.Timedelta(hours=1),
         "H4": pd.Timedelta(hours=4),
         "H8": pd.Timedelta(hours=8),
+        "H12": pd.Timedelta(hours=12),
         "D": pd.Timedelta(days=1),
         "D1": pd.Timedelta(days=1),
         "W": pd.Timedelta(days=7),
