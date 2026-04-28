@@ -36,6 +36,26 @@
       color: #d8e0e8;
       max-width: 920px;
     }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.25);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255,255,255,.08);
+    }
+    nav a.active {
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }
     main {
       padding: 28px max(24px, 6vw) 48px;
       display: grid;
@@ -99,6 +119,12 @@
   <header>
     <h1>TradeAutomation Research Dashboards</h1>
     <p>Versioned static dashboards for LP + Force Strike experiments. Use stable version pages for comparison instead of overwriting old analysis.</p>
+    <nav aria-label="Dashboard pages">
+      <a class="active" href="index.html">Home</a>
+      <a href="v1.html">V1</a>
+      <a href="v2.html">V2</a>
+      <a href="v3.html">V3</a>
+    </nav>
   </header>
   <main>
     <section class="card">

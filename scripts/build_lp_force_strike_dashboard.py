@@ -311,6 +311,70 @@ def _robust_candidates(summary_tf: pd.DataFrame, *, focus_timeframes: list[str] 
     )
 
 
+def _top_robust_candidate_ids(
+    summary_tf: pd.DataFrame,
+    *,
+    focus_timeframes: list[str] | None = None,
+    limit: int = 3,
+) -> list[str]:
+    focus = focus_timeframes or ["H4", "D1", "W1"]
+    data = summary_tf[summary_tf["timeframe"].isin(focus)].copy()
+    if data.empty:
+        return []
+
+    rows_data = []
+    for candidate_id, group in data.groupby("candidate_id", dropna=False):
+        by_tf = group.set_index("timeframe")
+        available = [timeframe for timeframe in focus if timeframe in by_tf.index]
+        avg_values = [float(by_tf.loc[timeframe, "avg_net_r"]) for timeframe in available]
+        pf_values = [float(by_tf.loc[timeframe, "profit_factor"]) for timeframe in available]
+        rows_data.append(
+            {
+                "candidate_id": candidate_id,
+                "positive_timeframes": sum(value > 0 for value in avg_values),
+                "pf_above_one": sum(value > 1 for value in pf_values),
+                "avg_focus_r": sum(avg_values) / len(avg_values) if avg_values else 0.0,
+            }
+        )
+    robust = pd.DataFrame(rows_data)
+    robust = robust.sort_values(["positive_timeframes", "pf_above_one", "avg_focus_r"], ascending=False).head(limit)
+    return [str(value) for value in robust["candidate_id"].tolist()]
+
+
+def _weak_symbol_timeframes(by_candidate_symbol_tf: pd.DataFrame, summary_tf: pd.DataFrame) -> str:
+    if by_candidate_symbol_tf.empty:
+        return "<p>No symbol/timeframe rows are available for this run.</p>"
+
+    candidate_ids = _top_robust_candidate_ids(summary_tf, limit=3)
+    if not candidate_ids:
+        return "<p>No robust candidates are available for symbol/timeframe checks.</p>"
+
+    data = by_candidate_symbol_tf[by_candidate_symbol_tf["candidate_id"].isin(candidate_ids)].copy()
+    data["profit_factor_check"] = pd.to_numeric(data["profit_factor"], errors="coerce").fillna(float("inf"))
+    data["avg_net_r_check"] = pd.to_numeric(data["avg_net_r"], errors="coerce").fillna(0.0)
+    weak = data[(data["profit_factor_check"] < 1.0) | (data["avg_net_r_check"] < 0.0)].copy()
+    if weak.empty:
+        return "<p>No weak symbol/timeframe rows for the top robust candidates.</p>"
+
+    weak["candidate_order"] = weak["candidate_id"].map({candidate_id: idx for idx, candidate_id in enumerate(candidate_ids)})
+    weak["tf_order"] = weak["timeframe"].map(_tf_sort_key)
+    weak = weak.sort_values(["candidate_order", "tf_order", "avg_net_r_check"]).head(40)
+    rows = []
+    for _, row in weak.iterrows():
+        rows.append(
+            [
+                _escape(_candidate_short(row["candidate_id"])),
+                _escape(row["symbol"]),
+                _escape(row["timeframe"]),
+                _fmt_int(row["trades"]),
+                (_fmt_num(row["avg_net_r"]), _metric_class(row["avg_net_r"])),
+                (_fmt_num(row["total_net_r"], 1), _metric_class(row["total_net_r"])),
+                _fmt_num(row["profit_factor"], 2),
+            ]
+        )
+    return _table(["Candidate", "Symbol", "TF", "Trades", "Avg R", "Total R", "PF"], rows)
+
+
 def _candidate_heatmap(summary_tf: pd.DataFrame) -> str:
     pivot = summary_tf.pivot_table(index="candidate_id", columns="timeframe", values="avg_net_r", aggfunc="mean")
     columns = [tf for tf in TIMEFRAME_ORDER if tf in pivot.columns] + [tf for tf in pivot.columns if tf not in TIMEFRAME_ORDER]
@@ -433,9 +497,24 @@ def _skip_table(skips: pd.DataFrame) -> str:
     return _table(["Timeframe", "Reason", "Skipped"], rows)
 
 
+def _page_links(current_page: str) -> str:
+    pages = [
+        ("index.html", "Home"),
+        ("v1.html", "V1"),
+        ("v2.html", "V2"),
+        ("v3.html", "V3"),
+    ]
+    links = []
+    for href, label in pages:
+        active = " active" if current_page == href else ""
+        links.append(f'<a class="page-link{active}" href="{href}">{label}</a>')
+    return "\n      ".join(links)
+
+
 def _html_document(
     *,
     run_dir: Path,
+    current_page: str,
     summary: dict[str, Any],
     datasets: pd.DataFrame,
     candidates: pd.DataFrame,
@@ -449,6 +528,7 @@ def _html_document(
     by_stop: pd.DataFrame,
     by_exit: pd.DataFrame,
     by_target: pd.DataFrame,
+    by_candidate_symbol_tf: pd.DataFrame,
     skips: pd.DataFrame,
 ) -> str:
     del candidates
@@ -508,6 +588,15 @@ def _html_document(
       padding: 7px 10px;
       border-radius: 6px;
       background: rgba(255,255,255,.08);
+    }}
+    nav.page-nav a.active {{
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }}
+    nav.report-nav {{
+      margin-top: 10px;
     }}
     main {{ padding: 24px max(24px, 5vw) 48px; }}
     section {{
@@ -614,11 +703,15 @@ def _html_document(
   <header>
     <h1>LP + Force Strike Dashboard - by Cody</h1>
     <p>Static analysis report generated from <code>{_escape(run_dir)}</code>. Use this page to choose the next research slice; do not treat the aggregate result as a final strategy verdict.</p>
-    <nav>
+    <nav class="page-nav" aria-label="Dashboard pages">
+      {_page_links(current_page)}
+    </nav>
+    <nav class="report-nav" aria-label="Report sections">
       <a href="#overview">Overview</a>
       <a href="#guide">Metric Guide</a>
       <a href="#timeframes">Timeframes</a>
       <a href="#robustness">Robustness</a>
+      <a href="#stability">Stability</a>
       <a href="#candidates">Candidates</a>
       <a href="#models">Model Families</a>
       <a href="#side">Side</a>
@@ -655,6 +748,12 @@ def _html_document(
       <h2>Robust Candidates Across H4, D1, And W1</h2>
       <div class="note">This section ignores M30 because it dominates the sample count and currently behaves differently. Favor rows with positive Avg R and PF above 1 across all focused timeframes.</div>
       {_robust_candidates(summary_tf)}
+    </section>
+
+    <section id="stability">
+      <h2>Symbol-Timeframe Stability</h2>
+      <div class="note">Profit factor cannot be negative. PF below 1.0 or negative Avg R is the warning condition. This table checks weak symbol/timeframe rows for the top robust candidates.</div>
+      {_weak_symbol_timeframes(by_candidate_symbol_tf, summary_tf)}
     </section>
 
     <section id="candidates">
@@ -720,10 +819,12 @@ def build_dashboard(run_dir: Path, output: Path) -> Path:
     by_stop = _trade_group_summary(trades_path, ["timeframe", "meta_stop_model"])
     by_exit = _trade_group_summary(trades_path, ["timeframe", "meta_exit_model"])
     by_target = _trade_group_summary(trades_path, ["timeframe", "meta_target_r"])
+    by_candidate_symbol_tf = _trade_group_summary(trades_path, ["candidate_id", "symbol", "timeframe"])
     skips = _skip_reason_summary(skipped_path)
 
     html_text = _html_document(
         run_dir=run_dir,
+        current_page=output.name,
         summary=summary,
         datasets=datasets,
         candidates=candidates,
@@ -737,6 +838,7 @@ def build_dashboard(run_dir: Path, output: Path) -> Path:
         by_stop=by_stop,
         by_exit=by_exit,
         by_target=by_target,
+        by_candidate_symbol_tf=by_candidate_symbol_tf,
         skips=skips,
     )
     html_text = "\n".join(line.rstrip() for line in html_text.splitlines()) + "\n"
