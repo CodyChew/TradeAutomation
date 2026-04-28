@@ -38,5 +38,7 @@ strategies.
   datasets and writes manifests.
 - `scripts/report_dataset_coverage.py`: reports availability, coverage, and
   backtest readiness for configured datasets.
+- `scripts/report_data_quality.py`: checks timestamp gaps, duplicate timestamps,
+  suspicious bars, and M30-vs-W1 aggregation consistency.
 - `scripts/build_weekly_chart_page.py`: builds a static weekly candlestick
   webpage from local Parquet data for visual verification.

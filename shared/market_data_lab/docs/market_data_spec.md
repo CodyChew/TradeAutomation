@@ -126,6 +126,12 @@ Report availability and consistency:
 .\venv\Scripts\python scripts\report_dataset_coverage.py --config configs\datasets\forex_major_crosses_10y.json --output reports\datasets\forex_major_crosses_10y_coverage.json
 ```
 
+Run deeper quality checks:
+
+```powershell
+.\venv\Scripts\python scripts\report_data_quality.py --config configs\datasets\forex_major_crosses_10y.json --output-dir reports\datasets\data_quality
+```
+
 The pull script validates each symbol/timeframe as it goes. Failures are
 reported per dataset instead of silently producing unusable files. The coverage
 report marks whether each dataset has data, a manifest, requested start
@@ -146,6 +152,30 @@ Build a static weekly candlestick webpage from local Parquet data:
 The page is self-contained and can be opened directly in a browser. It is
 intended for fast human inspection of the broker candle history before running
 strategy backtests.
+
+## Current Quality Interpretation
+
+The data-quality report should be read as follows:
+
+- `FAIL`: do not use the dataset until failures are fixed.
+- `OK`: usable without known warnings.
+- `OK_WITH_WARNINGS`: usable, but inspect the warning files before deciding
+  which symbols/time ranges to include.
+
+For the current 10-year FTMO FOREX pull, the automated verdict was
+`OK_WITH_WARNINGS`:
+
+- no validation/load failures;
+- no duplicate timestamps;
+- complete W1 candles match M30 aggregation exactly;
+- long historical gaps exist in `GBPAUD`, `GBPNZD`, `NZDCAD`, and `NZDCHF`;
+- large one-bar moves are present around known high-volatility periods and are
+  reported for manual review;
+- the latest bar in each dataset is incomplete because the pull ended at the
+  live current time.
+
+Initial strategy backtests should either exclude the four gap symbols or treat
+their results separately, and should ignore the current incomplete tail bar.
 
 ## Manifest
 

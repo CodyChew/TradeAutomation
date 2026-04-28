@@ -1,6 +1,6 @@
 # Market Data Lab Project State
 
-Last updated: 2026-04-28 after creating the first shared market-data foundation.
+Last updated: 2026-04-28 after pulling and quality-checking the FTMO FOREX dataset.
 
 ## Purpose
 
@@ -67,6 +67,33 @@ FOREX pairs on `M30`, `H4`, `D1`, and `W1` for 10 years into
 
 On 2026-04-28, the local MetaTrader5 Python package initialized successfully
 against `FTMO-Server`, and all 28 configured major/cross FOREX symbols were
-available by exact symbol name. Candle history coverage has not been pulled yet;
-use `scripts/pull_mt5_dataset.py` followed by
-`scripts/report_dataset_coverage.py` to validate the actual 10-year history.
+available by exact symbol name.
+
+## Current Pulled Dataset
+
+The 10-year FTMO FOREX dataset has been pulled locally into
+`data/raw/ftmo/forex` as Parquet files. Generated data is ignored by git.
+
+- 28 symbols.
+- 4 timeframes: `M30`, `H4`, `D1`, `W1`.
+- 112 symbol/timeframe datasets.
+- 3,984,435 candle rows.
+- 112/112 coverage rows marked backtest-ready after market-closure boundary
+  tolerance.
+
+## Current Quality Verdict
+
+`scripts/report_data_quality.py` produced `OK_WITH_WARNINGS`.
+
+- No dataset validation/load failures.
+- No duplicate timestamps.
+- Complete W1 candles match M30 aggregation exactly.
+- Long historical gaps exist in `GBPAUD`, `GBPNZD`, `NZDCAD`, and `NZDCHF`.
+- Large one-bar moves were flagged for manual review, mostly around known
+  high-volatility periods.
+- All datasets end with an incomplete latest bar because the pull was live-ended.
+
+Early baseline backtests should either exclude `GBPAUD`, `GBPNZD`, `NZDCAD`,
+and `NZDCHF`, or report them separately. Backtests should also ignore the latest
+incomplete tail bar unless the strategy explicitly supports live in-progress
+candles.
