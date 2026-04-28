@@ -1,13 +1,18 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-28 local time after creating the first signal-study engine.
+Last updated: 2026-04-28 local time after adding the first configurable
+trade-model experiment harness.
 
 ## Purpose
 
 This lab studies the combination of active LP level traps and raw Force Strike
-patterns. It is a signal study only. It does not contain PnL backtesting,
-entries, stops, targets, risk, position sizing, live execution, or a combined
-TradingView indicator yet.
+patterns. It now has two layers:
+
+- signal detection: LP break + raw Force Strike confirmation;
+- experiment harness: fixed bracket trade-model candidates for research.
+
+It still does not contain position sizing, portfolio accounting, live
+execution, or a combined TradingView indicator.
 
 ## Concept Dependencies
 
@@ -41,7 +46,38 @@ consistent across strategy labs.
 - If multiple LP-break windows match one FS signal, the most recent valid break
   window is used.
 
+## Experiment V1
+
+Experiment V1 is configured by
+`../../configs/strategies/lp_force_strike_experiment_v1.json` and run with
+`../../scripts/run_lp_force_strike_experiment.py`.
+
+Current trade-model dimensions:
+
+- entry: next candle open, or signal-candle midpoint pullback;
+- stop: full FS structure, or full FS structure skipped when wider than a
+  configured ATR multiple;
+- targets: configured R multiples such as 1R, 1.25R, 1.5R, 1.7R, and 2R;
+- costs: delegated to `../../shared/backtest_engine_lab`.
+
+The experiment simulates each signal/candidate independently. It is designed to
+compare heuristics, not to model a portfolio with one-position-at-a-time rules.
+
+Latest local baseline run:
+
+- report folder:
+  `reports/strategies/lp_force_strike_experiment_v1/20260428_144145`
+- scope: 24 clean FOREX major/cross pairs x M30/H4/D1/W1
+- signals: 57,340
+- simulated candidate trades: 864,520
+- failed datasets: 0
+
+Early read: midpoint-pullback entries are materially better than next-open
+entries. M30 was negative across the tested candidates, while H4, D1, and W1
+showed positive average R for the midpoint-pullback structure-stop candidates.
+Treat this as a first pass only; it is not yet a final strategy decision.
+
 ## Boundary
 
-This lab intentionally excludes SMA context, ATR, risk, entries, exits, PnL,
-and order execution.
+This lab intentionally excludes SMA context, portfolio-level risk, position
+sizing, and order execution.

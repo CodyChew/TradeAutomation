@@ -341,6 +341,24 @@ def simulate_bracket_trade(
     """Simulate one fixed-entry bracket trade on OHLC candles."""
 
     data = normalize_backtest_frame(frame)
+    return simulate_bracket_trade_on_normalized_frame(data, setup, costs=costs)
+
+
+def simulate_bracket_trade_on_normalized_frame(
+    frame: pd.DataFrame,
+    setup: TradeSetup,
+    *,
+    costs: CostConfig | None = None,
+) -> TradeRecord:
+    """Simulate one bracket trade on a pre-normalized frame.
+
+    Use this in batch research after calling ``normalize_backtest_frame`` once
+    for the symbol/timeframe. It preserves the same stop-first and cost rules
+    as ``simulate_bracket_trade`` without copying the full candle frame for
+    every candidate trade.
+    """
+
+    data = frame
     _validate_setup(setup, len(data))
     cost_config = costs or CostConfig()
 

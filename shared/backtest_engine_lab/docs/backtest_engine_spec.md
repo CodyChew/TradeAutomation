@@ -20,6 +20,11 @@ Optional columns:
 Input is sorted by `time_utc` internally and indexes are reset. Trade setup
 indexes must refer to this sorted frame.
 
+Large batch experiments can normalize once and then call
+`simulate_bracket_trade_on_normalized_frame`. That fast path uses the same
+stop-first and cost rules as `simulate_bracket_trade`, but it assumes the caller
+has already prepared the frame.
+
 ## Trade Setup
 
 Each setup defines:

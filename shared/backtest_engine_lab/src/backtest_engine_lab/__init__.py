@@ -9,6 +9,7 @@ from .engine import (
     is_latest_bar_complete,
     normalize_backtest_frame,
     simulate_bracket_trade,
+    simulate_bracket_trade_on_normalized_frame,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "is_latest_bar_complete",
     "normalize_backtest_frame",
     "simulate_bracket_trade",
+    "simulate_bracket_trade_on_normalized_frame",
 ]

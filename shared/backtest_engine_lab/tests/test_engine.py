@@ -19,6 +19,7 @@ from backtest_engine_lab import (
     is_latest_bar_complete,
     normalize_backtest_frame,
     simulate_bracket_trade,
+    simulate_bracket_trade_on_normalized_frame,
 )
 
 
@@ -147,6 +148,20 @@ class BacktestEngineTests(unittest.TestCase):
         self.assertEqual(trade.exit_reason, "end_of_data")
         self.assertEqual(trade.exit_reference_price, 101.0)
         self.assertEqual(trade.reference_r, 0.2)
+
+    def test_normalized_fast_path_matches_standard_simulation(self) -> None:
+        frame = _frame(
+            [
+                ("2026-01-01T00:00:00Z", 100.0, 101.0, 99.0, 100.0),
+                ("2026-01-01T00:30:00Z", 100.0, 106.0, 99.0, 105.0),
+            ]
+        )
+        setup = TradeSetup(setup_id="L6", side="long", entry_index=1, entry_price=100.0, stop_price=95.0, target_price=105.0)
+
+        standard = simulate_bracket_trade(frame, setup)
+        fast = simulate_bracket_trade_on_normalized_frame(normalize_backtest_frame(frame), setup)
+
+        self.assertEqual(fast.to_dict(), standard.to_dict())
 
     def test_drop_incomplete_last_bar(self) -> None:
         frame = _frame(

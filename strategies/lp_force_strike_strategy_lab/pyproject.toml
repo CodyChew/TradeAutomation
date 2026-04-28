@@ -11,6 +11,7 @@ dependencies = [
 pythonpath = [
   "src",
   "../../concepts/lp_levels_lab/src",
-  "../../concepts/force_strike_pattern_lab/src"
+  "../../concepts/force_strike_pattern_lab/src",
+  "../../shared/backtest_engine_lab/src"
 ]
 testpaths = ["tests"]

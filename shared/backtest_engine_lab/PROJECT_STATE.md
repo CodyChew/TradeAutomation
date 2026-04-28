@@ -1,7 +1,6 @@
 # Backtest Engine Lab Project State
 
-Last updated: 2026-04-28 after creating the first shared OHLC bracket-trade
-engine.
+Last updated: 2026-04-28 after adding the normalized-frame simulation fast path.
 
 ## Purpose
 
@@ -18,6 +17,9 @@ OHLC candles.
   same candle, the stop wins.
 - Model candle-level spread, slippage, and round-turn commission in points.
 - Provide a helper to drop the latest incomplete candle for live-ended datasets.
+- Provide `simulate_bracket_trade_on_normalized_frame` for large experiment
+  batches that normalize each symbol/timeframe once before simulating many
+  candidate trades.
 
 ## Boundary
 

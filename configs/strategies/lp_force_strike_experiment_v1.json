@@ -1,0 +1,48 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v1",
+  "dataset_config": "configs/datasets/forex_major_crosses_10y.json",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v1",
+  "symbols": null,
+  "excluded_symbols": [
+    "GBPAUD",
+    "GBPNZD",
+    "NZDCAD",
+    "NZDCHF"
+  ],
+  "timeframes": [
+    "M30",
+    "H4",
+    "D1",
+    "W1"
+  ],
+  "pivot_strength": 3,
+  "max_bars_from_lp_break": 6,
+  "atr_period": 14,
+  "max_entry_wait_bars": 6,
+  "entry_models": [
+    "next_open",
+    "signal_midpoint_pullback"
+  ],
+  "stop_models": [
+    "fs_structure",
+    "fs_structure_max_atr"
+  ],
+  "max_risk_atrs": [
+    1.0
+  ],
+  "target_rs": [
+    1.0,
+    1.25,
+    1.5,
+    1.7,
+    2.0
+  ],
+  "costs": {
+    "use_candle_spread": true,
+    "fallback_spread_points": 0.0,
+    "entry_slippage_points": 0.0,
+    "exit_slippage_points": 0.0,
+    "round_turn_commission_points": 0.0
+  },
+  "drop_incomplete_latest_bar": true
+}
