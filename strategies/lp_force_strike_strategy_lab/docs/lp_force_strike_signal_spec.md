@@ -14,6 +14,9 @@ The signal detector expects MT5-style OHLC candles with at least:
 
 Input is sorted by `time_utc` internally.
 
+For backtests, candles should come from `../../shared/market_data_lab` so all
+strategies share the same dataset storage, validation, and broker metadata.
+
 ## Force Bottom
 
 A bullish force bottom setup starts when a candle wick-breaks one or more active

@@ -1,0 +1,13 @@
+[project]
+name = "market-data-lab"
+version = "0.1.0"
+description = "Shared MT5 market data foundation for TradeAutomation research and backtests."
+requires-python = ">=3.11"
+dependencies = [
+  "pandas",
+  "pyarrow"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

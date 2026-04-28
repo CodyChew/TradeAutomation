@@ -18,6 +18,10 @@ Python remains the source of truth for MT5-data strategy development.
 TradingView combined visuals should be built after this signal contract is
 stable.
 
+Future PnL backtests should load candles through
+`../../shared/market_data_lab` so this strategy uses the same broker data and
+validation contract as other strategies.
+
 ## Current Signal Rules
 
 - Bullish force bottom starts when price wick-breaks active support LP.

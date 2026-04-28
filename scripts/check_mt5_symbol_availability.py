@@ -1,0 +1,50 @@
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+import sys
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = REPO_ROOT / "shared" / "market_data_lab" / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from market_data_lab import check_mt5_symbols, load_dataset_config
+
+
+def _write_json(path: str | Path, payload) -> None:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Check MT5 symbol availability for a dataset config.")
+    parser.add_argument("--config", required=True, help="Path to dataset config JSON.")
+    parser.add_argument("--output", help="Optional path for the full JSON result.")
+    parser.add_argument("--json", action="store_true", help="Print the full JSON result instead of a compact summary.")
+    args = parser.parse_args()
+
+    config = load_dataset_config(args.config)
+    results = check_mt5_symbols(config.symbols)
+    payload = [item.to_dict() for item in results]
+    if args.output:
+        _write_json(args.output, payload)
+
+    available = [item for item in results if item.available]
+    missing = [item for item in results if not item.available]
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        print(f"symbols={len(results)} available={len(available)} missing={len(missing)}")
+        if missing:
+            print("missing=" + ",".join(item.symbol for item in missing))
+        if args.output:
+            print(f"wrote={args.output}")
+    return 1 if missing else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
