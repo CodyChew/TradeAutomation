@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-29 local time after running the focused H4/D1/W1
-midpoint-entry experiment.
+Last updated: 2026-04-29 local time after running the V3 H4/D1/W1 entry-zone,
+ATR-filter, and partial-exit experiment.
 
 ## Purpose
 
@@ -100,9 +100,50 @@ Current best robust family:
 - average focus R: about 0.191R
 - worst focused timeframe Avg R: about 0.080R on H4
 
-The 1.25 ATR max-risk version is very close. The next research pass should
-inspect symbol/side stability and entry/stop quality before adding execution
-complexity.
+The 1.25 ATR max-risk version is very close. This led to V3, which keeps the
+same H4/D1/W1 scope and tests entry zones plus partial exits.
+
+## Experiment V3 Entry/Exit
+
+Experiment V3 entry/exit is configured by
+`../../configs/strategies/lp_force_strike_experiment_v3_entry_exit.json`.
+
+Latest local focused run:
+
+- report folder:
+  `reports/strategies/lp_force_strike_experiment_v3_entry_exit/20260428_163456`
+- scope: 24 clean FOREX major/cross pairs x H4/D1/W1
+- entry model: signal-candle zone pullback
+- entry zones: 0.5, 0.6, and 0.7 of the signal candle range
+- stop models: FS structure and FS structure with max ATR risk filters
+- max ATR filters: 0.75, 1.0, and 1.25 ATR
+- exit models: single target and 50% partial at 1R with runner
+- signals: 8,203
+- simulated candidate trades: 619,092
+- failed datasets: 0
+
+Current best individual candidate:
+
+- `signal_zone_0p5_pullback__fs_structure__1r`
+- trades: 6,667
+- average R: about 0.104R
+- profit factor: about 1.235
+
+Current best by timeframe:
+
+- H4: `signal_zone_0p5_pullback__fs_structure__1r`, about 0.084R
+- D1: `signal_zone_0p5_pullback__fs_structure_max_1atr__1r`, about 0.212R
+- W1: `signal_zone_0p5_pullback__fs_structure_max_1atr__1r`, about 0.283R
+
+Current read:
+
+- The 0.5 signal-candle zone remains the strongest entry zone.
+- 0.6 and 0.7 entry zones degrade, especially on H4.
+- Single-target 1R remains the strongest individual candidate family.
+- Partial exits improve some broad group averages, but did not beat the best
+  individual 1R single-target candidates.
+- Partial exits are still MT5-portable through two positions or partial close
+  at 1R plus a runner.
 
 ## Boundary
 

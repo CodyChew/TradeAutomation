@@ -11,7 +11,7 @@ import pandas as pd
 
 
 TradeSide = Literal["long", "short"]
-ExitReason = Literal["target", "stop", "same_bar_stop_priority", "end_of_data"]
+ExitReason = Literal["target", "stop", "same_bar_stop_priority", "end_of_data", "partial_exit"]
 
 
 @dataclass(frozen=True)

@@ -5,6 +5,7 @@ from collections import defaultdict
 import html
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 import pandas as pd
@@ -78,15 +79,27 @@ def _metric_class(value: Any) -> str:
 
 def _candidate_short(candidate_id: str) -> str:
     text = str(candidate_id)
+    text = re.sub(r"signal_zone_(\d+p?\d*)_pullback", lambda match: f"zone {match.group(1).replace('p', '.')} pullback", text)
     text = text.replace("signal_midpoint_pullback", "midpoint")
     text = text.replace("next_open", "next open")
     text = text.replace("fs_structure_max_1atr", "structure <= 1ATR")
+    text = re.sub(r"fs_structure_max_(\d+p?\d*)atr", lambda match: f"structure <= {match.group(1).replace('p', '.')}ATR", text)
     text = text.replace("fs_structure", "structure")
+    text = re.sub(
+        r"partial_(\d+p?\d*)r_to_(\d+p?\d*)r",
+        lambda match: f"partial {match.group(1).replace('p', '.')}R -> {match.group(2).replace('p', '.')}R",
+        text,
+    )
     text = text.replace("__", " / ")
+    text = re.sub(r"(?<= / )(\d+p?\d*)r\b", lambda match: f"{match.group(1).replace('p', '.')}R", text)
     return text
 
 
 def _trade_group_summary(trades_path: Path, group_fields: list[str]) -> pd.DataFrame:
+    available = set(pd.read_csv(trades_path, nrows=0).columns)
+    missing = [field for field in group_fields + ["net_r", "bars_held", "exit_reason"] if field not in available]
+    if missing:
+        return pd.DataFrame()
     usecols = list(dict.fromkeys(group_fields + ["net_r", "bars_held", "exit_reason"]))
     accum: dict[tuple[Any, ...], dict[str, float]] = defaultdict(
         lambda: {
@@ -356,6 +369,8 @@ def _side_candidate_leaders(by_candidate_side: pd.DataFrame) -> str:
 
 
 def _model_table(frame: pd.DataFrame, group_field: str, label: str) -> str:
+    if frame.empty:
+        return f"<h3>{_escape(label)}</h3><p>No {label.lower()} rows are available for this run.</p>"
     data = frame.sort_values(["timeframe", "avg_net_r"], ascending=[True, False])
     data["tf_order"] = data["timeframe"].map(_tf_sort_key)
     data = data.sort_values(["tf_order", "avg_net_r"], ascending=[True, False])
@@ -430,7 +445,9 @@ def _html_document(
     by_side: pd.DataFrame,
     by_candidate_side: pd.DataFrame,
     by_entry: pd.DataFrame,
+    by_entry_zone: pd.DataFrame,
     by_stop: pd.DataFrame,
+    by_exit: pd.DataFrame,
     by_target: pd.DataFrame,
     skips: pd.DataFrame,
 ) -> str:
@@ -449,7 +466,7 @@ def _html_document(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LP + Force Strike Experiment Dashboard</title>
+  <title>LP + Force Strike Dashboard - by Cody</title>
   <style>
     :root {{
       --bg: #f4f6f8;
@@ -595,7 +612,7 @@ def _html_document(
 </head>
 <body>
   <header>
-    <h1>LP + Force Strike Experiment Dashboard</h1>
+    <h1>LP + Force Strike Dashboard - by Cody</h1>
     <p>Static analysis report generated from <code>{_escape(run_dir)}</code>. Use this page to choose the next research slice; do not treat the aggregate result as a final strategy verdict.</p>
     <nav>
       <a href="#overview">Overview</a>
@@ -651,7 +668,11 @@ def _html_document(
       <h2>Model Family Slices</h2>
       <div class="split">
         <div>{_model_table(by_entry, "meta_entry_model", "Entry Model")}</div>
+        <div>{_model_table(by_entry_zone, "meta_entry_zone", "Entry Zone")}</div>
+      </div>
+      <div class="split">
         <div>{_model_table(by_stop, "meta_stop_model", "Stop Model")}</div>
+        <div>{_model_table(by_exit, "meta_exit_model", "Exit Model")}</div>
       </div>
       <div class="split">
         <div>{_model_table(by_target, "meta_target_r", "Target R")}</div>
@@ -695,7 +716,9 @@ def build_dashboard(run_dir: Path, output: Path) -> Path:
     by_side = _trade_group_summary(trades_path, ["timeframe", "side"])
     by_candidate_side = _trade_group_summary(trades_path, ["candidate_id", "timeframe", "side"])
     by_entry = _trade_group_summary(trades_path, ["timeframe", "meta_entry_model"])
+    by_entry_zone = _trade_group_summary(trades_path, ["timeframe", "meta_entry_zone"])
     by_stop = _trade_group_summary(trades_path, ["timeframe", "meta_stop_model"])
+    by_exit = _trade_group_summary(trades_path, ["timeframe", "meta_exit_model"])
     by_target = _trade_group_summary(trades_path, ["timeframe", "meta_target_r"])
     skips = _skip_reason_summary(skipped_path)
 
@@ -710,7 +733,9 @@ def build_dashboard(run_dir: Path, output: Path) -> Path:
         by_side=by_side,
         by_candidate_side=by_candidate_side,
         by_entry=by_entry,
+        by_entry_zone=by_entry_zone,
         by_stop=by_stop,
+        by_exit=by_exit,
         by_target=by_target,
         skips=skips,
     )

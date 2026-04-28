@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Any, Literal
 
 import pandas as pd
@@ -12,8 +12,9 @@ from backtest_engine_lab import CostConfig, TradeRecord, TradeSetup, simulate_br
 from .signals import LPForceStrikeSignal, detect_lp_force_strike_signals
 
 
-EntryModel = Literal["next_open", "signal_midpoint_pullback"]
+EntryModel = Literal["next_open", "signal_midpoint_pullback", "signal_zone_pullback"]
 StopModel = Literal["fs_structure", "fs_structure_max_atr"]
+ExitModel = Literal["single_target", "partial_1r_runner"]
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,10 @@ class TradeModelCandidate:
     stop_model: StopModel
     target_r: float
     max_risk_atr: float | None = None
+    entry_zone: float | None = None
+    exit_model: ExitModel = "single_target"
+    partial_target_r: float = 1.0
+    partial_fraction: float = 0.5
 
 
 @dataclass(frozen=True)
@@ -62,42 +67,119 @@ def make_trade_model_candidates(
     stop_models: list[str],
     target_rs: list[float],
     max_risk_atrs: list[float],
+    entry_zones: list[float] | None = None,
+    exit_models: list[str] | None = None,
+    partial_target_r: float = 1.0,
+    partial_fraction: float = 0.5,
 ) -> list[TradeModelCandidate]:
     """Build candidate grid from config values."""
 
+    if not 0 < partial_fraction < 1:
+        raise ValueError("partial_fraction must be between 0 and 1.")
+    zones = entry_zones or [0.5]
+    for zone in zones:
+        if not 0 < float(zone) < 1:
+            raise ValueError("entry_zones must be between 0 and 1.")
+    exits = exit_models or ["single_target"]
+    for exit_model in exits:
+        if exit_model not in {"single_target", "partial_1r_runner"}:
+            raise ValueError(f"Unsupported exit model {exit_model!r}.")
+
     candidates: list[TradeModelCandidate] = []
     for entry_model in entry_models:
-        if entry_model not in {"next_open", "signal_midpoint_pullback"}:
+        if entry_model not in {"next_open", "signal_midpoint_pullback", "signal_zone_pullback"}:
             raise ValueError(f"Unsupported entry model {entry_model!r}.")
+        entry_variants = zones if entry_model == "signal_zone_pullback" else [None]
         for stop_model in stop_models:
             if stop_model == "fs_structure":
-                for target_r in target_rs:
-                    candidates.append(
-                        TradeModelCandidate(
-                            candidate_id=f"{entry_model}__fs_structure__{_target_label(target_r)}r",
-                            entry_model=entry_model,  # type: ignore[arg-type]
-                            stop_model="fs_structure",
-                            target_r=float(target_r),
-                        )
-                    )
-            elif stop_model == "fs_structure_max_atr":
-                for max_risk_atr in max_risk_atrs:
-                    for target_r in target_rs:
-                        candidates.append(
-                            TradeModelCandidate(
-                                candidate_id=(
-                                    f"{entry_model}__fs_structure_max_{_number_label(max_risk_atr)}atr__"
-                                    f"{_target_label(target_r)}r"
-                                ),
-                                entry_model=entry_model,  # type: ignore[arg-type]
-                                stop_model="fs_structure_max_atr",
-                                target_r=float(target_r),
-                                max_risk_atr=float(max_risk_atr),
+                for entry_zone in entry_variants:
+                    for exit_model in exits:
+                        for target_r in _target_values_for_exit(target_rs, exit_model, partial_target_r):
+                            candidates.append(
+                                TradeModelCandidate(
+                                    candidate_id=_candidate_id(
+                                        entry_model,
+                                        "fs_structure",
+                                        target_r,
+                                        entry_zone=entry_zone,
+                                        exit_model=exit_model,
+                                        partial_target_r=partial_target_r,
+                                    ),
+                                    entry_model=entry_model,  # type: ignore[arg-type]
+                                    stop_model="fs_structure",
+                                    target_r=float(target_r),
+                                    entry_zone=None if entry_zone is None else float(entry_zone),
+                                    exit_model=exit_model,  # type: ignore[arg-type]
+                                    partial_target_r=float(partial_target_r),
+                                    partial_fraction=float(partial_fraction),
+                                )
                             )
-                        )
+            elif stop_model == "fs_structure_max_atr":
+                for entry_zone in entry_variants:
+                    for max_risk_atr in max_risk_atrs:
+                        for exit_model in exits:
+                            for target_r in _target_values_for_exit(target_rs, exit_model, partial_target_r):
+                                candidates.append(
+                                    TradeModelCandidate(
+                                        candidate_id=_candidate_id(
+                                            entry_model,
+                                            "fs_structure_max_atr",
+                                            target_r,
+                                            entry_zone=entry_zone,
+                                            max_risk_atr=max_risk_atr,
+                                            exit_model=exit_model,
+                                            partial_target_r=partial_target_r,
+                                        ),
+                                        entry_model=entry_model,  # type: ignore[arg-type]
+                                        stop_model="fs_structure_max_atr",
+                                        target_r=float(target_r),
+                                        max_risk_atr=float(max_risk_atr),
+                                        entry_zone=None if entry_zone is None else float(entry_zone),
+                                        exit_model=exit_model,  # type: ignore[arg-type]
+                                        partial_target_r=float(partial_target_r),
+                                        partial_fraction=float(partial_fraction),
+                                    )
+                                )
             else:
                 raise ValueError(f"Unsupported stop model {stop_model!r}.")
     return candidates
+
+
+def _target_values_for_exit(target_rs: list[float], exit_model: str, partial_target_r: float) -> list[float]:
+    values = [float(value) for value in target_rs]
+    if exit_model == "partial_1r_runner":
+        return [value for value in values if value > partial_target_r]
+    return values
+
+
+def _candidate_id(
+    entry_model: str,
+    stop_model: str,
+    target_r: float,
+    *,
+    entry_zone: float | None = None,
+    max_risk_atr: float | None = None,
+    exit_model: str,
+    partial_target_r: float,
+) -> str:
+    entry_label = entry_model
+    if entry_model == "signal_zone_pullback":
+        assert entry_zone is not None
+        entry_label = f"signal_zone_{_number_label(entry_zone)}_pullback"
+
+    if stop_model == "fs_structure":
+        stop_label = "fs_structure"
+    elif stop_model == "fs_structure_max_atr":
+        assert max_risk_atr is not None
+        stop_label = f"fs_structure_max_{_number_label(max_risk_atr)}atr"
+    else:
+        raise ValueError(f"Unsupported stop model {stop_model!r}.")
+
+    if exit_model == "single_target":
+        return f"{entry_label}__{stop_label}__{_target_label(target_r)}r"
+    if exit_model == "partial_1r_runner":
+        return f"{entry_label}__{stop_label}__partial_{_target_label(partial_target_r)}r_to_{_target_label(target_r)}r"
+    raise ValueError(f"Unsupported exit model {exit_model!r}.")
 
 
 def _number_label(value: float) -> str:
@@ -229,9 +311,13 @@ def _build_trade_setup_from_prepared_frame(
         metadata={
             "candidate_id": candidate.candidate_id,
             "entry_model": candidate.entry_model,
+            "entry_zone": candidate.entry_zone,
             "stop_model": candidate.stop_model,
+            "exit_model": candidate.exit_model,
             "target_r": candidate.target_r,
             "max_risk_atr": candidate.max_risk_atr,
+            "partial_target_r": candidate.partial_target_r,
+            "partial_fraction": candidate.partial_fraction,
             "lp_price": signal.lp_price,
             "lp_break_index": signal.lp_break_index,
             "lp_break_time_utc": str(signal.lp_break_time_utc),
@@ -260,14 +346,24 @@ def _resolve_entry(
         return next_index, float(data.loc[next_index, "open"])
 
     signal_row = data.loc[signal.fs_signal_index]
-    midpoint = (float(signal_row["high"]) + float(signal_row["low"])) / 2.0
+    signal_high = float(signal_row["high"])
+    signal_low = float(signal_row["low"])
+    if signal_high <= signal_low:
+        return "invalid_entry_range"
+    zone = 0.5 if candidate.entry_model == "signal_midpoint_pullback" else float(candidate.entry_zone or 0.5)
+    if candidate.entry_model not in {"signal_midpoint_pullback", "signal_zone_pullback"}:
+        return "unsupported_entry_model"
+    entry_price = signal_low + (signal_high - signal_low) * zone
+    if signal.side == "bearish":
+        entry_price = signal_high - (signal_high - signal_low) * zone
+
     final_index = min(len(data) - 1, signal.fs_signal_index + max_entry_wait_bars)
     for entry_index in range(next_index, final_index + 1):
         row = data.loc[entry_index]
-        if signal.side == "bullish" and float(row["low"]) <= midpoint:
-            return entry_index, midpoint
-        if signal.side == "bearish" and float(row["high"]) >= midpoint:
-            return entry_index, midpoint
+        if signal.side == "bullish" and float(row["low"]) <= entry_price:
+            return entry_index, entry_price
+        if signal.side == "bearish" and float(row["high"]) >= entry_price:
+            return entry_index, entry_price
     return "entry_not_reached"
 
 
@@ -294,6 +390,95 @@ def _skip(
 
 def _setup_id(candidate: TradeModelCandidate, symbol: str, timeframe: str, signal: LPForceStrikeSignal) -> str:
     return f"{symbol}_{timeframe}_{signal.fs_signal_index}_{candidate.candidate_id}"
+
+
+def _target_price_for_r(setup: TradeSetup, target_r: float) -> float:
+    risk = setup.entry_price - setup.stop_price if setup.side == "long" else setup.stop_price - setup.entry_price
+    if setup.side == "long":
+        return float(setup.entry_price + risk * target_r)
+    return float(setup.entry_price - risk * target_r)
+
+
+def _simulate_trade_setup(data: pd.DataFrame, setup: TradeSetup, candidate: TradeModelCandidate, costs: CostConfig) -> TradeRecord:
+    if candidate.exit_model == "single_target":
+        return simulate_bracket_trade_on_normalized_frame(data, setup, costs=costs)
+    if candidate.exit_model == "partial_1r_runner":
+        return _simulate_partial_1r_runner(data, setup, candidate, costs)
+    raise ValueError(f"Unsupported exit model {candidate.exit_model!r}.")
+
+
+def _simulate_partial_1r_runner(
+    data: pd.DataFrame,
+    setup: TradeSetup,
+    candidate: TradeModelCandidate,
+    costs: CostConfig,
+) -> TradeRecord:
+    if candidate.target_r <= candidate.partial_target_r:
+        raise ValueError("Partial runner target_r must be greater than partial_target_r.")
+
+    partial_target = _target_price_for_r(setup, candidate.partial_target_r)
+    partial_setup = replace(
+        setup,
+        setup_id=f"{setup.setup_id}__partial",
+        target_price=partial_target,
+        metadata={**setup.metadata, "leg": "partial", "leg_fraction": candidate.partial_fraction},
+    )
+    runner_setup = replace(
+        setup,
+        setup_id=f"{setup.setup_id}__runner",
+        metadata={**setup.metadata, "leg": "runner", "leg_fraction": 1.0 - candidate.partial_fraction},
+    )
+    partial = simulate_bracket_trade_on_normalized_frame(data, partial_setup, costs=costs)
+    runner = simulate_bracket_trade_on_normalized_frame(data, runner_setup, costs=costs)
+    first_weight = candidate.partial_fraction
+    second_weight = 1.0 - candidate.partial_fraction
+    exit_index = max(partial.exit_index, runner.exit_index)
+    exit_row = data.iloc[exit_index]
+    if partial.exit_reason == runner.exit_reason:
+        exit_reason = partial.exit_reason
+    else:
+        exit_reason = "partial_exit"
+
+    metadata = dict(setup.metadata)
+    metadata.update(
+        {
+            "partial_exit": True,
+            "partial_target_r": candidate.partial_target_r,
+            "partial_fraction": candidate.partial_fraction,
+            "partial_exit_index": partial.exit_index,
+            "partial_exit_reason": partial.exit_reason,
+            "runner_exit_index": runner.exit_index,
+            "runner_exit_reason": runner.exit_reason,
+            "runner_target_r": candidate.target_r,
+        }
+    )
+    fill_r = partial.fill_r * first_weight + runner.fill_r * second_weight
+    commission_r = partial.commission_r * first_weight + runner.commission_r * second_weight
+    return TradeRecord(
+        setup_id=setup.setup_id,
+        symbol=setup.symbol,
+        timeframe=setup.timeframe,
+        side=setup.side,
+        signal_index=setup.signal_index,
+        entry_index=setup.entry_index,
+        exit_index=int(exit_index),
+        entry_time_utc=partial.entry_time_utc,
+        exit_time_utc=exit_row["time_utc"],
+        entry_reference_price=setup.entry_price,
+        entry_fill_price=partial.entry_fill_price * first_weight + runner.entry_fill_price * second_weight,
+        exit_reference_price=partial.exit_reference_price * first_weight + runner.exit_reference_price * second_weight,
+        exit_fill_price=partial.exit_fill_price * first_weight + runner.exit_fill_price * second_weight,
+        stop_price=setup.stop_price,
+        target_price=setup.target_price,
+        risk_distance=partial.risk_distance,
+        reference_r=partial.reference_r * first_weight + runner.reference_r * second_weight,
+        fill_r=fill_r,
+        commission_r=commission_r,
+        net_r=float(fill_r - commission_r),
+        bars_held=int(exit_index - setup.entry_index + 1),
+        exit_reason=exit_reason,  # type: ignore[arg-type]
+        metadata=metadata,
+    )
 
 
 def run_lp_force_strike_experiment_on_frame(
@@ -333,7 +518,7 @@ def run_lp_force_strike_experiment_on_frame(
             if isinstance(setup, SkippedTrade):
                 skipped.append(setup)
                 continue
-            trades.append(simulate_bracket_trade_on_normalized_frame(data, setup, costs=cost_config))
+            trades.append(_simulate_trade_setup(data, setup, candidate, cost_config))
     return LPForceStrikeExperimentResult(
         symbol=symbol,
         timeframe=timeframe,

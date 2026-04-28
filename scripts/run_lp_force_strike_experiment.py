@@ -137,6 +137,10 @@ def _run(config_path: Path, *, symbol_override: list[str] | None, timeframe_over
         stop_models=[str(value) for value in config["stop_models"]],
         target_rs=[float(value) for value in config["target_rs"]],
         max_risk_atrs=[float(value) for value in config.get("max_risk_atrs", [])],
+        entry_zones=[float(value) for value in config.get("entry_zones", [])] or None,
+        exit_models=[str(value) for value in config.get("exit_models", ["single_target"])],
+        partial_target_r=float(config.get("partial_target_r", 1.0)),
+        partial_fraction=float(config.get("partial_fraction", 0.5)),
     )
     candidate_lookup = {candidate.candidate_id: asdict(candidate) for candidate in candidates}
     costs = _cost_config(config)

@@ -27,6 +27,8 @@ from lp_force_strike_strategy_lab import (  # noqa: E402
     run_lp_force_strike_experiment_on_frame,
     summary_rows,
 )
+from lp_force_strike_strategy_lab.experiment import _simulate_trade_setup  # noqa: E402
+from backtest_engine_lab import CostConfig, TradeSetup  # noqa: E402
 
 
 def _frame(rows: list[dict]) -> pd.DataFrame:
@@ -81,6 +83,21 @@ class LPForceStrikeExperimentTests(unittest.TestCase):
             "signal_midpoint_pullback__fs_structure_max_1atr__1p5r",
             [candidate.candidate_id for candidate in candidates],
         )
+
+    def test_make_trade_model_candidates_adds_entry_zones_and_partial_exits(self) -> None:
+        candidates = make_trade_model_candidates(
+            entry_models=["signal_zone_pullback"],
+            stop_models=["fs_structure_max_atr"],
+            target_rs=[1.0, 1.5, 2.0],
+            max_risk_atrs=[1.0],
+            entry_zones=[0.5, 0.75],
+            exit_models=["single_target", "partial_1r_runner"],
+        )
+
+        ids = [candidate.candidate_id for candidate in candidates]
+        self.assertEqual(len(candidates), 10)
+        self.assertIn("signal_zone_0p75_pullback__fs_structure_max_1atr__2r", ids)
+        self.assertIn("signal_zone_0p5_pullback__fs_structure_max_1atr__partial_1r_to_2r", ids)
 
     def test_next_open_candidate_builds_setup_from_next_candle_open(self) -> None:
         frame = _frame(
@@ -149,6 +166,28 @@ class LPForceStrikeExperimentTests(unittest.TestCase):
         assert isinstance(skipped, SkippedTrade)
         self.assertEqual(skipped.reason, "entry_not_reached")
 
+    def test_signal_zone_pullback_uses_configured_signal_range_zone(self) -> None:
+        frame = _frame(
+            [
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 104, "low": 96, "close": 101},
+                {"open": 101, "high": 103, "low": 97, "close": 100},
+                {"open": 100, "high": 106, "low": 94, "close": 104},
+                {"open": 105, "high": 108, "low": 102, "close": 104},
+            ]
+        )
+        candidate = TradeModelCandidate("zone", "signal_zone_pullback", "fs_structure", 1.0, entry_zone=0.75)
+
+        setup = build_trade_setup(frame, _signal("bullish"), candidate, symbol="TEST", timeframe="M30", atr_period=1)
+
+        self.assertNotIsInstance(setup, SkippedTrade)
+        assert not isinstance(setup, SkippedTrade)
+        self.assertEqual(setup.entry_index, 7)
+        self.assertEqual(setup.entry_price, 103.0)
+
     def test_structure_max_atr_skips_when_risk_too_wide(self) -> None:
         frame = _frame(
             [
@@ -207,6 +246,33 @@ class LPForceStrikeExperimentTests(unittest.TestCase):
         self.assertEqual(len(result.signals), 1)
         self.assertEqual(len(result.trades), 1)
         self.assertEqual(summaries[0]["trades"], 1)
+
+    def test_partial_exit_runner_returns_weighted_r(self) -> None:
+        frame = _frame(
+            [
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 106, "low": 99, "close": 105},
+                {"open": 105, "high": 111, "low": 104, "close": 110},
+            ]
+        )
+        setup = TradeSetup(
+            setup_id="partial",
+            side="long",
+            entry_index=1,
+            entry_price=100,
+            stop_price=95,
+            target_price=110,
+            symbol="TEST",
+            timeframe="M30",
+            metadata={"candidate_id": "partial"},
+        )
+        candidate = TradeModelCandidate("partial", "next_open", "fs_structure", 2.0, exit_model="partial_1r_runner")
+
+        trade = _simulate_trade_setup(frame, setup, candidate, CostConfig())
+
+        self.assertEqual(trade.exit_reason, "target")
+        self.assertEqual(trade.exit_index, 2)
+        self.assertAlmostEqual(trade.net_r, 1.5)
 
 
 if __name__ == "__main__":
