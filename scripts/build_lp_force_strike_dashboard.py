@@ -503,6 +503,7 @@ def _page_links(current_page: str) -> str:
         ("v1.html", "V1"),
         ("v2.html", "V2"),
         ("v3.html", "V3"),
+        ("v4.html", "V4"),
     ]
     links = []
     for href, label in pages:

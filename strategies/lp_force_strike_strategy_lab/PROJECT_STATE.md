@@ -145,6 +145,35 @@ Current read:
 - Partial exits are still MT5-portable through two positions or partial close
   at 1R plus a runner.
 
+## Experiment V4 Stability
+
+Experiment V4 stability is configured by
+`../../configs/strategies/lp_force_strike_experiment_v4_stability.json`.
+
+Latest local stability run:
+
+- report folder:
+  `reports/strategies/lp_force_strike_experiment_v4_stability/20260428_182026`
+- input run:
+  `reports/strategies/lp_force_strike_experiment_v3_entry_exit/20260428_163456`
+- split time: `2023-01-01T00:00:00Z`
+- candidate family: 0.5 signal-candle pullback, 1R single target, structure
+  stop plus 0.75/1.0/1.25 ATR stop-width variants
+- filters tested: no pair filter and several training-period symbol/timeframe
+  stability filters
+
+Current read:
+
+- The train-learned symbol/timeframe filters did not improve the later test
+  period.
+- Best test rows were the unfiltered baseline candidates.
+- Best test candidate:
+  `signal_zone_0p5_pullback__fs_structure_max_1p25atr__1r`, about 0.142R
+  average R and about 1.33 profit factor.
+- Do not add symbol/timeframe filtering yet. The weak pockets are real, but
+  this filtering method looks like in-sample cleanup rather than a robust
+  improvement.
+
 ## Boundary
 
 This lab intentionally excludes SMA context, portfolio-level risk, position

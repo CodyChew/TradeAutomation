@@ -1,0 +1,48 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v4_stability",
+  "input_run_dir": "reports/strategies/lp_force_strike_experiment_v3_entry_exit/20260428_163456",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v4_stability",
+  "split_time_utc": "2023-01-01T00:00:00Z",
+  "candidate_ids": [
+    "signal_zone_0p5_pullback__fs_structure__1r",
+    "signal_zone_0p5_pullback__fs_structure_max_0p75atr__1r",
+    "signal_zone_0p5_pullback__fs_structure_max_1atr__1r",
+    "signal_zone_0p5_pullback__fs_structure_max_1p25atr__1r"
+  ],
+  "filters": [
+    {
+      "filter_id": "baseline_all_pairs",
+      "include_all_pairs": true
+    },
+    {
+      "filter_id": "stable_pf1_avg0_min5",
+      "min_trades": 5,
+      "min_avg_net_r": 0.0,
+      "min_profit_factor": 1.0
+    },
+    {
+      "filter_id": "stable_pf1_avg0_min15",
+      "min_trades": 15,
+      "min_avg_net_r": 0.0,
+      "min_profit_factor": 1.0
+    },
+    {
+      "filter_id": "stable_pf1_avg0_min30",
+      "min_trades": 30,
+      "min_avg_net_r": 0.0,
+      "min_profit_factor": 1.0
+    },
+    {
+      "filter_id": "stable_pf1p05_avg0_min15",
+      "min_trades": 15,
+      "min_avg_net_r": 0.0,
+      "min_profit_factor": 1.05
+    },
+    {
+      "filter_id": "stable_pf1_avg0p05_min15",
+      "min_trades": 15,
+      "min_avg_net_r": 0.05,
+      "min_profit_factor": 1.0
+    }
+  ]
+}
