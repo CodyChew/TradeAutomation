@@ -530,12 +530,11 @@ def _exposure_table(frame: pd.DataFrame) -> str:
 
 
 def _risk_schedule_composition_table(run_dir: Path, recommended_schedule_id: str) -> str:
-    config_path = run_dir / "run_config.json"
-    if not config_path.exists():
+    run_config = _run_config(run_dir)
+    if not run_config:
         return "<p>Risk schedule composition is unavailable for this run.</p>"
 
-    payload = _read_json(config_path)
-    config = payload.get("config", payload)
+    config = run_config
     timeframes = [str(value) for value in config.get("timeframes", ["H4", "H8", "H12", "D1", "W1"])]
     rows = []
     for schedule in config.get("risk_schedules", []):
@@ -558,6 +557,68 @@ def _risk_schedule_composition_table(run_dir: Path, recommended_schedule_id: str
             ]
         )
     return _table(["Schedule", "Type", *timeframes], rows)
+
+
+def _run_config(run_dir: Path) -> dict[str, Any]:
+    config_path = run_dir / "run_config.json"
+    if not config_path.exists():
+        return {}
+    payload = _read_json(config_path)
+    return payload.get("config", payload)
+
+
+def _schedule_risks(schedule: dict[str, Any], timeframes: list[str]) -> dict[str, float]:
+    kind = str(schedule["kind"])
+    if kind == "fixed":
+        return {timeframe: float(schedule["risk_pct"]) for timeframe in timeframes}
+    return {timeframe: float(schedule["risk_by_timeframe"][timeframe]) for timeframe in timeframes}
+
+
+def _risk_tolerance_calibration_table(run_dir: Path, recommended: pd.Series) -> str:
+    config = _run_config(run_dir)
+    if not config:
+        return "<p>Risk tolerance calibration is unavailable for this run.</p>"
+
+    recommended_schedule_id = str(recommended["schedule_id"])
+    schedule = next(
+        (row for row in config.get("risk_schedules", []) if str(row["schedule_id"]) == recommended_schedule_id),
+        None,
+    )
+    if schedule is None:
+        return "<p>Risk tolerance calibration is unavailable for this schedule.</p>"
+
+    timeframes = [str(value) for value in config.get("timeframes", ["H4", "H8", "H12", "D1", "W1"])]
+    base_risks = _schedule_risks(schedule, timeframes)
+    current_reserved_dd = float(recommended["reserved_max_drawdown_pct"])
+    if current_reserved_dd <= 0:
+        return "<p>Risk tolerance calibration needs a positive risk-reserved drawdown.</p>"
+
+    target_reserved_dds = [6.0, 8.0, 10.0, 12.0, 15.0, 20.0]
+    rows = []
+    for target_dd in target_reserved_dds:
+        multiplier = target_dd / current_reserved_dd
+        rows.append(
+            [
+                _fmt_pct_value(target_dd),
+                f"{multiplier:.2f}x",
+                *[_fmt_pct_value(base_risks[timeframe] * multiplier) for timeframe in timeframes],
+                _fmt_pct_value(float(recommended["total_return_pct"]) * multiplier),
+                _fmt_pct_value(float(recommended["realized_max_drawdown_pct"]) * multiplier),
+                _fmt_pct_value(float(recommended["max_reserved_open_risk_pct"]) * multiplier),
+            ]
+        )
+
+    return _table(
+        [
+            "Target Risk-Reserved DD",
+            "Scale",
+            *timeframes,
+            "Est. Total Return",
+            "Est. Realized DD",
+            "Est. Max Open Risk",
+        ],
+        rows,
+    )
 
 
 def _contribution_table(frame: pd.DataFrame, field: str, schedule_id: str) -> str:
@@ -704,6 +765,11 @@ def _html_report(
       <h2>Risk Schedule Composition</h2>
       <div class="note">This is the exact account-risk percentage applied per trade by timeframe. The recommended balanced ladder keeps H4 and H8 equal, then increases risk on H12, D1, and W1.</div>
       {_risk_schedule_composition_table(run_dir, str(recommended["schedule_id"]))}
+    </section>
+    <section id="risk-calibration">
+      <h2>Risk Tolerance Calibration</h2>
+      <div class="note">For a more aggressive version, scale the balanced ladder first. Formula: target risk-reserved DD / current risk-reserved DD. Increasing only H4/H8 is a different hypothesis because those lower timeframes are more frequent and lower quality, so it should be tested as a separate ladder rather than assumed better.</div>
+      {_risk_tolerance_calibration_table(run_dir, recommended)}
     </section>
     <section id="leaderboard">
       <h2>Risk Schedule Leaderboard</h2>

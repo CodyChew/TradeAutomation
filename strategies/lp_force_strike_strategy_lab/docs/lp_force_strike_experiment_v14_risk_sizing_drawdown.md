@@ -81,6 +81,31 @@ return, but does not express the observed timeframe quality difference.
 
 Fixed `0.50%` is useful as a stress diagnostic, not the first practical default.
 
+## Risk Tolerance Calibration
+
+For a more aggressive version, scale the balanced ladder first:
+
+```text
+multiplier = target risk-reserved DD / 8.56
+new timeframe risk = current timeframe risk * multiplier
+```
+
+This keeps the tested timeframe weighting intact. Increasing only H4/H8 is a
+different hypothesis because those timeframes are more frequent and lower
+quality than D1/W1, so it should be tested as a separate ladder before being
+used.
+
+Approximate scaled balanced ladders:
+
+| Target risk-reserved DD | H4 | H8 | H12 | D1 | W1 | Est. total return |
+|---:|---:|---:|---:|---:|---:|---:|
+| 6% | 0.11% | 0.11% | 0.18% | 0.28% | 0.42% | 233% |
+| 8% | 0.14% | 0.14% | 0.23% | 0.37% | 0.56% | 311% |
+| 10% | 0.18% | 0.18% | 0.29% | 0.47% | 0.70% | 389% |
+| 12% | 0.21% | 0.21% | 0.35% | 0.56% | 0.84% | 466% |
+| 15% | 0.26% | 0.26% | 0.44% | 0.70% | 1.05% | 583% |
+| 20% | 0.35% | 0.35% | 0.58% | 0.93% | 1.40% | 777% |
+
 ## Next Step
 
 Use V14 to choose account risk. The next research slice should test account
