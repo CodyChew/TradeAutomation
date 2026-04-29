@@ -3,17 +3,17 @@
     "title": "TradeAutomation Research Dashboards",
     "intro": "Versioned static dashboards for LP + Force Strike experiments. Use stable version pages for comparison instead of overwriting old analysis.",
     "current_baseline": {
-      "title": "Current Baseline: fixed 6-bar pullback wait",
-      "description": "Use the 0.5 signal-candle pullback, full Force Strike structure stop, single 1R target, and fixed 6-bar pullback wait as the active trade-model baseline. V9 tests whether LP pivot strength should be tuned.",
+      "title": "Current Baseline: LP3 cap 4R portfolio",
+      "description": "The current practical candidate is LP3 with a 4R max-open-risk cap, one open trade per symbol, 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait.",
       "status_label": "Active baseline",
       "facts": [
-        ["Universe", "28 FX pairs"],
-        ["Timeframes", "H4/H8/H12/D1/W1"],
-        ["LP5 PF", "1.310"],
-        ["LP5 Avg R", "0.134R"]
+        ["Total R", "1,100.9R"],
+        ["Max DD", "26.7R"],
+        ["Underwater", "162D"],
+        ["Guardrail", "Pass"]
       ],
-      "button_href": "v9.html",
-      "button_label": "Open LP Pivot Study"
+      "button_href": "v10.html",
+      "button_label": "Open Portfolio Study"
     }
   },
   "pages": [
@@ -182,7 +182,7 @@
     {
       "page": "v9.html",
       "nav_label": "V9",
-      "index_order": 0,
+      "index_order": 1,
       "title": "V9 LP Pivot Strength Sensitivity",
       "status_label": "Latest sensitivity",
       "status_kind": "active",
@@ -202,6 +202,25 @@
         ["LP pivot 3", "13,012", "58.0%", "0.116R", "1.265", "1,512.3R"],
         ["LP pivot 4", "9,512", "58.5%", "0.129R", "1.297", "1,224.4R"],
         ["LP pivot 5", "7,519", "58.8%", "0.134R", "1.310", "1,004.8R"]
+      ]
+    },
+    {
+      "page": "v10.html",
+      "nav_label": "V10",
+      "index_order": 0,
+      "title": "V10 Portfolio Baseline: Take-All vs Exposure Caps",
+      "status_label": "Portfolio study",
+      "status_kind": "active",
+      "question": "Does a practical portfolio exposure cap improve drawdown and underwater behavior enough to replace taking every LP + Force Strike trade?",
+      "setup": "Existing V9 trades only. LP3, LP4, and LP5 are tested across all H4/H8/H12/D1/W1 trades. V10 compares take-all against 4R, 6R, 8R, and 10R max-open-risk caps with one open trade per symbol.",
+      "how_to_read": "Start with Best Practical Mechanics. A row must pass 30R max drawdown and 180D longest underwater before total R is allowed to choose the winner.",
+      "conclusion": "Only LP3 with the 4R exposure cap passed both V10 guardrails. Take-all had higher Total R, but breached the 30R max drawdown guardrail. LP4 and LP5 kept attractive quality metrics, but their underwater periods were too long under the 180D rule.",
+      "action": "Use LP3 cap 4R as the current practical portfolio baseline. Move next to V11 timeframe mix testing using this exposure rule.",
+      "facts": [
+        ["Winner", "LP3 cap 4R"],
+        ["Total R", "1,100.9R"],
+        ["Max DD", "26.7R"],
+        ["Underwater", "162D"]
       ]
     }
   ]

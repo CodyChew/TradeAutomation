@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-29 local time after running V9 LP pivot strength
-sensitivity and regenerating V1-V9 dashboards.
+Last updated: 2026-04-29 local time after running V10 portfolio baseline
+and regenerating V1-V10 dashboards.
 
 ## Purpose
 
@@ -12,7 +12,8 @@ patterns. It now has two layers:
 - experiment harness: fixed bracket trade-model candidates for research.
 
 It still does not contain position sizing, portfolio accounting, live
-execution, or a combined TradingView indicator.
+execution, or a combined TradingView indicator. V10 adds portfolio-style
+research analytics, but not live execution rules.
 
 ## Concept Dependencies
 
@@ -387,7 +388,61 @@ Current conclusion:
 - Do not make LP5 the execution default yet. Use LP5 and LP4 in the next
   robustness slice.
 
+## Experiment V10 Portfolio Baseline
+
+Experiment V10 tests whether exposure caps improve drawdown enough to replace
+taking every V9 trade.
+
+Detailed notes:
+
+```text
+docs/lp_force_strike_experiment_v10_portfolio_baseline.md
+```
+
+Run details:
+
+- config:
+  `../../configs/strategies/lp_force_strike_experiment_v10_portfolio_baseline.json`
+- input trades:
+  `reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831/trades.csv`
+- report:
+  `reports/strategies/lp_force_strike_experiment_v10_portfolio_baseline/20260429_133443`
+- dashboard: `docs/v10.html`
+- pivots: LP3, LP4, LP5
+- timeframes: all H4/H8/H12/D1/W1 trades from V9
+
+Rules tested:
+
+- `take_all`: accepts every trade for the pivot.
+- `cap_4r`, `cap_6r`, `cap_8r`, `cap_10r`: one open trade per symbol, max
+  open risk equal to the cap, 1R risk per accepted trade.
+- Same-symbol same-time conflicts prefer higher timeframe first:
+  W1 > D1 > H12 > H8 > H4.
+- Guardrails: max closed-trade drawdown <= 30R and longest underwater <= 180D.
+
+Result highlights:
+
+| LP | Portfolio | Trades | Total R | PF | Max DD | Underwater | Pass |
+|---:|---|---:|---:|---:|---:|---:|---|
+| 3 | take all | 13,012 | 1,512.3R | 1.265 | 33.4R | 111D | No |
+| 3 | cap 4R | 10,037 | 1,100.9R | 1.248 | 26.7R | 162D | Yes |
+| 3 | cap 6R | 11,226 | 1,235.6R | 1.249 | 32.6R | 125D | No |
+| 4 | take all | 9,512 | 1,224.4R | 1.297 | 35.5R | 249D | No |
+| 5 | take all | 7,519 | 1,004.8R | 1.310 | 31.7R | 254D | No |
+| 5 | cap 4R | 6,431 | 888.4R | 1.322 | 24.0R | 229D | No |
+
+Current conclusion:
+
+- Only LP3 cap 4R passed both V10 guardrails.
+- Taking all LP3 trades produces higher total R, but breaches the 30R drawdown
+  guardrail.
+- LP5 keeps the best quality metrics, but its underwater periods are too long
+  under the 180D rule.
+- Use LP3 cap 4R as the current practical portfolio baseline.
+- V11 should keep this exposure rule and test timeframe subsets/combinations.
+
 ## Boundary
 
-This lab intentionally excludes SMA context, portfolio-level risk, position
-sizing, and order execution.
+This lab intentionally excludes SMA context, account-currency position sizing,
+broker order execution, and EA logic. V10 portfolio analytics are research-only
+closed-trade R simulations.

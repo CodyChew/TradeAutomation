@@ -1,0 +1,44 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v10_portfolio_baseline",
+  "input_trades_path": "reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831/trades.csv",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v10_portfolio_baseline",
+  "pivot_strengths": [
+    3,
+    4,
+    5
+  ],
+  "max_drawdown_guardrail_r": 30.0,
+  "max_underwater_guardrail_days": 180.0,
+  "portfolio_rules": [
+    {
+      "portfolio_id": "take_all",
+      "max_open_r": null,
+      "enforce_one_per_symbol": false,
+      "risk_r_per_trade": 1.0
+    },
+    {
+      "portfolio_id": "cap_4r",
+      "max_open_r": 4.0,
+      "enforce_one_per_symbol": true,
+      "risk_r_per_trade": 1.0
+    },
+    {
+      "portfolio_id": "cap_6r",
+      "max_open_r": 6.0,
+      "enforce_one_per_symbol": true,
+      "risk_r_per_trade": 1.0
+    },
+    {
+      "portfolio_id": "cap_8r",
+      "max_open_r": 8.0,
+      "enforce_one_per_symbol": true,
+      "risk_r_per_trade": 1.0
+    },
+    {
+      "portfolio_id": "cap_10r",
+      "max_open_r": 10.0,
+      "enforce_one_per_symbol": true,
+      "risk_r_per_trade": 1.0
+    }
+  ]
+}
