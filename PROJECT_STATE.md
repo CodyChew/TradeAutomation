@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-04-30 after running the V13 relaxed portfolio rule
-selection study and regenerating V1-V13 dashboard navigation.
+Last updated: 2026-04-30 after running the V14 risk sizing and drawdown study
+and regenerating V1-V14 dashboard navigation.
 
 ## Purpose
 
@@ -164,6 +164,7 @@ Static dashboards exist at:
 - `docs/v11.html`: practical timeframe mix study.
 - `docs/v12.html`: LP pivot finalization.
 - `docs/v13.html`: relaxed portfolio rule selection.
+- `docs/v14.html`: risk sizing and drawdown study.
 
 The dashboard generator is:
 
@@ -184,7 +185,7 @@ scripts/build_lp_force_strike_index.py
 ```
 
 The pages were made responsive and given explicit interpretation summaries on
-2026-04-29. On 2026-04-30, V6-V13 gained a prominent `Decision Brief` block so
+2026-04-29. On 2026-04-30, V6-V14 gained a prominent `Decision Brief` block so
 the important chat-style conclusions are visible before the metric tables.
 Future dashboard changes should update the metadata and generators first, then
 regenerate the versioned pages.
@@ -221,21 +222,23 @@ Interpretation:
 
 Next useful research:
 
-- run V14 against the V13 `take_all` baseline to test FTMO-style account-risk
-  sizing, daily/max loss constraints, same-symbol stacking limits, and max
-  concurrent trade limits;
+- use V14's account-risk schedule as the starting point, then test daily/max
+  loss constraints, same-symbol stacking limits, and max concurrent trade
+  limits;
 - add equity-curve diagnostics beyond closed-trade R;
 - prepare an MT5 execution contract only after risk sizing is clear.
 
-Suggested V14 scope:
+Latest V14 risk-sizing read:
 
-- keep LP/FS/entry/stop/target unchanged;
-- compare risk per trade such as `0.10%`, `0.25%`, and `0.50%`;
-- test max concurrent trade caps such as uncapped, 8, 10, 12, and 15;
-- test same-symbol stack caps such as uncapped, 1, and 2;
-- report worst day, worst week, worst month, max total drawdown, daily-loss
-  breaches, total-loss breaches, and whether any ticker or period becomes a
-  concentration problem.
+- V14 did not rerun MT5 data or signals. It used the V13 baseline trade rows.
+- Balanced equal-LTF is the practical starting schedule:
+  H4 `0.15%`, H8 `0.15%`, H12 `0.25%`, D1 `0.40%`, W1 `0.60%`.
+- Balanced equal-LTF result: `+332.6%` total return, `6.2%` realized max DD,
+  `8.6%` risk-reserved max DD, and `5.7%` max reserved open risk.
+- Fixed `0.25%` is the closest simple alternative: `+378.1%` total return,
+  `8.3%` realized max DD, and `9.8%` risk-reserved max DD.
+- Fixed `0.50%` is a high-return/high-stress diagnostic, not the first
+  practical default: `+756.1%` total return and `19.5%` risk-reserved max DD.
 
 Do not replace the fixed 6-bar pullback wait with the V7/V8 1R-cancel wait
 rule. V8, the fairer entry-priority version, was positive but weaker than the
@@ -243,8 +246,9 @@ full-28 fixed 6-bar baseline on every timeframe.
 
 ## Git State Notes
 
-Latest pushed commits before this handover audit:
+Recent project commits:
 
+- `Add V14 risk sizing study` (current HEAD)
 - `0e55f70 Add V13 relaxed portfolio study`
 - `2c8cf82 Improve dashboard decision briefs`
 - `f2e448c Add V11 timeframe mix study`
@@ -259,7 +263,8 @@ user explicitly asks.
 ```text
 Continue from TradeAutomation/PROJECT_STATE.md. Focus on the LP + Force Strike
 strategy lab. The current baseline is V13 `take_all` with LP3 across
-H4/H8/H12/D1/W1. Review docs/v13.html and test FTMO-style daily/max loss,
-account-risk sizing, and same-symbol stacking constraints without changing LP
-or Force Strike concept behavior unless needed.
+H4/H8/H12/D1/W1. Review docs/v13.html and docs/v14.html. Use the V14 balanced
+equal-LTF risk schedule as the first practical sizing candidate, then test
+daily/max loss and same-symbol/concurrent execution constraints without
+changing LP or Force Strike concept behavior unless needed.
 ```

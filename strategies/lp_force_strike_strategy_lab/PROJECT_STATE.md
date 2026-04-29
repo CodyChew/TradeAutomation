@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-30 local time after running V13 relaxed portfolio rule
-selection and regenerating V1-V13 dashboards.
+Last updated: 2026-04-30 local time after running V14 risk sizing and drawdown
+and regenerating V1-V14 dashboards.
 
 ## Purpose
 
@@ -12,8 +12,8 @@ patterns. It now has two layers:
 - experiment harness: fixed bracket trade-model candidates for research.
 
 It still does not contain live execution or a combined TradingView indicator.
-V10-V13 add portfolio-style research analytics, but not broker execution rules
-or final account-risk sizing.
+V10-V13 add portfolio-style research analytics. V14 adds account-risk sizing
+and drawdown views, but not broker execution rules.
 
 ## Concept Dependencies
 
@@ -584,26 +584,59 @@ Current conclusion:
 - Next research should test FTMO-style daily/max loss, account-risk sizing, and
   same-symbol stacking limits before execution work.
 
-## Recommended Next Experiment: V14 Account Risk Constraints
+## Experiment V14 Risk Sizing And Drawdown
 
-V14 should use the V13 `take_all` baseline and avoid changing LP, raw Force
-Strike, entry, stop, target, or pullback-wait logic.
+Experiment V14 converts the V13 `take_all` baseline into account-risk
+drawdowns. It is not a prop-firm pass/fail test.
 
-Suggested scope:
+Detailed notes:
 
-- risk per trade: `0.10%`, `0.25%`, and `0.50%`;
-- max concurrent trades: uncapped, 8, 10, 12, and 15;
-- same-symbol stack caps: uncapped, 1, and 2;
-- FTMO-style daily loss and max loss checks;
-- worst day, worst week, worst month, and top underwater periods;
-- ticker, timeframe, and period concentration checks after constraints.
+```text
+docs/lp_force_strike_experiment_v14_risk_sizing_drawdown.md
+```
+
+Run details:
+
+- config:
+  `../../configs/strategies/lp_force_strike_experiment_v14_risk_sizing_drawdown.json`
+- input trades:
+  `reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831/trades.csv`
+- report:
+  `reports/strategies/lp_force_strike_experiment_v14_risk_sizing_drawdown/20260429_175908`
+- dashboard: `docs/v14.html`
+- fixed model: LP3, all `H4/H8/H12/D1/W1`, `take_all`, 0.5 signal-candle
+  pullback, full FS structure stop, single 1R target, fixed 6-bar pullback
+  wait.
+
+Main result:
+
+| Schedule | Total return | Realized DD | Risk-reserved DD | Worst month | Max open risk |
+|---|---:|---:|---:|---:|---:|
+| Fixed 0.10% | 151.2% | 3.3% | 3.9% | -1.6% | 2.0% |
+| Fixed 0.25% | 378.1% | 8.3% | 9.8% | -4.1% | 5.0% |
+| Fixed 0.50% | 756.1% | 16.7% | 19.5% | -8.1% | 10.0% |
+| Conservative equal-LTF | 240.3% | 4.8% | 6.7% | -2.7% | 4.2% |
+| Balanced equal-LTF | 332.6% | 6.2% | 8.6% | -3.6% | 5.7% |
+| Quality-weighted diagnostic | 303.7% | 6.1% | 8.5% | -3.8% | 5.6% |
+| High-timeframe tilt | 250.1% | 8.0% | 10.5% | -4.3% | 5.6% |
+
+Current conclusion:
+
+- Use the balanced equal-LTF ladder as the first practical risk schedule:
+  H4 `0.15%`, H8 `0.15%`, H12 `0.25%`, D1 `0.40%`, W1 `0.60%`.
+- Fixed `0.25%` is the closest simple alternative. It has higher total return
+  but does not upweight the cleaner higher timeframes.
+- Fixed `0.50%` is useful as a stress diagnostic, but is too aggressive for the
+  first practical default.
+- Risk-reserved drawdown is the key stress view because it subtracts full open
+  trade risk while trades are active.
 
 Decision question:
 
 ```text
-Can the V13 take-all baseline be traded safely with realistic account-level
-constraints, or does it need a practical execution cap that preserves most of
-the return?
+Can the V13 take-all baseline stay practical after daily loss, max loss,
+same-symbol stacking, and concurrent-trade execution constraints are applied
+to the V14 balanced equal-LTF risk schedule?
 ```
 
 ## Dashboard Interpretation UX
@@ -614,7 +647,7 @@ The dashboard interpretation metadata lives in:
 ../../configs/dashboards/lp_force_strike_pages.json
 ```
 
-On 2026-04-30, V6-V13 were given a `decision_brief` section in that metadata.
+On 2026-04-30, V6-V14 were given a `decision_brief` section in that metadata.
 The shared renderer now shows a prominent `Decision Brief` near the top of each
 page, before the tables. This preserves the concise chat-style interpretation
 the user found useful, for example the V11 bullets explaining why removing H4
@@ -622,6 +655,7 @@ or H8 is not worth replacing the baseline.
 
 ## Boundary
 
-This lab intentionally excludes SMA context, account-currency position sizing,
-broker order execution, and EA logic. V10/V11/V12/V13 portfolio analytics are
-research-only closed-trade R simulations.
+This lab intentionally excludes SMA context, broker order execution, and EA
+logic. V10/V11/V12/V13 portfolio analytics are research-only closed-trade R
+simulations. V14 adds account-risk sizing, but still does not model live broker
+execution.

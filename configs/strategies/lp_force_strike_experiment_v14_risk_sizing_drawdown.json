@@ -1,0 +1,82 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v14_risk_sizing_drawdown",
+  "input_trades_path": "reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831/trades.csv",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v14_risk_sizing_drawdown",
+  "pivot_strength": 3,
+  "base_candidate_id": "signal_zone_0p5_pullback__fs_structure__1r",
+  "timeframes": [
+    "H4",
+    "H8",
+    "H12",
+    "D1",
+    "W1"
+  ],
+  "risk_schedules": [
+    {
+      "schedule_id": "fixed_0p10",
+      "label": "Fixed 0.10%",
+      "kind": "fixed",
+      "risk_pct": 0.1
+    },
+    {
+      "schedule_id": "fixed_0p25",
+      "label": "Fixed 0.25%",
+      "kind": "fixed",
+      "risk_pct": 0.25
+    },
+    {
+      "schedule_id": "fixed_0p50",
+      "label": "Fixed 0.50%",
+      "kind": "fixed",
+      "risk_pct": 0.5
+    },
+    {
+      "schedule_id": "ladder_conservative_equal_ltf",
+      "label": "Conservative equal-LTF",
+      "kind": "timeframe",
+      "risk_by_timeframe": {
+        "H4": 0.1,
+        "H8": 0.1,
+        "H12": 0.2,
+        "D1": 0.3,
+        "W1": 0.4
+      }
+    },
+    {
+      "schedule_id": "ladder_balanced_equal_ltf",
+      "label": "Balanced equal-LTF",
+      "kind": "timeframe",
+      "risk_by_timeframe": {
+        "H4": 0.15,
+        "H8": 0.15,
+        "H12": 0.25,
+        "D1": 0.4,
+        "W1": 0.6
+      }
+    },
+    {
+      "schedule_id": "ladder_quality_weighted_diagnostic",
+      "label": "Quality-weighted diagnostic",
+      "kind": "timeframe",
+      "risk_by_timeframe": {
+        "H4": 0.1,
+        "H8": 0.15,
+        "H12": 0.25,
+        "D1": 0.4,
+        "W1": 0.6
+      }
+    },
+    {
+      "schedule_id": "ladder_high_timeframe_tilt",
+      "label": "High-timeframe tilt",
+      "kind": "timeframe",
+      "risk_by_timeframe": {
+        "H4": 0.05,
+        "H8": 0.05,
+        "H12": 0.2,
+        "D1": 0.5,
+        "W1": 0.75
+      }
+    }
+  ]
+}
