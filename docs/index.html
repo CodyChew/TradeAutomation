@@ -161,6 +161,7 @@
       <a class="page-link" href="v6.html">V6</a>
       <a class="page-link" href="v7.html">V7</a>
       <a class="page-link" href="v8.html">V8</a>
+      <a class="page-link" href="v9.html">V9</a>
     </nav>
   </header>
   <main>
@@ -168,11 +169,21 @@
     <section class="card featured">
       <div class="status status-active">Active baseline</div>
       <h2>Current Baseline: fixed 6-bar pullback wait</h2>
-      <p>Use the 0.5 signal-candle pullback, full Force Strike structure stop, single 1R target, and fixed 6-bar pullback wait as the active research baseline.</p>
+      <p>Use the 0.5 signal-candle pullback, full Force Strike structure stop, single 1R target, and fixed 6-bar pullback wait as the active trade-model baseline. V9 tests whether LP pivot strength should be tuned.</p>
       <div class="facts">
-        <div class="fact"><span>Universe</span><strong>28 FX pairs</strong></div><div class="fact"><span>Timeframes</span><strong>H4/H8/H12/D1/W1</strong></div><div class="fact"><span>Baseline PF</span><strong>1.265</strong></div><div class="fact"><span>Baseline Avg R</span><strong>0.116R</strong></div>
+        <div class="fact"><span>Universe</span><strong>28 FX pairs</strong></div><div class="fact"><span>Timeframes</span><strong>H4/H8/H12/D1/W1</strong></div><div class="fact"><span>LP5 PF</span><strong>1.310</strong></div><div class="fact"><span>LP5 Avg R</span><strong>0.134R</strong></div>
       </div>
-      <a class="button" href="v6.html">Open Current Snapshot</a>
+      <a class="button" href="v9.html">Open LP Pivot Study</a>
+    </section>
+
+    <section class="card">
+      <div class="status status-active">Latest sensitivity</div>
+      <h2>V9 LP Pivot Strength Sensitivity</h2>
+      <p>LP pivot 5 has the best overall Avg R and PF, while LP pivot 4 is the more balanced quality/count compromise. LP pivot 2 produces the most trades but weakest quality, and LP pivot 3 is no longer the best quality default for this trade model.</p>
+      <div class="facts">
+        <div class="fact"><span>Best Avg R</span><strong>LP5: 0.134R</strong></div><div class="fact"><span>Best PF</span><strong>LP5: 1.310</strong></div><div class="fact"><span>Balanced</span><strong>LP4: 9,512 trades</strong></div><div class="fact"><span>Baseline LP3</span><strong>0.116R / PF 1.265</strong></div>
+      </div>
+      <a class="button" href="v9.html">Open V9 Dashboard</a>
     </section>
 
     <section class="card">

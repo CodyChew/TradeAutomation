@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-29 local time after adding dashboard interpretation
-metadata and regenerating V1-V8 pages.
+Last updated: 2026-04-29 local time after running V9 LP pivot strength
+sensitivity and regenerating V1-V9 dashboards.
 
 ## Purpose
 
@@ -334,6 +334,58 @@ Dashboard interpretation is now explicit:
 - `docs/index.html` now leads with the current fixed 6-bar baseline, not V8.
 - `docs/v7.html` and `docs/v8.html` show the fixed 6-bar baseline comparison
   at the top and state that the 1R-cancel wait rule is rejected.
+
+## Experiment V9 LP Pivot Strength
+
+Experiment V9 tests only LP pivot strength while keeping the current trade
+model constant.
+
+Detailed notes:
+
+```text
+docs/lp_force_strike_experiment_v9_lp_pivot_strength.md
+```
+
+Run details:
+
+- config:
+  `../../configs/strategies/lp_force_strike_experiment_v9_lp_pivot_strength.json`
+- report:
+  `reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831`
+- dashboard: `docs/v9.html`
+- scope: all 28 FX major/cross pairs x H4/H8/H12/D1/W1
+- pivot strengths: 2, 3, 4, 5
+- failed datasets: 0
+- signals across all pivot settings: 60,334
+- simulated trades across all pivot settings: 48,941
+
+All non-LP settings stayed constant:
+
+- H4/H8/H12/D1/W1 lookbacks: 30D/60D/180D/365D/1460D
+- LP break-to-FS window: 6 bars
+- entry: 0.5 signal-candle pullback
+- stop: full Force Strike structure
+- target: single 1R
+- pullback wait: fixed 6 bars
+- costs: candle spread from MT5 data
+
+Overall result:
+
+| LP Pivot | Trades | Avg R | PF | Win Rate | Total R |
+|---:|---:|---:|---:|---:|---:|
+| 2 | 18,898 | 0.110R | 1.248 | 57.7% | 2,072.0R |
+| 3 | 13,012 | 0.116R | 1.265 | 58.0% | 1,512.3R |
+| 4 | 9,512 | 0.129R | 1.297 | 58.5% | 1,224.4R |
+| 5 | 7,519 | 0.134R | 1.310 | 58.8% | 1,004.8R |
+
+Current conclusion:
+
+- LP5 has the best Avg R and PF.
+- LP4 is the balanced comparison point because it improves quality over LP3
+  while retaining more trades than LP5.
+- LP2 has the most trades and total R, but the weakest quality metrics.
+- Do not make LP5 the execution default yet. Use LP5 and LP4 in the next
+  robustness slice.
 
 ## Boundary
 

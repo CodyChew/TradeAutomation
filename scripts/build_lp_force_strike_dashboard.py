@@ -86,6 +86,7 @@ def _metric_class(value: Any) -> str:
 
 def _candidate_short(candidate_id: str) -> str:
     text = str(candidate_id)
+    text = re.sub(r"lp_pivot_(\d+)__", lambda match: f"LP pivot {match.group(1)}__", text)
     text = re.sub(r"signal_zone_(\d+p?\d*)_pullback", lambda match: f"zone {match.group(1).replace('p', '.')} pullback", text)
     text = text.replace("signal_midpoint_pullback", "midpoint")
     text = text.replace("next_open", "next open")
@@ -648,6 +649,7 @@ def _html_document(
     by_stop: pd.DataFrame,
     by_exit: pd.DataFrame,
     by_target: pd.DataFrame,
+    by_pivot_strength: pd.DataFrame,
     by_candidate_symbol_tf: pd.DataFrame,
     drawdown_html: str,
     skips: pd.DataFrame,
@@ -949,6 +951,9 @@ def _html_document(
         <div>{_model_table(by_target, "meta_target_r", "Target R")}</div>
         <div>{_model_table(by_side, "side", "Side")}</div>
       </div>
+      <div class="split">
+        <div>{_model_table(by_pivot_strength, "pivot_strength", "LP Pivot Strength")}</div>
+      </div>
     </section>
 
     <section id="side">
@@ -991,6 +996,7 @@ def build_dashboard(run_dir: Path, output: Path) -> Path:
     by_stop = _trade_group_summary(trades_path, ["timeframe", "meta_stop_model"])
     by_exit = _trade_group_summary(trades_path, ["timeframe", "meta_exit_model"])
     by_target = _trade_group_summary(trades_path, ["timeframe", "meta_target_r"])
+    by_pivot_strength = _trade_group_summary(trades_path, ["timeframe", "pivot_strength"])
     by_candidate_symbol_tf = _trade_group_summary(trades_path, ["candidate_id", "symbol", "timeframe"])
     top_overall = summary_candidate.sort_values(["avg_net_r", "total_net_r"], ascending=False).head(1)
     top_candidate_id = "" if top_overall.empty else str(top_overall.iloc[0]["candidate_id"])
@@ -1013,6 +1019,7 @@ def build_dashboard(run_dir: Path, output: Path) -> Path:
         by_stop=by_stop,
         by_exit=by_exit,
         by_target=by_target,
+        by_pivot_strength=by_pivot_strength,
         by_candidate_symbol_tf=by_candidate_symbol_tf,
         drawdown_html=drawdown_html,
         skips=skips,

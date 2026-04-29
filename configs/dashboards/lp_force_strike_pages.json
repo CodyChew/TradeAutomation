@@ -4,16 +4,16 @@
     "intro": "Versioned static dashboards for LP + Force Strike experiments. Use stable version pages for comparison instead of overwriting old analysis.",
     "current_baseline": {
       "title": "Current Baseline: fixed 6-bar pullback wait",
-      "description": "Use the 0.5 signal-candle pullback, full Force Strike structure stop, single 1R target, and fixed 6-bar pullback wait as the active research baseline.",
+      "description": "Use the 0.5 signal-candle pullback, full Force Strike structure stop, single 1R target, and fixed 6-bar pullback wait as the active trade-model baseline. V9 tests whether LP pivot strength should be tuned.",
       "status_label": "Active baseline",
       "facts": [
         ["Universe", "28 FX pairs"],
         ["Timeframes", "H4/H8/H12/D1/W1"],
-        ["Baseline PF", "1.265"],
-        ["Baseline Avg R", "0.116R"]
+        ["LP5 PF", "1.310"],
+        ["LP5 Avg R", "0.134R"]
       ],
-      "button_href": "v6.html",
-      "button_label": "Open Current Snapshot"
+      "button_href": "v9.html",
+      "button_label": "Open LP Pivot Study"
     }
   },
   "pages": [
@@ -177,6 +177,31 @@
         ["Fixed 6-bar baseline", "13,012", "58.0%", "0.116R", "1.265", "1,512.3R"],
         ["V7 cancel-first", "4,885", "35.7%", "-0.321R", "0.519", "-1,568.7R"],
         ["V8 entry-first", "9,627", "55.3%", "0.062R", "1.133", "598.3R"]
+      ]
+    },
+    {
+      "page": "v9.html",
+      "nav_label": "V9",
+      "index_order": 0,
+      "title": "V9 LP Pivot Strength Sensitivity",
+      "status_label": "Latest sensitivity",
+      "status_kind": "active",
+      "question": "Which LP pivot strength performs best when the current fixed 6-bar baseline trade model is kept constant?",
+      "setup": "All 28 FX major/cross pairs across H4, H8, H12, D1, and W1. Only LP pivot strength changes: 2, 3, 4, and 5. Lookbacks remain H4 30D, H8 60D, H12 180D, D1 1Y, and W1 4Y.",
+      "how_to_read": "Read the LP Pivot Strength table and the candidate heatmap by timeframe. The aggregate is useful only after confirming that one pivot strength is not carried by a single timeframe.",
+      "conclusion": "LP pivot 5 has the best overall Avg R and PF, while LP pivot 4 is the more balanced quality/count compromise. LP pivot 2 produces the most trades but weakest quality, and LP pivot 3 is no longer the best quality default for this trade model.",
+      "action": "Do not treat LP 5 as final execution default yet. Use LP 5 for quality-focused follow-up and LP 4 as the balanced comparison candidate.",
+      "facts": [
+        ["Best Avg R", "LP5: 0.134R"],
+        ["Best PF", "LP5: 1.310"],
+        ["Balanced", "LP4: 9,512 trades"],
+        ["Baseline LP3", "0.116R / PF 1.265"]
+      ],
+      "comparison_rows": [
+        ["LP pivot 2", "18,898", "57.7%", "0.110R", "1.248", "2,072.0R"],
+        ["LP pivot 3", "13,012", "58.0%", "0.116R", "1.265", "1,512.3R"],
+        ["LP pivot 4", "9,512", "58.5%", "0.129R", "1.297", "1,224.4R"],
+        ["LP pivot 5", "7,519", "58.8%", "0.134R", "1.310", "1,004.8R"]
       ]
     }
   ]

@@ -11,6 +11,7 @@ SCRIPTS_ROOT = WORKSPACE_ROOT / "scripts"
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
+from build_lp_force_strike_dashboard import _candidate_short  # noqa: E402
 from lp_force_strike_dashboard_metadata import load_dashboard_metadata  # noqa: E402
 
 
@@ -22,16 +23,16 @@ class DashboardPagesTests(unittest.TestCase):
         metadata = load_dashboard_metadata()
         pages = {page["page"]: page for page in metadata["pages"]}
 
-        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 9)})
-        for version in range(1, 9):
+        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 10)})
+        for version in range(1, 10):
             page = pages[f"v{version}.html"]
             for field in ("title", "question", "setup", "how_to_read", "conclusion", "action", "status_label"):
                 self.assertTrue(page[field], f"missing {field} for v{version}")
 
     def test_every_generated_dashboard_links_to_all_pages(self) -> None:
-        expected_links = ['href="index.html"'] + [f'href="v{version}.html"' for version in range(1, 9)]
+        expected_links = ['href="index.html"'] + [f'href="v{version}.html"' for version in range(1, 10)]
 
-        for path in [DOCS_ROOT / "index.html"] + [DOCS_ROOT / f"v{version}.html" for version in range(1, 9)]:
+        for path in [DOCS_ROOT / "index.html"] + [DOCS_ROOT / f"v{version}.html" for version in range(1, 10)]:
             html = path.read_text(encoding="utf-8")
             for link in expected_links:
                 self.assertIn(link, html, f"{path.name} missing {link}")
@@ -51,6 +52,11 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Current Baseline", html)
         self.assertNotIn("Current focus", html)
         self.assertIn("V8 is positive but weaker", html)
+
+    def test_lp_pivot_candidate_labels_are_readable(self) -> None:
+        label = _candidate_short("lp_pivot_2__signal_zone_0p5_pullback__fs_structure__1r")
+
+        self.assertEqual(label, "LP pivot 2 / zone 0.5 pullback / structure / 1R")
 
 
 if __name__ == "__main__":

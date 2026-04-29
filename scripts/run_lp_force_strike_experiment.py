@@ -29,7 +29,6 @@ from lp_force_strike_strategy_lab import (  # noqa: E402
     SkippedTrade,
     make_trade_model_candidates,
     run_lp_force_strike_experiment_on_frame,
-    summary_rows,
     trade_report_row,
 )
 from market_data_lab import (  # noqa: E402
@@ -92,6 +91,19 @@ def _cost_config(payload: dict[str, Any]) -> CostConfig:
     )
 
 
+def _selected_pivot_strengths(config: dict[str, Any]) -> list[int]:
+    raw_values = config.get("pivot_strengths")
+    if raw_values is None:
+        raw_values = [config.get("pivot_strength", 3)]
+
+    strengths = [int(value) for value in raw_values]
+    if not strengths:
+        raise ValueError("At least one pivot strength is required.")
+    if any(value < 1 for value in strengths):
+        raise ValueError("Pivot strengths must be positive integers.")
+    return strengths
+
+
 def _manifest(root: str | Path, symbol: str, timeframe: str) -> dict[str, Any]:
     return read_json(manifest_path(root, symbol, timeframe))
 
@@ -110,21 +122,110 @@ def _load_backtest_frame(data_root: str | Path, symbol: str, timeframe: str, *, 
     return frame
 
 
-def _signal_row(symbol: str, timeframe: str, signal: LPForceStrikeSignal) -> dict[str, Any]:
+def _report_candidate_id(candidate_id: str, pivot_strength: int, *, include_pivot: bool) -> str:
+    if not include_pivot:
+        return candidate_id
+    return f"lp_pivot_{pivot_strength}__{candidate_id}"
+
+
+def _signal_row(symbol: str, timeframe: str, pivot_strength: int, signal: LPForceStrikeSignal) -> dict[str, Any]:
     row = asdict(signal)
     row["symbol"] = symbol
     row["timeframe"] = timeframe
+    row["pivot_strength"] = pivot_strength
     return row
 
 
-def _skipped_row(skipped: SkippedTrade, candidate_lookup: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def _skipped_row(
+    skipped: SkippedTrade,
+    candidate_lookup: dict[str, dict[str, Any]],
+    *,
+    pivot_strength: int,
+    include_pivot_in_candidate_id: bool,
+) -> dict[str, Any]:
     row = skipped.to_dict()
+    row["base_candidate_id"] = skipped.candidate_id
+    row["pivot_strength"] = pivot_strength
+    row["candidate_id"] = _report_candidate_id(
+        skipped.candidate_id,
+        pivot_strength,
+        include_pivot=include_pivot_in_candidate_id,
+    )
     row.update({f"candidate_{key}": value for key, value in candidate_lookup.get(skipped.candidate_id, {}).items()})
     return row
 
 
-def _candidate_rows(candidates) -> list[dict[str, Any]]:
-    return [asdict(candidate) for candidate in candidates]
+def _trade_row(trade, *, pivot_strength: int, include_pivot_in_candidate_id: bool) -> dict[str, Any]:
+    row = trade_report_row(trade)
+    base_candidate_id = str(row.get("candidate_id", ""))
+    row["base_candidate_id"] = base_candidate_id
+    row["pivot_strength"] = pivot_strength
+    row["candidate_id"] = _report_candidate_id(
+        base_candidate_id,
+        pivot_strength,
+        include_pivot=include_pivot_in_candidate_id,
+    )
+    return row
+
+
+def _candidate_rows(candidates, pivot_strengths: list[int], *, include_pivot_in_candidate_id: bool) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for candidate in candidates:
+        base = asdict(candidate)
+        for pivot_strength in pivot_strengths:
+            row = dict(base)
+            row["base_candidate_id"] = candidate.candidate_id
+            row["pivot_strength"] = pivot_strength
+            row["candidate_id"] = _report_candidate_id(
+                candidate.candidate_id,
+                pivot_strength,
+                include_pivot=include_pivot_in_candidate_id,
+            )
+            rows.append(row)
+    return rows
+
+
+def _summary_rows_from_report_rows(rows: list[dict[str, Any]], *, group_fields: list[str]) -> list[dict[str, Any]]:
+    if not rows:
+        return []
+
+    frame = pd.DataFrame(rows)
+    required = set(group_fields + ["net_r", "bars_held", "exit_reason"])
+    missing = sorted(required.difference(frame.columns))
+    if missing:
+        raise ValueError(f"Trade report rows are missing required summary fields: {missing}")
+
+    frame["net_r"] = pd.to_numeric(frame["net_r"], errors="coerce").fillna(0.0)
+    frame["bars_held"] = pd.to_numeric(frame["bars_held"], errors="coerce").fillna(0.0)
+
+    summary: list[dict[str, Any]] = []
+    for keys, group in frame.groupby(group_fields, dropna=False):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        net_r = group["net_r"]
+        gross_win = float(net_r[net_r > 0].sum())
+        gross_loss = float(net_r[net_r < 0].sum())
+        trade_count = int(len(group))
+        row = {field: value for field, value in zip(group_fields, keys)}
+        row.update(
+            {
+                "trades": trade_count,
+                "wins": int((net_r > 0).sum()),
+                "losses": int((net_r < 0).sum()),
+                "win_rate": float((net_r > 0).sum()) / trade_count if trade_count else 0.0,
+                "total_net_r": float(net_r.sum()),
+                "avg_net_r": float(net_r.mean()) if trade_count else 0.0,
+                "profit_factor": None if gross_loss == 0 else gross_win / abs(gross_loss),
+                "avg_bars_held": float(group["bars_held"].mean()) if trade_count else 0.0,
+                "target_exits": int((group["exit_reason"] == "target").sum()),
+                "stop_exits": int((group["exit_reason"] == "stop").sum()),
+                "same_bar_stop_exits": int((group["exit_reason"] == "same_bar_stop_priority").sum()),
+                "end_of_data_exits": int((group["exit_reason"] == "end_of_data").sum()),
+            }
+        )
+        summary.append(row)
+
+    return summary
 
 
 def _run(config_path: Path, *, symbol_override: list[str] | None, timeframe_override: list[str] | None, output_dir: Path | None) -> int:
@@ -143,6 +244,8 @@ def _run(config_path: Path, *, symbol_override: list[str] | None, timeframe_over
         partial_fraction=float(config.get("partial_fraction", 0.5)),
     )
     candidate_lookup = {candidate.candidate_id: asdict(candidate) for candidate in candidates}
+    pivot_strengths = _selected_pivot_strengths(config)
+    include_pivot_in_candidate_id = len(pivot_strengths) > 1
     costs = _cost_config(config)
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -153,8 +256,6 @@ def _run(config_path: Path, *, symbol_override: list[str] | None, timeframe_over
     all_trade_rows: list[dict[str, Any]] = []
     all_skipped_rows: list[dict[str, Any]] = []
     dataset_rows: list[dict[str, Any]] = []
-    all_trades = []
-
     for symbol in symbols:
         for timeframe in timeframes:
             try:
@@ -164,38 +265,54 @@ def _run(config_path: Path, *, symbol_override: list[str] | None, timeframe_over
                     timeframe,
                     drop_latest=bool(config.get("drop_incomplete_latest_bar", True)),
                 )
-                result = run_lp_force_strike_experiment_on_frame(
-                    frame,
-                    symbol=symbol,
-                    timeframe=timeframe,
-                    candidates=candidates,
-                    pivot_strength=int(config.get("pivot_strength", 3)),
-                    max_bars_from_lp_break=int(config.get("max_bars_from_lp_break", 6)),
-                    atr_period=int(config.get("atr_period", 14)),
-                    max_entry_wait_bars=int(config.get("max_entry_wait_bars", 6)),
-                    entry_wait_mode=str(config.get("entry_wait_mode", "fixed_bars")),
-                    entry_wait_same_bar_priority=str(config.get("entry_wait_same_bar_priority", "entry")),
-                    costs=costs,
-                )
-                all_signal_rows.extend(_signal_row(symbol, timeframe, signal) for signal in result.signals)
-                all_trade_rows.extend(trade_report_row(trade) for trade in result.trades)
-                all_skipped_rows.extend(_skipped_row(skipped, candidate_lookup) for skipped in result.skipped)
-                all_trades.extend(result.trades)
-                dataset_rows.append(
-                    {
-                        "symbol": symbol,
-                        "timeframe": timeframe,
-                        "status": "ok",
-                        "rows": int(len(frame)),
-                        "signals": int(len(result.signals)),
-                        "trades": int(len(result.trades)),
-                        "skipped": int(len(result.skipped)),
-                    }
-                )
-                print(
-                    f"{symbol} {timeframe}: rows={len(frame)} signals={len(result.signals)} "
-                    f"trades={len(result.trades)} skipped={len(result.skipped)}"
-                )
+                for pivot_strength in pivot_strengths:
+                    result = run_lp_force_strike_experiment_on_frame(
+                        frame,
+                        symbol=symbol,
+                        timeframe=timeframe,
+                        candidates=candidates,
+                        pivot_strength=pivot_strength,
+                        max_bars_from_lp_break=int(config.get("max_bars_from_lp_break", 6)),
+                        atr_period=int(config.get("atr_period", 14)),
+                        max_entry_wait_bars=int(config.get("max_entry_wait_bars", 6)),
+                        entry_wait_mode=str(config.get("entry_wait_mode", "fixed_bars")),
+                        entry_wait_same_bar_priority=str(config.get("entry_wait_same_bar_priority", "entry")),
+                        costs=costs,
+                    )
+                    all_signal_rows.extend(_signal_row(symbol, timeframe, pivot_strength, signal) for signal in result.signals)
+                    all_trade_rows.extend(
+                        _trade_row(
+                            trade,
+                            pivot_strength=pivot_strength,
+                            include_pivot_in_candidate_id=include_pivot_in_candidate_id,
+                        )
+                        for trade in result.trades
+                    )
+                    all_skipped_rows.extend(
+                        _skipped_row(
+                            skipped,
+                            candidate_lookup,
+                            pivot_strength=pivot_strength,
+                            include_pivot_in_candidate_id=include_pivot_in_candidate_id,
+                        )
+                        for skipped in result.skipped
+                    )
+                    dataset_rows.append(
+                        {
+                            "symbol": symbol,
+                            "timeframe": timeframe,
+                            "pivot_strength": pivot_strength,
+                            "status": "ok",
+                            "rows": int(len(frame)),
+                            "signals": int(len(result.signals)),
+                            "trades": int(len(result.trades)),
+                            "skipped": int(len(result.skipped)),
+                        }
+                    )
+                    print(
+                        f"{symbol} {timeframe} LP{pivot_strength}: rows={len(frame)} signals={len(result.signals)} "
+                        f"trades={len(result.trades)} skipped={len(result.skipped)}"
+                    )
             except Exception as exc:
                 dataset_rows.append(
                     {
@@ -214,17 +331,43 @@ def _run(config_path: Path, *, symbol_override: list[str] | None, timeframe_over
             "config": config,
             "symbols": symbols,
             "timeframes": timeframes,
-            "candidates": _candidate_rows(candidates),
+            "pivot_strengths": pivot_strengths,
+            "candidates": _candidate_rows(
+                candidates,
+                pivot_strengths,
+                include_pivot_in_candidate_id=include_pivot_in_candidate_id,
+            ),
         },
     )
     _write_csv(run_dir / "datasets.csv", dataset_rows)
     _write_csv(run_dir / "signals.csv", all_signal_rows)
     _write_csv(run_dir / "trades.csv", all_trade_rows)
     _write_csv(run_dir / "skipped.csv", all_skipped_rows)
-    _write_csv(run_dir / "candidates.csv", _candidate_rows(candidates))
-    _write_csv(run_dir / "summary_by_candidate.csv", summary_rows(all_trades, group_fields=["candidate_id"]))
-    _write_csv(run_dir / "summary_by_candidate_timeframe.csv", summary_rows(all_trades, group_fields=["candidate_id", "timeframe"]))
-    _write_csv(run_dir / "summary_by_candidate_symbol.csv", summary_rows(all_trades, group_fields=["candidate_id", "symbol"]))
+    _write_csv(
+        run_dir / "candidates.csv",
+        _candidate_rows(
+            candidates,
+            pivot_strengths,
+            include_pivot_in_candidate_id=include_pivot_in_candidate_id,
+        ),
+    )
+    _write_csv(run_dir / "summary_by_candidate.csv", _summary_rows_from_report_rows(all_trade_rows, group_fields=["candidate_id"]))
+    _write_csv(
+        run_dir / "summary_by_candidate_timeframe.csv",
+        _summary_rows_from_report_rows(all_trade_rows, group_fields=["candidate_id", "timeframe"]),
+    )
+    _write_csv(
+        run_dir / "summary_by_candidate_symbol.csv",
+        _summary_rows_from_report_rows(all_trade_rows, group_fields=["candidate_id", "symbol"]),
+    )
+    _write_csv(
+        run_dir / "summary_by_pivot_strength.csv",
+        _summary_rows_from_report_rows(all_trade_rows, group_fields=["pivot_strength"]),
+    )
+    _write_csv(
+        run_dir / "summary_by_pivot_strength_timeframe.csv",
+        _summary_rows_from_report_rows(all_trade_rows, group_fields=["pivot_strength", "timeframe"]),
+    )
 
     failed = [row for row in dataset_rows if row.get("status") != "ok"]
     summary = {
