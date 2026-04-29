@@ -95,6 +95,91 @@
       color: #34412d;
       margin-bottom: 14px;
     }
+
+    .experiment-summary {
+      border-top: 4px solid var(--accent);
+    }
+    .summary-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .summary-heading h2 {
+      margin-bottom: 0;
+    }
+    .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .status-badge {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      background: #f7f9fb;
+      color: var(--muted);
+    }
+    .status-active {
+      color: var(--good);
+      border-color: #b9dbc7;
+      background: #edf8f1;
+    }
+    .status-rejected {
+      color: var(--bad);
+      border-color: #e7bcbc;
+      background: #fff1f1;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+      gap: 12px;
+    }
+    .summary-grid div {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fbfc;
+      padding: 12px;
+    }
+    .summary-grid h3 {
+      margin: 0 0 6px;
+    }
+    .summary-grid p {
+      margin: 0;
+      color: var(--ink);
+    }
+    .conclusion-box {
+      margin-top: 14px;
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+    }
+    .summary-comparison {
+      margin-top: 14px;
+      overflow-x: auto;
+    }
+    .comparison-table td:first-child,
+    .comparison-table th:first-child {
+      text-align: left;
+    }
+    @media (max-width: 760px) {
+      .summary-heading {
+        display: block;
+      }
+      .status-badge {
+        display: inline-block;
+        margin-top: 10px;
+      }
+    }
+
     .split {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
@@ -198,6 +283,7 @@
       <a class="page-link active" href="v8.html">V8</a>
     </nav>
     <nav class="report-nav" aria-label="Report sections">
+      <a href="#experiment-summary">Experiment Summary</a>
       <a href="#overview">Overview</a>
       <a href="#guide">Metric Guide</a>
       <a href="#timeframes">Timeframes</a>
@@ -212,6 +298,26 @@
     </nav>
   </header>
   <main>
+
+    <section id="experiment-summary" class="experiment-summary">
+      <div class="summary-heading">
+        <div>
+          <div class="eyebrow">V8 Research Snapshot</div>
+          <h2>V8 Entry Wait: Entry-Priority 1R Cancel</h2>
+        </div>
+        <span class="status-badge status-rejected">Rejected</span>
+      </div>
+      <div class="summary-grid">
+        <div><h3>What This Tests</h3><p>If a candle touches both pullback entry and would-be 1R, does entry-first handling make the 1R-cancel wait rule usable?</p></div>
+        <div><h3>Setup Tested</h3><p>Same test as V7, but if entry and would-be 1R occur in the same candle, the setup fills first instead of cancelling first.</p></div>
+        <div><h3>How To Read This Page</h3><p>V8 is the fairer version of the 1R-cancel wait rule, but it must beat the fixed 6-bar baseline to replace it.</p></div>
+        <div><h3>Use / Do Not Use</h3><p>Do not use V8 as the active baseline. Keep the fixed 6-bar entry wait and use V6 for timeframe comparison.</p></div>
+      </div>
+      <div class="conclusion-box"><strong>Conclusion:</strong> Do not replace the fixed 6-bar pullback wait. V8 is positive but weaker than the baseline on trade count, win rate, average R, PF, and total R.</div>
+      <div class="summary-comparison"><h3>Baseline Comparison</h3><table class="comparison-table"><thead><tr><th>Run</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>PF</th><th>Total R</th></tr></thead><tbody><tr><td>Fixed 6-bar baseline</td><td>13,012</td><td>58.0%</td><td>0.116R</td><td>1.265</td><td>1,512.3R</td></tr><tr><td>V7 cancel-first</td><td>4,885</td><td>35.7%</td><td>-0.321R</td><td>0.519</td><td>-1,568.7R</td></tr><tr><td>V8 entry-first</td><td>9,627</td><td>55.3%</td><td>0.062R</td><td>1.133</td><td>598.3R</td></tr></tbody></table></div>
+    </section>
+
+
     <section id="overview">
       <h2>Overview</h2>
       <div class="kpis">

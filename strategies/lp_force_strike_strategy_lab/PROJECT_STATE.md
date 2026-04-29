@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-29 local time after running the V6 native H12 bridge
-experiment, four gap-symbol ad hoc check, and V7/V8 entry-wait test.
+Last updated: 2026-04-29 local time after adding dashboard interpretation
+metadata and regenerating V1-V8 pages.
 
 ## Purpose
 
@@ -326,6 +326,14 @@ Current conclusion:
 - V7 is unusable.
 - V8 is positive, but weaker than the fixed 6-bar baseline on every timeframe.
 - Keep the current fixed 6-bar entry wait as the active baseline.
+
+Dashboard interpretation is now explicit:
+
+- `configs/dashboards/lp_force_strike_pages.json` owns the human-readable
+  title, research question, setup, conclusion, and next action for V1-V8.
+- `docs/index.html` now leads with the current fixed 6-bar baseline, not V8.
+- `docs/v7.html` and `docs/v8.html` show the fixed 6-bar baseline comparison
+  at the top and state that the 1R-cancel wait rule is rejected.
 
 ## Boundary
 

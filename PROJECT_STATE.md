@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-04-29 after adding the dataset fingerprint and aggregation
-verification gate.
+Last updated: 2026-04-29 after adding the dashboard interpretation metadata
+and regenerating V1-V8 pages.
 
 ## Purpose
 
@@ -166,8 +166,21 @@ The dashboard generator is:
 scripts/build_lp_force_strike_dashboard.py
 ```
 
-The pages were made responsive on 2026-04-29. Future dashboard changes should
-update the generator first, then regenerate the versioned pages.
+Dashboard interpretation text is centralized in:
+
+```text
+configs/dashboards/lp_force_strike_pages.json
+```
+
+The home page generator is:
+
+```text
+scripts/build_lp_force_strike_index.py
+```
+
+The pages were made responsive and given explicit interpretation summaries on
+2026-04-29. Future dashboard changes should update the metadata and generators
+first, then regenerate the versioned pages.
 
 ## Current Recommendation
 

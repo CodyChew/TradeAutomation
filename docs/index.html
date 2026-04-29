@@ -13,6 +13,7 @@
       --line: #d8e0e8;
       --accent: #22577a;
       --good: #2e7d50;
+      --bad: #a23b3b;
     }
     * { box-sizing: border-box; }
     html { -webkit-text-size-adjust: 100%; }
@@ -73,6 +74,9 @@
       padding: 20px;
       box-shadow: 0 1px 2px rgba(23,32,42,.05);
     }
+    .featured {
+      border-top: 4px solid var(--accent);
+    }
     .card h2 {
       margin: 0 0 8px;
       font-size: 20px;
@@ -80,6 +84,27 @@
     .card p {
       color: var(--muted);
       margin: 0 0 16px;
+    }
+    .status {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 5px 9px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: #f7f9fb;
+    }
+    .status-active {
+      color: var(--good);
+      border-color: #b9dbc7;
+      background: #edf8f1;
+    }
+    .status-rejected {
+      color: var(--bad);
+      border-color: #e7bcbc;
+      background: #fff1f1;
     }
     .facts {
       display: grid;
@@ -108,11 +133,6 @@
       border-radius: 6px;
       font-weight: 700;
     }
-    .recommended {
-      color: var(--good);
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
     footer {
       padding: 0 max(18px, 6vw) 32px;
       color: var(--muted);
@@ -132,114 +152,109 @@
     <h1>TradeAutomation Research Dashboards</h1>
     <p>Versioned static dashboards for LP + Force Strike experiments. Use stable version pages for comparison instead of overwriting old analysis.</p>
     <nav aria-label="Dashboard pages">
-      <a class="active" href="index.html">Home</a>
-      <a href="v1.html">V1</a>
-      <a href="v2.html">V2</a>
-      <a href="v3.html">V3</a>
-      <a href="v4.html">V4</a>
-      <a href="v5.html">V5</a>
-      <a href="v6.html">V6</a>
-      <a href="v7.html">V7</a>
-      <a href="v8.html">V8</a>
+      <a class="page-link active" href="index.html">Home</a>
+      <a class="page-link" href="v1.html">V1</a>
+      <a class="page-link" href="v2.html">V2</a>
+      <a class="page-link" href="v3.html">V3</a>
+      <a class="page-link" href="v4.html">V4</a>
+      <a class="page-link" href="v5.html">V5</a>
+      <a class="page-link" href="v6.html">V6</a>
+      <a class="page-link" href="v7.html">V7</a>
+      <a class="page-link" href="v8.html">V8</a>
     </nav>
   </header>
   <main>
-    <section class="card">
-      <div class="recommended">Current focus</div>
-      <h2>V8 Entry Wait: Entry-Priority 1R Cancel</h2>
-      <p>Less strict version of V7. If entry and would-be 1R are touched in the same candle, the setup fills first.</p>
+
+    <section class="card featured">
+      <div class="status status-active">Active baseline</div>
+      <h2>Current Baseline: fixed 6-bar pullback wait</h2>
+      <p>Use the 0.5 signal-candle pullback, full Force Strike structure stop, single 1R target, and fixed 6-bar pullback wait as the active research baseline.</p>
       <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>140</strong></div>
-        <div class="fact"><span>Signals</span><strong>16,061</strong></div>
-        <div class="fact"><span>Trades</span><strong>9,627</strong></div>
-        <div class="fact"><span>PF</span><strong>1.13</strong></div>
+        <div class="fact"><span>Universe</span><strong>28 FX pairs</strong></div><div class="fact"><span>Timeframes</span><strong>H4/H8/H12/D1/W1</strong></div><div class="fact"><span>Baseline PF</span><strong>1.265</strong></div><div class="fact"><span>Baseline Avg R</span><strong>0.116R</strong></div>
+      </div>
+      <a class="button" href="v6.html">Open Current Snapshot</a>
+    </section>
+
+    <section class="card">
+      <div class="status status-rejected">Rejected</div>
+      <h2>V8 Entry Wait: Entry-Priority 1R Cancel</h2>
+      <p>Do not replace the fixed 6-bar pullback wait. V8 is positive but weaker than the baseline on trade count, win rate, average R, PF, and total R.</p>
+      <div class="facts">
+        <div class="fact"><span>Datasets</span><strong>140</strong></div><div class="fact"><span>Signals</span><strong>16,061</strong></div><div class="fact"><span>Trades</span><strong>9,627</strong></div><div class="fact"><span>PF</span><strong>1.13</strong></div>
       </div>
       <a class="button" href="v8.html">Open V8 Dashboard</a>
     </section>
 
     <section class="card">
+      <div class="status status-rejected">Rejected</div>
       <h2>V7 Entry Wait: Cancel At Would-Be 1R</h2>
-      <p>Tests whether pullback orders should remain open until entry or be cancelled once the would-be 1R target is reached first.</p>
+      <p>Do not replace the fixed 6-bar pullback wait. V7 is unusable because the cancel-first same-bar rule removes too many valid trades.</p>
       <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>140</strong></div>
-        <div class="fact"><span>Signals</span><strong>16,061</strong></div>
-        <div class="fact"><span>Trades</span><strong>4,885</strong></div>
-        <div class="fact"><span>PF</span><strong>0.52</strong></div>
+        <div class="fact"><span>Datasets</span><strong>140</strong></div><div class="fact"><span>Signals</span><strong>16,061</strong></div><div class="fact"><span>Trades</span><strong>4,885</strong></div><div class="fact"><span>PF</span><strong>0.52</strong></div>
       </div>
       <a class="button" href="v7.html">Open V7 Dashboard</a>
     </section>
 
     <section class="card">
+      <div class="status status-active">Current timeframe snapshot</div>
       <h2>V6 H12 Bridge: Native MT5 H12 Test</h2>
-      <p>Checks whether native MT5 H12 sits between H8 and D1 for the current best 0.5-zone, structure-stop, 1R model.</p>
+      <p>H12 is a meaningful bridge. It is stronger than H8 and closer to D1 quality while keeping more trade count than D1.</p>
       <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>120</strong></div>
-        <div class="fact"><span>Signals</span><strong>13,815</strong></div>
-        <div class="fact"><span>Trades</span><strong>11,185</strong></div>
-        <div class="fact"><span>H12 PF</span><strong>1.37</strong></div>
+        <div class="fact"><span>Datasets</span><strong>120</strong></div><div class="fact"><span>Signals</span><strong>13,815</strong></div><div class="fact"><span>Trades</span><strong>11,185</strong></div><div class="fact"><span>H12 PF</span><strong>1.37</strong></div>
       </div>
       <a class="button" href="v6.html">Open V6 Dashboard</a>
     </section>
 
     <section class="card">
+      <div class="status status-neutral">Timeframe study</div>
       <h2>V5 H8 Bridge: Native MT5 H8 Test</h2>
-      <p>Checks whether native MT5 H8 sits between H4 and D1 for the current best 0.5-zone, structure-stop, 1R model.</p>
+      <p>H8 improved modestly over H4 but did not become a clean midpoint between H4 and D1.</p>
       <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>96</strong></div>
-        <div class="fact"><span>Signals</span><strong>11,533</strong></div>
-        <div class="fact"><span>Trades</span><strong>9,341</strong></div>
-        <div class="fact"><span>H8 PF</span><strong>1.22</strong></div>
+        <div class="fact"><span>Datasets</span><strong>96</strong></div><div class="fact"><span>Signals</span><strong>11,533</strong></div><div class="fact"><span>Trades</span><strong>9,341</strong></div><div class="fact"><span>H8 PF</span><strong>1.22</strong></div>
       </div>
       <a class="button" href="v5.html">Open V5 Dashboard</a>
     </section>
 
     <section class="card">
+      <div class="status status-rejected">Rejected filter</div>
       <h2>V4 Stability: Train/Test Symbol Filters</h2>
-      <p>Walk-forward stability check for the current best 0.5-zone, 1R strategy family.</p>
+      <p>The learned symbol/timeframe filters did not improve the test period. The unfiltered baseline remained better.</p>
       <div class="facts">
-        <div class="fact"><span>Split</span><strong>2023</strong></div>
-        <div class="fact"><span>Candidates</span><strong>4</strong></div>
-        <div class="fact"><span>Filters</span><strong>6</strong></div>
-        <div class="fact"><span>Main lesson</span><strong>no filter</strong></div>
+        <div class="fact"><span>Split</span><strong>2023</strong></div><div class="fact"><span>Candidates</span><strong>4</strong></div><div class="fact"><span>Filters</span><strong>6</strong></div><div class="fact"><span>Main lesson</span><strong>no filter</strong></div>
       </div>
       <a class="button" href="v4.html">Open V4 Dashboard</a>
     </section>
 
     <section class="card">
+      <div class="status status-neutral">Model selection</div>
       <h2>V3 Entry/Exit: Zones, ATRs, Partial Exits</h2>
-      <p>Compares signal-candle entry zones, ATR risk filters, and MT5-portable partial exits across H4, D1, and W1.</p>
+      <p>The 0.5 signal-candle pullback was strongest. Single-target 1R beat the tested partial-exit variants for the best individual candidate.</p>
       <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>72</strong></div>
-        <div class="fact"><span>Signals</span><strong>8,203</strong></div>
-        <div class="fact"><span>Trades</span><strong>619,092</strong></div>
-        <div class="fact"><span>Main lesson</span><strong>0.5 zone</strong></div>
+        <div class="fact"><span>Datasets</span><strong>72</strong></div><div class="fact"><span>Signals</span><strong>8,203</strong></div><div class="fact"><span>Trades</span><strong>619,092</strong></div><div class="fact"><span>Main lesson</span><strong>0.5 zone</strong></div>
       </div>
       <a class="button" href="v3.html">Open V3 Dashboard</a>
     </section>
 
     <section class="card">
+      <div class="status status-neutral">Historical focus</div>
       <h2>V2 Focus: H4/D1/W1 Midpoint Entry</h2>
-      <p>Focused test of midpoint-pullback entries across H4, D1, and W1 with ATR risk-width filters.</p>
+      <p>The midpoint-pullback structure-stop family stayed positive across H4, D1, and W1. The 1ATR and 1.25ATR variants were close.</p>
       <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>72</strong></div>
-        <div class="fact"><span>Signals</span><strong>8,203</strong></div>
-        <div class="fact"><span>Trades</span><strong>128,685</strong></div>
-        <div class="fact"><span>Best family</span><strong>1ATR / 1R</strong></div>
+        <div class="fact"><span>Datasets</span><strong>72</strong></div><div class="fact"><span>Signals</span><strong>8,203</strong></div><div class="fact"><span>Trades</span><strong>128,685</strong></div><div class="fact"><span>Best family</span><strong>1ATR / 1R</strong></div>
       </div>
       <a class="button" href="v2.html">Open V2 Dashboard</a>
     </section>
 
     <section class="card">
+      <div class="status status-neutral">Historical baseline</div>
       <h2>V1 Baseline: Broad Permutation Test</h2>
-      <p>Initial broad test across M30, H4, D1, and W1 with next-open and midpoint entries.</p>
+      <p>Midpoint-pullback entries were materially better than next-open entries. M30 was weak, while H4, D1, and W1 justified a focused follow-up.</p>
       <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>96</strong></div>
-        <div class="fact"><span>Signals</span><strong>57,340</strong></div>
-        <div class="fact"><span>Trades</span><strong>864,520</strong></div>
-        <div class="fact"><span>Main lesson</span><strong>drop M30</strong></div>
+        <div class="fact"><span>Datasets</span><strong>96</strong></div><div class="fact"><span>Signals</span><strong>57,340</strong></div><div class="fact"><span>Trades</span><strong>864,520</strong></div><div class="fact"><span>Main lesson</span><strong>drop M30</strong></div>
       </div>
       <a class="button" href="v1.html">Open V1 Dashboard</a>
     </section>
+
   </main>
   <footer>Generated dashboards are static research snapshots. Strategy behavior remains in tested Python modules.</footer>
 </body>

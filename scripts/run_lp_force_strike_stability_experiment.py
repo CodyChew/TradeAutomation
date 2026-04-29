@@ -11,6 +11,13 @@ from typing import Any
 
 import pandas as pd
 
+from lp_force_strike_dashboard_metadata import (
+    dashboard_page,
+    dashboard_page_links,
+    experiment_summary_css,
+    experiment_summary_html,
+)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOTS = [
@@ -126,20 +133,7 @@ def _table(headers: list[str], rows: list[list[Any]], *, classes: str = "") -> s
 
 
 def _page_nav(current_page: str) -> str:
-    pages = [
-        ("index.html", "Home"),
-        ("v1.html", "V1"),
-        ("v2.html", "V2"),
-        ("v3.html", "V3"),
-        ("v4.html", "V4"),
-        ("v5.html", "V5"),
-        ("v6.html", "V6"),
-        ("v7.html", "V7"),
-        ("v8.html", "V8"),
-    ]
-    return "\n      ".join(
-        f'<a class="{"active" if href == current_page else ""}" href="{href}">{label}</a>' for href, label in pages
-    )
+    return dashboard_page_links(current_page)
 
 
 def _filter_rows(frame: pd.DataFrame, partition: str) -> list[list[Any]]:
@@ -185,6 +179,21 @@ def _html_report(run_dir: Path, config: dict[str, Any], filter_results: pd.DataF
     best = test_rows.sort_values(["avg_net_r", "profit_factor", "trades"], ascending=False).head(1)
     best_label = _candidate_short(best.iloc[0]["candidate_id"]) if not best.empty else "n/a"
     best_filter = str(best.iloc[0]["filter_id"]) if not best.empty else "n/a"
+    try:
+        page_metadata = dashboard_page(current_page)
+    except KeyError:
+        page_metadata = {
+            "page": current_page,
+            "nav_label": "Run",
+            "title": "LP + Force Strike Stability Dashboard",
+            "status_label": "Run report",
+            "status_kind": "neutral",
+            "question": "What did this generated stability run produce?",
+            "setup": "This is a run-local stability dashboard generated from the selected report directory.",
+            "how_to_read": "Use the test period first, then compare training-period filters.",
+            "conclusion": "No version-level conclusion is attached to this run-local page.",
+            "action": "Use versioned docs pages for research conclusions.",
+        }
 
     return f"""<!doctype html>
 <html lang="en">
@@ -220,6 +229,7 @@ def _html_report(run_dir: Path, config: dict[str, Any], filter_results: pd.DataF
     .kpi span {{ display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }}
     .kpi strong {{ display: block; margin-top: 4px; font-size: 22px; }}
     .note {{ background: #f6f8f2; border-left: 4px solid #8aa936; padding: 12px 14px; color: #34412d; margin-bottom: 14px; }}
+    {experiment_summary_css()}
     .scroll {{ overflow-x: auto; max-width: 100%; }}
     table {{ width: 100%; min-width: 720px; border-collapse: collapse; font-size: 13px; }}
     th, td {{ padding: 8px 9px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; vertical-align: top; }}
@@ -253,6 +263,8 @@ def _html_report(run_dir: Path, config: dict[str, Any], filter_results: pd.DataF
     </nav>
   </header>
   <main>
+    {experiment_summary_html(page_metadata)}
+
     <section>
       <h2>Overview</h2>
       <div class="kpis">
@@ -327,11 +339,37 @@ def _run(config_path: Path, docs_output: Path | None) -> int:
     return 0
 
 
+def _render_existing(run_dir: Path, docs_output: Path) -> int:
+    run_config = _read_json(run_dir / "run_config.json")
+    config = dict(run_config["config"])
+    filter_results = pd.read_csv(run_dir / "filter_results.csv")
+    allowed_pairs = pd.read_csv(run_dir / "allowed_pairs.csv")
+    html_text = _html_report(
+        run_dir,
+        config,
+        filter_results,
+        allowed_pairs,
+        current_page=docs_output.name,
+    )
+    docs_target = REPO_ROOT / docs_output
+    docs_target.parent.mkdir(parents=True, exist_ok=True)
+    docs_target.write_text("\n".join(line.rstrip() for line in html_text.splitlines()) + "\n", encoding="utf-8")
+    print(f"dashboard={docs_target}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run LP + Force Strike V4 stability analysis from a prior trade run.")
-    parser.add_argument("--config", required=True, help="Path to stability experiment config JSON.")
+    parser.add_argument("--config", help="Path to stability experiment config JSON.")
+    parser.add_argument("--render-run-dir", help="Existing stability run directory to render without rerunning analysis.")
     parser.add_argument("--docs-output", help="Optional docs HTML output, e.g. docs/v4.html.")
     args = parser.parse_args()
+    if args.render_run_dir:
+        if args.docs_output is None:
+            raise SystemExit("--docs-output is required with --render-run-dir")
+        return _render_existing(Path(args.render_run_dir), Path(args.docs_output))
+    if args.config is None:
+        raise SystemExit("--config is required unless --render-run-dir is used")
     return _run(Path(args.config), None if args.docs_output is None else Path(args.docs_output))
 
 

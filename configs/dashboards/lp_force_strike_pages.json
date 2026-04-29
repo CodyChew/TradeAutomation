@@ -1,0 +1,183 @@
+{
+  "home": {
+    "title": "TradeAutomation Research Dashboards",
+    "intro": "Versioned static dashboards for LP + Force Strike experiments. Use stable version pages for comparison instead of overwriting old analysis.",
+    "current_baseline": {
+      "title": "Current Baseline: fixed 6-bar pullback wait",
+      "description": "Use the 0.5 signal-candle pullback, full Force Strike structure stop, single 1R target, and fixed 6-bar pullback wait as the active research baseline.",
+      "status_label": "Active baseline",
+      "facts": [
+        ["Universe", "28 FX pairs"],
+        ["Timeframes", "H4/H8/H12/D1/W1"],
+        ["Baseline PF", "1.265"],
+        ["Baseline Avg R", "0.116R"]
+      ],
+      "button_href": "v6.html",
+      "button_label": "Open Current Snapshot"
+    }
+  },
+  "pages": [
+    {
+      "page": "v1.html",
+      "nav_label": "V1",
+      "index_order": 8,
+      "title": "V1 Baseline: Broad Permutation Test",
+      "status_label": "Historical baseline",
+      "status_kind": "neutral",
+      "question": "Which first-pass entry and exit families are worth studying after combining LP breaks with raw Force Strike signals?",
+      "setup": "Broad permutation test across M30, H4, D1, and W1 using next-open and midpoint-pullback entries, structure stops, ATR width filters, and fixed R targets.",
+      "how_to_read": "Treat this as exploration. M30 dominates the signal count, so compare timeframes before reading the aggregate leaderboard.",
+      "conclusion": "Midpoint-pullback entries were materially better than next-open entries. M30 was weak, while H4, D1, and W1 justified a focused follow-up.",
+      "action": "Use only as historical context. V2 and later pages contain the refined research path.",
+      "facts": [
+        ["Datasets", "96"],
+        ["Signals", "57,340"],
+        ["Trades", "864,520"],
+        ["Main lesson", "drop M30"]
+      ]
+    },
+    {
+      "page": "v2.html",
+      "nav_label": "V2",
+      "index_order": 7,
+      "title": "V2 Focus: H4/D1/W1 Midpoint Entry",
+      "status_label": "Historical focus",
+      "status_kind": "neutral",
+      "question": "Does the midpoint-pullback family still work when M30 is removed and ATR risk-width filters are compared?",
+      "setup": "Focused H4, D1, and W1 test using midpoint-pullback entries, Force Strike structure stops, ATR max-risk variants, and fixed R targets.",
+      "how_to_read": "Use the focused timeframe tables and ignore M30 because it is not part of this run.",
+      "conclusion": "The midpoint-pullback structure-stop family stayed positive across H4, D1, and W1. The 1ATR and 1.25ATR variants were close.",
+      "action": "Use V2 to understand why V3 moved into entry-zone and partial-exit testing.",
+      "facts": [
+        ["Datasets", "72"],
+        ["Signals", "8,203"],
+        ["Trades", "128,685"],
+        ["Best family", "1ATR / 1R"]
+      ]
+    },
+    {
+      "page": "v3.html",
+      "nav_label": "V3",
+      "index_order": 6,
+      "title": "V3 Entry/Exit: Zones, ATRs, Partial Exits",
+      "status_label": "Model selection",
+      "status_kind": "neutral",
+      "question": "Which signal-candle entry zone, ATR risk filter, and exit structure is strongest before stability testing?",
+      "setup": "H4, D1, and W1 test of 0.5, 0.6, and 0.7 signal-candle pullbacks, ATR max-risk filters, single-target exits, and MT5-portable partial exits.",
+      "how_to_read": "Compare model families first, then check per-timeframe robustness. This run has many simulated candidate trades because each signal is tested against many permutations.",
+      "conclusion": "The 0.5 signal-candle pullback was strongest. Single-target 1R beat the tested partial-exit variants for the best individual candidate.",
+      "action": "Use the 0.5 zone, structure stop, 1R family as the base candidate for later tests.",
+      "facts": [
+        ["Datasets", "72"],
+        ["Signals", "8,203"],
+        ["Trades", "619,092"],
+        ["Main lesson", "0.5 zone"]
+      ]
+    },
+    {
+      "page": "v4.html",
+      "nav_label": "V4",
+      "index_order": 5,
+      "title": "V4 Stability: Train/Test Symbol Filters",
+      "status_label": "Rejected filter",
+      "status_kind": "rejected",
+      "question": "Can train-period symbol/timeframe filters improve the later test period for the best V3 candidates?",
+      "setup": "Walk-forward stability test using V3 trades, a 2023 split, and several training-period filters for symbol/timeframe inclusion.",
+      "how_to_read": "Read the test period first. A filter is useful only if it improves later unseen performance, not just training results.",
+      "conclusion": "The learned symbol/timeframe filters did not improve the test period. The unfiltered baseline remained better.",
+      "action": "Do not add symbol/timeframe filters yet. Keep the weak pockets visible but avoid this filtering method.",
+      "facts": [
+        ["Split", "2023"],
+        ["Candidates", "4"],
+        ["Filters", "6"],
+        ["Main lesson", "no filter"]
+      ]
+    },
+    {
+      "page": "v5.html",
+      "nav_label": "V5",
+      "index_order": 4,
+      "title": "V5 H8 Bridge: Native MT5 H8 Test",
+      "status_label": "Timeframe study",
+      "status_kind": "neutral",
+      "question": "Does native MT5 H8 provide a useful bridge between H4 and D1?",
+      "setup": "Single candidate test using 0.5 signal-candle pullback, full Force Strike structure stop, 1R target, and native MT5 H8 data.",
+      "how_to_read": "Compare H8 against H4 and D1. The aggregate is less important than the quality step between timeframes.",
+      "conclusion": "H8 improved modestly over H4 but did not become a clean midpoint between H4 and D1.",
+      "action": "Keep H8 available for comparison, but do not pivot the main strategy research around H8.",
+      "facts": [
+        ["Datasets", "96"],
+        ["Signals", "11,533"],
+        ["Trades", "9,341"],
+        ["H8 PF", "1.22"]
+      ]
+    },
+    {
+      "page": "v6.html",
+      "nav_label": "V6",
+      "index_order": 3,
+      "title": "V6 H12 Bridge: Native MT5 H12 Test",
+      "status_label": "Current timeframe snapshot",
+      "status_kind": "active",
+      "question": "Does native MT5 H12 provide a better bridge between H8 and D1?",
+      "setup": "Single candidate test using 0.5 signal-candle pullback, full Force Strike structure stop, 1R target, and native MT5 H12 data.",
+      "how_to_read": "Use this as the current timeframe comparison snapshot. Compare H4, H8, H12, D1, and W1 independently.",
+      "conclusion": "H12 is a meaningful bridge. It is stronger than H8 and closer to D1 quality while keeping more trade count than D1.",
+      "action": "Keep H12 in the forward research set. Use V6 as the current timeframe snapshot, not V7 or V8.",
+      "facts": [
+        ["Datasets", "120"],
+        ["Signals", "13,815"],
+        ["Trades", "11,185"],
+        ["H12 PF", "1.37"]
+      ]
+    },
+    {
+      "page": "v7.html",
+      "nav_label": "V7",
+      "index_order": 2,
+      "title": "V7 Entry Wait: Cancel At Would-Be 1R",
+      "status_label": "Rejected",
+      "status_kind": "rejected",
+      "question": "Should a pullback order stay open until entry or be cancelled once the would-be 1R target is reached first?",
+      "setup": "Same 0.5 pullback, structure stop, 1R target model, but pending entry waits until either the pullback fills or the would-be 1R target is reached. If both happen in one candle, V7 cancels first.",
+      "how_to_read": "This is not a new baseline. It is a rule challenge against the fixed 6-bar pullback wait.",
+      "conclusion": "Do not replace the fixed 6-bar pullback wait. V7 is unusable because the cancel-first same-bar rule removes too many valid trades.",
+      "action": "Do not use V7 for strategy selection. Keep the fixed 6-bar entry wait.",
+      "facts": [
+        ["Datasets", "140"],
+        ["Signals", "16,061"],
+        ["Trades", "4,885"],
+        ["PF", "0.52"]
+      ],
+      "comparison_rows": [
+        ["Fixed 6-bar baseline", "13,012", "58.0%", "0.116R", "1.265", "1,512.3R"],
+        ["V7 cancel-first", "4,885", "35.7%", "-0.321R", "0.519", "-1,568.7R"],
+        ["V8 entry-first", "9,627", "55.3%", "0.062R", "1.133", "598.3R"]
+      ]
+    },
+    {
+      "page": "v8.html",
+      "nav_label": "V8",
+      "index_order": 1,
+      "title": "V8 Entry Wait: Entry-Priority 1R Cancel",
+      "status_label": "Rejected",
+      "status_kind": "rejected",
+      "question": "If a candle touches both pullback entry and would-be 1R, does entry-first handling make the 1R-cancel wait rule usable?",
+      "setup": "Same test as V7, but if entry and would-be 1R occur in the same candle, the setup fills first instead of cancelling first.",
+      "how_to_read": "V8 is the fairer version of the 1R-cancel wait rule, but it must beat the fixed 6-bar baseline to replace it.",
+      "conclusion": "Do not replace the fixed 6-bar pullback wait. V8 is positive but weaker than the baseline on trade count, win rate, average R, PF, and total R.",
+      "action": "Do not use V8 as the active baseline. Keep the fixed 6-bar entry wait and use V6 for timeframe comparison.",
+      "facts": [
+        ["Datasets", "140"],
+        ["Signals", "16,061"],
+        ["Trades", "9,627"],
+        ["PF", "1.13"]
+      ],
+      "comparison_rows": [
+        ["Fixed 6-bar baseline", "13,012", "58.0%", "0.116R", "1.265", "1,512.3R"],
+        ["V7 cancel-first", "4,885", "35.7%", "-0.321R", "0.519", "-1,568.7R"],
+        ["V8 entry-first", "9,627", "55.3%", "0.062R", "1.133", "598.3R"]
+      ]
+    }
+  ]
+}

@@ -95,6 +95,91 @@
       color: #34412d;
       margin-bottom: 14px;
     }
+
+    .experiment-summary {
+      border-top: 4px solid var(--accent);
+    }
+    .summary-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .summary-heading h2 {
+      margin-bottom: 0;
+    }
+    .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .status-badge {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      background: #f7f9fb;
+      color: var(--muted);
+    }
+    .status-active {
+      color: var(--good);
+      border-color: #b9dbc7;
+      background: #edf8f1;
+    }
+    .status-rejected {
+      color: var(--bad);
+      border-color: #e7bcbc;
+      background: #fff1f1;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+      gap: 12px;
+    }
+    .summary-grid div {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fbfc;
+      padding: 12px;
+    }
+    .summary-grid h3 {
+      margin: 0 0 6px;
+    }
+    .summary-grid p {
+      margin: 0;
+      color: var(--ink);
+    }
+    .conclusion-box {
+      margin-top: 14px;
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+    }
+    .summary-comparison {
+      margin-top: 14px;
+      overflow-x: auto;
+    }
+    .comparison-table td:first-child,
+    .comparison-table th:first-child {
+      text-align: left;
+    }
+    @media (max-width: 760px) {
+      .summary-heading {
+        display: block;
+      }
+      .status-badge {
+        display: inline-block;
+        margin-top: 10px;
+      }
+    }
+
     .split {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
@@ -198,6 +283,7 @@
       <a class="page-link" href="v8.html">V8</a>
     </nav>
     <nav class="report-nav" aria-label="Report sections">
+      <a href="#experiment-summary">Experiment Summary</a>
       <a href="#overview">Overview</a>
       <a href="#guide">Metric Guide</a>
       <a href="#timeframes">Timeframes</a>
@@ -212,6 +298,26 @@
     </nav>
   </header>
   <main>
+
+    <section id="experiment-summary" class="experiment-summary">
+      <div class="summary-heading">
+        <div>
+          <div class="eyebrow">V2 Research Snapshot</div>
+          <h2>V2 Focus: H4/D1/W1 Midpoint Entry</h2>
+        </div>
+        <span class="status-badge status-neutral">Historical focus</span>
+      </div>
+      <div class="summary-grid">
+        <div><h3>What This Tests</h3><p>Does the midpoint-pullback family still work when M30 is removed and ATR risk-width filters are compared?</p></div>
+        <div><h3>Setup Tested</h3><p>Focused H4, D1, and W1 test using midpoint-pullback entries, Force Strike structure stops, ATR max-risk variants, and fixed R targets.</p></div>
+        <div><h3>How To Read This Page</h3><p>Use the focused timeframe tables and ignore M30 because it is not part of this run.</p></div>
+        <div><h3>Use / Do Not Use</h3><p>Use V2 to understand why V3 moved into entry-zone and partial-exit testing.</p></div>
+      </div>
+      <div class="conclusion-box"><strong>Conclusion:</strong> The midpoint-pullback structure-stop family stayed positive across H4, D1, and W1. The 1ATR and 1.25ATR variants were close.</div>
+
+    </section>
+
+
     <section id="overview">
       <h2>Overview</h2>
       <div class="kpis">
@@ -359,7 +465,7 @@
 
     <section id="skips">
       <h2>Skipped Trade Attempts</h2>
-      <div class="note">Skipped attempts are not failed backtests. They usually mean midpoint entry was not reached, risk was wider than the ATR filter, or no next candle existed.</div>
+      <div class="note">Skipped attempts are not failed backtests. They usually mean pullback entry was not reached, risk was wider than the ATR filter, a 1R entry-cancel rule fired, or no next candle existed.</div>
       <table class=""><thead><tr><th>Timeframe</th><th>Reason</th><th>Skipped</th></tr></thead><tbody><tr><td>H4</td><td>entry_not_reached</td><td>32,450</td></tr><tr><td>H4</td><td>risk_too_wide</td><td>32,005</td></tr><tr><td>H4</td><td>missing_atr</td><td>20</td></tr><tr><td>D1</td><td>entry_not_reached</td><td>5,075</td></tr><tr><td>D1</td><td>risk_too_wide</td><td>5,010</td></tr><tr><td>W1</td><td>risk_too_wide</td><td>935</td></tr><tr><td>W1</td><td>entry_not_reached</td><td>875</td></tr><tr><td>W1</td><td>missing_atr</td><td>20</td></tr></tbody></table>
     </section>
   </main>

@@ -10,6 +10,13 @@ from typing import Any
 
 import pandas as pd
 
+from lp_force_strike_dashboard_metadata import (
+    dashboard_page,
+    dashboard_page_links,
+    experiment_summary_css,
+    experiment_summary_html,
+)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REPORT_ROOT = REPO_ROOT / "reports" / "strategies" / "lp_force_strike_experiment_v1"
@@ -621,22 +628,7 @@ def _skip_table(skips: pd.DataFrame) -> str:
 
 
 def _page_links(current_page: str) -> str:
-    pages = [
-        ("index.html", "Home"),
-        ("v1.html", "V1"),
-        ("v2.html", "V2"),
-        ("v3.html", "V3"),
-        ("v4.html", "V4"),
-        ("v5.html", "V5"),
-        ("v6.html", "V6"),
-        ("v7.html", "V7"),
-        ("v8.html", "V8"),
-    ]
-    links = []
-    for href, label in pages:
-        active = " active" if current_page == href else ""
-        links.append(f'<a class="page-link{active}" href="{href}">{label}</a>')
-    return "\n      ".join(links)
+    return dashboard_page_links(current_page)
 
 
 def _html_document(
@@ -669,6 +661,21 @@ def _html_document(
         if "M30" in timeframes
         else "Overall metrics are weighted by trade count. Read each timeframe separately before making strategy decisions."
     )
+    try:
+        page_metadata = dashboard_page(current_page)
+    except KeyError:
+        page_metadata = {
+            "page": current_page,
+            "nav_label": "Run",
+            "title": "LP + Force Strike Run Dashboard",
+            "status_label": "Run report",
+            "status_kind": "neutral",
+            "question": "What did this generated LP + Force Strike run produce?",
+            "setup": "This is a run-local dashboard generated from the selected report directory.",
+            "how_to_read": "Use the metrics below to inspect the run, then compare against the stable versioned dashboards in docs/.",
+            "conclusion": "No version-level conclusion is attached to this run-local page.",
+            "action": "Use versioned docs pages for research conclusions.",
+        }
 
     return f"""<!doctype html>
 <html lang="en">
@@ -767,6 +774,7 @@ def _html_document(
       color: #34412d;
       margin-bottom: 14px;
     }}
+    {experiment_summary_css()}
     .split {{
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
@@ -862,6 +870,7 @@ def _html_document(
       {_page_links(current_page)}
     </nav>
     <nav class="report-nav" aria-label="Report sections">
+      <a href="#experiment-summary">Experiment Summary</a>
       <a href="#overview">Overview</a>
       <a href="#guide">Metric Guide</a>
       <a href="#timeframes">Timeframes</a>
@@ -876,6 +885,8 @@ def _html_document(
     </nav>
   </header>
   <main>
+    {experiment_summary_html(page_metadata)}
+
     <section id="overview">
       <h2>Overview</h2>
       <div class="kpis">
