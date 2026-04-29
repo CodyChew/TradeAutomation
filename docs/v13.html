@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LP + Force Strike V13 Relaxed Portfolio - by Cody</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #627181;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --good: #2e7d50;
+      --bad: #a23b3b;
+      --warn: #9b5f00;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 Inter, Segoe UI, Roboto, Arial, sans-serif; min-width: 0; overflow-x: hidden; }
+    header { background: #17202a; color: white; padding: 28px max(18px, 5vw); border-bottom: 4px solid #57a773; }
+    header h1 { margin: 0 0 8px; font-size: clamp(22px, 4vw, 28px); }
+    header p { margin: 0; color: #d8e0e8; max-width: 980px; overflow-wrap: anywhere; }
+    code { overflow-wrap: anywhere; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    nav a { color: white; text-decoration: none; border: 1px solid rgba(255,255,255,.25); padding: 7px 10px; border-radius: 6px; background: rgba(255,255,255,.08); min-height: 34px; }
+    nav a.active { background: #57a773; border-color: #57a773; color: #17202a; font-weight: 700; }
+    main { padding: 24px max(18px, 5vw) 48px; }
+    section { margin: 0 0 22px; padding: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 2px rgba(23,32,42,.05); max-width: 100%; overflow-x: auto; }
+    h2 { margin: 0 0 14px; font-size: 20px; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 12px; margin-bottom: 18px; }
+    .kpi { background: #f9fbfc; border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+    .kpi-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .kpi-value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+    .kpi-note { color: var(--muted); font-size: 12px; min-height: 18px; }
+    .note { background: #f6f8f2; border-left: 4px solid #8aa936; padding: 12px 14px; color: #34412d; margin-bottom: 14px; }
+    .warning { background: #fff8e8; border-left-color: var(--warn); color: #4d3b13; }
+
+    .experiment-summary {
+      border-top: 4px solid var(--accent);
+    }
+    .summary-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .summary-heading h2 {
+      margin-bottom: 0;
+    }
+    .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .status-badge {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      background: #f7f9fb;
+      color: var(--muted);
+    }
+    .status-active {
+      color: var(--good);
+      border-color: #b9dbc7;
+      background: #edf8f1;
+    }
+    .status-rejected {
+      color: var(--bad);
+      border-color: #e7bcbc;
+      background: #fff1f1;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+      gap: 12px;
+    }
+    .summary-grid div {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fbfc;
+      padding: 12px;
+    }
+    .summary-grid h3 {
+      margin: 0 0 6px;
+    }
+    .summary-grid p {
+      margin: 0;
+      color: var(--ink);
+    }
+    .conclusion-box {
+      margin-top: 14px;
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+    }
+    .decision-brief {
+      margin-top: 14px;
+      border: 1px solid #cbd8e4;
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 14px 16px;
+    }
+    .decision-brief h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--ink);
+    }
+    .decision-brief .brief-headline {
+      margin: 0 0 8px;
+      font-weight: 700;
+    }
+    .decision-brief ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .decision-brief li {
+      margin: 6px 0;
+    }
+    .decision-brief .brief-next {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+    .summary-comparison {
+      margin-top: 14px;
+      overflow-x: auto;
+    }
+    .comparison-table td:first-child,
+    .comparison-table th:first-child {
+      text-align: left;
+    }
+    @media (max-width: 760px) {
+      .summary-heading {
+        display: block;
+      }
+      .status-badge {
+        display: inline-block;
+        margin-top: 10px;
+      }
+    }
+
+    table { width: 100%; min-width: 1080px; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 9px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; vertical-align: top; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: #455464; background: #f7f9fb; font-weight: 700; position: sticky; top: 0; z-index: 1; }
+    .positive { color: var(--good); font-weight: 700; }
+    .negative { color: var(--bad); font-weight: 700; }
+    .neutral { color: var(--muted); }
+    footer { color: var(--muted); padding: 0 max(18px, 5vw) 28px; }
+    @media (max-width: 760px) {
+      header { padding: 22px 16px; }
+      nav a { flex: 1 1 auto; text-align: center; }
+      main { padding: 16px 12px 34px; }
+      section { padding: 14px; margin-bottom: 16px; }
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .kpi { padding: 10px; }
+      .kpi-value { font-size: 20px; }
+      th, td { padding: 6px 7px; font-size: 12px; }
+    }
+    @media (max-width: 480px) {
+      .kpis { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>LP + Force Strike V13 Relaxed Portfolio - by Cody</h1>
+    <p>Static V13 report generated from <code>reports\strategies\lp_force_strike_experiment_v13_relaxed_portfolio_selection\20260429_172705</code>. This page relaxes the old hard guardrails and ranks exposure rules by long-run trader practicality.</p>
+    <nav aria-label="Dashboard pages">
+      <a class="page-link" href="index.html">Home</a>
+      <a class="page-link" href="v1.html">V1</a>
+      <a class="page-link" href="v2.html">V2</a>
+      <a class="page-link" href="v3.html">V3</a>
+      <a class="page-link" href="v4.html">V4</a>
+      <a class="page-link" href="v5.html">V5</a>
+      <a class="page-link" href="v6.html">V6</a>
+      <a class="page-link" href="v7.html">V7</a>
+      <a class="page-link" href="v8.html">V8</a>
+      <a class="page-link" href="v9.html">V9</a>
+      <a class="page-link" href="v10.html">V10</a>
+      <a class="page-link" href="v11.html">V11</a>
+      <a class="page-link" href="v12.html">V12</a>
+      <a class="page-link active" href="v13.html">V13</a>
+    </nav>
+  </header>
+  <main>
+
+    <section id="experiment-summary" class="experiment-summary">
+      <div class="summary-heading">
+        <div>
+          <div class="eyebrow">V13 Research Snapshot</div>
+          <h2>V13 Relaxed Portfolio Rule Selection</h2>
+        </div>
+        <span class="status-badge status-active">Active baseline</span>
+      </div>
+      <div class="summary-grid">
+        <div><h3>What This Tests</h3><p>Is cap 4R too conservative once the old 30R / 180D guardrails are treated as context instead of hard selection rules?</p></div>
+        <div><h3>Setup Tested</h3><p>Existing V9 trades only. The signal and trade model stay fixed: LP3, all H4/H8/H12/D1/W1, 0.5 signal-candle pullback, full Force Strike structure stop, single 1R target, and fixed 6-bar pullback wait. V13 compares take-all, one-symbol no-cap, and cap 4R through cap 16R.</p></div>
+        <div><h3>How To Read This Page</h3><p>Start with the Decision Brief, then read the Exposure Reality Check before treating take-all as tradable. V13 ranks by long-run Total R after checking yearly, ticker, and concentration robustness.</p></div>
+        <div><h3>Use / Do Not Use</h3><p>Use take-all for the next research slice, but make execution constraints explicit: max 17 concurrent trades, max 4 same-symbol stack, and account DD examples of about 8.3% at 0.25% risk or 16.7% at 0.50% risk.</p></div>
+      </div>
+      <div class="conclusion-box"><strong>Conclusion:</strong> Use take-all as the current research baseline if account risk per trade is kept small enough. It produced the highest Total R, no negative years, no negative symbols, no obvious concentration skew, and shorter underwater than cap 4R. The cost is higher concurrent exposure and same-symbol stacking.</div>
+
+      <div class="decision-brief">
+        <h3>Decision Brief</h3>
+        <p class="brief-headline">V13 result: use take-all as the current research baseline, with explicit exposure caveats.</p>
+        <ul><li>Take-all: 13,012 trades, 1,512.3R, max DD 33.4R, underwater 111D, 0 negative years, 0 negative symbols.</li><li>Cap 4R: 10,037 trades, 1,100.9R, max DD 26.7R, underwater 162D; it gives up about 411R and has a longer underwater period.</li><li>Cap 6R: 11,226 trades, 1,235.6R, max DD 32.6R, underwater 125D; it lowers exposure but still gives up about 277R versus take-all.</li><li>Take-all reached 17 concurrent trades and a max same-symbol stack of 4, so the next test must model account-level risk constraints before live execution.</li></ul>
+        <p class="brief-next"><strong>Next:</strong> Use take-all for the next strategy research slice, then test FTMO-style daily/max loss and practical execution constraints.</p>
+      </div>
+
+      <div class="summary-comparison"><h3>Baseline Comparison</h3><table class="comparison-table"><thead><tr><th>Run</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>PF</th><th>Total R</th></tr></thead><tbody><tr><td>Take-all</td><td>13,012</td><td>58.0%</td><td>0.116R</td><td>1.265</td><td>1,512.3R</td></tr><tr><td>Cap 4R</td><td>10,037</td><td>57.6%</td><td>0.110R</td><td>1.248</td><td>1,100.9R</td></tr><tr><td>Cap 6R</td><td>11,226</td><td>57.7%</td><td>0.110R</td><td>1.249</td><td>1,235.6R</td></tr></tbody></table></div>
+    </section>
+
+    <section id="recommendation">
+      <h2>Recommendation Card</h2>
+      <div class="kpis">
+
+    <div class="kpi">
+      <div class="kpi-label">Recommendation</div>
+      <div class="kpi-value">Use take-all</div>
+      <div class="kpi-note">highest Total R after robustness checks</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Total R</div>
+      <div class="kpi-value">1,512.3R</div>
+      <div class="kpi-note">Take all</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Max DD</div>
+      <div class="kpi-value">33.4R</div>
+      <div class="kpi-note">closed-trade R</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Underwater</div>
+      <div class="kpi-value">111D</div>
+      <div class="kpi-note">longest below equity high</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Max Concurrent</div>
+      <div class="kpi-value">17</div>
+      <div class="kpi-note">open trades</div>
+    </div>
+
+      </div>
+      <div class="note">Robustness checks require no negative years, no negative symbols, and no single year or symbol above 25.0% of total R.</div>
+    </section>
+    <section id="leaderboard">
+      <h2>Portfolio Rule Leaderboard</h2>
+      <div class="note">Ranked by Total R after checking yearly, ticker, and concentration robustness. The old 30R / 180D rule is visible as context, not a hard selector here.</div>
+      <table class=""><thead><tr><th>Portfolio</th><th>Trades</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Neg Years</th><th>Neg Symbols</th><th>Top Year Share</th><th>Top Symbol Share</th><th>Robust</th></tr></thead><tbody><tr><td>Take all</td><td>13,012</td><td class="positive">1,512.3R</td><td>58.0%</td><td>1.26</td><td class="negative">33.4R</td><td>111</td><td>45.33</td><td>0</td><td>0</td><td>17.0%</td><td>7.1%</td><td>Yes</td></tr><tr><td>One symbol / no cap</td><td>11,519</td><td class="positive">1,267.1R</td><td>57.7%</td><td>1.25</td><td class="negative">33.7R</td><td>172</td><td>37.64</td><td>0</td><td>0</td><td>17.3%</td><td>7.6%</td><td>Yes</td></tr><tr><td>Cap 16R</td><td>11,519</td><td class="positive">1,267.1R</td><td>57.7%</td><td>1.25</td><td class="negative">33.7R</td><td>172</td><td>37.64</td><td>0</td><td>0</td><td>17.3%</td><td>7.6%</td><td>Yes</td></tr><tr><td>Cap 8R</td><td>11,467</td><td class="positive">1,266.4R</td><td>57.7%</td><td>1.25</td><td class="negative">33.7R</td><td>170</td><td>37.62</td><td>0</td><td>0</td><td>17.4%</td><td>7.6%</td><td>Yes</td></tr><tr><td>Cap 12R</td><td>11,518</td><td class="positive">1,266.1R</td><td>57.6%</td><td>1.25</td><td class="negative">33.7R</td><td>172</td><td>37.61</td><td>0</td><td>0</td><td>17.3%</td><td>7.6%</td><td>Yes</td></tr><tr><td>Cap 10R</td><td>11,509</td><td class="positive">1,263.2R</td><td>57.6%</td><td>1.25</td><td class="negative">33.7R</td><td>172</td><td>37.52</td><td>0</td><td>0</td><td>17.3%</td><td>7.6%</td><td>Yes</td></tr><tr><td>Cap 6R</td><td>11,226</td><td class="positive">1,235.6R</td><td>57.7%</td><td>1.25</td><td class="negative">32.6R</td><td>125</td><td>37.86</td><td>0</td><td>0</td><td>16.9%</td><td>7.8%</td><td>Yes</td></tr><tr><td>Cap 4R</td><td>10,037</td><td class="positive">1,100.9R</td><td>57.6%</td><td>1.25</td><td class="negative">26.7R</td><td>162</td><td>41.21</td><td>0</td><td>0</td><td>18.5%</td><td>8.5%</td><td>Yes</td></tr></tbody></table>
+    </section>
+    <section id="direct-comparison">
+      <h2>Take-All vs Cap 4R vs Cap 6R</h2>
+      <div class="note">This is the direct question raised after V10: whether cap 4R gives up too much return versus take-all or a looser cap.</div>
+      <table class=""><thead><tr><th>Portfolio</th><th>Trades</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Neg Years</th><th>Neg Symbols</th><th>Top Year Share</th><th>Top Symbol Share</th><th>Robust</th></tr></thead><tbody><tr><td>Take all</td><td>13,012</td><td class="positive">1,512.3R</td><td>58.0%</td><td>1.26</td><td class="negative">33.4R</td><td>111</td><td>45.33</td><td>0</td><td>0</td><td>17.0%</td><td>7.1%</td><td>Yes</td></tr><tr><td>Cap 4R</td><td>10,037</td><td class="positive">1,100.9R</td><td>57.6%</td><td>1.25</td><td class="negative">26.7R</td><td>162</td><td>41.21</td><td>0</td><td>0</td><td>18.5%</td><td>8.5%</td><td>Yes</td></tr><tr><td>Cap 6R</td><td>11,226</td><td class="positive">1,235.6R</td><td>57.7%</td><td>1.25</td><td class="negative">32.6R</td><td>125</td><td>37.86</td><td>0</td><td>0</td><td>16.9%</td><td>7.8%</td><td>Yes</td></tr></tbody></table>
+    </section>
+    <section id="exposure">
+      <h2>Exposure Reality Check</h2>
+      <div class="note warning">Take-all allows same-symbol stacking and the highest concurrent exposure. This table converts R into account-risk examples so the operational tradeoff is explicit.</div>
+      <table class=""><thead><tr><th>Portfolio</th><th>Max Concurrent</th><th>Max Open R</th><th>Same Symbol Stack</th><th>Max New Same Time</th><th>Max DD</th><th>Max DD @ 0.25%</th><th>Max Open @ 0.25%</th><th>Max DD @ 0.5%</th><th>Max Open @ 0.5%</th></tr></thead><tbody><tr><td>Take all</td><td>17</td><td>17.0R</td><td>4</td><td>12</td><td>33.4R</td><td>8.3%</td><td>4.2%</td><td>16.7%</td><td>8.5%</td></tr><tr><td>One symbol / no cap</td><td>12</td><td>12.0R</td><td>1</td><td>12</td><td>33.7R</td><td>8.4%</td><td>3.0%</td><td>16.8%</td><td>6.0%</td></tr><tr><td>Cap 4R</td><td>4</td><td>4.0R</td><td>1</td><td>4</td><td>26.7R</td><td>6.7%</td><td>1.0%</td><td>13.4%</td><td>2.0%</td></tr><tr><td>Cap 6R</td><td>6</td><td>6.0R</td><td>1</td><td>6</td><td>32.6R</td><td>8.2%</td><td>1.5%</td><td>16.3%</td><td>3.0%</td></tr><tr><td>Cap 8R</td><td>8</td><td>8.0R</td><td>1</td><td>8</td><td>33.7R</td><td>8.4%</td><td>2.0%</td><td>16.8%</td><td>4.0%</td></tr><tr><td>Cap 10R</td><td>10</td><td>10.0R</td><td>1</td><td>10</td><td>33.7R</td><td>8.4%</td><td>2.5%</td><td>16.8%</td><td>5.0%</td></tr><tr><td>Cap 12R</td><td>11</td><td>11.0R</td><td>1</td><td>12</td><td>33.7R</td><td>8.4%</td><td>2.8%</td><td>16.8%</td><td>5.5%</td></tr><tr><td>Cap 16R</td><td>12</td><td>12.0R</td><td>1</td><td>12</td><td>33.7R</td><td>8.4%</td><td>3.0%</td><td>16.8%</td><td>6.0%</td></tr></tbody></table>
+    </section>
+    <section id="period-robustness">
+      <h2>Period Robustness</h2>
+      <div class="note">Use this to catch period skew. A strong rule should not depend on one year or collapse in a specific regime.</div>
+      <table class=""><thead><tr><th>Portfolio</th><th>Neg Years</th><th>Worst Year</th><th>Worst Year R</th><th>Neg Months</th><th>Worst Month</th><th>Worst Month R</th><th>Neg Quarters</th><th>Worst Quarter</th><th>Worst Quarter R</th><th>Longest Underwater Period</th></tr></thead><tbody><tr><td>Take all</td><td>0</td><td>2016</td><td class="positive">42.3R</td><td>16</td><td>2017-03</td><td class="negative">-16.2R</td><td>4</td><td>2019Q1</td><td class="negative">-10.2R</td><td>2017-03-07 to 2017-06-26 (111D)</td></tr><tr><td>One symbol / no cap</td><td>0</td><td>2019</td><td class="positive">30.7R</td><td>19</td><td>2023-03</td><td class="negative">-15.8R</td><td>4</td><td>2019Q1</td><td class="negative">-12.5R</td><td>2018-12-27 to 2019-06-17 (172D)</td></tr><tr><td>Cap 4R</td><td>0</td><td>2016</td><td class="positive">26.9R</td><td>21</td><td>2017-03</td><td class="negative">-16.1R</td><td>4</td><td>2017Q3</td><td class="negative">-12.3R</td><td>2019-01-03 to 2019-06-14 (162D)</td></tr><tr><td>Cap 6R</td><td>0</td><td>2016</td><td class="positive">35.3R</td><td>16</td><td>2023-03</td><td class="negative">-15.8R</td><td>4</td><td>2017Q3</td><td class="negative">-11.8R</td><td>2022-02-22 to 2022-06-27 (125D)</td></tr><tr><td>Cap 8R</td><td>0</td><td>2019</td><td class="positive">29.8R</td><td>18</td><td>2023-03</td><td class="negative">-15.8R</td><td>4</td><td>2019Q1</td><td class="negative">-12.4R</td><td>2018-12-27 to 2019-06-14 (170D)</td></tr><tr><td>Cap 10R</td><td>0</td><td>2019</td><td class="positive">30.7R</td><td>19</td><td>2023-03</td><td class="negative">-15.8R</td><td>4</td><td>2019Q1</td><td class="negative">-12.5R</td><td>2018-12-27 to 2019-06-17 (172D)</td></tr><tr><td>Cap 12R</td><td>0</td><td>2019</td><td class="positive">30.7R</td><td>19</td><td>2023-03</td><td class="negative">-15.8R</td><td>4</td><td>2019Q1</td><td class="negative">-12.5R</td><td>2018-12-27 to 2019-06-17 (172D)</td></tr><tr><td>Cap 16R</td><td>0</td><td>2019</td><td class="positive">30.7R</td><td>19</td><td>2023-03</td><td class="negative">-15.8R</td><td>4</td><td>2019Q1</td><td class="negative">-12.5R</td><td>2018-12-27 to 2019-06-17 (172D)</td></tr></tbody></table>
+    </section>
+    <section id="ticker-robustness">
+      <h2>Ticker Robustness</h2>
+      <div class="note">Use this to catch ticker skew. A strong rule should not rely on one pair and should avoid negative-symbol pockets.</div>
+      <table class=""><thead><tr><th>Portfolio</th><th>Neg Symbols</th><th>Worst Symbol</th><th>Worst Symbol R</th><th>Best Symbol</th><th>Best Symbol R</th><th>Top Symbol Share</th><th>Top 3 Share</th><th>Worst 5</th><th>Best 5</th></tr></thead><tbody><tr><td>Take all</td><td>0</td><td>GBPCAD</td><td class="positive">11.2R</td><td>EURAUD</td><td class="positive">107.2R</td><td>7.1%</td><td>19.4%</td><td>GBPCAD 11.2R, EURUSD 17.4R, NZDUSD 27.9R, GBPJPY 30.9R, USDCAD 32.2R</td><td>EURAUD 107.2R, EURGBP 105.3R, GBPAUD 80.9R, NZDCHF 80.0R, EURJPY 76.9R</td></tr><tr><td>One symbol / no cap</td><td>0</td><td>GBPCAD</td><td class="positive">7.2R</td><td>EURAUD</td><td class="positive">96.8R</td><td>7.6%</td><td>20.0%</td><td>GBPCAD 7.2R, CHFJPY 20.5R, GBPJPY 24.0R, EURUSD 25.1R, AUDCHF 31.0R</td><td>EURAUD 96.8R, EURGBP 84.8R, GBPAUD 72.3R, AUDUSD 66.2R, EURCHF 62.7R</td></tr><tr><td>Cap 4R</td><td>0</td><td>CHFJPY</td><td class="positive">9.7R</td><td>EURGBP</td><td class="positive">93.2R</td><td>8.5%</td><td>21.6%</td><td>CHFJPY 9.7R, GBPCAD 11.3R, NZDJPY 16.8R, USDCAD 24.0R, EURUSD 25.5R</td><td>EURGBP 93.2R, EURAUD 87.0R, AUDUSD 57.2R, EURCHF 55.4R, GBPAUD 51.1R</td></tr><tr><td>Cap 6R</td><td>0</td><td>GBPCAD</td><td class="positive">5.9R</td><td>EURAUD</td><td class="positive">96.3R</td><td>7.8%</td><td>20.6%</td><td>GBPCAD 5.9R, CHFJPY 20.5R, GBPJPY 23.4R, EURUSD 24.3R, USDCAD 25.6R</td><td>EURAUD 96.3R, EURGBP 92.2R, AUDUSD 65.5R, GBPAUD 65.1R, EURCHF 62.1R</td></tr><tr><td>Cap 8R</td><td>0</td><td>GBPCAD</td><td class="positive">7.3R</td><td>EURAUD</td><td class="positive">95.8R</td><td>7.6%</td><td>20.1%</td><td>GBPCAD 7.3R, CHFJPY 20.5R, GBPJPY 24.1R, EURUSD 25.1R, AUDCHF 31.0R</td><td>EURAUD 95.8R, EURGBP 87.0R, GBPAUD 72.3R, AUDUSD 66.2R, EURCHF 62.8R</td></tr><tr><td>Cap 10R</td><td>0</td><td>GBPCAD</td><td class="positive">7.2R</td><td>EURAUD</td><td class="positive">95.8R</td><td>7.6%</td><td>19.9%</td><td>GBPCAD 7.2R, CHFJPY 20.5R, GBPJPY 24.1R, EURUSD 25.1R, AUDCHF 31.0R</td><td>EURAUD 95.8R, EURGBP 84.8R, GBPAUD 71.3R, AUDUSD 66.2R, EURCHF 62.7R</td></tr><tr><td>Cap 12R</td><td>0</td><td>GBPCAD</td><td class="positive">7.2R</td><td>EURAUD</td><td class="positive">95.8R</td><td>7.6%</td><td>20.0%</td><td>GBPCAD 7.2R, CHFJPY 20.5R, GBPJPY 24.0R, EURUSD 25.1R, AUDCHF 31.0R</td><td>EURAUD 95.8R, EURGBP 84.8R, GBPAUD 72.3R, AUDUSD 66.2R, EURCHF 62.7R</td></tr><tr><td>Cap 16R</td><td>0</td><td>GBPCAD</td><td class="positive">7.2R</td><td>EURAUD</td><td class="positive">96.8R</td><td>7.6%</td><td>20.0%</td><td>GBPCAD 7.2R, CHFJPY 20.5R, GBPJPY 24.0R, EURUSD 25.1R, AUDCHF 31.0R</td><td>EURAUD 96.8R, EURGBP 84.8R, GBPAUD 72.3R, AUDUSD 66.2R, EURCHF 62.7R</td></tr></tbody></table>
+    </section>
+  </main>
+  <footer>Generated from existing V9 trade logs. No signal rerun was performed.</footer>
+</body>
+</html>

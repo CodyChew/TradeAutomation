@@ -165,18 +165,29 @@
       <a class="page-link" href="v10.html">V10</a>
       <a class="page-link" href="v11.html">V11</a>
       <a class="page-link" href="v12.html">V12</a>
+      <a class="page-link" href="v13.html">V13</a>
     </nav>
   </header>
   <main>
 
     <section class="card featured">
       <div class="status status-active">Active baseline</div>
-      <h2>Current Baseline: LP3 cap 4R all timeframes</h2>
-      <p>V12 confirmed the current practical candidate remains LP3 with a 4R max-open-risk cap across H4/H8/H12/D1/W1, one open trade per symbol, 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait.</p>
+      <h2>Current Baseline: LP3 take-all all timeframes</h2>
+      <p>V13 relaxed the old hard guardrails and selected take-all as the current research baseline: LP3 across H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait. This has higher return and shorter underwater than cap 4R, but requires accepting same-symbol stacking and higher concurrent exposure.</p>
       <div class="facts">
-        <div class="fact"><span>Total R</span><strong>1,100.9R</strong></div><div class="fact"><span>Max DD</span><strong>26.7R</strong></div><div class="fact"><span>Underwater</span><strong>162D</strong></div><div class="fact"><span>Guardrail</span><strong>Pass</strong></div>
+        <div class="fact"><span>Total R</span><strong>1,512.3R</strong></div><div class="fact"><span>Max DD</span><strong>33.4R</strong></div><div class="fact"><span>Underwater</span><strong>111D</strong></div><div class="fact"><span>Max Concurrent</span><strong>17</strong></div>
       </div>
-      <a class="button" href="v12.html">Open Pivot Finalization Study</a>
+      <a class="button" href="v13.html">Open Relaxed Portfolio Study</a>
+    </section>
+
+    <section class="card">
+      <div class="status status-active">Active baseline</div>
+      <h2>V13 Relaxed Portfolio Rule Selection</h2>
+      <p>Use take-all as the current research baseline if account risk per trade is kept small enough. It produced the highest Total R, no negative years, no negative symbols, no obvious concentration skew, and shorter underwater than cap 4R. The cost is higher concurrent exposure and same-symbol stacking.</p>
+      <div class="facts">
+        <div class="fact"><span>Winner</span><strong>LP3 take-all</strong></div><div class="fact"><span>Total R</span><strong>1,512.3R</strong></div><div class="fact"><span>Max DD</span><strong>33.4R</strong></div><div class="fact"><span>Underwater</span><strong>111D</strong></div>
+      </div>
+      <a class="button" href="v13.html">Open V13 Dashboard</a>
     </section>
 
     <section class="card">

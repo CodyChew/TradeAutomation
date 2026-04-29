@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-30 local time after running V12 LP pivot finalization
-and regenerating V1-V12 dashboards.
+Last updated: 2026-04-30 local time after running V13 relaxed portfolio rule
+selection and regenerating V1-V13 dashboards.
 
 ## Purpose
 
@@ -538,6 +538,52 @@ Current conclusion:
 - Next research should focus on risk sizing, FTMO-style daily/max loss
   constraints, and execution-readiness rather than changing LP pivot strength.
 
+## Experiment V13 Relaxed Portfolio Rule Selection
+
+Experiment V13 retests whether `cap_4r` is too conservative by treating the old
+30R max-drawdown / 180D underwater guardrails as context instead of hard
+selection rules.
+
+Detailed notes:
+
+```text
+docs/lp_force_strike_experiment_v13_relaxed_portfolio_selection.md
+```
+
+Run details:
+
+- config:
+  `../../configs/strategies/lp_force_strike_experiment_v13_relaxed_portfolio_selection.json`
+- input trades:
+  `reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831/trades.csv`
+- report:
+  `reports/strategies/lp_force_strike_experiment_v13_relaxed_portfolio_selection/20260429_172705`
+- dashboard: `docs/v13.html`
+- fixed model: LP3, all `H4/H8/H12/D1/W1`, 0.5 signal-candle pullback, full
+  FS structure stop, single 1R target, fixed 6-bar pullback wait.
+
+Main result:
+
+| Portfolio | Trades | Total R | PF | Max DD | Underwater | Neg years | Neg symbols |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| take_all | 13,012 | 1,512.3R | 1.265 | 33.4R | 111D | 0 | 0 |
+| one_symbol_no_cap | 11,519 | 1,267.1R | 1.248 | 33.7R | 172D | 0 | 0 |
+| cap_6r | 11,226 | 1,235.6R | 1.249 | 32.6R | 125D | 0 | 0 |
+| cap_4r | 10,037 | 1,100.9R | 1.248 | 26.7R | 162D | 0 | 0 |
+
+Current conclusion:
+
+- Use `take_all` as the current research baseline if account risk per trade is
+  kept small enough.
+- `take_all` adds about 411R versus `cap_4r`, has shorter underwater, and has
+  no negative years or negative symbols.
+- At 0.25% risk per trade, `take_all` max closed-trade drawdown is about 8.3%;
+  at 0.50% risk per trade it is about 16.7%.
+- Exposure caveat: `take_all` reached 17 concurrent trades, 12 new trades at
+  one timestamp, and max same-symbol stack of 4.
+- Next research should test FTMO-style daily/max loss, account-risk sizing, and
+  same-symbol stacking limits before execution work.
+
 ## Dashboard Interpretation UX
 
 The dashboard interpretation metadata lives in:
@@ -546,7 +592,7 @@ The dashboard interpretation metadata lives in:
 ../../configs/dashboards/lp_force_strike_pages.json
 ```
 
-On 2026-04-30, V6-V12 were given a `decision_brief` section in that metadata.
+On 2026-04-30, V6-V13 were given a `decision_brief` section in that metadata.
 The shared renderer now shows a prominent `Decision Brief` near the top of each
 page, before the tables. This preserves the concise chat-style interpretation
 the user found useful, for example the V11 bullets explaining why removing H4
@@ -555,5 +601,5 @@ or H8 is not worth replacing the baseline.
 ## Boundary
 
 This lab intentionally excludes SMA context, account-currency position sizing,
-broker order execution, and EA logic. V10/V11/V12 portfolio analytics are
+broker order execution, and EA logic. V10/V11/V12/V13 portfolio analytics are
 research-only closed-trade R simulations.

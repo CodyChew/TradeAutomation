@@ -3,17 +3,17 @@
     "title": "TradeAutomation Research Dashboards",
     "intro": "Versioned static dashboards for LP + Force Strike experiments. Use stable version pages for comparison instead of overwriting old analysis.",
     "current_baseline": {
-      "title": "Current Baseline: LP3 cap 4R all timeframes",
-      "description": "V12 confirmed the current practical candidate remains LP3 with a 4R max-open-risk cap across H4/H8/H12/D1/W1, one open trade per symbol, 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait.",
+      "title": "Current Baseline: LP3 take-all all timeframes",
+      "description": "V13 relaxed the old hard guardrails and selected take-all as the current research baseline: LP3 across H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait. This has higher return and shorter underwater than cap 4R, but requires accepting same-symbol stacking and higher concurrent exposure.",
       "status_label": "Active baseline",
       "facts": [
-        ["Total R", "1,100.9R"],
-        ["Max DD", "26.7R"],
-        ["Underwater", "162D"],
-        ["Guardrail", "Pass"]
+        ["Total R", "1,512.3R"],
+        ["Max DD", "33.4R"],
+        ["Underwater", "111D"],
+        ["Max Concurrent", "17"]
       ],
-      "button_href": "v12.html",
-      "button_label": "Open Pivot Finalization Study"
+      "button_href": "v13.html",
+      "button_label": "Open Relaxed Portfolio Study"
     }
   },
   "pages": [
@@ -329,6 +329,40 @@
           "No-H4 makes LP3/LP4/LP5 all pass, but LP3 still has the highest total R."
         ],
         "next_step": "Stop changing LP pivots for now; move to risk sizing, FTMO constraints, or execution-readiness."
+      }
+    },
+    {
+      "page": "v13.html",
+      "nav_label": "V13",
+      "index_order": -3,
+      "title": "V13 Relaxed Portfolio Rule Selection",
+      "status_label": "Active baseline",
+      "status_kind": "active",
+      "question": "Is cap 4R too conservative once the old 30R / 180D guardrails are treated as context instead of hard selection rules?",
+      "setup": "Existing V9 trades only. The signal and trade model stay fixed: LP3, all H4/H8/H12/D1/W1, 0.5 signal-candle pullback, full Force Strike structure stop, single 1R target, and fixed 6-bar pullback wait. V13 compares take-all, one-symbol no-cap, and cap 4R through cap 16R.",
+      "how_to_read": "Start with the Decision Brief, then read the Exposure Reality Check before treating take-all as tradable. V13 ranks by long-run Total R after checking yearly, ticker, and concentration robustness.",
+      "conclusion": "Use take-all as the current research baseline if account risk per trade is kept small enough. It produced the highest Total R, no negative years, no negative symbols, no obvious concentration skew, and shorter underwater than cap 4R. The cost is higher concurrent exposure and same-symbol stacking.",
+      "action": "Use take-all for the next research slice, but make execution constraints explicit: max 17 concurrent trades, max 4 same-symbol stack, and account DD examples of about 8.3% at 0.25% risk or 16.7% at 0.50% risk.",
+      "facts": [
+        ["Winner", "LP3 take-all"],
+        ["Total R", "1,512.3R"],
+        ["Max DD", "33.4R"],
+        ["Underwater", "111D"]
+      ],
+      "comparison_rows": [
+        ["Take-all", "13,012", "58.0%", "0.116R", "1.265", "1,512.3R"],
+        ["Cap 4R", "10,037", "57.6%", "0.110R", "1.248", "1,100.9R"],
+        ["Cap 6R", "11,226", "57.7%", "0.110R", "1.249", "1,235.6R"]
+      ],
+      "decision_brief": {
+        "headline": "V13 result: use take-all as the current research baseline, with explicit exposure caveats.",
+        "key_results": [
+          "Take-all: 13,012 trades, 1,512.3R, max DD 33.4R, underwater 111D, 0 negative years, 0 negative symbols.",
+          "Cap 4R: 10,037 trades, 1,100.9R, max DD 26.7R, underwater 162D; it gives up about 411R and has a longer underwater period.",
+          "Cap 6R: 11,226 trades, 1,235.6R, max DD 32.6R, underwater 125D; it lowers exposure but still gives up about 277R versus take-all.",
+          "Take-all reached 17 concurrent trades and a max same-symbol stack of 4, so the next test must model account-level risk constraints before live execution."
+        ],
+        "next_step": "Use take-all for the next strategy research slice, then test FTMO-style daily/max loss and practical execution constraints."
       }
     }
   ]

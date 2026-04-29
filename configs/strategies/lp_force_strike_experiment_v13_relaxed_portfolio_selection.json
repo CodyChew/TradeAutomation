@@ -1,0 +1,68 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v13_relaxed_portfolio_selection",
+  "input_trades_path": "reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831/trades.csv",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v13_relaxed_portfolio_selection",
+  "pivot_strength": 3,
+  "timeframes": [
+    "H4",
+    "H8",
+    "H12",
+    "D1",
+    "W1"
+  ],
+  "risk_per_trade_pct_examples": [
+    0.25,
+    0.5
+  ],
+  "concentration_warning_share": 0.25,
+  "portfolio_rules": [
+    {
+      "portfolio_id": "take_all",
+      "max_open_r": null,
+      "enforce_one_per_symbol": false,
+      "risk_r_per_trade": 1.0
+    },
+    {
+      "portfolio_id": "one_symbol_no_cap",
+      "max_open_r": null,
+      "enforce_one_per_symbol": true,
+      "risk_r_per_trade": 1.0
+    },
+    {
+      "portfolio_id": "cap_4r",
+      "max_open_r": 4.0,
+      "enforce_one_per_symbol": true,
+      "risk_r_per_trade": 1.0
+    },
+    {
+      "portfolio_id": "cap_6r",
+      "max_open_r": 6.0,
+      "enforce_one_per_symbol": true,
+      "risk_r_per_trade": 1.0
+    },
+    {
+      "portfolio_id": "cap_8r",
+      "max_open_r": 8.0,
+      "enforce_one_per_symbol": true,
+      "risk_r_per_trade": 1.0
+    },
+    {
+      "portfolio_id": "cap_10r",
+      "max_open_r": 10.0,
+      "enforce_one_per_symbol": true,
+      "risk_r_per_trade": 1.0
+    },
+    {
+      "portfolio_id": "cap_12r",
+      "max_open_r": 12.0,
+      "enforce_one_per_symbol": true,
+      "risk_r_per_trade": 1.0
+    },
+    {
+      "portfolio_id": "cap_16r",
+      "max_open_r": 16.0,
+      "enforce_one_per_symbol": true,
+      "risk_r_per_trade": 1.0
+    }
+  ]
+}

@@ -23,16 +23,16 @@ class DashboardPagesTests(unittest.TestCase):
         metadata = load_dashboard_metadata()
         pages = {page["page"]: page for page in metadata["pages"]}
 
-        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 13)})
-        for version in range(1, 13):
+        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 14)})
+        for version in range(1, 14):
             page = pages[f"v{version}.html"]
             for field in ("title", "question", "setup", "how_to_read", "conclusion", "action", "status_label"):
                 self.assertTrue(page[field], f"missing {field} for v{version}")
 
     def test_every_generated_dashboard_links_to_all_pages(self) -> None:
-        expected_links = ['href="index.html"'] + [f'href="v{version}.html"' for version in range(1, 13)]
+        expected_links = ['href="index.html"'] + [f'href="v{version}.html"' for version in range(1, 14)]
 
-        for path in [DOCS_ROOT / "index.html"] + [DOCS_ROOT / f"v{version}.html" for version in range(1, 13)]:
+        for path in [DOCS_ROOT / "index.html"] + [DOCS_ROOT / f"v{version}.html" for version in range(1, 14)]:
             html = path.read_text(encoding="utf-8")
             for link in expected_links:
                 self.assertIn(link, html, f"{path.name} missing {link}")
@@ -80,7 +80,7 @@ class DashboardPagesTests(unittest.TestCase):
         metadata = load_dashboard_metadata()
         pages = {page["page"]: page for page in metadata["pages"]}
 
-        for version in range(10, 13):
+        for version in range(10, 14):
             self.assertIn("decision_brief", pages[f"v{version}.html"])
             html = (DOCS_ROOT / f"v{version}.html").read_text(encoding="utf-8")
             self.assertIn("Decision Brief", html)
@@ -88,6 +88,15 @@ class DashboardPagesTests(unittest.TestCase):
         v11_html = (DOCS_ROOT / "v11.html").read_text(encoding="utf-8")
         self.assertIn("Remove H4: lower DD/underwater, but gives up about 308R", v11_html)
         self.assertIn("Remove H8: gives up about 157R", v11_html)
+
+    def test_v13_dashboard_shows_relaxed_portfolio_sections(self) -> None:
+        html = (DOCS_ROOT / "v13.html").read_text(encoding="utf-8")
+
+        self.assertIn("Decision Brief", html)
+        self.assertIn("Portfolio Rule Leaderboard", html)
+        self.assertIn("Exposure Reality Check", html)
+        self.assertIn("Period Robustness", html)
+        self.assertIn("Ticker Robustness", html)
 
     def test_lp_pivot_candidate_labels_are_readable(self) -> None:
         label = _candidate_short("lp_pivot_2__signal_zone_0p5_pullback__fs_structure__1r")

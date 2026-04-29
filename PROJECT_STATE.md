@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-04-30 after running the V12 LP pivot finalization study
-and regenerating V1-V12 dashboard navigation.
+Last updated: 2026-04-30 after running the V13 relaxed portfolio rule
+selection study and regenerating V1-V13 dashboard navigation.
 
 ## Purpose
 
@@ -163,6 +163,7 @@ Static dashboards exist at:
 - `docs/v10.html`: portfolio exposure cap baseline.
 - `docs/v11.html`: practical timeframe mix study.
 - `docs/v12.html`: LP pivot finalization.
+- `docs/v13.html`: relaxed portfolio rule selection.
 
 The dashboard generator is:
 
@@ -190,25 +191,38 @@ regenerate the versioned pages.
 
 ## Current Recommendation
 
-The current practical baseline after V12 is:
+The current research baseline after V13 is:
 
 - LP pivot strength `3`.
 - all `H4/H8/H12/D1/W1` timeframes.
-- max open risk `4R`.
-- one open trade per symbol.
-- same-symbol same-time priority `W1 > D1 > H12 > H8 > H4`.
+- `take_all` portfolio handling: allow all trades, including same-symbol
+  stacking.
 - 0.5 signal-candle pullback, full Force Strike structure stop, single 1R
   target, and fixed 6-bar pullback wait.
 
-V11 tested whether removing H4 and/or H8 improved drawdown and underwater
-enough to replace all timeframes. It did not. V12 tested whether LP4/LP5 should
-replace LP3 after the portfolio/timeframe mechanics were fixed. They should not:
-LP4 and LP5 have better PF, but they failed the all-timeframe guardrails. LP3
-remains the default.
+V13 relaxed the older 30R max-drawdown / 180D underwater guardrails from hard
+selection rules into context. Under that more trader-practical ranking,
+`take_all` became the current research baseline:
+
+| Portfolio | Trades | Total R | Max DD | Underwater | Negative years | Negative symbols |
+|---|---:|---:|---:|---:|---:|---:|
+| take_all | 13,012 | 1,512.3R | 33.4R | 111D | 0 | 0 |
+| cap_4r | 10,037 | 1,100.9R | 26.7R | 162D | 0 | 0 |
+
+Interpretation:
+
+- `take_all` adds about `411R` over `cap_4r` and has shorter underwater.
+- The higher drawdown is about `8.3%` at `0.25%` risk per trade, versus about
+  `6.7%` for `cap_4r`.
+- No negative years, no negative symbols, and no obvious year/ticker
+  concentration skew were found in V13.
+- The caveat is exposure: `take_all` reached 17 concurrent trades and max
+  same-symbol stack of 4.
 
 Next useful research:
 
-- test FTMO-style risk sizing and daily/max loss constraints;
+- test FTMO-style risk sizing, daily/max loss constraints, and same-symbol
+  stacking limits against the V13 `take_all` baseline;
 - add equity-curve diagnostics beyond closed-trade R;
 - prepare an MT5 execution contract only after risk sizing is clear.
 
@@ -233,6 +247,8 @@ user explicitly asks.
 
 ```text
 Continue from TradeAutomation/PROJECT_STATE.md. Focus on the LP + Force Strike
-strategy lab. Review V6 H12 bridge results and propose the next controlled
-portfolio/backtest experiment without changing concept behavior unless needed.
+strategy lab. The current baseline is V13 `take_all` with LP3 across
+H4/H8/H12/D1/W1. Review docs/v13.html and test FTMO-style daily/max loss,
+account-risk sizing, and same-symbol stacking constraints without changing LP
+or Force Strike concept behavior unless needed.
 ```
