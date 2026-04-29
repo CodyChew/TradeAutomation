@@ -11,9 +11,9 @@ patterns. It now has two layers:
 - signal detection: LP break + raw Force Strike confirmation;
 - experiment harness: fixed bracket trade-model candidates for research.
 
-It still does not contain position sizing, portfolio accounting, live
-execution, or a combined TradingView indicator. V10 adds portfolio-style
-research analytics, but not live execution rules.
+It still does not contain live execution or a combined TradingView indicator.
+V10-V13 add portfolio-style research analytics, but not broker execution rules
+or final account-risk sizing.
 
 ## Concept Dependencies
 
@@ -583,6 +583,28 @@ Current conclusion:
   one timestamp, and max same-symbol stack of 4.
 - Next research should test FTMO-style daily/max loss, account-risk sizing, and
   same-symbol stacking limits before execution work.
+
+## Recommended Next Experiment: V14 Account Risk Constraints
+
+V14 should use the V13 `take_all` baseline and avoid changing LP, raw Force
+Strike, entry, stop, target, or pullback-wait logic.
+
+Suggested scope:
+
+- risk per trade: `0.10%`, `0.25%`, and `0.50%`;
+- max concurrent trades: uncapped, 8, 10, 12, and 15;
+- same-symbol stack caps: uncapped, 1, and 2;
+- FTMO-style daily loss and max loss checks;
+- worst day, worst week, worst month, and top underwater periods;
+- ticker, timeframe, and period concentration checks after constraints.
+
+Decision question:
+
+```text
+Can the V13 take-all baseline be traded safely with realistic account-level
+constraints, or does it need a practical execution cap that preserves most of
+the return?
+```
 
 ## Dashboard Interpretation UX
 

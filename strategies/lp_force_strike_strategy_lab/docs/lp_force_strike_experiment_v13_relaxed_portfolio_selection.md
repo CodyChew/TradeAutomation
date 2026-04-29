@@ -80,3 +80,19 @@ For `take_all`:
 
 Current interpretation: the higher-return version does not show obvious
 single-period or single-ticker dependency in the available 10-year dataset.
+
+## Next Research
+
+V14 should not change the LP or Force Strike logic. It should keep V13
+`take_all` as the baseline and test whether that baseline survives realistic
+account constraints:
+
+- risk per trade examples: `0.10%`, `0.25%`, `0.50%`;
+- max concurrent trade caps: uncapped, 8, 10, 12, 15;
+- same-symbol stack caps: uncapped, 1, 2;
+- FTMO-style daily loss and max loss breaches;
+- worst day, worst week, worst month, top underwater periods;
+- ticker, timeframe, and period concentration after constraints.
+
+The decision should be whether `take_all` remains practical, or whether a
+lighter execution cap preserves most return while reducing account-level risk.

@@ -32,8 +32,10 @@ Static research dashboards are published from `docs/`:
 - Local entry point: `docs/index.html`
 - GitHub Pages: `https://codychew.github.io/TradeAutomation/`
 
-The latest current comparison is V6, which adds native MT5 H12 to the H4/H8/D1/W1
-timeframe study.
+The current LP + Force Strike research baseline is V13: LP3 take-all across
+H4/H8/H12/D1/W1, using the 0.5 signal-candle pullback, full Force Strike
+structure stop, single 1R target, and fixed 6-bar pullback wait. Open
+`docs/index.html` or the GitHub Pages link for the latest dashboard.
 
 ## Current Shared Labs
 

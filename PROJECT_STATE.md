@@ -184,7 +184,7 @@ scripts/build_lp_force_strike_index.py
 ```
 
 The pages were made responsive and given explicit interpretation summaries on
-2026-04-29. On 2026-04-30, V6-V12 gained a prominent `Decision Brief` block so
+2026-04-29. On 2026-04-30, V6-V13 gained a prominent `Decision Brief` block so
 the important chat-style conclusions are visible before the metric tables.
 Future dashboard changes should update the metadata and generators first, then
 regenerate the versioned pages.
@@ -221,10 +221,21 @@ Interpretation:
 
 Next useful research:
 
-- test FTMO-style risk sizing, daily/max loss constraints, and same-symbol
-  stacking limits against the V13 `take_all` baseline;
+- run V14 against the V13 `take_all` baseline to test FTMO-style account-risk
+  sizing, daily/max loss constraints, same-symbol stacking limits, and max
+  concurrent trade limits;
 - add equity-curve diagnostics beyond closed-trade R;
 - prepare an MT5 execution contract only after risk sizing is clear.
+
+Suggested V14 scope:
+
+- keep LP/FS/entry/stop/target unchanged;
+- compare risk per trade such as `0.10%`, `0.25%`, and `0.50%`;
+- test max concurrent trade caps such as uncapped, 8, 10, 12, and 15;
+- test same-symbol stack caps such as uncapped, 1, and 2;
+- report worst day, worst week, worst month, max total drawdown, daily-loss
+  breaches, total-loss breaches, and whether any ticker or period becomes a
+  concentration problem.
 
 Do not replace the fixed 6-bar pullback wait with the V7/V8 1R-cancel wait
 rule. V8, the fairer entry-priority version, was positive but weaker than the
@@ -232,11 +243,11 @@ full-28 fixed 6-bar baseline on every timeframe.
 
 ## Git State Notes
 
-Latest pushed commits before the dataset verification work:
+Latest pushed commits before this handover audit:
 
-- `fd4e7cb Add native H12 bridge experiment`
-- `da6f999 Improve dashboard responsiveness`
-- `af6663b Add entry wait experiments and dashboards`
+- `0e55f70 Add V13 relaxed portfolio study`
+- `2c8cf82 Improve dashboard decision briefs`
+- `f2e448c Add V11 timeframe mix study`
 
 Untracked folders such as `CryptoBot_test/`, `FOREX/`, `force_strike_lab/`,
 `forex_experiment/`, `mt5_strategy_lab/`, and `xauusd_m1_research/` are outside
