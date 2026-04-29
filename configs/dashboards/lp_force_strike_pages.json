@@ -375,18 +375,19 @@
       "question": "What drawdowns should be expected when the V13 take-all baseline is converted from R results into fixed account-risk and timeframe-ladder risk schedules?",
       "setup": "Existing V9 trade rows only. The strategy model stays fixed: LP3, all H4/H8/H12/D1/W1, take-all handling, 0.5 signal-candle pullback, full Force Strike structure stop, single 1R target, and fixed 6-bar pullback wait.",
       "how_to_read": "Start with the Decision Brief and Recommendation Card. Realized drawdown uses closed trade exits, while risk-reserved drawdown subtracts full open risk while trades are active and is the more conservative live-account stress view.",
-      "conclusion": "The balanced equal-LTF ladder is the practical starting risk schedule. It keeps H4 and H8 equal, gives higher risk to H12/D1/W1, and produces a moderate stress profile: about 332.6% total return, 6.2% realized max DD, 8.6% risk-reserved max DD, and 5.7% max reserved open risk.",
-      "action": "Use the balanced equal-LTF ladder as the first live-style sizing candidate. Fixed 0.25% is the closest simple alternative; fixed 0.50% is a high-return, high-stress diagnostic rather than the first practical default.",
+      "conclusion": "The tight H12-D1 basket is the current practical risk schedule. It keeps H4 and H8 equal, groups H12 and D1 together, keeps W1 higher, and slightly improves drawdown/open-risk efficiency versus the balanced ladder while giving up only a small amount of total return.",
+      "action": "Use the tight H12-D1 basket as the first live-style sizing candidate. Balanced equal-LTF is the growth-tilted alternative; fixed 0.25% is the closest simple fixed-risk option; fixed 0.50% is a high-return, high-stress diagnostic.",
       "facts": [
-        ["Recommendation", "Balanced ladder"],
-        ["Total Return", "332.6%"],
-        ["Reserved DD", "8.6%"],
-        ["Max Open Risk", "5.7%"]
+        ["Recommendation", "Tight H12-D1"],
+        ["Total Return", "324.2%"],
+        ["Reserved DD", "7.9%"],
+        ["Max Open Risk", "5.1%"]
       ],
       "decision_brief": {
-        "headline": "V14 result: use the balanced equal-LTF ladder as the practical starting risk schedule.",
+        "headline": "V14 result: use the tight H12-D1 basket as the practical starting risk schedule.",
         "key_results": [
-          "Balanced equal-LTF: total +332.6%, realized DD 6.2%, risk-reserved DD 8.6%, worst month -3.6%, max reserved open risk 5.7%.",
+          "Tight H12-D1 basket: total +324.2%, realized DD 5.9%, risk-reserved DD 7.9%, worst month -3.0%, max reserved open risk 5.1%.",
+          "Balanced equal-LTF: total +332.6%, realized DD 6.2%, risk-reserved DD 8.6%, max reserved open risk 5.7%; it is still the growth-tilted alternative.",
           "Fixed 0.25%: total +378.1%, realized DD 8.3%, risk-reserved DD 9.8%, worst month -4.1%; simpler, but it does not upweight the cleaner higher timeframes.",
           "Fixed 0.50%: total +756.1%, risk-reserved DD 19.5%, worst week -10.2%, worst month -8.1%; useful as a stress diagnostic, not the first practical default.",
           "Conservative equal-LTF: total +240.3%, risk-reserved DD 6.7%, max open risk 4.2%; smoother if drawdown tolerance is lower."

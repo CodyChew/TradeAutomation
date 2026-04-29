@@ -418,6 +418,9 @@ def run_risk_sizing_analysis(
 
 
 def _recommendation(summary: pd.DataFrame) -> pd.Series:
+    tighter = summary[summary["schedule_id"] == "ladder_tight_h12_d1_basket"]
+    if not tighter.empty:
+        return tighter.iloc[0]
     preferred = summary[summary["schedule_id"] == "ladder_balanced_equal_ltf"]
     if not preferred.empty:
         return preferred.iloc[0]
@@ -763,12 +766,12 @@ def _html_report(
     </section>
     <section id="risk-composition">
       <h2>Risk Schedule Composition</h2>
-      <div class="note">This is the exact account-risk percentage applied per trade by timeframe. The recommended balanced ladder keeps H4 and H8 equal, then increases risk on H12, D1, and W1.</div>
+      <div class="note">This is the exact account-risk percentage applied per trade by timeframe. The current tighter recommendation keeps H4 and H8 equal, groups H12 and D1 in one middle basket, then leaves W1 higher.</div>
       {_risk_schedule_composition_table(run_dir, str(recommended["schedule_id"]))}
     </section>
     <section id="risk-calibration">
       <h2>Risk Tolerance Calibration</h2>
-      <div class="note">For a more aggressive version, scale the balanced ladder first. Formula: target risk-reserved DD / current risk-reserved DD. Increasing only H4/H8 is a different hypothesis because those lower timeframes are more frequent and lower quality, so it should be tested as a separate ladder rather than assumed better.</div>
+      <div class="note">For a more aggressive version, scale the recommended ladder first. Formula: target risk-reserved DD / current risk-reserved DD. Increasing only H4/H8 is a different hypothesis because those lower timeframes are more frequent and lower quality, so it should be tested as a separate ladder rather than assumed better.</div>
       {_risk_tolerance_calibration_table(run_dir, recommended)}
     </section>
     <section id="leaderboard">

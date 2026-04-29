@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-30 local time after adding V14 risk tolerance calibration
-to the risk-sizing dashboard and documentation.
+Last updated: 2026-04-30 local time after adding the V14 tight H12-D1 risk
+basket to the risk-sizing dashboard and documentation.
 
 ## Purpose
 
@@ -602,7 +602,7 @@ Run details:
 - input trades:
   `reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831/trades.csv`
 - report:
-  `reports/strategies/lp_force_strike_experiment_v14_risk_sizing_drawdown/20260429_175908`
+  `reports/strategies/lp_force_strike_experiment_v14_risk_sizing_drawdown/20260429_235134`
 - dashboard: `docs/v14.html`
 - fixed model: LP3, all `H4/H8/H12/D1/W1`, `take_all`, 0.5 signal-candle
   pullback, full FS structure stop, single 1R target, fixed 6-bar pullback
@@ -617,12 +617,18 @@ Main result:
 | Fixed 0.50% | 756.1% | 16.7% | 19.5% | -8.1% | 10.0% |
 | Conservative equal-LTF | 240.3% | 4.8% | 6.7% | -2.7% | 4.2% |
 | Balanced equal-LTF | 332.6% | 6.2% | 8.6% | -3.6% | 5.7% |
+| Tight H12-D1 basket | 324.2% | 5.9% | 7.9% | -3.0% | 5.1% |
 | Quality-weighted diagnostic | 303.7% | 6.1% | 8.5% | -3.8% | 5.6% |
 | High-timeframe tilt | 250.1% | 8.0% | 10.5% | -4.3% | 5.6% |
 
 Current conclusion:
 
-- Use the balanced equal-LTF ladder as the first practical risk schedule:
+- Use the tight H12-D1 basket as the first practical risk schedule:
+  H4 `0.15%`, H8 `0.15%`, H12 `0.30%`, D1 `0.30%`, W1 `0.45%`.
+- It gives up only about `8.4%` total return versus Balanced equal-LTF, while
+  lowering realized DD, risk-reserved DD, worst month, and max reserved open
+  risk.
+- Balanced equal-LTF remains the growth-tilted ladder:
   H4 `0.15%`, H8 `0.15%`, H12 `0.25%`, D1 `0.40%`, W1 `0.60%`.
 - Fixed `0.25%` is the closest simple alternative. It has higher total return
   but does not upweight the cleaner higher timeframes.
@@ -634,8 +640,8 @@ Current conclusion:
 Risk tolerance calibration:
 
 - V14 now includes a `Risk Tolerance Calibration` table in `docs/v14.html`.
-- For more or less aggressive sizing, scale the balanced ladder first:
-  `multiplier = target risk-reserved DD / 8.56`.
+- For more or less aggressive sizing, scale the tight H12-D1 ladder first:
+  `multiplier = target risk-reserved DD / 7.86`.
 - This keeps the tested timeframe weighting intact.
 - Increasing only H4/H8 is a separate ladder hypothesis because H4/H8 are more
   frequent and lower-quality than D1/W1.
@@ -644,9 +650,9 @@ Scaled balanced ladder examples:
 
 | Target risk-reserved DD | H4 | H8 | H12 | D1 | W1 | Est. return |
 |---:|---:|---:|---:|---:|---:|---:|
-| 10% | 0.18% | 0.18% | 0.29% | 0.47% | 0.70% | 389% |
-| 15% | 0.26% | 0.26% | 0.44% | 0.70% | 1.05% | 583% |
-| 20% | 0.35% | 0.35% | 0.58% | 0.93% | 1.40% | 777% |
+| 10% | 0.19% | 0.19% | 0.38% | 0.38% | 0.57% | 412% |
+| 15% | 0.29% | 0.29% | 0.57% | 0.57% | 0.86% | 618% |
+| 20% | 0.38% | 0.38% | 0.76% | 0.76% | 1.14% | 825% |
 
 Decision question:
 

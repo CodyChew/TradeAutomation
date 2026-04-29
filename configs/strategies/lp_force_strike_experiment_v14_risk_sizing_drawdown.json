@@ -55,6 +55,18 @@
       }
     },
     {
+      "schedule_id": "ladder_tight_h12_d1_basket",
+      "label": "Tight H12-D1 basket",
+      "kind": "timeframe",
+      "risk_by_timeframe": {
+        "H4": 0.15,
+        "H8": 0.15,
+        "H12": 0.3,
+        "D1": 0.3,
+        "W1": 0.45
+      }
+    },
+    {
       "schedule_id": "ladder_quality_weighted_diagnostic",
       "label": "Quality-weighted diagnostic",
       "kind": "timeframe",

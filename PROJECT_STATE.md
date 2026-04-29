@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-04-30 after adding V14 risk tolerance calibration to the
-risk-sizing dashboard and handover notes.
+Last updated: 2026-04-30 after adding the V14 tight H12-D1 risk basket and
+updating the risk-sizing dashboard/handover notes.
 
 ## Purpose
 
@@ -238,16 +238,19 @@ Next useful research:
 Latest V14 risk-sizing read:
 
 - V14 did not rerun MT5 data or signals. It used the V13 baseline trade rows.
-- Balanced equal-LTF is the practical starting schedule:
-  H4 `0.15%`, H8 `0.15%`, H12 `0.25%`, D1 `0.40%`, W1 `0.60%`.
-- Balanced equal-LTF result: `+332.6%` total return, `6.2%` realized max DD,
-  `8.6%` risk-reserved max DD, and `5.7%` max reserved open risk.
+- Tight H12-D1 basket is the practical starting schedule:
+  H4 `0.15%`, H8 `0.15%`, H12 `0.30%`, D1 `0.30%`, W1 `0.45%`.
+- Tight H12-D1 result: `+324.2%` total return, `5.9%` realized max DD,
+  `7.9%` risk-reserved max DD, and `5.1%` max reserved open risk.
+- Balanced equal-LTF remains the growth-tilted alternative:
+  `+332.6%` total return, `6.2%` realized max DD, `8.6%`
+  risk-reserved max DD, and `5.7%` max reserved open risk.
 - Fixed `0.25%` is the closest simple alternative: `+378.1%` total return,
   `8.3%` realized max DD, and `9.8%` risk-reserved max DD.
 - Fixed `0.50%` is a high-return/high-stress diagnostic, not the first
   practical default: `+756.1%` total return and `19.5%` risk-reserved max DD.
-- For more or less aggressive sizing, scale the balanced ladder first:
-  `multiplier = target risk-reserved DD / 8.56`.
+- For more or less aggressive sizing, scale the tight H12-D1 ladder first:
+  `multiplier = target risk-reserved DD / 7.86`.
 - Do not simply increase H4/H8 without testing. H4/H8 are more frequent and
   lower-quality than D1/W1, so increasing only lower timeframe risk is a new
   ladder hypothesis rather than a neutral sizing change.
@@ -256,9 +259,9 @@ V14 calibration examples:
 
 | Target risk-reserved DD | H4 | H8 | H12 | D1 | W1 | Est. return |
 |---:|---:|---:|---:|---:|---:|---:|
-| 10% | 0.18% | 0.18% | 0.29% | 0.47% | 0.70% | 389% |
-| 15% | 0.26% | 0.26% | 0.44% | 0.70% | 1.05% | 583% |
-| 20% | 0.35% | 0.35% | 0.58% | 0.93% | 1.40% | 777% |
+| 10% | 0.19% | 0.19% | 0.38% | 0.38% | 0.57% | 412% |
+| 15% | 0.29% | 0.29% | 0.57% | 0.57% | 0.86% | 618% |
+| 20% | 0.38% | 0.38% | 0.76% | 0.76% | 1.14% | 825% |
 
 Do not replace the fixed 6-bar pullback wait with the V7/V8 1R-cancel wait
 rule. V8, the fairer entry-priority version, was positive but weaker than the
@@ -268,6 +271,7 @@ full-28 fixed 6-bar baseline on every timeframe.
 
 Recent project commits:
 
+- `Add V14 tight H12-D1 risk basket` (pending/current if committed)
 - `8d77960 Add V14 risk tolerance calibration`
 - `5f7acd7 Show V14 risk ladder composition`
 - `e73ce07 Add V14 risk sizing study`
@@ -285,10 +289,10 @@ user explicitly asks.
 ```text
 Continue from TradeAutomation/PROJECT_STATE.md. Focus on the LP + Force Strike
 strategy lab. The current baseline is V13 `take_all` with LP3 across
-H4/H8/H12/D1/W1. Review docs/v13.html and docs/v14.html. Use the V14 balanced
-equal-LTF risk schedule as the first practical sizing candidate, then test
+H4/H8/H12/D1/W1. Review docs/v13.html and docs/v14.html. Use the V14 tight
+H12-D1 risk schedule as the first practical sizing candidate, then test
 daily/max loss and same-symbol/concurrent execution constraints without
 changing LP or Force Strike concept behavior unless needed. For aggressive
-sizing, scale the balanced ladder first; only upweight H4/H8 as a separate
+sizing, scale the tight H12-D1 ladder first; only upweight H4/H8 as a separate
 tested ladder hypothesis.
 ```

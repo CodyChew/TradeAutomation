@@ -35,9 +35,9 @@ Static research dashboards are published from `docs/`:
 The current LP + Force Strike research baseline is V13: LP3 take-all across
 H4/H8/H12/D1/W1, using the 0.5 signal-candle pullback, full Force Strike
 structure stop, single 1R target, and fixed 6-bar pullback wait. V14 adds the
-current risk-sizing read: balanced equal-LTF risk, with H4/H8 sized equally and
-higher risk assigned to H12/D1/W1. V14 also includes a risk tolerance
-calibration table for scaling the balanced ladder to different target
+current risk-sizing read: tight H12-D1 basket risk, with H4/H8 sized equally,
+H12/D1 grouped together, and W1 kept higher. V14 also includes a risk tolerance
+calibration table for scaling the recommended ladder to different target
 drawdowns. Open `docs/index.html` or the GitHub Pages link for the latest
 dashboard.
 

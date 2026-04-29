@@ -103,8 +103,8 @@ class DashboardPagesTests(unittest.TestCase):
 
         self.assertIn("Decision Brief", html)
         self.assertIn("Risk Schedule Composition", html)
-        self.assertIn("Balanced equal-LTF (recommended)", html)
-        self.assertIn("<td>0.15%</td><td>0.15%</td><td>0.25%</td><td>0.40%</td><td>0.60%</td>", html)
+        self.assertIn("Tight H12-D1 basket (recommended)", html)
+        self.assertIn("<td>0.15%</td><td>0.15%</td><td>0.30%</td><td>0.30%</td><td>0.45%</td>", html)
         self.assertIn("Risk Tolerance Calibration", html)
         self.assertIn("target risk-reserved DD / current risk-reserved DD", html)
         self.assertIn("Target Risk-Reserved DD", html)
