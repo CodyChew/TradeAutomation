@@ -162,6 +162,33 @@
       padding: 12px 14px;
       color: #34412d;
     }
+    .decision-brief {
+      margin-top: 14px;
+      border: 1px solid #cbd8e4;
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 14px 16px;
+    }
+    .decision-brief h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--ink);
+    }
+    .decision-brief .brief-headline {
+      margin: 0 0 8px;
+      font-weight: 700;
+    }
+    .decision-brief ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .decision-brief li {
+      margin: 6px 0;
+    }
+    .decision-brief .brief-next {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
     .summary-comparison {
       margin-top: 14px;
       overflow-x: auto;
@@ -318,6 +345,14 @@
         <div><h3>Use / Do Not Use</h3><p>Do not use V7 for strategy selection. Keep the fixed 6-bar entry wait.</p></div>
       </div>
       <div class="conclusion-box"><strong>Conclusion:</strong> Do not replace the fixed 6-bar pullback wait. V7 is unusable because the cancel-first same-bar rule removes too many valid trades.</div>
+
+      <div class="decision-brief">
+        <h3>Decision Brief</h3>
+        <p class="brief-headline">V7 result: reject the cancel-first 1R entry-wait rule.</p>
+        <ul><li>Fixed 6-bar baseline: 13,012 trades, 58.0% win rate, 0.116R avg, PF 1.265, 1,512.3R.</li><li>V7 cancel-first: 4,885 trades, 35.7% win rate, -0.321R avg, PF 0.519.</li><li>The cancel-first same-bar rule removes too many valid pullback entries.</li><li>This is not a drawdown improvement tradeoff; it is a materially worse model.</li></ul>
+        <p class="brief-next"><strong>Next:</strong> Do not use V7; keep the fixed 6-bar pullback wait.</p>
+      </div>
+
       <div class="summary-comparison"><h3>Baseline Comparison</h3><table class="comparison-table"><thead><tr><th>Run</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>PF</th><th>Total R</th></tr></thead><tbody><tr><td>Fixed 6-bar baseline</td><td>13,012</td><td>58.0%</td><td>0.116R</td><td>1.265</td><td>1,512.3R</td></tr><tr><td>V7 cancel-first</td><td>4,885</td><td>35.7%</td><td>-0.321R</td><td>0.519</td><td>-1,568.7R</td></tr><tr><td>V8 entry-first</td><td>9,627</td><td>55.3%</td><td>0.062R</td><td>1.133</td><td>598.3R</td></tr></tbody></table></div>
     </section>
 

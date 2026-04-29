@@ -538,6 +538,20 @@ Current conclusion:
 - Next research should focus on risk sizing, FTMO-style daily/max loss
   constraints, and execution-readiness rather than changing LP pivot strength.
 
+## Dashboard Interpretation UX
+
+The dashboard interpretation metadata lives in:
+
+```text
+../../configs/dashboards/lp_force_strike_pages.json
+```
+
+On 2026-04-30, V6-V12 were given a `decision_brief` section in that metadata.
+The shared renderer now shows a prominent `Decision Brief` near the top of each
+page, before the tables. This preserves the concise chat-style interpretation
+the user found useful, for example the V11 bullets explaining why removing H4
+or H8 is not worth replacing the baseline.
+
 ## Boundary
 
 This lab intentionally excludes SMA context, account-currency position sizing,

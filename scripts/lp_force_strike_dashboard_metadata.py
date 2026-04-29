@@ -55,6 +55,24 @@ def dashboard_page_links(current_page: str, metadata: dict[str, Any] | None = No
 def experiment_summary_html(page: dict[str, Any]) -> str:
     """Render the common top-of-page interpretation block."""
 
+    decision_brief = ""
+    brief = page.get("decision_brief") or {}
+    if brief:
+        key_results = brief.get("key_results") or []
+        key_items = "".join(f"<li>{_escape(item)}</li>" for item in key_results)
+        next_step = brief.get("next_step")
+        next_step_html = ""
+        if next_step:
+            next_step_html = f'<p class="brief-next"><strong>Next:</strong> {_escape(next_step)}</p>'
+        decision_brief = f"""
+      <div class="decision-brief">
+        <h3>Decision Brief</h3>
+        <p class="brief-headline">{_escape(brief.get('headline', ''))}</p>
+        <ul>{key_items}</ul>
+        {next_step_html}
+      </div>
+        """
+
     comparison = ""
     comparison_rows = page.get("comparison_rows") or []
     if comparison_rows:
@@ -92,6 +110,7 @@ def experiment_summary_html(page: dict[str, Any]) -> str:
         <div><h3>Use / Do Not Use</h3><p>{_escape(page['action'])}</p></div>
       </div>
       <div class="conclusion-box"><strong>Conclusion:</strong> {_escape(page['conclusion'])}</div>
+      {decision_brief}
       {comparison}
     </section>
     """
@@ -166,6 +185,33 @@ def experiment_summary_css() -> str:
       border-left: 4px solid #8aa936;
       padding: 12px 14px;
       color: #34412d;
+    }
+    .decision-brief {
+      margin-top: 14px;
+      border: 1px solid #cbd8e4;
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 14px 16px;
+    }
+    .decision-brief h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--ink);
+    }
+    .decision-brief .brief-headline {
+      margin: 0 0 8px;
+      font-weight: 700;
+    }
+    .decision-brief ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .decision-brief li {
+      margin: 6px 0;
+    }
+    .decision-brief .brief-next {
+      margin: 10px 0 0;
+      color: var(--muted);
     }
     .summary-comparison {
       margin-top: 14px;

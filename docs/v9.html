@@ -162,6 +162,33 @@
       padding: 12px 14px;
       color: #34412d;
     }
+    .decision-brief {
+      margin-top: 14px;
+      border: 1px solid #cbd8e4;
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 14px 16px;
+    }
+    .decision-brief h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--ink);
+    }
+    .decision-brief .brief-headline {
+      margin: 0 0 8px;
+      font-weight: 700;
+    }
+    .decision-brief ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .decision-brief li {
+      margin: 6px 0;
+    }
+    .decision-brief .brief-next {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
     .summary-comparison {
       margin-top: 14px;
       overflow-x: auto;
@@ -318,6 +345,14 @@
         <div><h3>Use / Do Not Use</h3><p>Do not treat LP 5 as final execution default yet. Use LP 5 for quality-focused follow-up and LP 4 as the balanced comparison candidate.</p></div>
       </div>
       <div class="conclusion-box"><strong>Conclusion:</strong> LP pivot 5 has the best overall Avg R and PF, while LP pivot 4 is the more balanced quality/count compromise. LP pivot 2 produces the most trades but weakest quality, and LP pivot 3 is no longer the best quality default for this trade model.</div>
+
+      <div class="decision-brief">
+        <h3>Decision Brief</h3>
+        <p class="brief-headline">V9 result: higher LP pivots improve quality, but reduce trade count.</p>
+        <ul><li>LP5 has the best quality: 0.134R avg and PF 1.310.</li><li>LP4 is the balanced quality/count candidate: 9,512 trades, 0.129R avg, PF 1.297.</li><li>LP3 remains a strong baseline: 13,012 trades, 0.116R avg, PF 1.265.</li><li>LP2 has the most total R, but weakest quality, so it should not become the practical default.</li></ul>
+        <p class="brief-next"><strong>Next:</strong> Use portfolio guardrails before changing the LP default.</p>
+      </div>
+
       <div class="summary-comparison"><h3>Baseline Comparison</h3><table class="comparison-table"><thead><tr><th>Run</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>PF</th><th>Total R</th></tr></thead><tbody><tr><td>LP pivot 2</td><td>18,898</td><td>57.7%</td><td>0.110R</td><td>1.248</td><td>2,072.0R</td></tr><tr><td>LP pivot 3</td><td>13,012</td><td>58.0%</td><td>0.116R</td><td>1.265</td><td>1,512.3R</td></tr><tr><td>LP pivot 4</td><td>9,512</td><td>58.5%</td><td>0.129R</td><td>1.297</td><td>1,224.4R</td></tr><tr><td>LP pivot 5</td><td>7,519</td><td>58.8%</td><td>0.134R</td><td>1.310</td><td>1,004.8R</td></tr></tbody></table></div>
     </section>
 

@@ -129,7 +129,17 @@
         ["Signals", "13,815"],
         ["Trades", "11,185"],
         ["H12 PF", "1.37"]
-      ]
+      ],
+      "decision_brief": {
+        "headline": "V6 result: H12 is worth keeping in the research set.",
+        "key_results": [
+          "H4: 5,642 trades, 0.084R avg, PF 1.185.",
+          "H8: 2,674 trades, 0.099R avg, PF 1.221.",
+          "H12: 1,844 trades, 0.157R avg, PF 1.375.",
+          "D1/W1 remain cleaner, but H12 adds meaningful frequency with materially better quality than H8."
+        ],
+        "next_step": "Keep H12 in later portfolio studies instead of treating H4/H8/D1/W1 as the only practical set."
+      }
     },
     {
       "page": "v7.html",
@@ -153,7 +163,17 @@
         ["Fixed 6-bar baseline", "13,012", "58.0%", "0.116R", "1.265", "1,512.3R"],
         ["V7 cancel-first", "4,885", "35.7%", "-0.321R", "0.519", "-1,568.7R"],
         ["V8 entry-first", "9,627", "55.3%", "0.062R", "1.133", "598.3R"]
-      ]
+      ],
+      "decision_brief": {
+        "headline": "V7 result: reject the cancel-first 1R entry-wait rule.",
+        "key_results": [
+          "Fixed 6-bar baseline: 13,012 trades, 58.0% win rate, 0.116R avg, PF 1.265, 1,512.3R.",
+          "V7 cancel-first: 4,885 trades, 35.7% win rate, -0.321R avg, PF 0.519.",
+          "The cancel-first same-bar rule removes too many valid pullback entries.",
+          "This is not a drawdown improvement tradeoff; it is a materially worse model."
+        ],
+        "next_step": "Do not use V7; keep the fixed 6-bar pullback wait."
+      }
     },
     {
       "page": "v8.html",
@@ -177,7 +197,17 @@
         ["Fixed 6-bar baseline", "13,012", "58.0%", "0.116R", "1.265", "1,512.3R"],
         ["V7 cancel-first", "4,885", "35.7%", "-0.321R", "0.519", "-1,568.7R"],
         ["V8 entry-first", "9,627", "55.3%", "0.062R", "1.133", "598.3R"]
-      ]
+      ],
+      "decision_brief": {
+        "headline": "V8 result: positive, but still weaker than the baseline.",
+        "key_results": [
+          "Fixed 6-bar baseline: 13,012 trades, 58.0% win rate, 0.116R avg, PF 1.265, 1,512.3R.",
+          "V8 entry-first: 9,627 trades, 55.3% win rate, 0.062R avg, PF 1.133, 598.3R.",
+          "Entry-first handling fixes the worst V7 flaw, but the 1R-cancel wait still cuts too much profitable opportunity.",
+          "The fixed 6-bar wait remains better on trade count, win rate, average R, PF, and total R."
+        ],
+        "next_step": "Do not replace the fixed 6-bar pullback wait."
+      }
     },
     {
       "page": "v9.html",
@@ -202,7 +232,17 @@
         ["LP pivot 3", "13,012", "58.0%", "0.116R", "1.265", "1,512.3R"],
         ["LP pivot 4", "9,512", "58.5%", "0.129R", "1.297", "1,224.4R"],
         ["LP pivot 5", "7,519", "58.8%", "0.134R", "1.310", "1,004.8R"]
-      ]
+      ],
+      "decision_brief": {
+        "headline": "V9 result: higher LP pivots improve quality, but reduce trade count.",
+        "key_results": [
+          "LP5 has the best quality: 0.134R avg and PF 1.310.",
+          "LP4 is the balanced quality/count candidate: 9,512 trades, 0.129R avg, PF 1.297.",
+          "LP3 remains a strong baseline: 13,012 trades, 0.116R avg, PF 1.265.",
+          "LP2 has the most total R, but weakest quality, so it should not become the practical default."
+        ],
+        "next_step": "Use portfolio guardrails before changing the LP default."
+      }
     },
     {
       "page": "v10.html",
@@ -221,7 +261,17 @@
         ["Total R", "1,100.9R"],
         ["Max DD", "26.7R"],
         ["Underwater", "162D"]
-      ]
+      ],
+      "decision_brief": {
+        "headline": "V10 result: LP3 cap 4R is the practical portfolio baseline.",
+        "key_results": [
+          "LP3 take-all produced 1,512.3R, but breached the 30R drawdown guardrail with 33.4R max DD.",
+          "LP3 cap 4R produced 1,100.9R, 26.7R max DD, and 162D underwater, passing both guardrails.",
+          "LP4 and LP5 kept attractive PF, but their underwater periods were too long under the 180D rule.",
+          "The 4R cap sacrifices some total R, but it makes the model portfolio-feasible under the current guardrails."
+        ],
+        "next_step": "Use LP3 cap 4R for timeframe-mix testing."
+      }
     },
     {
       "page": "v11.html",
@@ -240,7 +290,17 @@
         ["Total R", "1,100.9R"],
         ["Max DD", "26.7R"],
         ["Underwater", "162D"]
-      ]
+      ],
+      "decision_brief": {
+        "headline": "V11 result: keep the current baseline as LP3 cap 4R across all H4/H8/H12/D1/W1.",
+        "key_results": [
+          "All TF LP3 cap 4R: 10,037 trades, 1,100.9R, max DD 26.7R, underwater 162D, pass.",
+          "Remove H4: lower DD/underwater, but gives up about 308R, not worth replacing baseline.",
+          "Remove H8: gives up about 157R and misses the underwater guardrail at 182.5D.",
+          "LP4/LP5 become viable only in no-H4 diagnostics, but with lower total R than LP3 all timeframes."
+        ],
+        "next_step": "Keep all timeframes and finalize the LP pivot default."
+      }
     },
     {
       "page": "v12.html",
@@ -259,7 +319,17 @@
         ["Total R", "1,100.9R"],
         ["Max DD", "26.7R"],
         ["Underwater", "162D"]
-      ]
+      ],
+      "decision_brief": {
+        "headline": "V12 result: keep LP3 as the practical LP pivot default.",
+        "key_results": [
+          "All-timeframe LP3: 10,037 trades, 1,100.9R, PF 1.248, max DD 26.7R, underwater 162D, pass.",
+          "All-timeframe LP4: 7,793 trades, 1,004.3R, PF 1.297, but fails with 34.4R max DD and 271D underwater.",
+          "All-timeframe LP5: 6,431 trades, 888.4R, PF 1.322, but fails underwater at 229D.",
+          "No-H4 makes LP3/LP4/LP5 all pass, but LP3 still has the highest total R."
+        ],
+        "next_step": "Stop changing LP pivots for now; move to risk sizing, FTMO constraints, or execution-readiness."
+      }
     }
   ]
 }

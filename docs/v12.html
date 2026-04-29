@@ -103,6 +103,33 @@
       padding: 12px 14px;
       color: #34412d;
     }
+    .decision-brief {
+      margin-top: 14px;
+      border: 1px solid #cbd8e4;
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 14px 16px;
+    }
+    .decision-brief h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--ink);
+    }
+    .decision-brief .brief-headline {
+      margin: 0 0 8px;
+      font-weight: 700;
+    }
+    .decision-brief ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .decision-brief li {
+      margin: 6px 0;
+    }
+    .decision-brief .brief-next {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
     .summary-comparison {
       margin-top: 14px;
       overflow-x: auto;
@@ -181,6 +208,14 @@
         <div><h3>Use / Do Not Use</h3><p>Use LP3 cap 4R across all H4/H8/H12/D1/W1 as the current research baseline. Future work should test execution constraints or risk sizing, not change the LP pivot default yet.</p></div>
       </div>
       <div class="conclusion-box"><strong>Conclusion:</strong> Keep LP3 as the practical default. LP4 and LP5 have attractive quality, but on the selected all-timeframe baseline they fail guardrails. The no-H4 contrast makes LP3/LP4/LP5 all pass, but LP3 still has the highest Total R.</div>
+
+      <div class="decision-brief">
+        <h3>Decision Brief</h3>
+        <p class="brief-headline">V12 result: keep LP3 as the practical LP pivot default.</p>
+        <ul><li>All-timeframe LP3: 10,037 trades, 1,100.9R, PF 1.248, max DD 26.7R, underwater 162D, pass.</li><li>All-timeframe LP4: 7,793 trades, 1,004.3R, PF 1.297, but fails with 34.4R max DD and 271D underwater.</li><li>All-timeframe LP5: 6,431 trades, 888.4R, PF 1.322, but fails underwater at 229D.</li><li>No-H4 makes LP3/LP4/LP5 all pass, but LP3 still has the highest total R.</li></ul>
+        <p class="brief-next"><strong>Next:</strong> Stop changing LP pivots for now; move to risk sizing, FTMO constraints, or execution-readiness.</p>
+      </div>
+
 
     </section>
 

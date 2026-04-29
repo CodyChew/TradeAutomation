@@ -183,8 +183,10 @@ scripts/build_lp_force_strike_index.py
 ```
 
 The pages were made responsive and given explicit interpretation summaries on
-2026-04-29. Future dashboard changes should update the metadata and generators
-first, then regenerate the versioned pages.
+2026-04-29. On 2026-04-30, V6-V12 gained a prominent `Decision Brief` block so
+the important chat-style conclusions are visible before the metric tables.
+Future dashboard changes should update the metadata and generators first, then
+regenerate the versioned pages.
 
 ## Current Recommendation
 

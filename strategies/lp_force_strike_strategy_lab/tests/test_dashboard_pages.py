@@ -76,6 +76,19 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Drawdown Smoothness", html)
         self.assertIn("No-H4 Robustness Contrast", html)
 
+    def test_recent_dashboards_show_chat_style_decision_brief(self) -> None:
+        metadata = load_dashboard_metadata()
+        pages = {page["page"]: page for page in metadata["pages"]}
+
+        for version in range(10, 13):
+            self.assertIn("decision_brief", pages[f"v{version}.html"])
+            html = (DOCS_ROOT / f"v{version}.html").read_text(encoding="utf-8")
+            self.assertIn("Decision Brief", html)
+
+        v11_html = (DOCS_ROOT / "v11.html").read_text(encoding="utf-8")
+        self.assertIn("Remove H4: lower DD/underwater, but gives up about 308R", v11_html)
+        self.assertIn("Remove H8: gives up about 157R", v11_html)
+
     def test_lp_pivot_candidate_labels_are_readable(self) -> None:
         label = _candidate_short("lp_pivot_2__signal_zone_0p5_pullback__fs_structure__1r")
 

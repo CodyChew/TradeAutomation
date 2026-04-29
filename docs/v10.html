@@ -134,6 +134,33 @@
       padding: 12px 14px;
       color: #34412d;
     }
+    .decision-brief {
+      margin-top: 14px;
+      border: 1px solid #cbd8e4;
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 14px 16px;
+    }
+    .decision-brief h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--ink);
+    }
+    .decision-brief .brief-headline {
+      margin: 0 0 8px;
+      font-weight: 700;
+    }
+    .decision-brief ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .decision-brief li {
+      margin: 6px 0;
+    }
+    .decision-brief .brief-next {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
     .summary-comparison {
       margin-top: 14px;
       overflow-x: auto;
@@ -200,6 +227,14 @@
         <div><h3>Use / Do Not Use</h3><p>Use LP3 cap 4R as the current practical portfolio baseline. Move next to V11 timeframe mix testing using this exposure rule.</p></div>
       </div>
       <div class="conclusion-box"><strong>Conclusion:</strong> Only LP3 with the 4R exposure cap passed both V10 guardrails. Take-all had higher Total R, but breached the 30R max drawdown guardrail. LP4 and LP5 kept attractive quality metrics, but their underwater periods were too long under the 180D rule.</div>
+
+      <div class="decision-brief">
+        <h3>Decision Brief</h3>
+        <p class="brief-headline">V10 result: LP3 cap 4R is the practical portfolio baseline.</p>
+        <ul><li>LP3 take-all produced 1,512.3R, but breached the 30R drawdown guardrail with 33.4R max DD.</li><li>LP3 cap 4R produced 1,100.9R, 26.7R max DD, and 162D underwater, passing both guardrails.</li><li>LP4 and LP5 kept attractive PF, but their underwater periods were too long under the 180D rule.</li><li>The 4R cap sacrifices some total R, but it makes the model portfolio-feasible under the current guardrails.</li></ul>
+        <p class="brief-next"><strong>Next:</strong> Use LP3 cap 4R for timeframe-mix testing.</p>
+      </div>
+
 
     </section>
 
