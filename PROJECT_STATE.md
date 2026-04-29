@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-04-29 after running the V11 practical timeframe mix study
-and regenerating V1-V11 dashboard navigation.
+Last updated: 2026-04-30 after running the V12 LP pivot finalization study
+and regenerating V1-V12 dashboard navigation.
 
 ## Purpose
 
@@ -162,6 +162,7 @@ Static dashboards exist at:
 - `docs/v9.html`: LP pivot strength sensitivity.
 - `docs/v10.html`: portfolio exposure cap baseline.
 - `docs/v11.html`: practical timeframe mix study.
+- `docs/v12.html`: LP pivot finalization.
 
 The dashboard generator is:
 
@@ -187,7 +188,7 @@ first, then regenerate the versioned pages.
 
 ## Current Recommendation
 
-The current practical baseline after V11 is:
+The current practical baseline after V12 is:
 
 - LP pivot strength `3`.
 - all `H4/H8/H12/D1/W1` timeframes.
@@ -198,16 +199,16 @@ The current practical baseline after V11 is:
   target, and fixed 6-bar pullback wait.
 
 V11 tested whether removing H4 and/or H8 improved drawdown and underwater
-enough to replace all timeframes. It did not. All timeframes still had the
-highest Total R among passing rows.
+enough to replace all timeframes. It did not. V12 tested whether LP4/LP5 should
+replace LP3 after the portfolio/timeframe mechanics were fixed. They should not:
+LP4 and LP5 have better PF, but they failed the all-timeframe guardrails. LP3
+remains the default.
 
-Next useful research is V12:
+Next useful research:
 
-- retest LP3/LP4/LP5 using the V11-selected all-timeframe baseline and the
-  no-H4 diagnostic set;
-- compare total R, max drawdown, underwater, and return/DD together;
-- only then decide whether LP3 remains the practical default or whether LP4/LP5
-  is worth the lower trade count.
+- test FTMO-style risk sizing and daily/max loss constraints;
+- add equity-curve diagnostics beyond closed-trade R;
+- prepare an MT5 execution contract only after risk sizing is clear.
 
 Do not replace the fixed 6-bar pullback wait with the V7/V8 1R-cancel wait
 rule. V8, the fairer entry-priority version, was positive but weaker than the

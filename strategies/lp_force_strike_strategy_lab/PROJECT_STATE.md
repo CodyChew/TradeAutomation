@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-29 local time after running V11 practical timeframe mix
-and regenerating V1-V11 dashboards.
+Last updated: 2026-04-30 local time after running V12 LP pivot finalization
+and regenerating V1-V12 dashboards.
 
 ## Purpose
 
@@ -487,8 +487,59 @@ Current conclusion:
 - V12 should retest LP3/LP4/LP5 on all timeframes and no-H4 before changing the
   LP pivot default.
 
+## Experiment V12 LP Pivot Finalization
+
+Experiment V12 tests whether LP4 or LP5 should replace LP3 after V10/V11 fixed
+the practical portfolio and timeframe mechanics.
+
+Detailed notes:
+
+```text
+docs/lp_force_strike_experiment_v12_lp_pivot_finalization.md
+```
+
+Run details:
+
+- config:
+  `../../configs/strategies/lp_force_strike_experiment_v12_lp_pivot_finalization.json`
+- input trades:
+  `reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831/trades.csv`
+- report:
+  `reports/strategies/lp_force_strike_experiment_v12_lp_pivot_finalization/20260429_165713`
+- dashboard: `docs/v12.html`
+- pivots: LP3, LP4, LP5
+- primary timeframe set: all `H4/H8/H12/D1/W1`
+- diagnostic timeframe set: no H4, using `H8/H12/D1/W1`
+- portfolio rule: `cap_4r`, one open trade per symbol
+- guardrails: max closed-trade drawdown <= 30R and longest underwater <= 180D
+
+All-timeframe result:
+
+| LP | Trades | Total R | PF | Max DD | Underwater | Pass |
+|---:|---:|---:|---:|---:|---:|---|
+| 3 | 10,037 | 1,100.9R | 1.248 | 26.7R | 162D | Yes |
+| 4 | 7,793 | 1,004.3R | 1.293 | 34.4R | 271D | No |
+| 5 | 6,431 | 888.4R | 1.322 | 24.0R | 229D | No |
+
+No-H4 diagnostic result:
+
+| LP | Trades | Total R | PF | Max DD | Underwater | Pass |
+|---:|---:|---:|---:|---:|---:|---|
+| 3 | 5,361 | 792.6R | 1.305 | 23.5R | 159D | Yes |
+| 4 | 4,197 | 729.3R | 1.393 | 21.6R | 150D | Yes |
+| 5 | 3,397 | 634.1R | 1.424 | 19.4R | 138D | Yes |
+
+Current conclusion:
+
+- Keep LP3 as the practical LP pivot default.
+- LP4 and LP5 have better quality metrics, but fail all-timeframe guardrails.
+- The no-H4 diagnostic makes LP4/LP5 viable, but LP3 still has the highest
+  Total R.
+- Next research should focus on risk sizing, FTMO-style daily/max loss
+  constraints, and execution-readiness rather than changing LP pivot strength.
+
 ## Boundary
 
 This lab intentionally excludes SMA context, account-currency position sizing,
-broker order execution, and EA logic. V10/V11 portfolio analytics are research-only
-closed-trade R simulations.
+broker order execution, and EA logic. V10/V11/V12 portfolio analytics are
+research-only closed-trade R simulations.

@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LP + Force Strike V12 Pivot Finalization - by Cody</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #627181;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --good: #2e7d50;
+      --bad: #a23b3b;
+      --warn: #9b5f00;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 Inter, Segoe UI, Roboto, Arial, sans-serif; min-width: 0; overflow-x: hidden; }
+    header { background: #17202a; color: white; padding: 28px max(18px, 5vw); border-bottom: 4px solid #57a773; }
+    header h1 { margin: 0 0 8px; font-size: clamp(22px, 4vw, 28px); }
+    header p { margin: 0; color: #d8e0e8; max-width: 980px; overflow-wrap: anywhere; }
+    code { overflow-wrap: anywhere; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    nav a { color: white; text-decoration: none; border: 1px solid rgba(255,255,255,.25); padding: 7px 10px; border-radius: 6px; background: rgba(255,255,255,.08); min-height: 34px; }
+    nav a.active { background: #57a773; border-color: #57a773; color: #17202a; font-weight: 700; }
+    main { padding: 24px max(18px, 5vw) 48px; }
+    section { margin: 0 0 22px; padding: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 2px rgba(23,32,42,.05); max-width: 100%; overflow-x: auto; }
+    h2 { margin: 0 0 14px; font-size: 20px; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 12px; margin-bottom: 18px; }
+    .kpi { background: #f9fbfc; border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+    .kpi-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .kpi-value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+    .kpi-note { color: var(--muted); font-size: 12px; min-height: 18px; }
+    .note { background: #f6f8f2; border-left: 4px solid #8aa936; padding: 12px 14px; color: #34412d; margin-bottom: 14px; }
+    .warning { background: #fff8e8; border-left-color: var(--warn); color: #4d3b13; }
+
+    .experiment-summary {
+      border-top: 4px solid var(--accent);
+    }
+    .summary-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .summary-heading h2 {
+      margin-bottom: 0;
+    }
+    .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .status-badge {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      background: #f7f9fb;
+      color: var(--muted);
+    }
+    .status-active {
+      color: var(--good);
+      border-color: #b9dbc7;
+      background: #edf8f1;
+    }
+    .status-rejected {
+      color: var(--bad);
+      border-color: #e7bcbc;
+      background: #fff1f1;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+      gap: 12px;
+    }
+    .summary-grid div {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fbfc;
+      padding: 12px;
+    }
+    .summary-grid h3 {
+      margin: 0 0 6px;
+    }
+    .summary-grid p {
+      margin: 0;
+      color: var(--ink);
+    }
+    .conclusion-box {
+      margin-top: 14px;
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+    }
+    .summary-comparison {
+      margin-top: 14px;
+      overflow-x: auto;
+    }
+    .comparison-table td:first-child,
+    .comparison-table th:first-child {
+      text-align: left;
+    }
+    @media (max-width: 760px) {
+      .summary-heading {
+        display: block;
+      }
+      .status-badge {
+        display: inline-block;
+        margin-top: 10px;
+      }
+    }
+
+    table { width: 100%; min-width: 980px; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 9px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; vertical-align: top; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: #455464; background: #f7f9fb; font-weight: 700; position: sticky; top: 0; z-index: 1; }
+    .positive { color: var(--good); font-weight: 700; }
+    .negative { color: var(--bad); font-weight: 700; }
+    .neutral { color: var(--muted); }
+    footer { color: var(--muted); padding: 0 max(18px, 5vw) 28px; }
+    @media (max-width: 760px) {
+      header { padding: 22px 16px; }
+      nav a { flex: 1 1 auto; text-align: center; }
+      main { padding: 16px 12px 34px; }
+      section { padding: 14px; margin-bottom: 16px; }
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .kpi { padding: 10px; }
+      .kpi-value { font-size: 20px; }
+      th, td { padding: 6px 7px; font-size: 12px; }
+    }
+    @media (max-width: 480px) {
+      .kpis { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>LP + Force Strike V12 Pivot Finalization - by Cody</h1>
+    <p>Static V12 report generated from <code>reports\strategies\lp_force_strike_experiment_v12_lp_pivot_finalization\20260429_165713</code>. This page keeps the V11-selected portfolio mechanics fixed and compares LP pivot defaults.</p>
+    <nav aria-label="Dashboard pages">
+      <a class="page-link" href="index.html">Home</a>
+      <a class="page-link" href="v1.html">V1</a>
+      <a class="page-link" href="v2.html">V2</a>
+      <a class="page-link" href="v3.html">V3</a>
+      <a class="page-link" href="v4.html">V4</a>
+      <a class="page-link" href="v5.html">V5</a>
+      <a class="page-link" href="v6.html">V6</a>
+      <a class="page-link" href="v7.html">V7</a>
+      <a class="page-link" href="v8.html">V8</a>
+      <a class="page-link" href="v9.html">V9</a>
+      <a class="page-link" href="v10.html">V10</a>
+      <a class="page-link" href="v11.html">V11</a>
+      <a class="page-link active" href="v12.html">V12</a>
+    </nav>
+  </header>
+  <main>
+
+    <section id="experiment-summary" class="experiment-summary">
+      <div class="summary-heading">
+        <div>
+          <div class="eyebrow">V12 Research Snapshot</div>
+          <h2>V12 LP Pivot Finalization</h2>
+        </div>
+        <span class="status-badge status-active">Pivot finalization</span>
+      </div>
+      <div class="summary-grid">
+        <div><h3>What This Tests</h3><p>Should the practical strategy keep LP3 as the default pivot strength, or should LP4/LP5 replace it after portfolio and timeframe mechanics are fixed?</p></div>
+        <div><h3>Setup Tested</h3><p>Existing V9 trades only. V11 mechanics stay fixed: 4R max-open-risk cap, one open trade per symbol, all H4/H8/H12/D1/W1 timeframes, and 30R / 180D guardrails. V12 compares LP3, LP4, and LP5, with no-H4 as a robustness contrast.</p></div>
+        <div><h3>How To Read This Page</h3><p>Start with All-Timeframe Pivot Decision. Then use Quality vs Profitability and No-H4 Robustness Contrast to decide whether higher PF is worth fewer trades and lower total R.</p></div>
+        <div><h3>Use / Do Not Use</h3><p>Use LP3 cap 4R across all H4/H8/H12/D1/W1 as the current research baseline. Future work should test execution constraints or risk sizing, not change the LP pivot default yet.</p></div>
+      </div>
+      <div class="conclusion-box"><strong>Conclusion:</strong> Keep LP3 as the practical default. LP4 and LP5 have attractive quality, but on the selected all-timeframe baseline they fail guardrails. The no-H4 contrast makes LP3/LP4/LP5 all pass, but LP3 still has the highest Total R.</div>
+
+    </section>
+
+    <section id="overview">
+      <h2>Recommended / Rejected Conclusion</h2>
+      <div class="kpis">
+
+    <div class="kpi">
+      <div class="kpi-label">Recommended Pivot</div>
+      <div class="kpi-value">LP3</div>
+      <div class="kpi-note">highest Total R among passing all-timeframe rows</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Recommended Total R</div>
+      <div class="kpi-value">1,100.9R</div>
+      <div class="kpi-note">all-timeframe main row</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Recommended Max DD</div>
+      <div class="kpi-value">26.7R</div>
+      <div class="kpi-note">closed-trade drawdown</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Recommended Underwater</div>
+      <div class="kpi-value">162D</div>
+      <div class="kpi-note">longest period below equity high</div>
+    </div>
+
+      </div>
+      <div class="note">What changed from V11: timeframe and exposure mechanics are fixed. V12 changes only LP pivot strength and includes a no-H4 robustness contrast.</div>
+    </section>
+    <section id="pivot-decision">
+      <h2>All-Timeframe Pivot Decision</h2>
+      <div class="note">Pass requires max closed-trade drawdown &lt;= 30.0R and longest underwater period &lt;= 180.0 days. This is the primary decision table.</div>
+      <table class=""><thead><tr><th>Set</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>All H4+H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>10,037</td><td>13,012</td><td class="positive">1,100.9R</td><td>57.6%</td><td>1.25</td><td class="negative">26.7R</td><td>162</td><td>41.21</td><td>Yes</td></tr><tr><td>All H4+H8+H12+D1+W1</td><td>LP4</td><td>main</td><td>7,793</td><td>9,512</td><td class="positive">1,004.3R</td><td>58.5%</td><td>1.30</td><td class="negative">34.4R</td><td>271</td><td>29.21</td><td>No</td></tr><tr><td>All H4+H8+H12+D1+W1</td><td>LP5</td><td>main</td><td>6,431</td><td>7,519</td><td class="positive">888.4R</td><td>59.0%</td><td>1.32</td><td class="negative">24.0R</td><td>229</td><td>36.98</td><td>No</td></tr></tbody></table>
+    </section>
+    <section id="quality-vs-profitability">
+      <h2>Quality vs Profitability</h2>
+      <div class="note">Sorted by PF first. Use this to see whether higher quality compensates for lower total return and frequency.</div>
+      <table class=""><thead><tr><th>Set</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>No H4 Diagnostic</td><td>LP5</td><td>diagnostic</td><td>3,397</td><td>3,828</td><td class="positive">634.1R</td><td>60.7%</td><td>1.46</td><td class="negative">19.4R</td><td>138</td><td>32.75</td><td>Yes</td></tr><tr><td>No H4 Diagnostic</td><td>LP4</td><td>diagnostic</td><td>4,197</td><td>4,798</td><td class="positive">729.3R</td><td>60.1%</td><td>1.42</td><td class="negative">21.6R</td><td>150</td><td>33.71</td><td>Yes</td></tr><tr><td>No H4 Diagnostic</td><td>LP3</td><td>diagnostic</td><td>5,361</td><td>6,395</td><td class="positive">792.6R</td><td>58.8%</td><td>1.35</td><td class="negative">23.5R</td><td>159</td><td>33.77</td><td>Yes</td></tr><tr><td>All H4+H8+H12+D1+W1</td><td>LP5</td><td>main</td><td>6,431</td><td>7,519</td><td class="positive">888.4R</td><td>59.0%</td><td>1.32</td><td class="negative">24.0R</td><td>229</td><td>36.98</td><td>No</td></tr><tr><td>All H4+H8+H12+D1+W1</td><td>LP4</td><td>main</td><td>7,793</td><td>9,512</td><td class="positive">1,004.3R</td><td>58.5%</td><td>1.30</td><td class="negative">34.4R</td><td>271</td><td>29.21</td><td>No</td></tr><tr><td>All H4+H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>10,037</td><td>13,012</td><td class="positive">1,100.9R</td><td>57.6%</td><td>1.25</td><td class="negative">26.7R</td><td>162</td><td>41.21</td><td>Yes</td></tr></tbody></table>
+    </section>
+    <section id="drawdown-smoothness">
+      <h2>Drawdown Smoothness</h2>
+      <div class="note">Sorted by max drawdown first, then underwater. This is a risk lens, not the default selection rule.</div>
+      <table class=""><thead><tr><th>Set</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>No H4 Diagnostic</td><td>LP5</td><td>diagnostic</td><td>3,397</td><td>3,828</td><td class="positive">634.1R</td><td>60.7%</td><td>1.46</td><td class="negative">19.4R</td><td>138</td><td>32.75</td><td>Yes</td></tr><tr><td>No H4 Diagnostic</td><td>LP4</td><td>diagnostic</td><td>4,197</td><td>4,798</td><td class="positive">729.3R</td><td>60.1%</td><td>1.42</td><td class="negative">21.6R</td><td>150</td><td>33.71</td><td>Yes</td></tr><tr><td>No H4 Diagnostic</td><td>LP3</td><td>diagnostic</td><td>5,361</td><td>6,395</td><td class="positive">792.6R</td><td>58.8%</td><td>1.35</td><td class="negative">23.5R</td><td>159</td><td>33.77</td><td>Yes</td></tr><tr><td>All H4+H8+H12+D1+W1</td><td>LP5</td><td>main</td><td>6,431</td><td>7,519</td><td class="positive">888.4R</td><td>59.0%</td><td>1.32</td><td class="negative">24.0R</td><td>229</td><td>36.98</td><td>No</td></tr><tr><td>All H4+H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>10,037</td><td>13,012</td><td class="positive">1,100.9R</td><td>57.6%</td><td>1.25</td><td class="negative">26.7R</td><td>162</td><td>41.21</td><td>Yes</td></tr><tr><td>All H4+H8+H12+D1+W1</td><td>LP4</td><td>main</td><td>7,793</td><td>9,512</td><td class="positive">1,004.3R</td><td>58.5%</td><td>1.30</td><td class="negative">34.4R</td><td>271</td><td>29.21</td><td>No</td></tr></tbody></table>
+    </section>
+    <section id="no-h4-robustness">
+      <h2>No-H4 Robustness Contrast</h2>
+      <div class="note warning">No-H4 is a diagnostic set from V11. It is useful for robustness, but it is not the selected baseline unless it clearly improves the return/risk tradeoff.</div>
+      <table class=""><thead><tr><th>LP</th><th>All TF Total R</th><th>No H4 Total R</th><th>Total R Delta</th><th>All TF Max DD</th><th>No H4 Max DD</th><th>All TF Underwater</th><th>No H4 Underwater</th><th>No H4 Pass</th></tr></thead><tbody><tr><td>LP3</td><td>1,100.9R</td><td>792.6R</td><td class="negative">-308.3R</td><td>26.7R</td><td>23.5R</td><td>162</td><td>159</td><td>Yes</td></tr><tr><td>LP4</td><td>1,004.3R</td><td>729.3R</td><td class="negative">-274.9R</td><td>34.4R</td><td>21.6R</td><td>271</td><td>150</td><td>Yes</td></tr><tr><td>LP5</td><td>888.4R</td><td>634.1R</td><td class="negative">-254.3R</td><td>24.0R</td><td>19.4R</td><td>229</td><td>138</td><td>Yes</td></tr></tbody></table>
+      <h3>No-H4 Rows</h3>
+      <table class=""><thead><tr><th>Set</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>No H4 Diagnostic</td><td>LP3</td><td>diagnostic</td><td>5,361</td><td>6,395</td><td class="positive">792.6R</td><td>58.8%</td><td>1.35</td><td class="negative">23.5R</td><td>159</td><td>33.77</td><td>Yes</td></tr><tr><td>No H4 Diagnostic</td><td>LP4</td><td>diagnostic</td><td>4,197</td><td>4,798</td><td class="positive">729.3R</td><td>60.1%</td><td>1.42</td><td class="negative">21.6R</td><td>150</td><td>33.71</td><td>Yes</td></tr><tr><td>No H4 Diagnostic</td><td>LP5</td><td>diagnostic</td><td>3,397</td><td>3,828</td><td class="positive">634.1R</td><td>60.7%</td><td>1.46</td><td class="negative">19.4R</td><td>138</td><td>32.75</td><td>Yes</td></tr></tbody></table>
+    </section>
+  </main>
+  <footer>Generated from existing V9 trade logs. No signal rerun was performed.</footer>
+</body>
+</html>
