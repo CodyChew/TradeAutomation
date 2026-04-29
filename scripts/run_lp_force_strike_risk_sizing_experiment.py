@@ -529,6 +529,37 @@ def _exposure_table(frame: pd.DataFrame) -> str:
     )
 
 
+def _risk_schedule_composition_table(run_dir: Path, recommended_schedule_id: str) -> str:
+    config_path = run_dir / "run_config.json"
+    if not config_path.exists():
+        return "<p>Risk schedule composition is unavailable for this run.</p>"
+
+    payload = _read_json(config_path)
+    config = payload.get("config", payload)
+    timeframes = [str(value) for value in config.get("timeframes", ["H4", "H8", "H12", "D1", "W1"])]
+    rows = []
+    for schedule in config.get("risk_schedules", []):
+        schedule_id = str(schedule["schedule_id"])
+        label = _risk_label(schedule)
+        if schedule_id == recommended_schedule_id:
+            label = f"{label} (recommended)"
+        kind = str(schedule["kind"])
+        if kind == "fixed":
+            risks = {timeframe: float(schedule["risk_pct"]) for timeframe in timeframes}
+            schedule_type = "Fixed"
+        else:
+            risks = {timeframe: float(schedule["risk_by_timeframe"][timeframe]) for timeframe in timeframes}
+            schedule_type = "Timeframe ladder"
+        rows.append(
+            [
+                _escape(label),
+                _escape(schedule_type),
+                *[_fmt_pct_value(risks[timeframe]) for timeframe in timeframes],
+            ]
+        )
+    return _table(["Schedule", "Type", *timeframes], rows)
+
+
 def _contribution_table(frame: pd.DataFrame, field: str, schedule_id: str) -> str:
     data = frame[frame["schedule_id"] == schedule_id].copy()
     if data.empty:
@@ -668,6 +699,11 @@ def _html_report(
         {_kpi("Max Reserved Risk", _fmt_pct_value(recommended["max_reserved_open_risk_pct"]), "overlap exposure")}
       </div>
       <div class="note">Risk-reserved drawdown subtracts full risk for every open trade while it is active. It is intentionally more conservative than closed-trade drawdown.</div>
+    </section>
+    <section id="risk-composition">
+      <h2>Risk Schedule Composition</h2>
+      <div class="note">This is the exact account-risk percentage applied per trade by timeframe. The recommended balanced ladder keeps H4 and H8 equal, then increases risk on H12, D1, and W1.</div>
+      {_risk_schedule_composition_table(run_dir, str(recommended["schedule_id"]))}
     </section>
     <section id="leaderboard">
       <h2>Risk Schedule Leaderboard</h2>

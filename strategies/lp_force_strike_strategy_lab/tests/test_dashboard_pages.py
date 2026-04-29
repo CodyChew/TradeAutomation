@@ -102,6 +102,9 @@ class DashboardPagesTests(unittest.TestCase):
         html = (DOCS_ROOT / "v14.html").read_text(encoding="utf-8")
 
         self.assertIn("Decision Brief", html)
+        self.assertIn("Risk Schedule Composition", html)
+        self.assertIn("Balanced equal-LTF (recommended)", html)
+        self.assertIn("<td>0.15%</td><td>0.15%</td><td>0.25%</td><td>0.40%</td><td>0.60%</td>", html)
         self.assertIn("Fixed Risk Drawdown", html)
         self.assertIn("Timeframe Ladder Drawdown", html)
         self.assertIn("Risk-Reserved Drawdown", html)
