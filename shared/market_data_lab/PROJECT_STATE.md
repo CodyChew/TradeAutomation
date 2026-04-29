@@ -1,7 +1,7 @@
 # Market Data Lab Project State
 
-Last updated: 2026-04-29 after adding and quality-checking the native MT5 H12
-FOREX add-on dataset and reviewing the four long-gap symbols.
+Last updated: 2026-04-29 after adding the dataset fingerprint and M30
+aggregation verification gate.
 
 ## Purpose
 
@@ -25,6 +25,8 @@ validating candles differently.
 - Provide config-driven bulk MT5 dataset pulls with per-symbol/timeframe
   failures and coverage reporting.
 - Provide a preflight MT5 symbol availability script for configured datasets.
+- Provide a fingerprint and aggregation verification gate so local backtest
+  data changes are explicit and regression-tested.
 
 ## Current Storage Model
 
@@ -106,6 +108,17 @@ The native MT5 H12 add-on dataset has also been pulled locally:
 - 28/28 coverage rows marked backtest-ready after market-closure boundary
   tolerance.
 
+The current combined fingerprint baseline covers all 168 local FOREX datasets:
+
+- 28 symbols x `M30`, `H4`, `H8`, `H12`, `D1`, and `W1`.
+- Baseline file:
+  `configs/datasets/fingerprints/ftmo_forex_major_crosses_10y.json`.
+- Verification command:
+  `.\venv\Scripts\python scripts\verify_dataset_fingerprint.py`.
+- Current status: `OK`.
+- Current aggregation checks: 140 higher-timeframe symbol/timeframe pairs,
+  all with zero mismatches after the one-day settlement cutoff.
+
 ## Current Quality Verdict
 
 `scripts/report_data_quality.py` produced `OK_WITH_WARNINGS`.
@@ -134,3 +147,11 @@ The H8 and H12 add-on datasets produced the same overall quality class,
 `OK_WITH_WARNINGS`: no validation/load failures, the same known long-gap
 symbols, several large one-bar moves for manual review, and incomplete latest
 bars from the live-ended pulls.
+
+`scripts\verify_dataset_fingerprint.py` is now the stronger regression gate for
+the local data files. It checks exact row counts, first/last timestamps,
+duplicate counts, min/max prices, max gaps, and SHA-256 hashes. It also checks
+that settled native `H4`, `H8`, `H12`, `D1`, and `W1` OHLC candles aggregate
+exactly from `M30`. The newest one day is skipped only for this aggregation
+check because MT5 can briefly report slightly different live-edge higher
+timeframe candles than the M30 cache. Fingerprints still cover the full files.

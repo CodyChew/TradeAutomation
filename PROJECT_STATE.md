@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-04-29 after the native H12 bridge experiment, responsive
-dashboard update, four gap-symbol ad hoc check, and V7/V8 entry-wait test.
+Last updated: 2026-04-29 after adding the dataset fingerprint and aggregation
+verification gate.
 
 ## Purpose
 
@@ -50,6 +50,24 @@ Pulled locally:
 - `M30`, `H4`, `D1`, `W1`: canonical 10-year dataset.
 - `H8`: native MT5 add-on dataset.
 - `H12`: native MT5 add-on dataset.
+
+Dataset regression gate:
+
+```powershell
+.\venv\Scripts\python scripts\verify_dataset_fingerprint.py
+```
+
+Current result on 2026-04-29:
+
+- `status=OK`
+- `fingerprint_datasets=168`
+- `aggregation_checks=140`
+
+The gate compares the local Parquet files against
+`configs/datasets/fingerprints/ftmo_forex_major_crosses_10y.json` and verifies
+that settled `H4`, `H8`, `H12`, `D1`, and `W1` candles aggregate exactly from
+`M30`. It skips the newest one day for aggregation checks because MT5 can have
+small live-edge cache drift between native higher-timeframe candles and M30.
 
 Known data-quality interpretation:
 
@@ -172,10 +190,11 @@ full-28 fixed 6-bar baseline on every timeframe.
 
 ## Git State Notes
 
-Latest pushed commits at the time of this handover:
+Latest pushed commits before the dataset verification work:
 
 - `fd4e7cb Add native H12 bridge experiment`
 - `da6f999 Improve dashboard responsiveness`
+- `af6663b Add entry wait experiments and dashboards`
 
 Untracked folders such as `CryptoBot_test/`, `FOREX/`, `force_strike_lab/`,
 `forex_experiment/`, `mt5_strategy_lab/`, and `xauusd_m1_research/` are outside

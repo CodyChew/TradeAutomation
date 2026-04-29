@@ -161,6 +161,25 @@ Run deeper quality checks:
 .\venv\Scripts\python scripts\report_data_quality.py --config configs\datasets\forex_major_crosses_10y.json --output-dir reports\datasets\data_quality
 ```
 
+Verify the current local dataset against the committed fingerprint baseline:
+
+```powershell
+.\venv\Scripts\python scripts\verify_dataset_fingerprint.py
+```
+
+The fingerprint baseline is:
+
+```text
+configs/datasets/fingerprints/ftmo_forex_major_crosses_10y.json
+```
+
+Refresh that baseline only after intentionally repulling or replacing the
+canonical research data:
+
+```powershell
+.\venv\Scripts\python scripts\verify_dataset_fingerprint.py --write-baseline
+```
+
 The pull script validates each symbol/timeframe as it goes. Failures are
 reported per dataset instead of silently producing unusable files. The coverage
 report marks whether each dataset has data, a manifest, requested start
@@ -169,6 +188,13 @@ coverage, requested end coverage, and `backtest_ready`.
 Coverage readiness allows normal market-closure boundary gaps. For M30, H4, and
 D1 this tolerance is 72 hours; for W1 it is one weekly bar. The report includes
 the actual start/end gap in hours so true missing history remains visible.
+
+The fingerprint verifier is the regression gate for backtest data correctness.
+It fails if row counts, coverage bounds, duplicate counts, extrema, large-gap
+counts, or file hashes differ from the committed baseline. It also validates
+that settled native `H4`, `H8`, `H12`, `D1`, and `W1` OHLC candles aggregate
+exactly from `M30`. The newest one day is skipped for the aggregation check to
+avoid MT5 live-edge cache drift; the full file is still fingerprinted.
 
 ## Visual Verification
 
