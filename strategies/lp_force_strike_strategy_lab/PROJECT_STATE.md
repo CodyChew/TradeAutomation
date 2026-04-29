@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
 Last updated: 2026-04-29 local time after running the V6 native H12 bridge
-experiment.
+experiment, four gap-symbol ad hoc check, and V7/V8 entry-wait test.
 
 ## Purpose
 
@@ -241,6 +241,91 @@ Current conclusion:
 - H12 does not fully reach D1 quality, but it provides more than twice D1's
   trade count while sitting closer to D1 than to H8 by PF and average R.
 - Keep H12 in the forward research set.
+
+## Gap-Symbol Ad Hoc Check
+
+The first official experiments used a clean 24-pair baseline by excluding
+`GBPAUD`, `GBPNZD`, `NZDCAD`, and `NZDCHF`, because those symbols have known
+broker-history gaps in the local FTMO candle feed.
+
+On 2026-04-29, an ad hoc run tested only those four symbols with the same V6
+candidate and timeframe set:
+
+- config: `../../configs/strategies/lp_force_strike_gap_symbols_adhoc.json`
+- report folder:
+  `reports/strategies/lp_force_strike_gap_symbols_adhoc/20260429_061423`
+- scope: `GBPAUD`, `GBPNZD`, `NZDCAD`, `NZDCHF` x H4/H8/H12/D1/W1
+- candidate: `signal_zone_0p5_pullback__fs_structure__1r`
+- signals: 2,246
+- simulated trades: 1,827
+- failed datasets: 0
+
+Ad hoc result:
+
+| Basket | Trades | Avg R | PF | Win Rate |
+|---|---:|---:|---:|---:|
+| Clean 24 V6 baseline | 11,185 | 0.112R | 1.253 | 57.7% |
+| Gap 4 ad hoc | 1,827 | 0.142R | 1.335 | 59.7% |
+
+By symbol:
+
+| Symbol | Trades | Avg R | PF | Win Rate |
+|---|---:|---:|---:|---:|
+| GBPAUD | 467 | 0.173R | 1.421 | 60.2% |
+| GBPNZD | 474 | 0.114R | 1.258 | 57.0% |
+| NZDCAD | 423 | 0.107R | 1.243 | 58.2% |
+| NZDCHF | 463 | 0.173R | 1.427 | 63.5% |
+
+Only 3 of the 1,827 trades crossed or logically spanned a known large gap.
+Removing those changed PF from about 1.335 to about 1.338. Current conclusion:
+these symbols are usable and are not obvious outliers, but future reports should
+keep the gap caveat visible. Production-grade research can add gap segmentation
+later so signals and trades cannot span missing broker history.
+
+## Experiment V7/V8 Entry Wait
+
+Experiment V7/V8 tests whether the fixed 6-bar pullback wait should be replaced
+with a rule that keeps the pending pullback alive until either entry fills or
+the would-be 1R target is reached first.
+
+Detailed notes:
+
+```text
+docs/lp_force_strike_experiment_v7_v8_entry_wait.md
+```
+
+V7:
+
+- config:
+  `../../configs/strategies/lp_force_strike_experiment_v7_entry_until_1r_cancel.json`
+- report:
+  `reports/strategies/lp_force_strike_experiment_v7_entry_until_1r_cancel/20260429_062506`
+- dashboard: `docs/v7.html`
+- same candle touches entry and would-be 1R: cancel first
+
+V8:
+
+- config:
+  `../../configs/strategies/lp_force_strike_experiment_v8_entry_until_1r_entry_priority.json`
+- report:
+  `reports/strategies/lp_force_strike_experiment_v8_entry_until_1r_entry_priority/20260429_063204`
+- dashboard: `docs/v8.html`
+- same candle touches entry and would-be 1R: entry first
+
+Full-28 comparison:
+
+| Run | Trades | Avg R | PF | Win Rate |
+|---|---:|---:|---:|---:|
+| Fixed 6-bar baseline | 13,012 | 0.116R | 1.265 | 58.0% |
+| V7 cancel-first | 4,885 | -0.321R | 0.519 | 35.7% |
+| V8 entry-first | 9,627 | 0.062R | 1.133 | 55.3% |
+
+Current conclusion:
+
+- Do not replace the fixed 6-bar pullback wait with the 1R-cancel wait.
+- V7 is unusable.
+- V8 is positive, but weaker than the fixed 6-bar baseline on every timeframe.
+- Keep the current fixed 6-bar entry wait as the active baseline.
 
 ## Boundary
 

@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-04-29 after the native H12 bridge experiment and responsive
-dashboard update.
+Last updated: 2026-04-29 after the native H12 bridge experiment, responsive
+dashboard update, four gap-symbol ad hoc check, and V7/V8 entry-wait test.
 
 ## Purpose
 
@@ -55,7 +55,11 @@ Known data-quality interpretation:
 
 - Current verdict is `OK_WITH_WARNINGS`, not failed.
 - Known long-gap symbols: `GBPAUD`, `GBPNZD`, `NZDCAD`, `NZDCHF`.
-- Strategy experiments currently exclude those four symbols.
+- V1 through V6 strategy experiments excluded those four symbols for a clean
+  conservative baseline.
+- A 2026-04-29 ad hoc run tested those four symbols with the current V6 model.
+  They loaded successfully and were not obvious performance outliers. Future
+  experiments can use all 28 pairs, while keeping the gap caveat visible.
 - Latest live-ended bars are incomplete and are dropped in backtests.
 
 ## Current LP Rules
@@ -135,6 +139,8 @@ Static dashboards exist at:
 - `docs/v4.html`: train/test stability filters.
 - `docs/v5.html`: H8 bridge.
 - `docs/v6.html`: H12 bridge.
+- `docs/v7.html`: conservative 1R-cancel entry-wait test.
+- `docs/v8.html`: entry-priority 1R-cancel entry-wait test.
 
 The dashboard generator is:
 
@@ -157,6 +163,12 @@ candidate family:
 - FTMO-style daily/max loss constraints;
 - candidate comparison on H12/D1/W1 first, with H4/H8 as lower-quality
   context.
+- use all 28 major/cross FOREX pairs going forward unless a specific clean-24
+  comparison is desired.
+
+Do not replace the fixed 6-bar pullback wait with the V7/V8 1R-cancel wait
+rule. V8, the fairer entry-priority version, was positive but weaker than the
+full-28 fixed 6-bar baseline on every timeframe.
 
 ## Git State Notes
 

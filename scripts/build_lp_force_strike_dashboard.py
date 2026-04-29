@@ -629,6 +629,8 @@ def _page_links(current_page: str) -> str:
         ("v4.html", "V4"),
         ("v5.html", "V5"),
         ("v6.html", "V6"),
+        ("v7.html", "V7"),
+        ("v8.html", "V8"),
     ]
     links = []
     for href, label in pages:
@@ -951,7 +953,7 @@ def _html_document(
 
     <section id="skips">
       <h2>Skipped Trade Attempts</h2>
-      <div class="note">Skipped attempts are not failed backtests. They usually mean midpoint entry was not reached, risk was wider than the ATR filter, or no next candle existed.</div>
+      <div class="note">Skipped attempts are not failed backtests. They usually mean pullback entry was not reached, risk was wider than the ATR filter, a 1R entry-cancel rule fired, or no next candle existed.</div>
       {_skip_table(skips)}
     </section>
   </main>

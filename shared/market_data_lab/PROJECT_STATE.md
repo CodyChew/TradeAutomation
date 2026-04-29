@@ -1,7 +1,7 @@
 # Market Data Lab Project State
 
 Last updated: 2026-04-29 after adding and quality-checking the native MT5 H12
-FOREX add-on dataset.
+FOREX add-on dataset and reviewing the four long-gap symbols.
 
 ## Purpose
 
@@ -118,10 +118,17 @@ The native MT5 H12 add-on dataset has also been pulled locally:
   high-volatility periods.
 - All datasets end with an incomplete latest bar because the pull was live-ended.
 
-Early baseline backtests should either exclude `GBPAUD`, `GBPNZD`, `NZDCAD`,
-and `NZDCHF`, or report them separately. Backtests should also ignore the latest
-incomplete tail bar unless the strategy explicitly supports live in-progress
-candles.
+Early clean baseline backtests may exclude `GBPAUD`, `GBPNZD`, `NZDCAD`, and
+`NZDCHF`, but the data is loadable and an LP + Force Strike ad hoc run found
+that those four symbols were not obvious performance outliers. Future strategy
+research can include all 28 major/cross FOREX pairs, while keeping the gap
+caveat visible. Backtests should also ignore the latest incomplete tail bar
+unless the strategy explicitly supports live in-progress candles.
+
+The current backtest runner can test the available candles as-is. It does not
+yet automatically split around large gaps, so production-grade research should
+eventually add gap segmentation to prevent indicators, signals, and trades from
+spanning missing broker-history periods.
 
 The H8 and H12 add-on datasets produced the same overall quality class,
 `OK_WITH_WARNINGS`: no validation/load failures, the same known long-gap

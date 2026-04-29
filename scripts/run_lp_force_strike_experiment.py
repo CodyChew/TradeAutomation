@@ -173,6 +173,8 @@ def _run(config_path: Path, *, symbol_override: list[str] | None, timeframe_over
                     max_bars_from_lp_break=int(config.get("max_bars_from_lp_break", 6)),
                     atr_period=int(config.get("atr_period", 14)),
                     max_entry_wait_bars=int(config.get("max_entry_wait_bars", 6)),
+                    entry_wait_mode=str(config.get("entry_wait_mode", "fixed_bars")),
+                    entry_wait_same_bar_priority=str(config.get("entry_wait_same_bar_priority", "entry")),
                     costs=costs,
                 )
                 all_signal_rows.extend(_signal_row(symbol, timeframe, signal) for signal in result.signals)

@@ -13,6 +13,8 @@ from .signals import LPForceStrikeSignal, detect_lp_force_strike_signals
 
 
 EntryModel = Literal["next_open", "signal_midpoint_pullback", "signal_zone_pullback"]
+EntryWaitMode = Literal["fixed_bars", "until_entry_or_1r_target"]
+EntryWaitSameBarPriority = Literal["entry", "cancel"]
 StopModel = Literal["fs_structure", "fs_structure_max_atr"]
 ExitModel = Literal["single_target", "partial_1r_runner"]
 
@@ -238,11 +240,17 @@ def build_trade_setup(
     timeframe: str,
     atr_period: int = 14,
     max_entry_wait_bars: int = 6,
+    entry_wait_mode: EntryWaitMode = "fixed_bars",
+    entry_wait_same_bar_priority: EntryWaitSameBarPriority = "entry",
 ) -> TradeSetup | SkippedTrade:
     """Convert one LP+FS signal and candidate into a fixed bracket setup."""
 
     if max_entry_wait_bars < 1:
         raise ValueError("max_entry_wait_bars must be >= 1.")
+    if entry_wait_mode not in {"fixed_bars", "until_entry_or_1r_target"}:
+        raise ValueError(f"Unsupported entry_wait_mode {entry_wait_mode!r}.")
+    if entry_wait_same_bar_priority not in {"entry", "cancel"}:
+        raise ValueError(f"Unsupported entry_wait_same_bar_priority {entry_wait_same_bar_priority!r}.")
     data = add_atr(frame, period=atr_period)
     return _build_trade_setup_from_prepared_frame(
         data,
@@ -251,6 +259,8 @@ def build_trade_setup(
         symbol=symbol,
         timeframe=timeframe,
         max_entry_wait_bars=max_entry_wait_bars,
+        entry_wait_mode=entry_wait_mode,
+        entry_wait_same_bar_priority=entry_wait_same_bar_priority,
     )
 
 
@@ -262,20 +272,30 @@ def _build_trade_setup_from_prepared_frame(
     symbol: str,
     timeframe: str,
     max_entry_wait_bars: int,
+    entry_wait_mode: EntryWaitMode,
+    entry_wait_same_bar_priority: EntryWaitSameBarPriority,
 ) -> TradeSetup | SkippedTrade:
     signal_index = int(signal.fs_signal_index)
     if signal_index + 1 >= len(data):
         return _skip(candidate, symbol, timeframe, signal, "no_next_candle")
 
     side = "long" if signal.side == "bullish" else "short"
-    entry = _resolve_entry(data, signal, candidate, max_entry_wait_bars=max_entry_wait_bars)
+    structure_low = float(data.loc[signal.fs_mother_index : signal.fs_signal_index, "low"].min())
+    structure_high = float(data.loc[signal.fs_mother_index : signal.fs_signal_index, "high"].max())
+    stop_price = structure_low if side == "long" else structure_high
+    entry = _resolve_entry(
+        data,
+        signal,
+        candidate,
+        max_entry_wait_bars=max_entry_wait_bars,
+        entry_wait_mode=entry_wait_mode,
+        entry_wait_same_bar_priority=entry_wait_same_bar_priority,
+        stop_price=stop_price,
+    )
     if isinstance(entry, str):
         return _skip(candidate, symbol, timeframe, signal, entry)
     entry_index, entry_price = entry
 
-    structure_low = float(data.loc[signal.fs_mother_index : signal.fs_signal_index, "low"].min())
-    structure_high = float(data.loc[signal.fs_mother_index : signal.fs_signal_index, "high"].max())
-    stop_price = structure_low if side == "long" else structure_high
     risk = float(entry_price - stop_price) if side == "long" else float(stop_price - entry_price)
     if risk <= 0:
         return _skip(candidate, symbol, timeframe, signal, "invalid_stop", detail=f"risk={risk:g}")
@@ -311,6 +331,8 @@ def _build_trade_setup_from_prepared_frame(
         metadata={
             "candidate_id": candidate.candidate_id,
             "entry_model": candidate.entry_model,
+            "entry_wait_mode": entry_wait_mode,
+            "entry_wait_same_bar_priority": entry_wait_same_bar_priority,
             "entry_zone": candidate.entry_zone,
             "stop_model": candidate.stop_model,
             "exit_model": candidate.exit_model,
@@ -340,6 +362,9 @@ def _resolve_entry(
     candidate: TradeModelCandidate,
     *,
     max_entry_wait_bars: int,
+    entry_wait_mode: EntryWaitMode,
+    entry_wait_same_bar_priority: EntryWaitSameBarPriority,
+    stop_price: float,
 ) -> tuple[int, float] | str:
     next_index = int(signal.fs_signal_index) + 1
     if candidate.entry_model == "next_open":
@@ -357,12 +382,36 @@ def _resolve_entry(
     if signal.side == "bearish":
         entry_price = signal_high - (signal_high - signal_low) * zone
 
-    final_index = min(len(data) - 1, signal.fs_signal_index + max_entry_wait_bars)
+    one_r_cancel_price: float | None = None
+    if entry_wait_mode == "until_entry_or_1r_target":
+        risk = float(entry_price - stop_price) if signal.side == "bullish" else float(stop_price - entry_price)
+        if risk <= 0:
+            return "invalid_stop"
+        one_r_cancel_price = entry_price + risk if signal.side == "bullish" else entry_price - risk
+        final_index = len(data) - 1
+    else:
+        final_index = min(len(data) - 1, signal.fs_signal_index + max_entry_wait_bars)
+
     for entry_index in range(next_index, final_index + 1):
         row = data.loc[entry_index]
-        if signal.side == "bullish" and float(row["low"]) <= entry_price:
+        entry_hit = False
+        cancel_hit = False
+        if one_r_cancel_price is not None:
+            cancel_hit = (
+                float(row["high"]) >= one_r_cancel_price
+                if signal.side == "bullish"
+                else float(row["low"]) <= one_r_cancel_price
+            )
+        entry_hit = (
+            float(row["low"]) <= entry_price
+            if signal.side == "bullish"
+            else float(row["high"]) >= entry_price
+        )
+        if entry_wait_same_bar_priority == "entry" and entry_hit:
             return entry_index, entry_price
-        if signal.side == "bearish" and float(row["high"]) >= entry_price:
+        if cancel_hit:
+            return "entry_cancelled_1r_reached"
+        if entry_hit:
             return entry_index, entry_price
     return "entry_not_reached"
 
@@ -491,10 +540,16 @@ def run_lp_force_strike_experiment_on_frame(
     max_bars_from_lp_break: int = 6,
     atr_period: int = 14,
     max_entry_wait_bars: int = 6,
+    entry_wait_mode: EntryWaitMode = "fixed_bars",
+    entry_wait_same_bar_priority: EntryWaitSameBarPriority = "entry",
     costs: CostConfig | None = None,
 ) -> LPForceStrikeExperimentResult:
     """Run all configured trade-model candidates for one symbol/timeframe."""
 
+    if entry_wait_mode not in {"fixed_bars", "until_entry_or_1r_target"}:
+        raise ValueError(f"Unsupported entry_wait_mode {entry_wait_mode!r}.")
+    if entry_wait_same_bar_priority not in {"entry", "cancel"}:
+        raise ValueError(f"Unsupported entry_wait_same_bar_priority {entry_wait_same_bar_priority!r}.")
     data = add_atr(frame, period=atr_period)
     signals = detect_lp_force_strike_signals(
         data,
@@ -514,6 +569,8 @@ def run_lp_force_strike_experiment_on_frame(
                 symbol=symbol,
                 timeframe=timeframe,
                 max_entry_wait_bars=max_entry_wait_bars,
+                entry_wait_mode=entry_wait_mode,
+                entry_wait_same_bar_priority=entry_wait_same_bar_priority,
             )
             if isinstance(setup, SkippedTrade):
                 skipped.append(setup)

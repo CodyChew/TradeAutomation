@@ -166,6 +166,113 @@ class LPForceStrikeExperimentTests(unittest.TestCase):
         assert isinstance(skipped, SkippedTrade)
         self.assertEqual(skipped.reason, "entry_not_reached")
 
+    def test_until_1r_entry_wait_can_fill_after_fixed_bar_window(self) -> None:
+        frame = _frame(
+            [
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 104, "low": 96, "close": 101},
+                {"open": 101, "high": 103, "low": 97, "close": 100},
+                {"open": 100, "high": 106, "low": 94, "close": 104},
+                {"open": 105, "high": 105.5, "low": 101, "close": 104},
+                {"open": 104, "high": 105.5, "low": 101, "close": 104},
+                {"open": 104, "high": 105.5, "low": 101, "close": 104},
+                {"open": 104, "high": 105.5, "low": 101, "close": 104},
+                {"open": 103, "high": 105, "low": 99, "close": 104},
+            ]
+        )
+        candidate = TradeModelCandidate("mid", "signal_midpoint_pullback", "fs_structure", 1.0)
+
+        setup = build_trade_setup(
+            frame,
+            _signal("bullish"),
+            candidate,
+            symbol="TEST",
+            timeframe="M30",
+            atr_period=1,
+            max_entry_wait_bars=2,
+            entry_wait_mode="until_entry_or_1r_target",
+        )
+
+        self.assertNotIsInstance(setup, SkippedTrade)
+        assert not isinstance(setup, SkippedTrade)
+        self.assertEqual(setup.entry_index, 11)
+        self.assertEqual(setup.entry_price, 100.0)
+
+    def test_until_1r_entry_wait_skips_when_1r_reached_before_entry(self) -> None:
+        frame = _frame(
+            [
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 104, "low": 96, "close": 101},
+                {"open": 101, "high": 103, "low": 97, "close": 100},
+                {"open": 100, "high": 106, "low": 94, "close": 104},
+                {"open": 105, "high": 106.5, "low": 101, "close": 106},
+                {"open": 104, "high": 105, "low": 99, "close": 103},
+            ]
+        )
+        candidate = TradeModelCandidate("mid", "signal_midpoint_pullback", "fs_structure", 1.0)
+
+        skipped = build_trade_setup(
+            frame,
+            _signal("bullish"),
+            candidate,
+            symbol="TEST",
+            timeframe="M30",
+            atr_period=1,
+            max_entry_wait_bars=2,
+            entry_wait_mode="until_entry_or_1r_target",
+        )
+
+        self.assertIsInstance(skipped, SkippedTrade)
+        assert isinstance(skipped, SkippedTrade)
+        self.assertEqual(skipped.reason, "entry_cancelled_1r_reached")
+
+    def test_until_1r_entry_wait_same_bar_priority_can_choose_entry_or_cancel(self) -> None:
+        frame = _frame(
+            [
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 101, "low": 99, "close": 100},
+                {"open": 100, "high": 104, "low": 96, "close": 101},
+                {"open": 101, "high": 103, "low": 97, "close": 100},
+                {"open": 100, "high": 106, "low": 94, "close": 104},
+                {"open": 105, "high": 106.5, "low": 99, "close": 104},
+            ]
+        )
+        candidate = TradeModelCandidate("mid", "signal_midpoint_pullback", "fs_structure", 1.0)
+
+        entry_first = build_trade_setup(
+            frame,
+            _signal("bullish"),
+            candidate,
+            symbol="TEST",
+            timeframe="M30",
+            atr_period=1,
+            entry_wait_mode="until_entry_or_1r_target",
+            entry_wait_same_bar_priority="entry",
+        )
+        cancel_first = build_trade_setup(
+            frame,
+            _signal("bullish"),
+            candidate,
+            symbol="TEST",
+            timeframe="M30",
+            atr_period=1,
+            entry_wait_mode="until_entry_or_1r_target",
+            entry_wait_same_bar_priority="cancel",
+        )
+
+        self.assertNotIsInstance(entry_first, SkippedTrade)
+        self.assertIsInstance(cancel_first, SkippedTrade)
+        assert isinstance(cancel_first, SkippedTrade)
+        self.assertEqual(cancel_first.reason, "entry_cancelled_1r_reached")
+
     def test_signal_zone_pullback_uses_configured_signal_range_zone(self) -> None:
         frame = _frame(
             [

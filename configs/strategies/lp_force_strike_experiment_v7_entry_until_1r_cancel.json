@@ -1,0 +1,46 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v7_entry_until_1r_cancel",
+  "dataset_config": "configs/datasets/forex_major_crosses_10y.json",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v7_entry_until_1r_cancel",
+  "symbols": null,
+  "excluded_symbols": [],
+  "timeframes": [
+    "H4",
+    "H8",
+    "H12",
+    "D1",
+    "W1"
+  ],
+  "pivot_strength": 3,
+  "max_bars_from_lp_break": 6,
+  "atr_period": 14,
+  "max_entry_wait_bars": 6,
+  "entry_wait_mode": "until_entry_or_1r_target",
+  "entry_wait_same_bar_priority": "cancel",
+  "entry_models": [
+    "signal_zone_pullback"
+  ],
+  "entry_zones": [
+    0.5
+  ],
+  "stop_models": [
+    "fs_structure"
+  ],
+  "max_risk_atrs": [
+    1.0
+  ],
+  "exit_models": [
+    "single_target"
+  ],
+  "target_rs": [
+    1.0
+  ],
+  "costs": {
+    "use_candle_spread": true,
+    "fallback_spread_points": 0.0,
+    "entry_slippage_points": 0.0,
+    "exit_slippage_points": 0.0,
+    "round_turn_commission_points": 0.0
+  },
+  "drop_incomplete_latest_bar": true
+}

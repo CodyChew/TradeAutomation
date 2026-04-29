@@ -139,11 +139,37 @@
       <a href="v4.html">V4</a>
       <a href="v5.html">V5</a>
       <a href="v6.html">V6</a>
+      <a href="v7.html">V7</a>
+      <a href="v8.html">V8</a>
     </nav>
   </header>
   <main>
     <section class="card">
       <div class="recommended">Current focus</div>
+      <h2>V8 Entry Wait: Entry-Priority 1R Cancel</h2>
+      <p>Less strict version of V7. If entry and would-be 1R are touched in the same candle, the setup fills first.</p>
+      <div class="facts">
+        <div class="fact"><span>Datasets</span><strong>140</strong></div>
+        <div class="fact"><span>Signals</span><strong>16,061</strong></div>
+        <div class="fact"><span>Trades</span><strong>9,627</strong></div>
+        <div class="fact"><span>PF</span><strong>1.13</strong></div>
+      </div>
+      <a class="button" href="v8.html">Open V8 Dashboard</a>
+    </section>
+
+    <section class="card">
+      <h2>V7 Entry Wait: Cancel At Would-Be 1R</h2>
+      <p>Tests whether pullback orders should remain open until entry or be cancelled once the would-be 1R target is reached first.</p>
+      <div class="facts">
+        <div class="fact"><span>Datasets</span><strong>140</strong></div>
+        <div class="fact"><span>Signals</span><strong>16,061</strong></div>
+        <div class="fact"><span>Trades</span><strong>4,885</strong></div>
+        <div class="fact"><span>PF</span><strong>0.52</strong></div>
+      </div>
+      <a class="button" href="v7.html">Open V7 Dashboard</a>
+    </section>
+
+    <section class="card">
       <h2>V6 H12 Bridge: Native MT5 H12 Test</h2>
       <p>Checks whether native MT5 H12 sits between H8 and D1 for the current best 0.5-zone, structure-stop, 1R model.</p>
       <div class="facts">
