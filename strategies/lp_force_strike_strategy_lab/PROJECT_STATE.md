@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-30 local time after running V14 risk sizing and drawdown
-and regenerating V1-V14 dashboards.
+Last updated: 2026-04-30 local time after adding V14 risk tolerance calibration
+to the risk-sizing dashboard and documentation.
 
 ## Purpose
 
@@ -631,12 +631,36 @@ Current conclusion:
 - Risk-reserved drawdown is the key stress view because it subtracts full open
   trade risk while trades are active.
 
+Risk tolerance calibration:
+
+- V14 now includes a `Risk Tolerance Calibration` table in `docs/v14.html`.
+- For more or less aggressive sizing, scale the balanced ladder first:
+  `multiplier = target risk-reserved DD / 8.56`.
+- This keeps the tested timeframe weighting intact.
+- Increasing only H4/H8 is a separate ladder hypothesis because H4/H8 are more
+  frequent and lower-quality than D1/W1.
+
+Scaled balanced ladder examples:
+
+| Target risk-reserved DD | H4 | H8 | H12 | D1 | W1 | Est. return |
+|---:|---:|---:|---:|---:|---:|---:|
+| 10% | 0.18% | 0.18% | 0.29% | 0.47% | 0.70% | 389% |
+| 15% | 0.26% | 0.26% | 0.44% | 0.70% | 1.05% | 583% |
+| 20% | 0.35% | 0.35% | 0.58% | 0.93% | 1.40% | 777% |
+
 Decision question:
 
 ```text
 Can the V13 take-all baseline stay practical after daily loss, max loss,
 same-symbol stacking, and concurrent-trade execution constraints are applied
 to the V14 balanced equal-LTF risk schedule?
+```
+
+Potential follow-up question:
+
+```text
+Does a deliberately more aggressive lower-timeframe ladder improve total return
+enough to justify additional H4/H8 noise and drawdown?
 ```
 
 ## Dashboard Interpretation UX
@@ -652,6 +676,15 @@ The shared renderer now shows a prominent `Decision Brief` near the top of each
 page, before the tables. This preserves the concise chat-style interpretation
 the user found useful, for example the V11 bullets explaining why removing H4
 or H8 is not worth replacing the baseline.
+
+V14 is rendered by:
+
+```text
+../../scripts/run_lp_force_strike_risk_sizing_experiment.py
+```
+
+That generator also owns the V14 `Risk Schedule Composition` and `Risk
+Tolerance Calibration` tables, so do not hand-edit `docs/v14.html` directly.
 
 ## Boundary
 
