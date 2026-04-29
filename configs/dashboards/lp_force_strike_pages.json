@@ -3,8 +3,8 @@
     "title": "TradeAutomation Research Dashboards",
     "intro": "Versioned static dashboards for LP + Force Strike experiments. Use stable version pages for comparison instead of overwriting old analysis.",
     "current_baseline": {
-      "title": "Current Baseline: LP3 cap 4R portfolio",
-      "description": "The current practical candidate is LP3 with a 4R max-open-risk cap, one open trade per symbol, 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait.",
+      "title": "Current Baseline: LP3 cap 4R all timeframes",
+      "description": "V11 confirmed the current practical candidate remains LP3 with a 4R max-open-risk cap across H4/H8/H12/D1/W1, one open trade per symbol, 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait.",
       "status_label": "Active baseline",
       "facts": [
         ["Total R", "1,100.9R"],
@@ -12,8 +12,8 @@
         ["Underwater", "162D"],
         ["Guardrail", "Pass"]
       ],
-      "button_href": "v10.html",
-      "button_label": "Open Portfolio Study"
+      "button_href": "v11.html",
+      "button_label": "Open Timeframe Mix Study"
     }
   },
   "pages": [
@@ -218,6 +218,25 @@
       "action": "Use LP3 cap 4R as the current practical portfolio baseline. Move next to V11 timeframe mix testing using this exposure rule.",
       "facts": [
         ["Winner", "LP3 cap 4R"],
+        ["Total R", "1,100.9R"],
+        ["Max DD", "26.7R"],
+        ["Underwater", "162D"]
+      ]
+    },
+    {
+      "page": "v11.html",
+      "nav_label": "V11",
+      "index_order": -1,
+      "title": "V11 Practical Timeframe Mix",
+      "status_label": "Timeframe mix study",
+      "status_kind": "active",
+      "question": "Should the V10 LP3 cap 4R portfolio keep trading all H4/H8/H12/D1/W1 signals, or should weaker lower-timeframe exposure be removed?",
+      "setup": "Existing V9 trades only. V10 mechanics stay fixed: LP3, 4R max-open-risk cap, one open trade per symbol, higher-timeframe same-time priority, and 30R / 180D guardrails. V11 tests practical timeframe baskets and limited LP4/LP5 diagnostics.",
+      "how_to_read": "Start with Best Timeframe Mix. Then compare the H4/H8 Decision table and Underwater Reduction table before using total R alone.",
+      "conclusion": "Keep all H4/H8/H12/D1/W1 timeframes for the current LP3 cap 4R baseline. The all-timeframe row still passed guardrails and produced the highest Total R. Removing H4 or H8 lowered drawdown, but the return sacrifice or underwater miss was not worth replacing the baseline.",
+      "action": "Keep all timeframes for the current practical baseline. Use V12 to retest LP3/LP4/LP5 on all timeframes and the cleaner no-H4 diagnostic set.",
+      "facts": [
+        ["Winner", "All TF LP3"],
         ["Total R", "1,100.9R"],
         ["Max DD", "26.7R"],
         ["Underwater", "162D"]

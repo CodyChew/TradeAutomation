@@ -23,16 +23,16 @@ class DashboardPagesTests(unittest.TestCase):
         metadata = load_dashboard_metadata()
         pages = {page["page"]: page for page in metadata["pages"]}
 
-        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 11)})
-        for version in range(1, 11):
+        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 12)})
+        for version in range(1, 12):
             page = pages[f"v{version}.html"]
             for field in ("title", "question", "setup", "how_to_read", "conclusion", "action", "status_label"):
                 self.assertTrue(page[field], f"missing {field} for v{version}")
 
     def test_every_generated_dashboard_links_to_all_pages(self) -> None:
-        expected_links = ['href="index.html"'] + [f'href="v{version}.html"' for version in range(1, 11)]
+        expected_links = ['href="index.html"'] + [f'href="v{version}.html"' for version in range(1, 12)]
 
-        for path in [DOCS_ROOT / "index.html"] + [DOCS_ROOT / f"v{version}.html" for version in range(1, 11)]:
+        for path in [DOCS_ROOT / "index.html"] + [DOCS_ROOT / f"v{version}.html" for version in range(1, 12)]:
             html = path.read_text(encoding="utf-8")
             for link in expected_links:
                 self.assertIn(link, html, f"{path.name} missing {link}")
@@ -59,6 +59,14 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Best Practical Mechanics", html)
         self.assertIn("Take-All vs Capped", html)
         self.assertIn("Rejected But Interesting", html)
+
+    def test_v11_dashboard_shows_timeframe_decision_sections(self) -> None:
+        html = (DOCS_ROOT / "v11.html").read_text(encoding="utf-8")
+
+        self.assertIn("Best Timeframe Mix", html)
+        self.assertIn("H4/H8 Decision", html)
+        self.assertIn("Underwater Reduction", html)
+        self.assertIn("LP4/LP5 Diagnostics", html)
 
     def test_lp_pivot_candidate_labels_are_readable(self) -> None:
         label = _candidate_short("lp_pivot_2__signal_zone_0p5_pullback__fs_structure__1r")

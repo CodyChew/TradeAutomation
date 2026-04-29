@@ -1,0 +1,132 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v11_timeframe_mix",
+  "input_trades_path": "reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831/trades.csv",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v11_timeframe_mix",
+  "main_pivot_strength": 3,
+  "diagnostic_pivot_strengths": [
+    4,
+    5
+  ],
+  "diagnostic_timeframe_set_ids": [
+    "all",
+    "no_h4",
+    "no_h4_h8"
+  ],
+  "max_drawdown_guardrail_r": 30.0,
+  "max_underwater_guardrail_days": 180.0,
+  "portfolio_rule": {
+    "portfolio_id": "cap_4r",
+    "max_open_r": 4.0,
+    "enforce_one_per_symbol": true,
+    "risk_r_per_trade": 1.0
+  },
+  "timeframe_sets": [
+    {
+      "timeframe_set_id": "h4",
+      "timeframe_set_label": "H4",
+      "timeframes": [
+        "H4"
+      ]
+    },
+    {
+      "timeframe_set_id": "h8",
+      "timeframe_set_label": "H8",
+      "timeframes": [
+        "H8"
+      ]
+    },
+    {
+      "timeframe_set_id": "h12",
+      "timeframe_set_label": "H12",
+      "timeframes": [
+        "H12"
+      ]
+    },
+    {
+      "timeframe_set_id": "d1",
+      "timeframe_set_label": "D1",
+      "timeframes": [
+        "D1"
+      ]
+    },
+    {
+      "timeframe_set_id": "w1",
+      "timeframe_set_label": "W1",
+      "timeframes": [
+        "W1"
+      ]
+    },
+    {
+      "timeframe_set_id": "h4_h8",
+      "timeframe_set_label": "H4+H8",
+      "timeframes": [
+        "H4",
+        "H8"
+      ]
+    },
+    {
+      "timeframe_set_id": "h8_h12",
+      "timeframe_set_label": "H8+H12",
+      "timeframes": [
+        "H8",
+        "H12"
+      ]
+    },
+    {
+      "timeframe_set_id": "h12_d1",
+      "timeframe_set_label": "H12+D1",
+      "timeframes": [
+        "H12",
+        "D1"
+      ]
+    },
+    {
+      "timeframe_set_id": "d1_w1",
+      "timeframe_set_label": "D1+W1",
+      "timeframes": [
+        "D1",
+        "W1"
+      ]
+    },
+    {
+      "timeframe_set_id": "no_h4",
+      "timeframe_set_label": "Remove H4",
+      "timeframes": [
+        "H8",
+        "H12",
+        "D1",
+        "W1"
+      ]
+    },
+    {
+      "timeframe_set_id": "no_h8",
+      "timeframe_set_label": "Remove H8",
+      "timeframes": [
+        "H4",
+        "H12",
+        "D1",
+        "W1"
+      ]
+    },
+    {
+      "timeframe_set_id": "no_h4_h8",
+      "timeframe_set_label": "Remove H4+H8",
+      "timeframes": [
+        "H12",
+        "D1",
+        "W1"
+      ]
+    },
+    {
+      "timeframe_set_id": "all",
+      "timeframe_set_label": "All H4+H8+H12+D1+W1",
+      "timeframes": [
+        "H4",
+        "H8",
+        "H12",
+        "D1",
+        "W1"
+      ]
+    }
+  ]
+}

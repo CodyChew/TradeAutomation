@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-29 local time after running V10 portfolio baseline
-and regenerating V1-V10 dashboards.
+Last updated: 2026-04-29 local time after running V11 practical timeframe mix
+and regenerating V1-V11 dashboards.
 
 ## Purpose
 
@@ -441,8 +441,54 @@ Current conclusion:
 - Use LP3 cap 4R as the current practical portfolio baseline.
 - V11 should keep this exposure rule and test timeframe subsets/combinations.
 
+## Experiment V11 Practical Timeframe Mix
+
+Experiment V11 tests whether the V10 LP3 cap 4R practical baseline should keep
+all timeframes or remove lower-timeframe exposure.
+
+Detailed notes:
+
+```text
+docs/lp_force_strike_experiment_v11_timeframe_mix.md
+```
+
+Run details:
+
+- config:
+  `../../configs/strategies/lp_force_strike_experiment_v11_timeframe_mix.json`
+- input trades:
+  `reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831/trades.csv`
+- report:
+  `reports/strategies/lp_force_strike_experiment_v11_timeframe_mix/20260429_144259`
+- dashboard: `docs/v11.html`
+- primary pivot: LP3
+- diagnostics: LP4 and LP5 only for all timeframes, remove H4, and remove H4+H8
+- portfolio rule: `cap_4r`, one open trade per symbol
+- guardrails: max closed-trade drawdown <= 30R and longest underwater <= 180D
+
+Main LP3 result:
+
+| Timeframe set | Trades | Total R | Max DD | Underwater | Pass |
+|---|---:|---:|---:|---:|---|
+| All H4/H8/H12/D1/W1 | 10,037 | 1,100.9R | 26.7R | 162D | Yes |
+| Remove H4 | 5,361 | 792.6R | 23.5R | 159D | Yes |
+| Remove H8 | 8,451 | 943.9R | 23.5R | 182D | No |
+| Remove H4+H8 | 3,003 | 567.7R | 19.4R | 254D | No |
+| H8+H12 | 4,789 | 655.0R | 25.3R | 172D | Yes |
+
+Current conclusion:
+
+- Keep all `H4/H8/H12/D1/W1` timeframes for the current practical baseline.
+- Removing H4 reduces drawdown only modestly while giving up about 308R.
+- Removing H8 is close but misses the underwater guardrail and gives up about
+  157R.
+- LP4 and LP5 become guardrail-viable in the no-H4 diagnostic set, but with
+  lower total R than LP3 all timeframes.
+- V12 should retest LP3/LP4/LP5 on all timeframes and no-H4 before changing the
+  LP pivot default.
+
 ## Boundary
 
 This lab intentionally excludes SMA context, account-currency position sizing,
-broker order execution, and EA logic. V10 portfolio analytics are research-only
+broker order execution, and EA logic. V10/V11 portfolio analytics are research-only
 closed-trade R simulations.

@@ -74,6 +74,18 @@ def normalize_trade_frame(frame: pd.DataFrame) -> pd.DataFrame:
     ).reset_index(drop=True)
 
 
+def filter_trade_timeframes(frame: pd.DataFrame, timeframes: list[str] | tuple[str, ...] | set[str]) -> pd.DataFrame:
+    """Return trades whose timeframe is in the requested set."""
+
+    selected_timeframes = {str(timeframe) for timeframe in timeframes}
+    if not selected_timeframes:
+        raise ValueError("At least one timeframe must be selected.")
+    data = frame.copy()
+    if "timeframe" not in data.columns:
+        raise ValueError("Trade frame missing required column: timeframe")
+    return data[data["timeframe"].astype(str).isin(selected_timeframes)].copy()
+
+
 def select_portfolio_trades(frame: pd.DataFrame, rule: PortfolioRule) -> tuple[pd.DataFrame, dict[str, int]]:
     data = normalize_trade_frame(frame)
     if not rule.enforce_one_per_symbol and rule.max_open_r is None:

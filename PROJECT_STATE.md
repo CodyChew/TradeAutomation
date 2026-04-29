@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-04-29 after adding the dashboard interpretation metadata
-and regenerating V1-V8 pages.
+Last updated: 2026-04-29 after running the V11 practical timeframe mix study
+and regenerating V1-V11 dashboard navigation.
 
 ## Purpose
 
@@ -159,6 +159,9 @@ Static dashboards exist at:
 - `docs/v6.html`: H12 bridge.
 - `docs/v7.html`: conservative 1R-cancel entry-wait test.
 - `docs/v8.html`: entry-priority 1R-cancel entry-wait test.
+- `docs/v9.html`: LP pivot strength sensitivity.
+- `docs/v10.html`: portfolio exposure cap baseline.
+- `docs/v11.html`: practical timeframe mix study.
 
 The dashboard generator is:
 
@@ -184,18 +187,27 @@ first, then regenerate the versioned pages.
 
 ## Current Recommendation
 
-Next useful research should not keep widening timeframe tests blindly. The
-highest-value next step is to test portfolio-realistic behavior for the current
-candidate family:
+The current practical baseline after V11 is:
 
-- one-position-at-a-time or max-concurrent-position rules;
-- symbol/timeframe exposure limits;
-- closed-trade and equity drawdown by timeframe;
-- FTMO-style daily/max loss constraints;
-- candidate comparison on H12/D1/W1 first, with H4/H8 as lower-quality
-  context.
-- use all 28 major/cross FOREX pairs going forward unless a specific clean-24
-  comparison is desired.
+- LP pivot strength `3`.
+- all `H4/H8/H12/D1/W1` timeframes.
+- max open risk `4R`.
+- one open trade per symbol.
+- same-symbol same-time priority `W1 > D1 > H12 > H8 > H4`.
+- 0.5 signal-candle pullback, full Force Strike structure stop, single 1R
+  target, and fixed 6-bar pullback wait.
+
+V11 tested whether removing H4 and/or H8 improved drawdown and underwater
+enough to replace all timeframes. It did not. All timeframes still had the
+highest Total R among passing rows.
+
+Next useful research is V12:
+
+- retest LP3/LP4/LP5 using the V11-selected all-timeframe baseline and the
+  no-H4 diagnostic set;
+- compare total R, max drawdown, underwater, and return/DD together;
+- only then decide whether LP3 remains the practical default or whether LP4/LP5
+  is worth the lower trade count.
 
 Do not replace the fixed 6-bar pullback wait with the V7/V8 1R-cancel wait
 rule. V8, the fairer entry-priority version, was positive but weaker than the

@@ -16,6 +16,7 @@ from .portfolio import (
     PortfolioResult,
     PortfolioRule,
     closed_trade_drawdown_metrics,
+    filter_trade_timeframes,
     run_portfolio_rule,
     select_portfolio_trades,
 )
@@ -34,6 +35,7 @@ __all__ = [
     "build_trade_setup",
     "closed_trade_drawdown_metrics",
     "detect_lp_force_strike_signals",
+    "filter_trade_timeframes",
     "make_trade_model_candidates",
     "run_portfolio_rule",
     "run_lp_force_strike_experiment_on_frame",
