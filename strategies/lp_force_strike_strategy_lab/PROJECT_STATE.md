@@ -1,20 +1,24 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-30 local time after adding the V15 risk-bucket
-sensitivity study to the dashboard and documentation.
+Last updated: 2026-04-30 local time after adding the MT5 execution contract
+and Telegram notification contract.
 
 ## Purpose
 
 This lab studies the combination of active LP level traps and raw Force Strike
-patterns. It now has two layers:
+patterns. It now has four layers:
 
 - signal detection: LP break + raw Force Strike confirmation;
 - experiment harness: fixed bracket trade-model candidates for research.
+- execution contract: pure conversion from tested `TradeSetup` to guarded MT5
+  order intent or explicit rejection.
+- notification contract: Telegram-ready event rendering and delivery adapter.
 
-It still does not contain live execution or a combined TradingView indicator.
-V10-V13 add portfolio-style research analytics. V14 adds account-risk sizing
-and drawdown views. V15 adds 3-bucket risk-ladder sensitivity, but not broker
-execution rules.
+It still does not contain an MT5 runner, `order_check` adapter, `order_send`
+path, live execution loop, or a combined TradingView indicator. V10-V13 add
+portfolio-style research analytics. V14 adds account-risk sizing and drawdown
+views. V15 adds 3-bucket risk-ladder sensitivity. The execution and Telegram
+contracts make the next dry-run phase explicit without sending orders.
 
 ## Concept Dependencies
 
@@ -733,6 +737,103 @@ stacking, and concurrent-trade constraints, and how much extra return does the
 growth alternative retain after those constraints?
 ```
 
+## MT5 Execution Contract
+
+The execution contract lives in:
+
+```text
+src/lp_force_strike_strategy_lab/execution_contract.py
+../../docs/mt5_execution_contract.md
+```
+
+It is pure Python contract logic. It does not import MetaTrader5 and does not
+send orders.
+
+Current encoded execution basis:
+
+- V13 mechanics: LP3, all H4/H8/H12/D1/W1, `take_all`, 0.5 signal-candle
+  pullback, FS structure stop, 1R target, fixed 6-bar pullback wait.
+- V15 efficient risk buckets: H4/H8 `0.20%`, H12/D1 `0.30%`, W1 `0.75%`.
+
+Ready order intent behavior:
+
+- long setup -> `BUY_LIMIT` only if entry is below current ask;
+- short setup -> `SELL_LIMIT` only if entry is above current bid;
+- expiry -> `fs_signal_time + timeframe_delta * 7`;
+- lot size -> account equity risk divided by tick-value/tick-size risk per
+  lot, capped by broker max volume and optional `max_lots_per_order`, rounded
+  down to broker volume step;
+- intent records target and actual risk percentage.
+
+Pre-send rejection coverage:
+
+- duplicate signal key;
+- invalid side/symbol/market/account;
+- invalid long/short geometry;
+- spread cap breach;
+- entry already marketable instead of pending pullback;
+- broker stop/freeze distance too close;
+- missing risk bucket or risk above cap;
+- invalid tick or volume metadata;
+- volume below broker minimum;
+- same-symbol stack, concurrent trade, or max-open-risk breach.
+
+Current test coverage includes ready long/short intents, volume capping,
+max-open-risk equality, idempotency, broker-distance checks, bad geometry,
+spread, symbol/account errors, and sizing failures.
+
+## Telegram Notification Contract
+
+The notification contract lives in:
+
+```text
+src/lp_force_strike_strategy_lab/notifications.py
+../../docs/telegram_notifications.md
+```
+
+Telegram is reporting only. It must not decide trades. Credentials must come
+from environment variables:
+
+```powershell
+$env:TELEGRAM_BOT_TOKEN = "<bot token>"
+$env:TELEGRAM_CHAT_ID = "<chat id>"
+```
+
+Supported event kinds include:
+
+- signal detected;
+- setup rejected;
+- order intent created;
+- order-check passed or failed;
+- order sent or rejected;
+- pending expired or cancelled;
+- position opened;
+- stop loss / take profit hit;
+- executor error;
+- kill switch activated.
+
+The notifier defaults to dry-run behavior. Tests use fake HTTP clients and do
+not contact Telegram.
+
+## Next Execution Work
+
+Build the MT5 dry-run executor next.
+
+Expected scope:
+
+1. Add a dry-run config for symbol allowlist, H4/H8/H12/D1/W1 timeframes,
+   max spread, max lots, max open risk, Telegram enable flag, polling interval,
+   and lookback bars.
+2. Connect to MT5 and pull recent closed candles only.
+3. Detect LP + Force Strike signals with current V13 mechanics.
+4. Build `TradeSetup` objects from valid signals.
+5. Run `build_mt5_order_intent`.
+6. Translate ready intents into MT5 `order_check` requests.
+7. Emit notification/log events for signals, rejections, order-check results,
+   errors, and kill switch state.
+8. Write a local audit journal.
+9. Do not call `order_send` in this phase.
+
 ## Dashboard Interpretation UX
 
 The dashboard interpretation metadata lives in:
@@ -766,7 +867,8 @@ dashboard pages directly.
 
 ## Boundary
 
-This lab intentionally excludes SMA context, broker order execution, and EA
-logic. V10/V11/V12/V13 portfolio analytics are research-only closed-trade R
-simulations. V14 and V15 add account-risk sizing, but still do not model live
-broker execution.
+This lab intentionally excludes SMA context and EA logic. V10/V11/V12/V13
+portfolio analytics are research-only closed-trade R simulations. V14 and V15
+add account-risk sizing. The new execution contract defines broker-facing
+intent and rejection rules, but this lab still does not contain a live MT5
+execution loop or any `order_send` path.

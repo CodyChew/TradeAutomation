@@ -28,7 +28,8 @@ unless they are intentionally promoted into tracked project assets.
 ## Current Strategies
 
 - `strategies/lp_force_strike_strategy_lab`: signal study combining LP level
-  traps with raw Force Strike patterns.
+  traps with raw Force Strike patterns, plus the current MT5 execution and
+  Telegram notification contracts.
 
 ## Dashboards
 
@@ -45,6 +46,17 @@ current risk-sizing read: the first account-constraint candidate is H4/H8
 `0.25%`, H12/D1 `0.30%`, and W1 `0.60%`. Open `docs/index.html` or the GitHub
 Pages link for the latest dashboard.
 
+The current strategy guide and execution-readiness docs are:
+
+- `docs/strategy.html`
+- `docs/mt5_execution_contract.md`
+- `docs/telegram_notifications.md`
+
+No live MT5 order sending is implemented yet. The next execution step is a
+dry-run MT5 runner that connects to MT5, pulls recent closed candles, builds
+order intents, calls `order_check`, emits Telegram/log events, and never calls
+`order_send`.
+
 ## Testing
 
 Core strategy, concept, market-data, and backtest logic is protected by a
@@ -55,6 +67,9 @@ strict branch-coverage gate:
 ```
 
 See `docs/testing_strategy.md` for the scoped rules and edge-case expectations.
+
+Current core gate status on 2026-04-30: 171 unittest cases, `100.00%` line and
+branch coverage for the scoped core packages.
 
 ## Current Shared Labs
 
