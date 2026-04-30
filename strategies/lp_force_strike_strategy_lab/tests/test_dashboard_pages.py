@@ -30,7 +30,7 @@ class DashboardPagesTests(unittest.TestCase):
                 self.assertTrue(page[field], f"missing {field} for v{version}")
 
     def test_every_generated_dashboard_links_to_all_pages(self) -> None:
-        expected_links = ['href="index.html"', 'href="strategy.html"'] + [
+        expected_links = ['href="index.html"', 'href="strategy.html"', 'href="live_ops.html"'] + [
             f'href="v{version}.html"' for version in range(1, 16)
         ]
 
@@ -68,7 +68,7 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Signal Logic", html)
         self.assertIn("Backtest Trade Simulation Model", html)
         self.assertIn("MT5 Execution Status", html)
-        self.assertIn("Not Final MT5 Execution", html)
+        self.assertIn("Guarded live-send exists", html)
         self.assertIn("Risk Model", html)
         self.assertIn("Invalid / Negative Events", html)
         self.assertIn("LP3", html)
@@ -81,12 +81,28 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Missing or zero ATR", html)
         self.assertIn("Risk-reserved DD can exceed realized DD", html)
         self.assertIn("high-return row", lower_html)
-        self.assertIn("MT5 order placement", html)
-        self.assertIn("partial fills", html)
+        self.assertIn("real MT5 pending orders", html)
+        self.assertIn("href=\"live_ops.html\"", html)
         self.assertIn("href=\"v13.html\"", html)
         self.assertIn("href=\"v14.html\"", html)
         self.assertIn("href=\"v15.html\"", html)
         self.assertGreaterEqual(html.count("<svg"), 6)
+        self.assertNotIn("<script", lower_html)
+
+    def test_live_ops_page_explains_runtime_scenarios(self) -> None:
+        html = (DOCS_ROOT / "live_ops.html").read_text(encoding="utf-8")
+        lower_html = html.lower()
+
+        self.assertIn("LP + Force Strike Live Ops", html)
+        self.assertIn("Spread Policy", html)
+        self.assertIn("Retryable WAITING", html)
+        self.assertIn("setups_blocked", html)
+        self.assertIn("No spread auto-cancel", html)
+        self.assertIn("does not have a dedicated Telegram alert yet", html)
+        self.assertIn("Order And Position Scenarios", html)
+        self.assertIn("Operator Commands", html)
+        self.assertIn("href=\"strategy.html\"", html)
+        self.assertIn("href=\"v15.html\"", html)
         self.assertNotIn("<script", lower_html)
 
     def test_entry_wait_pages_show_rejected_conclusion(self) -> None:

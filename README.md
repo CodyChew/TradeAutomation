@@ -3,7 +3,8 @@
 Trading research workspace organized around reusable concepts and future
 strategies.
 
-Start a new handover or Codex session with `PROJECT_STATE.md`.
+Start a new handover or Codex session with `SESSION_HANDOFF.md`, then
+`PROJECT_STATE.md`.
 
 ## Structure
 
@@ -48,19 +49,29 @@ Pages link for the latest dashboard.
 
 The current strategy guide and execution-readiness docs are:
 
+- `SESSION_HANDOFF.md`
 - `docs/strategy.html`
+- `docs/live_ops.html`
 - `docs/mt5_execution_contract.md`
 - `docs/telegram_notifications.md`
 - `docs/dry_run_executor.md`
 
-No live MT5 order sending is implemented yet. The dry-run path attaches to an
-already-open MT5 terminal by default, verifies the expected account, pulls
-recent closed candles, builds order intents, calls `order_check`, writes JSONL
-audit/state files, emits optional best-effort Telegram reports, and never calls
-`order_send`.
+The dry-run path attaches to an already-open MT5 terminal by default, verifies
+the expected account, pulls recent closed candles, builds order intents, calls
+`order_check`, writes JSONL audit/state files, emits optional best-effort
+Telegram reports, and never calls `order_send`.
+
+A guarded live-send path now exists at
+`scripts/run_lp_force_strike_live_executor.py`. It can place real MT5 pending
+orders only when ignored local config explicitly sets
+`live_send.execution_mode="LIVE_SEND"`, `live_send.live_send_enabled=true`, and
+`live_send.real_money_ack="I_UNDERSTAND_THIS_SENDS_REAL_ORDERS"`. Treat this
+path as real-account capable. Open `docs/live_ops.html` for cycle cadence,
+spread behavior, pending-order lifecycle, Telegram alerts, and operator
+commands.
 
 Copy `config.local.example.json` to ignored `config.local.json` before running
-the dry-run executor. Real MT5 passwords, Telegram credentials, broker/account
+the executors. Real MT5 passwords, Telegram credentials, broker/account
 details, API keys, and live trading config stay local only.
 
 ## Testing
@@ -74,7 +85,7 @@ strict branch-coverage gate:
 
 See `docs/testing_strategy.md` for the scoped rules and edge-case expectations.
 
-Current core gate status on 2026-04-30: 183 unittest cases, `100.00%` line and
+Current core gate status on 2026-05-01: 205 unittest cases, `100.00%` line and
 branch coverage for the scoped core packages.
 
 ## Current Shared Labs

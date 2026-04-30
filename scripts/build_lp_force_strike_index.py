@@ -66,12 +66,27 @@ def _strategy_card() -> str:
     <section id="strategy-guide" class="card featured">
       <div class="status status-active">Strategy guide</div>
       <h2>Current Strategy Guide</h2>
-      <p>Plain-English V13 mechanics plus V15 risk buckets, with signal rules, backtest trade simulation assumptions, MT5 execution limits, and negative-event handling.</p>
+      <p>Plain-English V13 mechanics plus V15 risk buckets, with signal rules, backtest trade simulation assumptions, MT5 execution status, and negative-event handling.</p>
       <div class="facts">
         <div class="fact"><span>Basis</span><strong>V13 + V15</strong></div>
-        <div class="fact"><span>Execution</span><strong>Backtest only</strong></div>
+        <div class="fact"><span>Execution</span><strong>Research + guarded live-send</strong></div>
       </div>
       <a class="button" href="strategy.html">Open Strategy Guide</a>
+    </section>
+    """
+
+
+def _live_ops_card() -> str:
+    return """
+    <section id="live-ops" class="card featured">
+      <div class="status status-active">Live operations</div>
+      <h2>Live Ops Guide</h2>
+      <p>Cycle cadence, live-send gates, spread behavior, pending-order lifecycle, Telegram alerts, restart state, and operator commands for the guarded MT5 path.</p>
+      <div class="facts">
+        <div class="fact"><span>Cycle</span><strong>Default 30s sleep</strong></div>
+        <div class="fact"><span>Spread skip</span><strong>Terminal for signal</strong></div>
+      </div>
+      <a class="button" href="live_ops.html">Open Live Ops</a>
     </section>
     """
 
@@ -80,7 +95,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
     metadata = load_dashboard_metadata()
     home = metadata["home"]
     pages = sorted(dashboard_pages(metadata), key=lambda page: int(page["index_order"]))
-    cards = [_baseline_card(home), _strategy_card()] + [_card(page) for page in pages]
+    cards = [_baseline_card(home), _strategy_card(), _live_ops_card()] + [_card(page) for page in pages]
     html_text = f"""<!doctype html>
 <html lang="en">
 <head>
@@ -239,6 +254,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
       section_links=[
           ("#current-baseline", "Current Baseline"),
           ("#strategy-guide", "Strategy Guide"),
+          ("#live-ops", "Live Ops"),
           ("#metric-glossary", "Glossary"),
       ],
       metadata=metadata,

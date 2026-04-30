@@ -1,7 +1,9 @@
-# LP + Force Strike Dry-Run Executor
+# LP + Force Strike MT5 Executors
 
-This is the first MT5 execution adapter for the current LP + Force Strike
-baseline. It is intentionally dry-run only:
+This document covers the MT5 dry-run executor and the guarded live-send
+executor for the current LP + Force Strike baseline.
+
+The dry-run executor:
 
 - it connects to MT5;
 - it pulls recent closed candles;
@@ -12,8 +14,9 @@ baseline. It is intentionally dry-run only:
 - it may send best-effort Telegram reports;
 - it does not send orders.
 
-`order_send` is intentionally deferred until the dry-run journal, broker
-metadata, spread behavior, and Telegram reporting are reviewed.
+The live-send executor uses the same setup and execution contract, then calls
+MT5 `order_send` only when the explicit live config is enabled. Treat it as
+real-account capable.
 
 ## Local Config
 
@@ -62,9 +65,67 @@ Optional local fields:
 - `dry_run.history_bars`
 - `dry_run.max_spread_points`
 - `dry_run.max_lots_per_order`
+- `dry_run.risk_bucket_scale`
 - `dry_run.max_open_risk_pct`
 - `dry_run.max_same_symbol_stack`
 - `dry_run.max_concurrent_strategy_trades`
+
+For the current FTMO-style MT5 terminal, use:
+
+```json
+"broker_timezone": "Europe/Helsinki"
+```
+
+This converts the broker's EET/EEST candle and tick times back to canonical
+UTC. If this is set incorrectly, signal timestamps and pending expirations will
+be shifted.
+
+For low-risk broker testing, use:
+
+```json
+"risk_bucket_scale": 0.1
+```
+
+This keeps V15's relative risk ladder but sizes each bucket at one tenth:
+
+- `H4/H8`: `0.02%`
+- `H12/D1`: `0.03%`
+- `W1`: `0.075%`
+
+Broker volume steps and minimum lot rules can make actual risk slightly lower
+than the scaled target, or reject very wide setups if rounded volume falls
+below broker minimum.
+
+The live-send adapter has a separate `live_send` config block. It is fail-closed
+unless all explicit live flags are set:
+
+```json
+"live_send": {
+  "execution_mode": "LIVE_SEND",
+  "live_send_enabled": true,
+  "real_money_ack": "I_UNDERSTAND_THIS_SENDS_REAL_ORDERS",
+  "risk_bucket_scale": 0.05,
+  "max_open_risk_pct": 0.65,
+  "max_spread_risk_fraction": 0.1
+}
+```
+
+With `risk_bucket_scale=0.05`, the V15 ladder is reduced to:
+
+- `H4/H8`: `0.01%`
+- `H12/D1`: `0.015%`
+- `W1`: `0.0375%`
+
+`max_spread_risk_fraction=0.1` means the live executor only sends a pending
+order if the current bid/ask spread is no more than 10% of the setup's
+entry-to-stop distance. It checks this before `order_check` and again
+immediately before `order_send`.
+
+Live-send also checks the MT5 bars between the signal candle and placement
+time. If the 50% pullback entry was already touched before the bot could place
+the pending order, the setup is rejected as a stale late-start signal. This
+keeps live behavior aligned with the V15 assumption that the pending order was
+available immediately after the signal candle closed.
 
 Environment fallback is supported for:
 
@@ -103,6 +164,13 @@ Run multiple finite cycles:
 .\venv\Scripts\python scripts\run_lp_force_strike_dry_run_executor.py --config config.local.json --cycles 3 --sleep-seconds 30
 ```
 
+Run finite live-send cycles only after the `live_send` block is explicitly
+enabled and reviewed:
+
+```powershell
+.\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 3 --sleep-seconds 30
+```
+
 ## Behavior
 
 The runner processes closed candles only. For every configured symbol/timeframe
@@ -111,13 +179,58 @@ sorts the candles, and drops the newest still-forming candle.
 
 For detected setups, the runner:
 
+- builds a pending setup directly from the latest closed signal candle, without
+  requiring the future pullback candle to exist yet;
 - builds the V15 candidate setup: 0.5 signal-candle pullback, Force Strike
   structure stop, 1R target, fixed 6-bar wait;
 - uses V15 risk buckets from `execution_contract.py`;
+- applies optional `risk_bucket_scale` before lot sizing;
+- live-send blocks a setup when current spread is more than
+  `max_spread_risk_fraction` of the entry-to-stop distance. This spread-only
+  block does not mark the exact signal as processed, so a later cycle can place
+  the order if spread improves before entry touch or expiry;
+- rejects already-expired pending windows before calling `order_check`;
 - rejects duplicate signal keys using local state;
 - logs live `bid`, `ask`, and `spread_points`;
 - translates ready intents to MT5 `order_check` requests;
 - records pass/fail retcodes and comments.
+
+The local journal records each lifecycle event. Telegram is intentionally
+trader-facing and less noisy: it sends final broker-check results for accepted
+intents and setup-rejection alerts, while intermediate signal and intent rows
+stay in the journal.
+
+Live-send Telegram cards are compact and trader-oriented:
+
+- `ORDER PLACED`: market, order type/ticket, entry, SL, TP, risk, size,
+  spread, expiry, setup reason, and ref.
+- `ENTERED`: market, position/order IDs, fill, size, risk, SL, TP, open time,
+  and ref.
+- `TAKE PROFIT` / `STOP LOSS`: market, position ID, exit, PnL, R, entry, size,
+  hold time, close time, deal ticket, and ref.
+- `SKIPPED` / `REJECTED` / `CANCELLED`: human reason, action taken, key metric,
+  and ref.
+
+Fill, close, expiry, and cancellation cards reply to the original
+`ORDER PLACED` Telegram message when Telegram returns a message ID. Raw broker
+comments, retcodes, exact floats, and diagnostics stay in the JSONL journal.
+
+Print a manual recent-trade summary:
+
+```powershell
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5
+```
+
+Post that same summary to Telegram:
+
+```powershell
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5 --post-telegram
+```
+
+The full V15 dry-run universe is the 28 AUD/CAD/CHF/EUR/GBP/JPY/NZD/USD
+major/cross pairs across `H4`, `H8`, `H12`, `D1`, and `W1`. That is 140
+symbol/timeframe checks per cycle; use a multi-minute sleep interval for
+longer observation windows.
 
 Telegram is reporting only. Telegram delivery failure does not change signal
 validity, risk sizing, idempotency, or order-check behavior.
@@ -126,12 +239,20 @@ validity, risk sizing, idempotency, or order-check behavior.
 
 Default local files:
 
-- journal: `data/live/lpfs_dry_run_journal.jsonl`
-- state: `data/live/lpfs_dry_run_state.json`
+- dry-run journal: `data/live/lpfs_dry_run_journal.jsonl`
+- dry-run state: `data/live/lpfs_dry_run_state.json`
+- live-send journal: `data/live/lpfs_live_journal.jsonl`
+- live-send state: `data/live/lpfs_live_state.json`
 
 Both are ignored because `data/` is local. The journal is append-only JSONL and
-redacts sensitive fields before writing. The state file stores processed and
-order-checked signal keys so restarts do not repeat the same order check.
+redacts sensitive fields before writing. The state files store processed
+signal keys, checked signal keys, tracked pending orders, tracked active
+positions, notification idempotency keys, and Telegram order-card message IDs.
+Restarts reconcile MT5 first, then continue from the local state.
+
+Do not clear live-send state casually. Clearing it intentionally re-arms
+already processed latest-candle signals and can place the same pending orders
+again if the setups still pass live checks.
 
 Sensitive values must never appear in these files:
 
@@ -146,9 +267,22 @@ Sensitive values must never appear in these files:
 
 ## Current Limits
 
-- No `order_send`.
-- No production live-account execution.
-- No position/fill reconciliation yet.
-- No pending-order cancellation or expiry management yet.
+- The dry-run runner has no `order_send`.
+- The live-send runner can call `order_send` when explicitly enabled.
+- Live-send uses MT5 as source of truth for pending orders, positions, and
+  close deals.
+- Live-send skips stale late-start setups when the planned entry already traded
+  before the pending order was placed.
+- Live-send treats spread-too-wide setups as retryable WAITING events. It can
+  retry that same signal on a future cycle until entry touch or expiry.
+- Spread is only a placement gate. After an order is pending, spread widening
+  does not auto-cancel it and does not currently trigger a dedicated Telegram
+  alert.
+- Manual deletion of an MT5 pending order does not re-arm the signal. On the
+  next reconciliation, the tracked pending order is treated as cancelled/missing
+  and the original signal remains processed.
+- Live-send tracks order placement, fill, TP/SL close, cancellation, and expiry
+  notifications in local state so restarts do not replay alerts. It also stores
+  Telegram order-card message IDs for best-effort lifecycle replies.
 - No MT5 retry policy yet.
 - No kill-switch implementation beyond notification event support.

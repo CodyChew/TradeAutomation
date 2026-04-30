@@ -33,12 +33,14 @@ from lp_force_strike_strategy_lab import (  # noqa: E402
     SkippedTrade,
     TelegramConfig,
     TelegramNotifier,
+    TradeModelCandidate,
     account_snapshot_from_mt5,
     append_audit_event,
     append_market_snapshot,
     broker_time_epoch_to_utc,
     build_current_v15_candidate,
     build_order_check_request,
+    build_pending_trade_setup,
     default_setup_provider,
     deliver_notification_best_effort,
     execution_safety_from_config,
@@ -50,6 +52,7 @@ from lp_force_strike_strategy_lab import (  # noqa: E402
     mt5_timeframe_constant,
     process_trade_setup_dry_run,
     require_mt5_credentials,
+    risk_buckets_from_config,
     run_dry_run_cycle,
     run_order_check,
     sanitize_for_logging,
@@ -83,6 +86,39 @@ def _setup(*, side: str = "long", entry: float = 1.1000, stop: float = 1.0950, t
 
 def _short_setup() -> TradeSetup:
     return _setup(side="short", entry=1.2000, stop=1.2100, target=1.1900)
+
+
+def _signal(*, side: str = "bullish", signal_index: int = 1, mother_index: int = 0) -> SimpleNamespace:
+    return SimpleNamespace(
+        side=side,
+        scenario="force_bottom" if side == "bullish" else "force_top",
+        lp_price=1.0,
+        lp_break_index=0,
+        lp_break_time_utc=pd.Timestamp("2026-01-01T00:00:00Z"),
+        lp_pivot_index=0,
+        lp_pivot_time_utc=pd.Timestamp("2025-12-31T20:00:00Z"),
+        fs_mother_index=mother_index,
+        fs_signal_index=signal_index,
+        fs_mother_time_utc=pd.Timestamp("2026-01-01T00:00:00Z"),
+        fs_signal_time_utc=pd.Timestamp("2026-01-01T04:00:00Z"),
+        bars_from_lp_break=2,
+        fs_total_bars=2,
+    )
+
+
+def _pending_frame(*, rows: int = 2, signal_high: float = 1.3, signal_low: float = 1.0) -> pd.DataFrame:
+    times = pd.date_range("2026-01-01T00:00:00Z", periods=rows, freq="4h")
+    frame = pd.DataFrame(
+        {
+            "time_utc": times,
+            "open": [1.1] * rows,
+            "high": [1.2] * rows,
+            "low": [0.9] * rows,
+            "close": [1.1] * rows,
+        }
+    )
+    frame.loc[rows - 1, ["high", "low"]] = [signal_high, signal_low]
+    return frame
 
 
 def _journal_rows(path: Path) -> list[dict]:
@@ -190,9 +226,11 @@ class FakeNotifierClient:
     def __init__(self, *, error: Exception | None = None) -> None:
         self.error = error
         self.calls = 0
+        self.payloads: list[dict] = []
 
     def post_json(self, url: str, payload: dict, *, timeout_seconds: float) -> dict:
         self.calls += 1
+        self.payloads.append(payload)
         if self.error is not None:
             raise self.error
         return {"ok": True, "result": {"message_id": 1}}
@@ -244,6 +282,7 @@ class DryRunExecutorTests(unittest.TestCase):
                             "state_path": "data/live/state.json",
                             "max_spread_points": "15",
                             "max_lots_per_order": "0.5",
+                            "risk_bucket_scale": "0.1",
                         },
                     }
                 ),
@@ -272,6 +311,7 @@ class DryRunExecutorTests(unittest.TestCase):
             self.assertEqual(settings.executor.timeframes, ("H4",))
             self.assertEqual(settings.executor.max_spread_points, 15.0)
             self.assertEqual(settings.executor.max_lots_per_order, 0.5)
+            self.assertEqual(settings.executor.risk_bucket_scale, 0.1)
             self.assertTrue(Path(settings.executor.journal_path).is_absolute())
             self.assertNotIn("secret", str(settings.safe_dict()).lower())
 
@@ -599,7 +639,7 @@ class DryRunExecutorTests(unittest.TestCase):
         no_expected = run_order_check(no_expected_mt5, _intent_for_request("BUY_LIMIT"))
         self.assertTrue(no_expected.passed)
 
-    def test_candidate_provider_and_config_helpers_are_deterministic(self) -> None:
+    def test_candidate_provider_builds_pending_setup_from_latest_closed_signal(self) -> None:
         candidate = build_current_v15_candidate()
         self.assertEqual(candidate.candidate_id, "signal_zone_0p5_pullback__fs_structure__1r")
         self.assertEqual(candidate.entry_model, "signal_zone_pullback")
@@ -607,30 +647,119 @@ class DryRunExecutorTests(unittest.TestCase):
         empty = pd.DataFrame(columns=["time_utc", "open", "high", "low", "close"])
         self.assertEqual(default_setup_provider(empty, "EURUSD", "H4", DryRunExecutorConfig()), [])
 
-        frame = pd.DataFrame(
-            {
-                "time_utc": pd.to_datetime(["2026-01-01 00:00:00+00:00", "2026-01-01 04:00:00+00:00"]),
-                "open": [1.0, 1.1],
-                "high": [1.2, 1.3],
-                "low": [0.9, 1.0],
-                "close": [1.1, 1.2],
-            }
-        )
+        frame = _pending_frame()
         old_signal = SimpleNamespace(fs_signal_index=0)
-        latest_signal = SimpleNamespace(fs_signal_index=1)
+        latest_signal = _signal(signal_index=1)
         with mock.patch.object(
             dry_run_module,
             "detect_lp_force_strike_signals",
             return_value=[old_signal, latest_signal],
-        ), mock.patch.object(dry_run_module, "build_trade_setup", return_value=_setup()) as build_mock:
+        ):
             setups = default_setup_provider(frame, "EURUSD", "H4", DryRunExecutorConfig())
         self.assertEqual(len(setups), 1)
-        self.assertIs(build_mock.call_args.args[1], latest_signal)
+        setup = setups[0]
+        self.assertIsInstance(setup, TradeSetup)
+        assert isinstance(setup, TradeSetup)
+        self.assertEqual(setup.entry_index, 2)
+        self.assertAlmostEqual(setup.entry_price, 1.15)
+        self.assertAlmostEqual(setup.stop_price, 0.9)
+        self.assertAlmostEqual(setup.target_price, 1.4)
+        self.assertTrue(setup.metadata["pending_from_latest_closed_signal"])
+
+    def test_pending_setup_builder_handles_supported_variants_and_skips_invalid_inputs(self) -> None:
+        frame = _pending_frame(rows=15, signal_high=1.3, signal_low=1.0)
+        candidate = build_current_v15_candidate()
+        long_setup = build_pending_trade_setup(
+            frame,
+            _signal(signal_index=14, mother_index=13),
+            candidate,
+            symbol="EURUSD",
+            timeframe="H4",
+        )
+        self.assertIsInstance(long_setup, TradeSetup)
+        assert isinstance(long_setup, TradeSetup)
+        self.assertGreater(long_setup.metadata["risk_atr"], 0)
+
+        midpoint_candidate = TradeModelCandidate(
+            candidate_id="midpoint",
+            entry_model="signal_midpoint_pullback",
+            stop_model="fs_structure",
+            target_r=1.0,
+        )
+        short_setup = build_pending_trade_setup(
+            frame,
+            _signal(side="bearish", signal_index=14, mother_index=13),
+            midpoint_candidate,
+            symbol="EURUSD",
+            timeframe="H4",
+        )
+        self.assertIsInstance(short_setup, TradeSetup)
+        assert isinstance(short_setup, TradeSetup)
+        self.assertEqual(short_setup.side, "short")
+        self.assertAlmostEqual(short_setup.entry_price, 1.15)
+        self.assertAlmostEqual(short_setup.stop_price, 1.3)
+        self.assertAlmostEqual(short_setup.target_price, 1.0)
+
+        skip_cases = [
+            (
+                "signal_index_out_of_range",
+                frame,
+                _signal(signal_index=99),
+                candidate,
+            ),
+            (
+                "unsupported_entry_model",
+                frame,
+                _signal(signal_index=14),
+                TradeModelCandidate(
+                    candidate_id="next_open",
+                    entry_model="next_open",
+                    stop_model="fs_structure",
+                    target_r=1.0,
+                ),
+            ),
+            (
+                "unsupported_stop_model",
+                frame,
+                _signal(signal_index=14),
+                TradeModelCandidate(
+                    candidate_id="atr_stop",
+                    entry_model="signal_zone_pullback",
+                    entry_zone=0.5,
+                    stop_model="fs_structure_max_atr",
+                    target_r=1.0,
+                ),
+            ),
+            (
+                "invalid_entry_range",
+                _pending_frame(rows=15, signal_high=1.0, signal_low=1.0),
+                _signal(signal_index=14),
+                candidate,
+            ),
+        ]
+        for reason, case_frame, signal, case_candidate in skip_cases:
+            with self.subTest(reason=reason):
+                skipped = build_pending_trade_setup(
+                    case_frame,
+                    signal,
+                    case_candidate,
+                    symbol="EURUSD",
+                    timeframe="H4",
+                )
+                self.assertIsInstance(skipped, SkippedTrade)
+                assert isinstance(skipped, SkippedTrade)
+                self.assertEqual(skipped.reason, reason)
+
+    def test_config_helpers_are_deterministic(self) -> None:
+        candidate = build_current_v15_candidate()
+        self.assertEqual(candidate.candidate_id, "signal_zone_0p5_pullback__fs_structure__1r")
+        self.assertEqual(candidate.entry_model, "signal_zone_pullback")
 
         safety = execution_safety_from_config(
             DryRunExecutorConfig(
                 max_spread_points=12,
                 max_lots_per_order=0.5,
+                risk_bucket_scale=0.1,
                 max_open_risk_pct=5,
                 max_same_symbol_stack=2,
                 max_concurrent_strategy_trades=3,
@@ -643,6 +772,14 @@ class DryRunExecutorTests(unittest.TestCase):
         self.assertEqual(safety.max_same_symbol_stack, 2)
         self.assertEqual(safety.max_concurrent_strategy_trades, 3)
         self.assertEqual(safety.strategy_magic, 42)
+        scaled_buckets = risk_buckets_from_config(DryRunExecutorConfig(risk_bucket_scale=0.1))
+        self.assertAlmostEqual(scaled_buckets["H4"], 0.02)
+        self.assertAlmostEqual(scaled_buckets["H8"], 0.02)
+        self.assertAlmostEqual(scaled_buckets["H12"], 0.03)
+        self.assertAlmostEqual(scaled_buckets["D1"], 0.03)
+        self.assertAlmostEqual(scaled_buckets["W1"], 0.075)
+        with self.assertRaisesRegex(ValueError, "risk_bucket_scale"):
+            risk_buckets_from_config(DryRunExecutorConfig(risk_bucket_scale=0.0))
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.local.json"
@@ -663,26 +800,62 @@ class DryRunExecutorTests(unittest.TestCase):
                 broker_timezone="UTC",
             )
             mt5 = FakeMT5()
-            ready = process_trade_setup_dry_run(mt5, _setup(), config=config, state=DryRunExecutorState())
+            ready_client = FakeNotifierClient()
+            ready_notifier = TelegramNotifier(
+                TelegramConfig("token", "chat", dry_run=False),
+                ready_client,
+            )
+            ready = process_trade_setup_dry_run(
+                mt5,
+                _setup(),
+                config=config,
+                state=DryRunExecutorState(),
+                notifier=ready_notifier,
+            )
             self.assertEqual(ready.status, "order_check_passed")
             self.assertIsNotNone(ready.order_check)
             self.assertIn(ready.signal_key, ready.state.order_checked_signal_keys)
+            self.assertEqual(ready_client.calls, 1)
+            self.assertIn("LPFS DRY RUN - BROKER CHECK", ready_client.payloads[0]["text"])
             rows = _journal_rows(Path(config.journal_path))
             self.assertEqual(rows[0]["event"], "signal_detected")
             self.assertIn("market_snapshot", [row["event"] for row in rows])
             self.assertIn("order_intent_created", [row["event"] for row in rows])
             self.assertIn("order_check_passed", [row["event"] for row in rows])
 
+            scaled_config = replace_config_path(config, Path(tmpdir) / "journal_scaled.jsonl", risk_bucket_scale=0.1)
+            scaled = process_trade_setup_dry_run(
+                mt5,
+                _setup(),
+                config=scaled_config,
+                state=DryRunExecutorState(),
+            )
+            self.assertEqual(scaled.status, "order_check_passed")
+            scaled_rows = _journal_rows(Path(scaled_config.journal_path))
+            intent_row = next(row for row in scaled_rows if row["event"] == "order_intent_created")
+            intent = intent_row["decision"]["intent"]
+            self.assertAlmostEqual(intent["target_risk_pct"], 0.02)
+            self.assertAlmostEqual(intent["actual_risk_pct"], 0.02)
+            self.assertAlmostEqual(intent["volume"], 0.04)
+
             duplicate = process_trade_setup_dry_run(mt5, _setup(), config=config, state=ready.state)
             self.assertEqual(duplicate.status, "already_checked")
 
+            rejected_client = FakeNotifierClient()
+            rejected_notifier = TelegramNotifier(
+                TelegramConfig("token", "chat", dry_run=False),
+                rejected_client,
+            )
             rejected = process_trade_setup_dry_run(
                 mt5,
                 _setup(entry=1.1030, stop=1.0950, target=1.1100),
                 config=config,
                 state=DryRunExecutorState(),
+                notifier=rejected_notifier,
             )
             self.assertEqual(rejected.status, "rejected")
+            self.assertEqual(rejected_client.calls, 1)
+            self.assertIn("LPFS DRY RUN - SETUP SKIPPED", rejected_client.payloads[0]["text"])
 
             mt5.order_check_result = SimpleNamespace(retcode=123, comment="check failed")
             failed = process_trade_setup_dry_run(
@@ -796,7 +969,12 @@ def _intent_for_request(order_type: str):
     )
 
 
-def replace_config_path(config: DryRunExecutorConfig, journal_path: Path) -> DryRunExecutorConfig:
+def replace_config_path(
+    config: DryRunExecutorConfig,
+    journal_path: Path,
+    *,
+    risk_bucket_scale: float | None = None,
+) -> DryRunExecutorConfig:
     return DryRunExecutorConfig(
         symbols=config.symbols,
         timeframes=config.timeframes,
@@ -806,6 +984,7 @@ def replace_config_path(config: DryRunExecutorConfig, journal_path: Path) -> Dry
         state_path=config.state_path,
         max_spread_points=config.max_spread_points,
         max_lots_per_order=config.max_lots_per_order,
+        risk_bucket_scale=config.risk_bucket_scale if risk_bucket_scale is None else risk_bucket_scale,
         max_open_risk_pct=config.max_open_risk_pct,
         max_same_symbol_stack=config.max_same_symbol_stack,
         max_concurrent_strategy_trades=config.max_concurrent_strategy_trades,

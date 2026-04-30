@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LP + Force Strike Live Ops</title>
+  <style>
+
+    :root {
+      --bg: #f3f6f8;
+      --panel: #ffffff;
+      --panel-soft: #f8fafb;
+      --ink: #17202a;
+      --muted: #5d6d7e;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --accent-2: #3f7f5f;
+      --good: #256f46;
+      --bad: #9f3333;
+      --warn: #8a5a00;
+      --focus: #f2c94c;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 Inter, Segoe UI, Roboto, Arial, sans-serif;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+    code { overflow-wrap: anywhere; }
+    .dashboard-header {
+      background: #17202a;
+      color: white;
+      padding: 28px max(18px, 5vw);
+      border-bottom: 4px solid #57a773;
+    }
+    .dashboard-header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 4vw, 30px);
+      letter-spacing: 0;
+    }
+    .dashboard-header p {
+      margin: 0;
+      color: #d8e0e8;
+      max-width: 1080px;
+      overflow-wrap: anywhere;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .page-nav {
+      margin-top: 18px;
+    }
+    .report-nav {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, .18);
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+    }
+    nav a:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .page-nav a.active {
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }
+    .report-nav a {
+      background: rgba(255, 255, 255, .03);
+      color: #edf4f7;
+    }
+    main {
+      padding: 24px max(18px, 5vw) 48px;
+    }
+    section {
+      margin: 0 0 22px;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(23, 32, 42, .05);
+      max-width: 100%;
+      overflow: visible;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 15px;
+      color: #34495e;
+      letter-spacing: 0;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi, .fact {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi-label, .fact span, .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .kpi-value, .kpi strong, .fact strong {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-note {
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 18px;
+    }
+    .note {
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+      margin-bottom: 14px;
+    }
+    .warning {
+      background: #fff8e8;
+      border-left-color: var(--warn);
+      color: #4d3b13;
+    }
+    .metric-glossary {
+      border-top: 4px solid #5c7f95;
+    }
+    .metric-glossary dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 10px;
+    }
+    .metric-glossary dl > div {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .metric-glossary dt {
+      margin: 0 0 5px;
+      font-weight: 700;
+    }
+    .metric-glossary dd {
+      margin: 0;
+      color: var(--muted);
+    }
+    .table-scroll, .scroll, .summary-comparison {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th, td {
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      box-shadow: 1px 0 0 var(--line);
+    }
+    th:first-child {
+      z-index: 3;
+    }
+    td:first-child {
+      background: var(--panel);
+      font-weight: 600;
+    }
+    th {
+      color: #3f4d5c;
+      background: #eef3f6;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tbody tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+    tbody tr:hover td {
+      background: #eef6f2;
+    }
+    .positive {
+      color: var(--good);
+      font-weight: 700;
+    }
+    .negative {
+      color: var(--bad);
+      font-weight: 700;
+    }
+    .neutral {
+      color: var(--muted);
+    }
+    footer {
+      color: var(--muted);
+      padding: 0 max(18px, 5vw) 28px;
+    }
+
+    .ops-hero {
+      border-top: 4px solid var(--accent);
+    }
+    .ops-grid,
+    .scenario-grid,
+    .file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .ops-fact,
+    .step-card,
+    .file-card {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .ops-fact span,
+    .step-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .ops-fact strong {
+      display: block;
+      font-size: 20px;
+      line-height: 1.25;
+      margin-bottom: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+    .ops-fact p,
+    .step-card p,
+    .file-card p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .step-card h3,
+    .file-card h3 {
+      margin: 0 0 7px;
+      color: var(--ink);
+    }
+    .callout {
+      background: #f6f8f2;
+      border: 1px solid #cbd9af;
+      border-left: 4px solid #8aa936;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+      color: #34412d;
+    }
+    .callout.warning {
+      background: #fff8e8;
+      border-color: #ead4a8;
+      border-left-color: var(--warn);
+      color: #4d3b13;
+    }
+    .command-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .command-row {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+      padding: 12px;
+    }
+    .command-row strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+    .command-row code {
+      display: block;
+      padding: 10px;
+      border-radius: 6px;
+      background: #17202a;
+      color: white;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .status-good {
+      color: var(--good);
+      font-weight: 700;
+    }
+    .status-warn {
+      color: var(--warn);
+      font-weight: 700;
+    }
+    .status-bad {
+      color: var(--bad);
+      font-weight: 700;
+    }
+    .file-card code {
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 760px) {
+      .dashboard-header {
+        padding: 22px 16px;
+      }
+      nav a {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+      main {
+        padding: 16px 12px 34px;
+      }
+      section {
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 14px;
+      }
+      .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .kpi {
+        padding: 10px;
+      }
+      .kpi-value, .kpi strong, .fact strong {
+        font-size: 20px;
+      }
+      th, td {
+        padding: 6px 7px;
+        font-size: 12px;
+      }
+    }
+    @media (max-width: 480px) {
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+      .report-nav a {
+        flex-basis: calc(50% - 4px);
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <header class="dashboard-header">
+    <h1>LP + Force Strike Live Ops</h1>
+    <p>Operational guide for the guarded MT5 live-send runner: cycle cadence, order lifecycle, Telegram alerts, and restart behavior. This page is a static guide, not a live broker-state monitor.</p>
+    <nav class="page-nav" aria-label="Dashboard pages">
+      <a class="page-link" href="index.html">Home</a>
+      <a class="page-link" href="strategy.html">Strategy</a>
+      <a class="page-link active" href="live_ops.html">Live Ops</a>
+      <a class="page-link" href="v1.html">V1</a>
+      <a class="page-link" href="v2.html">V2</a>
+      <a class="page-link" href="v3.html">V3</a>
+      <a class="page-link" href="v4.html">V4</a>
+      <a class="page-link" href="v5.html">V5</a>
+      <a class="page-link" href="v6.html">V6</a>
+      <a class="page-link" href="v7.html">V7</a>
+      <a class="page-link" href="v8.html">V8</a>
+      <a class="page-link" href="v9.html">V9</a>
+      <a class="page-link" href="v10.html">V10</a>
+      <a class="page-link" href="v11.html">V11</a>
+      <a class="page-link" href="v12.html">V12</a>
+      <a class="page-link" href="v13.html">V13</a>
+      <a class="page-link" href="v14.html">V14</a>
+      <a class="page-link" href="v15.html">V15</a>
+    </nav>
+
+    <nav class="report-nav" aria-label="Report sections">
+      <a href="#live-status">Status</a><a href="#cycle-model">Cycle Model</a><a href="#signal-send-path">Send Path</a><a href="#spread-policy">Spread Policy</a><a href="#lifecycle-scenarios">Scenarios</a><a href="#telegram">Telegram</a><a href="#commands">Commands</a><a href="#files">Files</a>
+    </nav>
+
+  </header>
+
+  <main>
+    <section id="live-status" class="ops-hero" aria-labelledby="live-status-title">
+      <div class="eyebrow">Real Account Safety</div>
+      <h2 id="live-status-title">Guarded Live-Send Exists</h2>
+      <p class="callout warning"><strong>Real orders can be sent.</strong> The live runner must be treated as production-capable when <code>execution_mode</code>, <code>live_send_enabled</code>, account acknowledgement, and MT5 account/server checks pass. Do not run it casually.</p>
+      <div class="ops-grid">
+
+        <article class="ops-fact">
+          <span>Default risk scale</span>
+          <strong>0.05x V15</strong>
+          <p>H4/H8 0.01%, H12/D1 0.015%, W1 0.0375% before broker volume rounding.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Spread gate</span>
+          <strong>10% of risk</strong>
+          <p>Checked before order_check and again immediately before order_send.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Max open risk</span>
+          <strong>0.65%</strong>
+          <p>Strategy exposure cap across active/pending LPFS live-send trades.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Position caps</span>
+          <strong>4 same symbol / 17 strategy</strong>
+          <p>Full V15 stack and concurrent-trade caps remain active.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Source of truth</span>
+          <strong>MT5 broker state</strong>
+          <p>Local JSON state prevents duplicates and allows restart continuity; it does not decide fills or exits.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Dashboard role</span>
+          <strong>Static ops guide</strong>
+          <p>Use state/journal files or the summary script for current account state.</p>
+        </article>
+
+      </div>
+    </section>
+
+    <section id="cycle-model" aria-labelledby="cycle-model-title">
+      <h2 id="cycle-model-title">How Often It Checks</h2>
+      <p>The live runner is cycle-based. One cycle reconciles MT5 first, scans all configured symbols/timeframes for new closed-candle signals, then stops unless the CLI was started with multiple cycles and a sleep interval.</p>
+      <div class="scenario-grid">
+
+        <article class="step-card">
+          <span>Startup</span>
+          <h3>Reconcile broker state first</h3>
+          <p>Every live-send cycle loads local state, pulls MT5 pending orders and positions by strategy magic, checks recent history, then only scans for fresh closed-candle signals.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Signal</span>
+          <h3>Build a pending limit order</h3>
+          <p>A valid LPFS signal becomes a BUY LIMIT or SELL LIMIT at the 50% signal-candle pullback, with broker-side SL, TP, expiration, compact comment, and full signal key stored locally.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Guard</span>
+          <h3>Check risk, spread, entry freshness</h3>
+          <p>Before order_check, the runner checks duplicate signal keys, entry already touched after the signal, dynamic spread versus setup risk, exposure caps, expiry, and broker-accurate risk sizing.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Send</span>
+          <h3>Refresh quote before order_send</h3>
+          <p>Immediately before sending, the runner refreshes the quote and runs the spread gate again. The order is sent only after broker order_check passes.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Manage</span>
+          <h3>Let MT5 be the truth</h3>
+          <p>Open pending orders and positions are reconciled each cycle. Fills, cancellations, expiries, and closes come from MT5 orders, positions, and deal history.</p>
+        </article>
+
+      </div>
+    </section>
+
+    <section id="signal-send-path" aria-labelledby="signal-send-path-title">
+      <h2 id="signal-send-path-title">When A New Limit Order Is Sent</h2>
+      <p class="callout">The runner sends only after the signal is valid, the entry is still fresh, spread is acceptable, exposure and sizing pass, broker order_check passes, and the final refreshed quote still passes spread.</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Step</th><th>Gate</th><th>Meaning</th></tr></thead>
+        <tbody><tr><td>1</td><td>Closed-candle scan</td><td>Signals are based on completed candles, not the forming candle.</td></tr>
+<tr><td>2</td><td>Duplicate key check</td><td>Same symbol, timeframe, direction, LP setup, and signal close time is processed once.</td></tr>
+<tr><td>3</td><td>Missed-entry guard</td><td>If price already touched the planned entry after the signal, no late pending order is placed.</td></tr>
+<tr><td>4</td><td>Spread gate</td><td>Current spread must be no more than 10% of entry-to-stop risk distance.</td></tr>
+<tr><td>5</td><td>Risk sizing</td><td>MT5 order_calc_profit sizes the order, floors to volume_step, caps by broker/local max, and rejects below volume_min.</td></tr>
+<tr><td>6</td><td>Broker validation</td><td>order_check must pass before any live send.</td></tr>
+<tr><td>7</td><td>Final spread gate</td><td>Quote is refreshed and spread is checked again immediately before order_send.</td></tr></tbody>
+      </table>
+    </div>
+
+    </section>
+
+    <section id="spread-policy" aria-labelledby="spread-policy-title">
+      <h2 id="spread-policy-title">Spread Policy</h2>
+      <p class="callout"><strong>Current behavior:</strong> a setup blocked because spread is too wide stays retryable. The runner records one WAITING alert, does not mark the signal processed, and can place the pending order on a future cycle if spread improves while the setup is still valid.</p>
+      <p class="callout"><strong>Baseline alignment:</strong> this keeps the live path closer to V15 because V15 assumes the 50% pullback pending idea can live through the fixed 6-bar entry window. The setup is still rejected permanently if entry already touched or the pending window expired.</p>
+      <div class="ops-grid">
+
+        <article class="ops-fact">
+          <span>Check cadence</span>
+          <strong>Once per live cycle</strong>
+          <p>Default sleep is 30 seconds only when the runner is started with cycles greater than one.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Before placement</span>
+          <strong>Retryable WAITING</strong>
+          <p>If spread is above 10% of risk distance, no order is placed yet and the same signal can be checked again.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Before order_send</span>
+          <strong>Final quote refresh</strong>
+          <p>After order_check passes, spread is checked again immediately before live order_send.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>After placement</span>
+          <strong>No spread cancel</strong>
+          <p>Once pending, spread widening does not remove the order by default.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Order removal</span>
+          <strong>Expiry / fill / broker removal</strong>
+          <p>The pending order is kept until it fills, reaches expiry and is cancelled, or MT5 shows it was removed/rejected.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>NZDCHF example</span>
+          <strong>11.5% vs 10.0%</strong>
+          <p>With the patched policy, this means wait. A future cycle can place the order if spread improves before entry touch or expiry.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Cycle summary</span>
+          <strong>setups_blocked</strong>
+          <p>Spread-only waits are counted separately from real rejected setups in the live cycle audit row.</p>
+        </article>
+
+      </div>
+    </section>
+
+    <section id="lifecycle-scenarios" aria-labelledby="lifecycle-scenarios-title">
+      <h2 id="lifecycle-scenarios-title">Order And Position Scenarios</h2>
+      <p>These checks happen during reconciliation at the start of every cycle.</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Scenario</th><th>When checked</th><th>Action</th></tr></thead>
+        <tbody><tr><td>Pending still open</td><td>Every cycle</td><td>Keep order unless expired. Spread widening after placement does not cancel the order and has no dedicated Telegram alert yet.</td></tr>
+<tr><td>Pending expired</td><td>Every cycle</td><td>Cancel the MT5 order when expiry is reached, remove it from active state, and send a cancelled/expired Telegram event.</td></tr>
+<tr><td>Pending filled</td><td>Every cycle</td><td>Detect matching MT5 position, move state from pending to active, and send ENTERED as a reply to the original order card when message_id exists.</td></tr>
+<tr><td>Pending missing</td><td>Every cycle</td><td>If no matching position exists, treat as broker/user removed or rejected, clear state, and alert once.</td></tr>
+<tr><td>Position still open</td><td>Every cycle</td><td>Keep tracking the position. MT5 remains the source of truth for SL, TP, volume, and position ID.</td></tr>
+<tr><td>Position closed</td><td>Every cycle</td><td>Query deal history by position ID first, classify TP/SL where possible, compute PnL/R/hold time, then send the close card once.</td></tr>
+<tr><td>Manual trade</td><td>Every cycle</td><td>Ignored unless it uses the same strategy magic and compact LPFS comment. Manual trades with normal manual magic should not interfere.</td></tr>
+<tr><td>Manual deletion</td><td>Every cycle</td><td>The exact signal stays processed locally, so the runner will not re-place that same signal unless state/journal are intentionally reset.</td></tr></tbody>
+      </table>
+    </div>
+
+    </section>
+
+    <section id="telegram" aria-labelledby="telegram-title">
+      <h2 id="telegram-title">Telegram Alerts</h2>
+      <div class="ops-grid">
+
+        <article class="ops-fact">
+          <span>ORDER PLACED</span>
+          <strong>Standalone card</strong>
+          <p>Ticket, market, entry/SL/TP, actual/target risk, size, spread, expiry, ref.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>ENTERED</span>
+          <strong>Reply to order</strong>
+          <p>Fill time/price, position ID, volume, SL/TP, risk, ref.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>TAKE PROFIT / STOP LOSS</span>
+          <strong>Reply to order</strong>
+          <p>Exit price/time, PnL, R, hold time, deal ticket, position ID, ref.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>SKIPPED / REJECTED / CANCELLED</span>
+          <strong>Readable reason</strong>
+          <p>Human reason, action taken, key metric, and ref. Raw fields remain in JSONL.</p>
+        </article>
+
+      </div>
+      <p class="callout">Telegram delivery is best effort. A failed Telegram send must never validate or invalidate a trade. The journal remains the durable audit record.</p>
+    </section>
+
+    <section id="commands" aria-labelledby="commands-title">
+      <h2 id="commands-title">Operator Commands</h2>
+      <p>Run these from the repository root after confirming <code>config.local.json</code> is intentionally set for the target account.</p>
+      <div class="command-list">
+
+        <div class="command-row">
+          <strong>Run one live-send cycle</strong>
+          <code>.\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 1</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Run repeated cycles</strong>
+          <code>.\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 12 --sleep-seconds 300</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Print recent trade summary</strong>
+          <code>.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Post recent trade summary to Telegram</strong>
+          <code>.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5 --post-telegram</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Run strict core coverage</strong>
+          <code>.\venv\Scripts\python scripts\run_core_coverage.py</code>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="limits" aria-labelledby="limits-title">
+      <h2 id="limits-title">Known Operating Limits</h2>
+      <div class="scenario-grid">
+
+        <article class="step-card">
+          <span>Limit</span>
+          <h3>Not a daemon</h3>
+          <p>The runner only keeps checking when started with multiple cycles or wrapped by an external scheduler/process manager.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Limit</span>
+          <h3>No spread auto-cancel</h3>
+          <p>Spread is a send gate. Once an order is pending, spread widening does not cancel it and does not have a dedicated Telegram alert yet.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Limit</span>
+          <h3>Manual deletion is respected</h3>
+          <p>Deleting a pending order manually does not automatically re-arm that same signal because the signal key stays processed.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Limit</span>
+          <h3>Close reason depends on broker history</h3>
+          <p>TP/SL classification uses MT5 deal/order history. Ambiguous broker comments may fall back to a less specific close alert.</p>
+        </article>
+
+      </div>
+    </section>
+
+    <section id="files" aria-labelledby="files-title">
+      <h2 id="files-title">Where To Inspect The Implementation</h2>
+      <div class="file-grid">
+        <article class="file-card"><h3>Live runner</h3><p><code>scripts/run_lp_force_strike_live_executor.py</code></p><p>CLI wrapper for cycle count and sleep interval. It does not run as a service by itself.</p></article><article class="file-card"><h3>Live engine</h3><p><code>strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py</code></p><p>Live-send guards, MT5 request construction, reconciliation, and lifecycle notifications.</p></article><article class="file-card"><h3>Execution contract</h3><p><code>docs/mt5_execution_contract.md</code></p><p>Operational contract for order keys, duplicate prevention, and MT5 source-of-truth behavior.</p></article><article class="file-card"><h3>State file</h3><p><code>data/live/lpfs_live_state.json</code></p><p>Restart continuity, processed signal keys, pending orders, active positions, Telegram message IDs.</p></article><article class="file-card"><h3>Journal</h3><p><code>data/live/lpfs_live_journal.jsonl</code></p><p>Durable audit log with raw technical fields and notification payloads.</p></article><article class="file-card"><h3>Handoff</h3><p><code>SESSION_HANDOFF.md</code></p><p>Current project snapshot for the next Codex run.</p></article>
+      </div>
+    </section>
+  </main>
+  <footer>Generated static live-ops guide. Current broker state must be checked from MT5, live state, and the JSONL journal.</footer>
+</body>
+</html>

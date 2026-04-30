@@ -365,7 +365,7 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
     subtitle = (
         "Static guide for the current LP + Force Strike research baseline. "
         "Signal rules and backtest assumptions are tested research behavior; "
-        "live MT5 execution is explicitly not final."
+        "guarded MT5 live-send behavior is documented separately in Live Ops."
     )
 
     signal_rules = [
@@ -458,7 +458,7 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
         <div class="fact"><span>Mechanics</span><strong>V13 LP3 take-all</strong></div>
         <div class="fact"><span>Risk buckets</span><strong>V15 0.20 / 0.30 / 0.75</strong></div>
         <div class="fact"><span>Entry model</span><strong>0.5 signal-candle pullback</strong></div>
-        <div class="fact"><span>Execution status</span><strong>Backtest only, MT5 not final</strong></div>
+        <div class="fact"><span>Execution status</span><strong>Guarded live-send path exists</strong></div>
       </div>
     </section>
 
@@ -476,7 +476,7 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
 
     <section id="backtest-trade-model" aria-labelledby="backtest-trade-model-title">
       <h2 id="backtest-trade-model-title">Backtest Trade Simulation Model</h2>
-      <p class="callout">Execution in the reports means simulated OHLC trade handling after a valid signal. It is not a live order-placement contract.</p>
+      <p class="callout">Execution in the research reports means simulated OHLC trade handling after a valid signal. Broker behavior for the guarded live-send runner is documented in <a href="live_ops.html">Live Ops</a>.</p>
       <div class="rule-grid">
         {_cards(trade_rules)}
       </div>
@@ -488,15 +488,16 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
 
     <section id="mt5-execution-status" aria-labelledby="mt5-execution-status-title">
       <h2 id="mt5-execution-status-title">MT5 Execution Status</h2>
-      <p class="callout warning"><strong>Not Final MT5 Execution.</strong> The dashboards test signal and OHLC trade-simulation behavior. MT5 order placement, broker fills, retries, rejects, partial fills, slippage at order time, and connection failure handling still require dedicated forward and broker-integration testing.</p>
+      <p class="callout warning"><strong>Guarded live-send exists.</strong> The research dashboards still show historical signal and OHLC trade-simulation behavior. The live runner can send real MT5 pending orders only after explicit live config, account acknowledgement, spread/risk gates, order_check, and a final quote refresh.</p>
       <div class="rule-grid">
         <article class="rule-card">
-          <h3>What is tested now</h3>
+          <h3>Research dashboards test</h3>
           <p>Historical candles, raw LP + Force Strike signal rules, simulated pending entry, simulated stop/target resolution, and portfolio risk accounting.</p>
         </article>
         <article class="rule-card">
-          <h3>What is not yet tested</h3>
-          <p>Live MT5 order placement, fill quality, retry logic, reject handling, partial fills, broker-specific execution constraints, and operational monitoring.</p>
+          <h3>Live Ops documents</h3>
+          <p>Real pending-order send gates, lifecycle reconciliation, Telegram order/fill/close cards, restart continuity, spread policy, and operator commands.</p>
+          <a class="button" href="live_ops.html">Open Live Ops</a>
         </article>
       </div>
     </section>
@@ -571,7 +572,7 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
 
     {metric_glossary_html()}
   </main>
-  <footer>Generated static guide. Strategy behavior remains in tested Python modules; MT5 execution still needs separate broker testing.</footer>
+  <footer>Generated static guide. Strategy behavior remains in tested Python modules; live MT5 operation is documented in Live Ops and audited through state and journal files.</footer>
 </body>
 </html>
 """

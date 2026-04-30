@@ -19,10 +19,11 @@ from .execution_contract import (
     MT5MarketSnapshot,
     MT5OrderIntent,
     MT5SymbolExecutionSpec,
+    V15_EFFICIENT_RISK_BUCKET_PCT,
     build_mt5_order_intent,
     signal_key_for_setup,
 )
-from .experiment import SkippedTrade, TradeModelCandidate, build_trade_setup
+from .experiment import SkippedTrade, TradeModelCandidate, add_atr
 from .notifications import (
     NotificationDelivery,
     NotificationEvent,
@@ -31,7 +32,7 @@ from .notifications import (
     format_notification_message,
     notification_from_execution_decision,
 )
-from .signals import detect_lp_force_strike_signals
+from .signals import LPForceStrikeSignal, detect_lp_force_strike_signals
 
 
 TIMEFRAME_TO_MT5_ATTR: dict[str, str] = {
@@ -121,6 +122,7 @@ class DryRunExecutorConfig:
     state_path: str = "data/live/lpfs_dry_run_state.json"
     max_spread_points: float | None = None
     max_lots_per_order: float | None = None
+    risk_bucket_scale: float = 1.0
     max_open_risk_pct: float = 6.0
     max_same_symbol_stack: int = 4
     max_concurrent_strategy_trades: int = 17
@@ -235,6 +237,7 @@ def load_dry_run_settings(
         state_path=str(_resolve_local_path(base_dir, dry_run_payload.get("state_path", "data/live/lpfs_dry_run_state.json"))),
         max_spread_points=_optional_float(dry_run_payload.get("max_spread_points")),
         max_lots_per_order=_optional_float(dry_run_payload.get("max_lots_per_order")),
+        risk_bucket_scale=float(dry_run_payload.get("risk_bucket_scale", 1.0)),
         max_open_risk_pct=float(dry_run_payload.get("max_open_risk_pct", 6.0)),
         max_same_symbol_stack=int(dry_run_payload.get("max_same_symbol_stack", 4)),
         max_concurrent_strategy_trades=int(dry_run_payload.get("max_concurrent_strategy_trades", 17)),
@@ -527,6 +530,15 @@ def execution_safety_from_config(config: DryRunExecutorConfig) -> ExecutionSafet
     )
 
 
+def risk_buckets_from_config(config: DryRunExecutorConfig) -> dict[str, float]:
+    """Return V15 risk buckets scaled for dry-run sizing tests."""
+
+    scale = float(config.risk_bucket_scale)
+    if scale <= 0:
+        raise ValueError("risk_bucket_scale must be positive.")
+    return {timeframe: risk_pct * scale for timeframe, risk_pct in V15_EFFICIENT_RISK_BUCKET_PCT.items()}
+
+
 def build_order_check_request(mt5_module: Any, intent: MT5OrderIntent) -> dict[str, Any]:
     """Translate a validated intent to an MT5 order_check request."""
 
@@ -593,16 +605,118 @@ def default_setup_provider(
     latest_signals = [signal for signal in signals if int(signal.fs_signal_index) == latest_closed_index]
     candidate = build_current_v15_candidate()
     return [
-        build_trade_setup(
+        build_pending_trade_setup(
             frame,
             signal,
             candidate,
             symbol=symbol,
             timeframe=timeframe,
-            max_entry_wait_bars=config.max_entry_wait_bars,
         )
         for signal in latest_signals
     ]
+
+
+def build_pending_trade_setup(
+    frame: pd.DataFrame,
+    signal: LPForceStrikeSignal,
+    candidate: TradeModelCandidate,
+    *,
+    symbol: str,
+    timeframe: str,
+) -> TradeSetup | SkippedTrade:
+    """Build the live pending-order setup from a just-closed signal candle.
+
+    The historical experiment builder waits for a later candle to prove the
+    pullback entry was reached. The dry-run executor must instead place/check
+    the pending pullback order immediately after the signal candle closes.
+    """
+
+    data = add_atr(frame)
+    signal_index = int(signal.fs_signal_index)
+    if signal_index < 0 or signal_index >= len(data):
+        return _pending_skip(candidate, symbol, timeframe, signal, "signal_index_out_of_range")
+
+    if candidate.entry_model not in {"signal_midpoint_pullback", "signal_zone_pullback"}:
+        return _pending_skip(candidate, symbol, timeframe, signal, "unsupported_entry_model")
+    if candidate.stop_model != "fs_structure":
+        return _pending_skip(candidate, symbol, timeframe, signal, "unsupported_stop_model")
+
+    signal_row = data.loc[signal_index]
+    signal_high = float(signal_row["high"])
+    signal_low = float(signal_row["low"])
+    if signal_high <= signal_low:
+        return _pending_skip(candidate, symbol, timeframe, signal, "invalid_entry_range")
+
+    side = "long" if signal.side == "bullish" else "short"
+    structure_low = float(data.loc[signal.fs_mother_index : signal.fs_signal_index, "low"].min())
+    structure_high = float(data.loc[signal.fs_mother_index : signal.fs_signal_index, "high"].max())
+    stop_price = structure_low if side == "long" else structure_high
+    zone = 0.5 if candidate.entry_model == "signal_midpoint_pullback" else float(candidate.entry_zone or 0.5)
+    entry_price = signal_low + (signal_high - signal_low) * zone
+    if signal.side == "bearish":
+        entry_price = signal_high - (signal_high - signal_low) * zone
+
+    risk = float(entry_price - stop_price) if side == "long" else float(stop_price - entry_price)
+    atr = float(data.loc[signal_index, "atr"])
+    target_price = entry_price + risk * candidate.target_r if side == "long" else entry_price - risk * candidate.target_r
+    return TradeSetup(
+        setup_id=f"{symbol}_{timeframe}_{signal.fs_signal_index}_{candidate.candidate_id}",
+        side=side,
+        entry_index=signal_index + 1,
+        entry_price=float(entry_price),
+        stop_price=float(stop_price),
+        target_price=float(target_price),
+        symbol=symbol,
+        timeframe=timeframe,
+        signal_index=signal.fs_signal_index,
+        metadata={
+            "candidate_id": candidate.candidate_id,
+            "entry_model": candidate.entry_model,
+            "entry_wait_mode": "fixed_bars",
+            "entry_wait_same_bar_priority": "entry",
+            "entry_zone": candidate.entry_zone,
+            "stop_model": candidate.stop_model,
+            "exit_model": candidate.exit_model,
+            "target_r": candidate.target_r,
+            "max_risk_atr": candidate.max_risk_atr,
+            "partial_target_r": candidate.partial_target_r,
+            "partial_fraction": candidate.partial_fraction,
+            "lp_price": signal.lp_price,
+            "lp_break_index": signal.lp_break_index,
+            "lp_break_time_utc": str(signal.lp_break_time_utc),
+            "fs_mother_index": signal.fs_mother_index,
+            "fs_signal_index": signal.fs_signal_index,
+            "fs_signal_time_utc": str(signal.fs_signal_time_utc),
+            "fs_total_bars": signal.fs_total_bars,
+            "bars_from_lp_break": signal.bars_from_lp_break,
+            "structure_low": structure_low,
+            "structure_high": structure_high,
+            "atr": None if pd.isna(atr) else atr,
+            "risk_atr": None if pd.isna(atr) or atr <= 0 else risk / atr,
+            "pending_from_latest_closed_signal": True,
+        },
+    )
+
+
+def _pending_skip(
+    candidate: TradeModelCandidate,
+    symbol: str,
+    timeframe: str,
+    signal: LPForceStrikeSignal,
+    reason: str,
+    *,
+    detail: str = "",
+) -> SkippedTrade:
+    return SkippedTrade(
+        candidate_id=candidate.candidate_id,
+        symbol=symbol,
+        timeframe=timeframe,
+        side=signal.side,
+        signal_index=signal.fs_signal_index,
+        signal_time_utc=signal.fs_signal_time_utc,
+        reason=reason,
+        detail=detail,
+    )
 
 
 def process_trade_setup_dry_run(
@@ -644,7 +758,6 @@ def process_trade_setup_dry_run(
         notification=format_notification_message(signal_event),
         setup_id=setup.setup_id,
     )
-    deliver_notification_best_effort(notifier, signal_event)
 
     account = account_snapshot_from_mt5(mt5_module)
     symbol_spec = symbol_spec_from_mt5(mt5_module, setup.symbol)
@@ -662,6 +775,7 @@ def process_trade_setup_dry_run(
         market=market_snapshot,
         safety=execution_safety_from_config(config),
         exposure=ExistingStrategyExposure(existing_signal_keys=state.order_checked_signal_keys),
+        risk_buckets=risk_buckets_from_config(config),
     )
     decision_event = notification_from_execution_decision(decision, mode="DRY_RUN")
     append_audit_event(
@@ -671,9 +785,9 @@ def process_trade_setup_dry_run(
         notification=format_notification_message(decision_event),
         decision=decision.to_dict(),
     )
-    deliver_notification_best_effort(notifier, decision_event)
     processed_state = _state_with_processed_key(state, signal_key)
     if not decision.ready or decision.intent is None:
+        deliver_notification_best_effort(notifier, decision_event)
         return DryRunSetupResult(state=processed_state, signal_key=signal_key, status="rejected")
 
     outcome = run_order_check(mt5_module, decision.intent)
@@ -778,13 +892,15 @@ def append_market_snapshot(
 def deliver_notification_best_effort(
     notifier: TelegramNotifier | None,
     event: NotificationEvent,
+    *,
+    reply_to_message_id: int | None = None,
 ) -> NotificationDelivery | None:
     """Send Telegram without letting delivery failure affect trade validity."""
 
     if notifier is None:
         return None
     try:
-        return notifier.send_event(event)
+        return notifier.send_event(event, reply_to_message_id=reply_to_message_id)
     except Exception as exc:
         return NotificationDelivery(
             status="failed",
@@ -792,6 +908,7 @@ def deliver_notification_best_effort(
             sent=False,
             message=format_notification_message(event),
             error=f"{type(exc).__name__}: {exc}",
+            reply_to_message_id=reply_to_message_id,
         )
 
 

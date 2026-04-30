@@ -46,6 +46,8 @@ def dashboard_page_links(current_page: str, metadata: dict[str, Any] | None = No
     links.append(f'<a class="page-link{home_active}" href="index.html">Home</a>')
     strategy_active = " active" if current_page == "strategy.html" else ""
     links.append(f'<a class="page-link{strategy_active}" href="strategy.html">Strategy</a>')
+    live_ops_active = " active" if current_page == "live_ops.html" else ""
+    links.append(f'<a class="page-link{live_ops_active}" href="live_ops.html">Live Ops</a>')
     for page in dashboard_pages(metadata):
         active = " active" if current_page == page["page"] else ""
         href = _escape(page["page"])

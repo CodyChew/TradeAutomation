@@ -1,26 +1,31 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-30 local time after adding the MT5 dry-run order-check
-adapter, local-only config pattern, and Telegram notification contract.
+Last updated: 2026-05-01 local time after the live Telegram UX refactor, fresh
+live-send test cycle, and handoff cleanup.
 
 ## Purpose
 
 This lab studies the combination of active LP level traps and raw Force Strike
-patterns. It now has four layers:
+patterns. It now has these layers:
 
 - signal detection: LP break + raw Force Strike confirmation;
-- experiment harness: fixed bracket trade-model candidates for research.
+- experiment harness: fixed bracket trade-model candidates for research;
 - execution contract: pure conversion from tested `TradeSetup` to guarded MT5
-  order intent or explicit rejection.
-- notification contract: Telegram-ready event rendering and delivery adapter.
+  order intent or explicit rejection;
+- notification contract: Telegram-ready event rendering and delivery adapter;
 - dry-run adapter: closed-candle MT5 polling, UTC normalization, local
-  journal/state files, live spread logging, and `order_check` only.
+  journal/state files, live spread logging, latest-closed-signal pending setup
+  building, expired-pending rejection, and `order_check` only.
+- live-send adapter: explicit local live enablement, broker-accurate
+  `order_calc_profit` sizing, dynamic spread gating, MT5 `order_send`,
+  pending/order/position/deal reconciliation, and restart-safe lifecycle
+  notifications.
 
-It still does not contain an `order_send` path, live execution loop, production
-account handling, or a combined TradingView indicator. V10-V13 add
+It still does not contain a combined TradingView indicator. V10-V13 add
 portfolio-style research analytics. V14 adds account-risk sizing and drawdown
 views. V15 adds 3-bucket risk-ladder sensitivity. The dry-run phase is
-explicitly broker-safe and does not send orders.
+explicitly broker-safe and does not send orders; the live-send phase can place
+real pending orders only when local live config is explicitly enabled.
 
 ## Concept Dependencies
 
@@ -762,9 +767,11 @@ Ready order intent behavior:
 - long setup -> `BUY_LIMIT` only if entry is below current ask;
 - short setup -> `SELL_LIMIT` only if entry is above current bid;
 - expiry -> `fs_signal_time + timeframe_delta * 7`;
-- lot size -> account equity risk divided by tick-value/tick-size risk per
-  lot, capped by broker max volume and optional `max_lots_per_order`, rounded
-  down to broker volume step;
+- dry-run lot size -> account equity risk divided by tick-value/tick-size risk
+  per lot, capped by broker max volume and optional `max_lots_per_order`,
+  rounded down to broker volume step;
+- live-send lot size -> broker/account-currency risk from
+  `mt5.order_calc_profit`, then the same volume cap/floor/reject rules;
 - intent records target and actual risk percentage.
 
 Pre-send rejection coverage:
@@ -779,10 +786,11 @@ Pre-send rejection coverage:
 - invalid tick or volume metadata;
 - volume below broker minimum;
 - same-symbol stack, concurrent trade, or max-open-risk breach.
+- pending expiration already at or before current broker market time.
 
 Current test coverage includes ready long/short intents, volume capping,
 max-open-risk equality, idempotency, broker-distance checks, bad geometry,
-spread, symbol/account errors, and sizing failures.
+spread, symbol/account errors, broker risk override, and sizing failures.
 
 ## Telegram Notification Contract
 
@@ -817,24 +825,104 @@ Supported event kinds include:
 The notifier defaults to dry-run behavior. Tests use fake HTTP clients and do
 not contact Telegram.
 
-## Next Execution Work
+Telegram delivery is now trader-facing rather than log-like. The local journal
+still records signal, intent, rejection, order-check, and live lifecycle rows.
+Telegram uses compact plain-text cards, while raw retcodes, broker comments,
+exact floats, and diagnostics stay in JSONL.
 
-Build the MT5 dry-run executor next.
+Live Telegram messages add real broker lifecycle alerts:
 
-Expected scope:
+- `ORDER PLACED`;
+- `ENTERED`;
+- `TAKE PROFIT`;
+- `STOP LOSS`;
+- `WAITING` for retryable spread-only blocks;
+- `SKIPPED` / `REJECTED` / `CANCELLED`.
 
-1. Add a dry-run config for symbol allowlist, H4/H8/H12/D1/W1 timeframes,
-   max spread, max lots, max open risk, Telegram enable flag, polling interval,
-   and lookback bars.
-2. Connect to MT5 and pull recent closed candles only.
-3. Detect LP + Force Strike signals with current V13 mechanics.
-4. Build `TradeSetup` objects from valid signals.
-5. Run `build_mt5_order_intent`.
-6. Translate ready intents into MT5 `order_check` requests.
-7. Emit notification/log events for signals, rejections, order-check results,
-   errors, and kill switch state.
-8. Write a local audit journal.
-9. Do not call `order_send` in this phase.
+Fill, close, expiry, and cancellation alerts reply to the original
+`ORDER PLACED` Telegram message when Telegram returns a message ID. The live
+state stores those IDs under `telegram_message_ids`. The manual summary script
+is `../../scripts/summarize_lpfs_live_trades.py --config config.local.json
+--limit 5`.
+
+## Current Live Execution State
+
+The connected MT5 account is real. Treat `scripts/run_lp_force_strike_live_executor.py`
+as real-order capable whenever ignored local config enables live-send.
+
+Current local run scope is the full V15 universe: 28 major/cross pairs across
+`H4/H8/H12/D1/W1`, or 140 checks per cycle. The current FTMO-style terminal
+uses `Europe/Helsinki` broker-time normalization.
+
+Latest corrected full-universe dry-run cycle found four current
+order-check-passing intents: `AUDJPY D1 short`, `EURNZD H8 short`,
+`GBPJPY H12 short`, and `NZDCHF H4 long`.
+
+Local broker testing now uses `risk_bucket_scale=0.1`, reducing V15 sizing to
+H4/H8 `0.02%`, H12/D1 `0.03%`, and W1 `0.075%` while preserving the relative
+timeframe weighting. Broker volume steps/minimums can make actual risk slightly
+lower or reject very wide setups.
+
+Live-send state as of 2026-05-01:
+
+- Module:
+  `src/lp_force_strike_strategy_lab/live_executor.py`.
+- Runner:
+  `../../scripts/run_lp_force_strike_live_executor.py --config config.local.json`.
+- Required config:
+  `live_send.execution_mode="LIVE_SEND"`,
+  `live_send.live_send_enabled=true`, and
+  `live_send.real_money_ack="I_UNDERSTAND_THIS_SENDS_REAL_ORDERS"`.
+- Low-risk defaults: `risk_bucket_scale=0.05`, `max_open_risk_pct=0.65`,
+  full V15 stack caps, and `max_spread_risk_fraction=0.1`.
+- Scaled risk ladder: H4/H8 `0.01%`, H12/D1 `0.015%`, W1 `0.0375%`.
+- MT5 is the source of truth. The executor reconciles open orders, historical
+  orders, open positions, and close deals before scanning new signals.
+- Late-start missed-entry guard is active: if MT5 bars after the signal candle
+  already touched the planned pullback entry before the live order could be
+  placed, the setup is rejected instead of placing a stale pending order.
+- Signal idempotency is based on:
+  `lpfs:{SYMBOL}:{TIMEFRAME}:{SIGNAL_INDEX}:{SIDE}:{CANDIDATE_ID}:{FS_SIGNAL_TIME}`.
+  A next-candle signal gets a new key; manually deleting a pending order does
+  not create a new signal or re-arm the old one.
+- Previous live journal/state were intentionally archived on 2026-05-01 before
+  a fresh live test:
+  `../../data/live/lpfs_live_journal.jsonl.bak_20260501_034805` and
+  `../../data/live/lpfs_live_state.json.bak_20260501_034805`.
+- Fresh live-send test cycle result:
+  140 frames processed, 2 orders sent, 2 setups rejected.
+- Current tracked/MT5 strategy pending orders after that cycle:
+  `EURNZD H8 SHORT SELL_LIMIT #257048012` and
+  `GBPJPY H12 SHORT SELL_LIMIT #257048014`.
+- Current tracked strategy positions: none.
+- Skipped in the fresh cycle:
+  `AUDJPY D1 SHORT` because entry was already touched before placement, and
+  `NZDCHF H4 LONG` because live spread was about `11.5%` of risk versus the
+  `10.0%` gate.
+- Telegram message IDs for the order cards are stored in live state so future
+  fill/close/cancel alerts should reply to those original cards.
+- Recent spread-gate sanity check across 720 recent detected setups showed the
+  `10%` spread/risk gate passed 714/720 (`99.2%`). Current recommendation:
+  keep `max_spread_risk_fraction=0.1`; consider H4-only relaxation to `0.15`
+  only if live evidence shows too many high-quality H4 setups are skipped.
+- Spread-too-wide live blocks are now retryable WAITING events. A spread-only
+  block does not mark the signal processed, so a future cycle can place the
+  order if spread improves before entry touch or expiry. The one old NZDCHF
+  spread skip was cleaned from local live state explicitly instead of keeping
+  compatibility code.
+- After a pending order is placed, spread widening does not auto-cancel it and
+  does not currently trigger a dedicated Telegram alert.
+
+Expected next scope:
+
+1. Inspect `../../data/live/lpfs_live_journal.jsonl`,
+   `../../data/live/lpfs_live_state.json`, MT5 pending orders/positions, and
+   Telegram lifecycle messages before running again.
+2. Run only finite live-send cycles until a kill switch exists.
+3. If a user manually deletes a pending order, let the next reconciliation
+   record it as cancelled/missing; do not clear state unless intentionally
+   re-arming the current latest-candle setups.
+4. Add retry policy and a real kill switch before unattended operation.
 
 ## Dashboard Interpretation UX
 
@@ -871,6 +959,6 @@ dashboard pages directly.
 
 This lab intentionally excludes SMA context and EA logic. V10/V11/V12/V13
 portfolio analytics are research-only closed-trade R simulations. V14 and V15
-add account-risk sizing. The new execution contract defines broker-facing
-intent and rejection rules, but this lab still does not contain a live MT5
-execution loop or any `order_send` path.
+add account-risk sizing. The execution contract defines broker-facing intent
+and rejection rules. The live-send adapter is real-order capable only through
+explicit ignored local config; dry-run remains order-check only.

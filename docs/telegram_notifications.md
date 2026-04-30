@@ -22,7 +22,7 @@ Every message includes an execution mode:
 - `DRY_RUN`: no Telegram HTTP request is sent by default; the message is
   rendered and returned for logs.
 - `DEMO_LIVE`: intended for a demo account after the dry-run adapter is proven.
-- `LIVE`: intended only after demo execution is stable and explicitly enabled.
+- `LIVE`: real-order capable and intended only after explicit local enablement.
 
 The notifier defaults to dry-run behavior. Live Telegram delivery must be
 enabled explicitly by configuration.
@@ -46,7 +46,7 @@ The contract supports these event names:
 - `executor_error`
 - `kill_switch_activated`
 
-The first dry-run MT5 adapter should emit at least:
+The dry-run MT5 adapter emits at least:
 
 - `signal_detected`
 - `setup_rejected`
@@ -56,11 +56,13 @@ The first dry-run MT5 adapter should emit at least:
 - `executor_error`
 - `kill_switch_activated`
 
-The current dry-run implementation emits order intent, setup rejection,
-order-check pass/fail, and local warning events through the audit journal. Live
-Telegram delivery remains optional and best-effort.
+The current dry-run implementation writes signal, order intent, setup rejection,
+order-check pass/fail, and local warning events through the audit journal.
+Telegram is intentionally less noisy: it sends only final broker-check results
+for accepted intents and setup-rejection alerts. Signal and intermediate intent
+details remain in the local journal.
 
-Live/demo order management later adds:
+Live order management adds:
 
 - `order_sent`
 - `order_rejected`
@@ -72,15 +74,20 @@ Live/demo order management later adds:
 
 ## Message Content
 
-Messages are plain text and concise. A normal order-intent message should show:
+Messages are plain text and trader-facing. There is no Markdown parse mode and
+no emoji dependency. A normal dry-run broker-check message
+should show:
 
-- mode;
-- event type;
-- severity;
 - symbol, timeframe, and side;
-- signal key;
-- order type;
-- entry;
+- a clear dry-run status: no order sent and not filled;
+- whether MT5 would accept or reject the pending request;
+- retcode/comment when available;
+- signal ID for traceability.
+
+The local journal keeps fuller order-intent detail:
+
+- pending order type;
+- pending entry;
 - stop loss;
 - take profit;
 - volume;
@@ -93,6 +100,39 @@ Rejection messages should show:
 - checks completed before rejection;
 - concise detail from the execution contract.
 
+Live lifecycle messages are compact trader cards. Raw retcodes, broker
+comments, exact floats, and diagnostic fields stay in the JSONL journal.
+
+- `order_sent`: `LPFS LIVE | ORDER PLACED`, market, order type/ticket,
+  entry/SL/TP, actual/target risk, lot size, spread as percent of risk, SGT
+  expiry, setup reason, and signal ref.
+- `position_opened`: `LPFS LIVE | ENTERED`, market, position/order IDs, fill,
+  size, risk, broker SL/TP, SGT open time, and signal ref.
+- `take_profit_hit` / `stop_loss_hit`: `LPFS LIVE | TAKE PROFIT` or
+  `LPFS LIVE | STOP LOSS`, market, position ID, exit, PnL, R, entry, size,
+  hold time, SGT close time, deal ticket, and signal ref.
+- spread-only `setup_rejected`: `WAITING`, human reason, spread ratio, retry
+  action, and signal ref.
+- other `setup_rejected` / `order_check_failed` / `order_rejected`: `SKIPPED`
+  or `REJECTED`, human reason, key metric such as touched time, action taken,
+  and signal ref.
+- `pending_expired` / `pending_cancelled`: `CANCELLED`, human reason, order
+  ticket, action taken, and signal ref.
+
+Live fill, close, expiry, and cancellation cards reply to the original
+`ORDER PLACED` Telegram message when Telegram returns a `message_id`. Missing
+message IDs or Telegram failures do not affect trading or reconciliation.
+
+Manual recent trade summaries can be printed or posted:
+
+```powershell
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5 --post-telegram
+```
+
+The summary pairs enriched `notification_event` rows from
+`data/live/lpfs_live_journal.jsonl`; older sparse rows may be skipped.
+
 ## Safety Rules
 
 - Telegram messages are best-effort reporting only.
@@ -100,22 +140,30 @@ Rejection messages should show:
   runner explicitly chooses fail-closed behavior.
 - Repeated signals must still be blocked by execution idempotency, not by
   Telegram state.
+- Telegram reply threading is UX only. MT5 broker state and local idempotency
+  state remain the source of truth.
 - Notification text must not include account passwords, bot tokens, MT5 login
   passwords, or local filesystem secrets.
-- The future MT5 adapter should log the rendered message even when Telegram
-  delivery is disabled or fails.
+- The MT5 adapters log the rendered message and serialized notification event
+  even when Telegram delivery is disabled or fails.
 
 ## Current Implementation
 
 The current code provides:
 
 - `NotificationEvent`: validated event contract.
-- `format_notification_message`: deterministic plain-text renderer.
+- `format_notification_message`: deterministic plain-text renderer for dry-run
+  and live lifecycle alerts.
 - `notification_from_execution_decision`: converts MT5 execution-contract
   decisions into alert events.
 - `TelegramConfig.from_env`: loads `TELEGRAM_BOT_TOKEN` and
   `TELEGRAM_CHAT_ID`.
-- `TelegramNotifier`: sends through an injectable HTTP client, or returns a
-  dry-run delivery without making a network call.
+- `NotificationDelivery`: stores Telegram `message_id` and
+  `reply_to_message_id` when available.
+- `TelegramNotifier`: sends through an injectable HTTP client, supports
+  `reply_to_message_id`, or returns a dry-run delivery without making a
+  network call.
+- `live_trade_summary.py`: builds manual recent-trade summaries from the live
+  JSONL journal.
 
 Tests use fake clients only. They do not contact Telegram.

@@ -213,6 +213,7 @@ def build_mt5_order_intent(
     exposure: ExistingStrategyExposure | None = None,
     risk_buckets: dict[str, float] | None = None,
     max_entry_wait_bars: int = 6,
+    money_risk_per_lot_override: float | None = None,
 ) -> MT5ExecutionDecision:
     """Convert a tested setup into a guarded MT5 pending-order intent."""
 
@@ -246,7 +247,14 @@ def build_mt5_order_intent(
         return _reject("risk_pct_limit", f"target_risk_pct={target_risk_pct:g}", checks)
     checks.append("risk_bucket")
 
-    volume_decision = _sized_volume(setup, account, symbol_spec, limits, target_risk_pct)
+    volume_decision = _sized_volume(
+        setup,
+        account,
+        symbol_spec,
+        limits,
+        target_risk_pct,
+        money_risk_per_lot_override=money_risk_per_lot_override,
+    )
     if not isinstance(volume_decision, _SizedVolume):
         reason, detail = volume_decision
         return _reject(reason, detail, checks)
@@ -263,6 +271,14 @@ def build_mt5_order_intent(
     checks.append("exposure_limits")
 
     expiration = pending_expiration_time_utc(setup, max_entry_wait_bars=max_entry_wait_bars)
+    market_time = _market_time_utc(market)
+    if market_time is not None and expiration <= market_time:
+        return _reject(
+            "pending_expired",
+            f"expiration_time_utc={expiration.isoformat()} market_time_utc={market_time.isoformat()}",
+            checks + ["expiration"],
+        )
+    checks.append("expiration")
     intent = MT5OrderIntent(
         signal_key=signal_key,
         symbol=str(setup.symbol).upper(),
@@ -280,7 +296,7 @@ def build_mt5_order_intent(
         comment=_order_comment(setup),
         setup_id=setup.setup_id,
     )
-    return MT5ExecutionDecision(status="ready", intent=intent, checks=tuple(checks + ["expiration"]))
+    return MT5ExecutionDecision(status="ready", intent=intent, checks=tuple(checks))
 
 
 def _basic_rejection(
@@ -353,13 +369,20 @@ def _sized_volume(
     spec: MT5SymbolExecutionSpec,
     limits: ExecutionSafetyLimits,
     target_risk_pct: float,
+    *,
+    money_risk_per_lot_override: float | None = None,
 ) -> _SizedVolume | tuple[str, str]:
     if spec.volume_step <= 0 or spec.volume_min <= 0 or spec.volume_max <= 0:
         return "invalid_volume_spec", "volume_min, volume_max, and volume_step must be positive."
-    try:
-        risk_per_lot = money_risk_per_lot(setup, spec)
-    except ValueError as exc:
-        return "invalid_symbol_value", str(exc)
+    if money_risk_per_lot_override is None:
+        try:
+            risk_per_lot = money_risk_per_lot(setup, spec)
+        except ValueError as exc:
+            return "invalid_symbol_value", str(exc)
+    else:
+        risk_per_lot = float(money_risk_per_lot_override)
+        if risk_per_lot <= 0 or not math.isfinite(risk_per_lot):
+            return "invalid_symbol_value", f"money_risk_per_lot_override={risk_per_lot:g}"
 
     risk_money = account.equity * target_risk_pct / 100.0
     raw_volume = risk_money / risk_per_lot
@@ -378,6 +401,15 @@ def _spread_points(market: MT5MarketSnapshot, spec: MT5SymbolExecutionSpec) -> f
     if market.spread_points is not None:
         return float(market.spread_points)
     return (float(market.ask) - float(market.bid)) / float(spec.point)
+
+
+def _market_time_utc(market: MT5MarketSnapshot) -> pd.Timestamp | None:
+    if market.time_utc is None:
+        return None
+    timestamp = pd.Timestamp(market.time_utc)
+    if timestamp.tzinfo is None:
+        return timestamp.tz_localize("UTC")
+    return timestamp.tz_convert("UTC")
 
 
 def _prices_are_finite(*prices: float) -> bool:

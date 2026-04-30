@@ -136,7 +136,7 @@ class ExecutionContractTests(unittest.TestCase):
             _setup(),
             account=_account(),
             symbol_spec=_spec(),
-            market=MT5MarketSnapshot(bid=1.1018, ask=1.1020),
+            market=MT5MarketSnapshot(bid=1.1018, ask=1.1020, time_utc=pd.Timestamp("2026-01-01T04:00:00Z")),
         )
 
         self.assertTrue(decision.ready)
@@ -155,6 +155,19 @@ class ExecutionContractTests(unittest.TestCase):
         self.assertIn("lpfs:EURUSD:H4:10:long", decision.intent.signal_key)
         self.assertEqual(decision.intent.to_dict()["expiration_time_utc"], "2026-01-02T04:00:00+00:00")
         self.assertEqual(decision.to_dict()["status"], "ready")
+
+    def test_rejects_pending_orders_after_expiration_time(self) -> None:
+        expired = build_mt5_order_intent(
+            _setup(),
+            account=_account(),
+            symbol_spec=_spec(),
+            market=MT5MarketSnapshot(bid=1.1018, ask=1.1020, time_utc="2026-01-02 04:00:00"),
+        )
+
+        self.assertFalse(expired.ready)
+        self.assertEqual(expired.rejection_reason, "pending_expired")
+        self.assertIn("expiration", expired.checks)
+        self.assertIn("market_time_utc=2026-01-02T04:00:00+00:00", expired.detail)
 
     def test_short_order_caps_volume_and_allows_open_risk_equality(self) -> None:
         decision = build_mt5_order_intent(
@@ -349,6 +362,30 @@ class ExecutionContractTests(unittest.TestCase):
             market=MT5MarketSnapshot(bid=1.1018, ask=1.1020),
         )
         self.assertEqual(volume_below_min.rejection_reason, "volume_below_min")
+
+    def test_broker_risk_override_drives_live_volume_sizing(self) -> None:
+        decision = build_mt5_order_intent(
+            _setup(),
+            account=_account(),
+            symbol_spec=_spec(trade_tick_value=999.0),
+            market=MT5MarketSnapshot(bid=1.1018, ask=1.1020),
+            risk_buckets={"H4": 0.01},
+            money_risk_per_lot_override=500.0,
+        )
+
+        self.assertTrue(decision.ready)
+        assert decision.intent is not None
+        self.assertAlmostEqual(decision.intent.volume, 0.02)
+        self.assertAlmostEqual(decision.intent.actual_risk_pct, 0.01)
+
+        bad_override = build_mt5_order_intent(
+            _setup(),
+            account=_account(),
+            symbol_spec=_spec(),
+            market=MT5MarketSnapshot(bid=1.1018, ask=1.1020),
+            money_risk_per_lot_override=0.0,
+        )
+        self.assertEqual(bad_override.rejection_reason, "invalid_symbol_value")
 
 
 if __name__ == "__main__":
