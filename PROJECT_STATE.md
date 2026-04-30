@@ -1,7 +1,8 @@
 # TradeAutomation Project State
 
-Last updated: 2026-04-30 after adding the V14 tight H12-D1 risk basket and
-updating the risk-sizing dashboard/handover notes.
+Last updated: 2026-04-30 after adding the V14 tight H12-D1 risk basket,
+updating the risk-sizing dashboard/handover notes, and organizing local side
+labs outside the active repo.
 
 ## Purpose
 
@@ -39,6 +40,11 @@ https://codychew.github.io/TradeAutomation/
 - `docs/`: static GitHub Pages dashboards.
 - `data/` and `reports/`: generated local data/results, intentionally ignored by
   git.
+
+Local side labs that are not part of this repo are preserved beside the repo in
+`../TradingResearchLabs/`. The active repo root should stay focused on the
+tracked TradeAutomation structure above plus ignored local artifacts such as
+`data/`, `reports/`, `venv/`, and `venv.zip`.
 
 ## Current Dataset State
 
@@ -279,10 +285,16 @@ Recent project commits:
 - `2c8cf82 Improve dashboard decision briefs`
 - `f2e448c Add V11 timeframe mix study`
 
-Untracked folders such as `CryptoBot_test/`, `FOREX/`, `force_strike_lab/`,
-`forex_experiment/`, `mt5_strategy_lab/`, and `xauusd_m1_research/` are outside
-the active TradeAutomation research path and should not be staged unless the
-user explicitly asks.
+Local side labs formerly sitting untracked in this repo were moved to:
+
+```text
+../TradingResearchLabs/
+```
+
+That folder preserves `CryptoBot_test/`, `FOREX/`, `forex_experiment/`,
+`mt5_strategy_lab/`, `xauusd_m1_research/`, and the standalone Git checkout
+`force_strike_lab/`. Do not stage those projects into TradeAutomation unless
+the user explicitly asks.
 
 ## Suggested Prompt For Next Session
 

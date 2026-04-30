@@ -13,6 +13,11 @@ Start a new handover or Codex session with `PROJECT_STATE.md`.
 - `data/`: local generated datasets, ignored by git.
 - `reports/`: local generated research outputs, ignored by git.
 
+`TradeAutomation` is the active Git repo. Preserved local side labs that are
+not part of this repo live beside it in `../TradingResearchLabs/`. Keep
+generated datasets, reports, virtual environments, and archives local/ignored
+unless they are intentionally promoted into tracked project assets.
+
 ## Current Concepts
 
 - `concepts/lp_levels_lab`: Left Precedence support/resistance concept with
