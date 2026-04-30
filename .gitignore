@@ -1,6 +1,21 @@
 venv/
 *.zip
 
+.env
+.env.*
+!.env.example
+config.local.json
+config.local.*.json
+!config.local.example.json
+configs/local/
+*credentials*.json
+*secrets*.json
+*account*.local.json
+*broker*.local.json
+*telegram*.local.json
+*mt5*.local.json
+*live*.local.json
+
 __pycache__/
 *.py[cod]
 .coverage

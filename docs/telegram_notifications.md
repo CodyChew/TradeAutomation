@@ -56,6 +56,10 @@ The first dry-run MT5 adapter should emit at least:
 - `executor_error`
 - `kill_switch_activated`
 
+The current dry-run implementation emits order intent, setup rejection,
+order-check pass/fail, and local warning events through the audit journal. Live
+Telegram delivery remains optional and best-effort.
+
 Live/demo order management later adds:
 
 - `order_sent`

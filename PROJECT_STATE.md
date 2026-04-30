@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-04-30 after adding the MT5 execution contract, Telegram
-notification contract, and this handoff update.
+Last updated: 2026-04-30 after adding the MT5 dry-run order-check adapter,
+local-only config pattern, and execution handoff update.
 
 ## Purpose
 
@@ -15,8 +15,8 @@ source of truth for strategy research and future live execution work.
 2. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for the current
    LP + Force Strike strategy research.
 3. `docs/strategy.html` for the current V13 mechanics + V15 risk-bucket guide.
-4. `docs/mt5_execution_contract.md` and `docs/telegram_notifications.md` before
-   continuing execution work.
+4. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+   `docs/dry_run_executor.md` before continuing execution work.
 5. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
 6. `concepts/lp_levels_lab/PROJECT_STATE.md` and
    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
@@ -38,7 +38,8 @@ https://codychew.github.io/TradeAutomation/
   dataset manifests.
 - `shared/backtest_engine_lab`: strategy-neutral OHLC bracket-trade simulator.
 - `strategies/lp_force_strike_strategy_lab`: active LP + Force Strike strategy
-  research, MT5 execution contract, and Telegram notification contract.
+  research, MT5 execution contract, dry-run order-check adapter, and Telegram
+  notification contract.
 - `docs/`: static GitHub Pages dashboards.
 - `data/` and `reports/`: generated local data/results, intentionally ignored by
   git.
@@ -85,7 +86,7 @@ Core logic regression gate:
 
 Current result on 2026-04-30:
 
-- 171 unittest cases across the five core labs.
+- 183 unittest cases across the five core labs.
 - `100.00%` line and branch coverage for the scoped core packages.
 - Scope and edge-case rules documented in `docs/testing_strategy.md`.
 
@@ -341,6 +342,13 @@ Current execution work is contract-first and broker-safe:
 - `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/notifications.py`
   defines notification events and a Telegram adapter.
 - `docs/telegram_notifications.md` documents Telegram setup and safety rules.
+- `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py`
+  adds the dry-run MT5 adapter around the execution and notification
+  contracts. It pulls closed candles, normalizes broker time to UTC, logs live
+  bid/ask/spread, writes JSONL audit/state files, and calls `order_check` only.
+- `config.local.example.json` documents the ignored local config shape.
+- `docs/dry_run_executor.md` documents setup, credentials, journal/state files,
+  and the dry-run operating limits.
 
 Execution contract facts:
 
@@ -368,16 +376,33 @@ Telegram contract facts:
   order-check passed/failed, order sent/rejected, pending expired/cancelled,
   position opened, SL/TP hit, executor error, and kill switch activated.
 
+Dry-run adapter facts:
+
+- Local config file `config.local.json` is intentionally ignored.
+- Default MT5 mode attaches to an already-open terminal session, then verifies
+  expected login/server before order checks.
+- Explicit MT5 login/password/server mode remains available but is not the
+  default.
+- Environment fallback exists for `MT5_USE_EXISTING_TERMINAL_SESSION`,
+  `MT5_EXPECTED_LOGIN`, `MT5_EXPECTED_SERVER`, `MT5_LOGIN`, `MT5_PASSWORD`,
+  `MT5_SERVER`, `MT5_PATH`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_CHAT_ID`.
+- Real credentials, broker/account details, API keys, and live trading config
+  must remain local-only and must not be logged.
+- Telegram is optional and best-effort. Missing Telegram credentials disable
+  Telegram without changing trade validity.
+- The runner script is
+  `scripts/run_lp_force_strike_dry_run_executor.py --config config.local.json`.
+
 Next execution phase:
 
-1. Add a dry-run MT5 runner config with symbol allowlist, timeframes, max
-   spread, lot cap, max open risk, Telegram enable flag, polling interval, and
-   lookback bars.
-2. Build a dry-run MT5 adapter that connects to MT5, pulls recent closed
-   candles, detects signals, builds trade setups, runs the execution contract,
-   translates ready intents into MT5 `order_check` requests, emits Telegram/log
-   events, and writes an audit journal.
-3. Do not call `order_send` in the dry-run phase.
+1. Run the dry-run adapter against the connected MT5 terminal with a demo
+   account and inspect `data/live/lpfs_dry_run_journal.jsonl`.
+2. Compare order-check rejects, broker stop/freeze distances, live spread
+   values, and generated signal keys against expectations.
+3. Add position/fill reconciliation, pending-order lifecycle handling, retry
+   policy, and kill-switch behavior before any `order_send` path.
+4. Do not add `order_send` until dry-run and demo-live safety criteria are
+   explicitly reviewed.
 
 ## Force Strike Side-Lab Comparison Learnings
 
@@ -439,9 +464,11 @@ the user explicitly asks.
 Continue from TradeAutomation/PROJECT_STATE.md. Focus on the LP + Force Strike
 strategy lab. The current baseline is V13 `take_all` with LP3 across
 H4/H8/H12/D1/W1 and V15 efficient risk buckets: H4/H8 0.20%, H12/D1 0.30%,
-W1 0.75%. Read docs/strategy.html, docs/mt5_execution_contract.md, and
-docs/telegram_notifications.md. Next build the MT5 dry-run executor: connect to
-MT5, pull recent closed candles, detect signals, build TradeSetup objects, run
-build_mt5_order_intent, call MT5 order_check only, emit Telegram/log events,
-write an audit journal, and do not call order_send.
+W1 0.75%. Read docs/strategy.html, docs/mt5_execution_contract.md,
+docs/telegram_notifications.md, and docs/dry_run_executor.md. The dry-run
+executor now exists around config.local.json, JSONL journal/state files,
+closed-candle MT5 polling, build_mt5_order_intent, and MT5 order_check only.
+Next run it against the connected demo MT5 terminal, inspect broker rejects and
+spread logs, then add position/fill reconciliation and pending-order lifecycle
+handling before any order_send path.
 ```

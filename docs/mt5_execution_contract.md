@@ -98,10 +98,12 @@ duplicate.
 
 ## Live Status
 
-This contract is not the final live executor. The next phase should build a
-dry-run MT5 adapter that:
+This contract is not the final live executor. The dry-run MT5 adapter now
+builds around it and:
 
 - pulls broker symbol/account metadata;
+- pulls recent closed candles;
+- normalizes MT5 broker-time fields to UTC;
 - checks current bid/ask and spread;
 - runs `order_check` against the generated intent;
 - logs whether the order would be accepted or rejected;
@@ -110,3 +112,5 @@ dry-run MT5 adapter that:
 - never sends an order unless an explicit live flag is later added.
 
 Telegram is reporting only. It must not decide whether a trade is valid.
+
+Operational setup for the adapter is documented in `docs/dry_run_executor.md`.

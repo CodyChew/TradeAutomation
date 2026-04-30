@@ -51,11 +51,17 @@ The current strategy guide and execution-readiness docs are:
 - `docs/strategy.html`
 - `docs/mt5_execution_contract.md`
 - `docs/telegram_notifications.md`
+- `docs/dry_run_executor.md`
 
-No live MT5 order sending is implemented yet. The next execution step is a
-dry-run MT5 runner that connects to MT5, pulls recent closed candles, builds
-order intents, calls `order_check`, emits Telegram/log events, and never calls
+No live MT5 order sending is implemented yet. The dry-run path attaches to an
+already-open MT5 terminal by default, verifies the expected account, pulls
+recent closed candles, builds order intents, calls `order_check`, writes JSONL
+audit/state files, emits optional best-effort Telegram reports, and never calls
 `order_send`.
+
+Copy `config.local.example.json` to ignored `config.local.json` before running
+the dry-run executor. Real MT5 passwords, Telegram credentials, broker/account
+details, API keys, and live trading config stay local only.
 
 ## Testing
 
@@ -68,7 +74,7 @@ strict branch-coverage gate:
 
 See `docs/testing_strategy.md` for the scoped rules and edge-case expectations.
 
-Current core gate status on 2026-04-30: 171 unittest cases, `100.00%` line and
+Current core gate status on 2026-04-30: 183 unittest cases, `100.00%` line and
 branch coverage for the scoped core packages.
 
 ## Current Shared Labs

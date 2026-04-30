@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-30 local time after adding the MT5 execution contract
-and Telegram notification contract.
+Last updated: 2026-04-30 local time after adding the MT5 dry-run order-check
+adapter, local-only config pattern, and Telegram notification contract.
 
 ## Purpose
 
@@ -13,12 +13,14 @@ patterns. It now has four layers:
 - execution contract: pure conversion from tested `TradeSetup` to guarded MT5
   order intent or explicit rejection.
 - notification contract: Telegram-ready event rendering and delivery adapter.
+- dry-run adapter: closed-candle MT5 polling, UTC normalization, local
+  journal/state files, live spread logging, and `order_check` only.
 
-It still does not contain an MT5 runner, `order_check` adapter, `order_send`
-path, live execution loop, or a combined TradingView indicator. V10-V13 add
+It still does not contain an `order_send` path, live execution loop, production
+account handling, or a combined TradingView indicator. V10-V13 add
 portfolio-style research analytics. V14 adds account-risk sizing and drawdown
-views. V15 adds 3-bucket risk-ladder sensitivity. The execution and Telegram
-contracts make the next dry-run phase explicit without sending orders.
+views. V15 adds 3-bucket risk-ladder sensitivity. The dry-run phase is
+explicitly broker-safe and does not send orders.
 
 ## Concept Dependencies
 
