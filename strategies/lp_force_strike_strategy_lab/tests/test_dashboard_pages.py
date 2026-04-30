@@ -30,15 +30,21 @@ class DashboardPagesTests(unittest.TestCase):
                 self.assertTrue(page[field], f"missing {field} for v{version}")
 
     def test_every_generated_dashboard_links_to_all_pages(self) -> None:
-        expected_links = ['href="index.html"'] + [f'href="v{version}.html"' for version in range(1, 16)]
+        expected_links = ['href="index.html"', 'href="strategy.html"'] + [
+            f'href="v{version}.html"' for version in range(1, 16)
+        ]
 
-        for path in [DOCS_ROOT / "index.html"] + [DOCS_ROOT / f"v{version}.html" for version in range(1, 16)]:
+        for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html"] + [
+            DOCS_ROOT / f"v{version}.html" for version in range(1, 16)
+        ]:
             html = path.read_text(encoding="utf-8")
             for link in expected_links:
                 self.assertIn(link, html, f"{path.name} missing {link}")
 
     def test_generated_dashboards_use_shared_static_chrome(self) -> None:
-        paths = [DOCS_ROOT / "index.html"] + [DOCS_ROOT / f"v{version}.html" for version in range(1, 16)]
+        paths = [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html"] + [
+            DOCS_ROOT / f"v{version}.html" for version in range(1, 16)
+        ]
 
         for path in paths:
             html = path.read_text(encoding="utf-8")
@@ -52,6 +58,36 @@ class DashboardPagesTests(unittest.TestCase):
             html = (DOCS_ROOT / f"v{version}.html").read_text(encoding="utf-8")
             self.assertIn('class="table-scroll"', html, f"v{version}.html missing table scroll wrapper")
             self.assertIn('class="data-table', html, f"v{version}.html missing data-table class")
+
+    def test_strategy_page_explains_current_strategy_and_limits(self) -> None:
+        html = (DOCS_ROOT / "strategy.html").read_text(encoding="utf-8")
+        lower_html = html.lower()
+
+        self.assertIn("Current Strategy Guide: V13 Mechanics + V15 Risk Buckets", html)
+        self.assertIn("V13 Mechanics + V15 Risk Buckets", html)
+        self.assertIn("Signal Logic", html)
+        self.assertIn("Backtest Trade Simulation Model", html)
+        self.assertIn("MT5 Execution Status", html)
+        self.assertIn("Not Final MT5 Execution", html)
+        self.assertIn("Risk Model", html)
+        self.assertIn("Invalid / Negative Events", html)
+        self.assertIn("LP3", html)
+        self.assertIn("fixed 6-bar signal window", html)
+        self.assertIn("0.5 signal-candle pullback", html)
+        self.assertIn("same-bar stop-first", lower_html)
+        self.assertIn("bar 7", html)
+        self.assertIn("wrong-side close", lower_html)
+        self.assertIn("Gap-through stop or target", html)
+        self.assertIn("Missing or zero ATR", html)
+        self.assertIn("Risk-reserved DD can exceed realized DD", html)
+        self.assertIn("high-return row", lower_html)
+        self.assertIn("MT5 order placement", html)
+        self.assertIn("partial fills", html)
+        self.assertIn("href=\"v13.html\"", html)
+        self.assertIn("href=\"v14.html\"", html)
+        self.assertIn("href=\"v15.html\"", html)
+        self.assertGreaterEqual(html.count("<svg"), 6)
+        self.assertNotIn("<script", lower_html)
 
     def test_entry_wait_pages_show_rejected_conclusion(self) -> None:
         expected = "Do not replace the fixed 6-bar pullback wait"

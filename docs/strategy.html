@@ -1,0 +1,901 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Current Strategy Guide: V13 Mechanics + V15 Risk Buckets</title>
+  <style>
+
+    :root {
+      --bg: #f3f6f8;
+      --panel: #ffffff;
+      --panel-soft: #f8fafb;
+      --ink: #17202a;
+      --muted: #5d6d7e;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --accent-2: #3f7f5f;
+      --good: #256f46;
+      --bad: #9f3333;
+      --warn: #8a5a00;
+      --focus: #f2c94c;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 Inter, Segoe UI, Roboto, Arial, sans-serif;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+    code { overflow-wrap: anywhere; }
+    .dashboard-header {
+      background: #17202a;
+      color: white;
+      padding: 28px max(18px, 5vw);
+      border-bottom: 4px solid #57a773;
+    }
+    .dashboard-header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 4vw, 30px);
+      letter-spacing: 0;
+    }
+    .dashboard-header p {
+      margin: 0;
+      color: #d8e0e8;
+      max-width: 1080px;
+      overflow-wrap: anywhere;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .page-nav {
+      margin-top: 18px;
+    }
+    .report-nav {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, .18);
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+    }
+    nav a:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .page-nav a.active {
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }
+    .report-nav a {
+      background: rgba(255, 255, 255, .03);
+      color: #edf4f7;
+    }
+    main {
+      padding: 24px max(18px, 5vw) 48px;
+    }
+    section {
+      margin: 0 0 22px;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(23, 32, 42, .05);
+      max-width: 100%;
+      overflow: visible;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 15px;
+      color: #34495e;
+      letter-spacing: 0;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi, .fact {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi-label, .fact span, .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .kpi-value, .kpi strong, .fact strong {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-note {
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 18px;
+    }
+    .note {
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+      margin-bottom: 14px;
+    }
+    .warning {
+      background: #fff8e8;
+      border-left-color: var(--warn);
+      color: #4d3b13;
+    }
+    .metric-glossary {
+      border-top: 4px solid #5c7f95;
+    }
+    .metric-glossary dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 10px;
+    }
+    .metric-glossary dl > div {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .metric-glossary dt {
+      margin: 0 0 5px;
+      font-weight: 700;
+    }
+    .metric-glossary dd {
+      margin: 0;
+      color: var(--muted);
+    }
+    .table-scroll, .scroll, .summary-comparison {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%;
+      min-width: 860px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th, td {
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      box-shadow: 1px 0 0 var(--line);
+    }
+    th:first-child {
+      z-index: 3;
+    }
+    td:first-child {
+      background: var(--panel);
+      font-weight: 600;
+    }
+    th {
+      color: #3f4d5c;
+      background: #eef3f6;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tbody tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+    tbody tr:hover td {
+      background: #eef6f2;
+    }
+    .positive {
+      color: var(--good);
+      font-weight: 700;
+    }
+    .negative {
+      color: var(--bad);
+      font-weight: 700;
+    }
+    .neutral {
+      color: var(--muted);
+    }
+    footer {
+      color: var(--muted);
+      padding: 0 max(18px, 5vw) 28px;
+    }
+
+    .guide-hero {
+      border-top: 4px solid var(--accent);
+    }
+    .guide-kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .guide-kpis .fact strong {
+      font-size: 18px;
+      line-height: 1.25;
+    }
+    .callout {
+      background: #f6f8f2;
+      border: 1px solid #cbd9af;
+      border-left: 4px solid #8aa936;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+      color: #34412d;
+    }
+    .callout.warning {
+      background: #fff8e8;
+      border-color: #ead4a8;
+      border-left-color: var(--warn);
+      color: #4d3b13;
+    }
+    .rule-grid,
+    .event-grid,
+    .trail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 12px;
+      margin: 14px 0 0;
+    }
+    .rule-card,
+    .event-card,
+    .trail-card {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .rule-card h3,
+    .event-card h3,
+    .trail-card h3 {
+      margin-top: 0;
+    }
+    .rule-card p,
+    .event-card p,
+    .trail-card p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .event-label {
+      display: inline-block;
+      margin-bottom: 8px;
+      padding: 3px 7px;
+      border: 1px solid #e5c4c4;
+      border-radius: 999px;
+      background: #fff1f1;
+      color: var(--bad);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .diagram-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .diagram-card {
+      margin: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+    }
+    .diagram-card figcaption {
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #34495e;
+    }
+    .diagram-card p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .strategy-diagram {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+    }
+    .svg-bg { fill: #ffffff; }
+    .svg-support { stroke: #22577a; stroke-width: 3; stroke-dasharray: 7 5; }
+    .svg-resistance { stroke: #7a4f22; stroke-width: 3; stroke-dasharray: 7 5; }
+    .svg-entry { stroke: #22577a; stroke-width: 3; }
+    .svg-stop { stroke: #9f3333; stroke-width: 3; }
+    .svg-target { stroke: #256f46; stroke-width: 3; }
+    .svg-wick { stroke: #17202a; stroke-width: 3; }
+    .svg-wick-strong { stroke: #17202a; stroke-width: 5; }
+    .svg-candle-up { fill: #dff2e5; stroke: #256f46; stroke-width: 2; }
+    .svg-candle-down { fill: #fde9e9; stroke: #9f3333; stroke-width: 2; }
+    .svg-close { stroke: #256f46; stroke-width: 4; }
+    .svg-close-bad { stroke: #9f3333; stroke-width: 4; }
+    .svg-arrow { fill: none; stroke: #5d6d7e; stroke-width: 3; marker-end: url(#none); }
+    .svg-arrow-bad { fill: none; stroke: #9f3333; stroke-width: 3; }
+    .svg-dot { fill: #22577a; }
+    .svg-dot-good { fill: #edf8f1; stroke: #256f46; stroke-width: 2; }
+    .svg-dot-bad { fill: #fff1f1; stroke: #9f3333; stroke-width: 3; }
+    .svg-x { stroke: #9f3333; stroke-width: 4; stroke-linecap: round; }
+    .svg-label,
+    .timeline text {
+      fill: #34495e;
+      font: 12px Inter, Segoe UI, Arial, sans-serif;
+      letter-spacing: 0;
+    }
+    .svg-good {
+      fill: #256f46;
+      font: 700 12px Inter, Segoe UI, Arial, sans-serif;
+      letter-spacing: 0;
+    }
+    .svg-bad {
+      fill: #9f3333;
+      font: 700 12px Inter, Segoe UI, Arial, sans-serif;
+      letter-spacing: 0;
+    }
+    .risk-table th:first-child,
+    .risk-table td:first-child {
+      min-width: 220px;
+    }
+    .button {
+      display: inline-block;
+      margin-top: 12px;
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      padding: 8px 11px;
+      border-radius: 6px;
+      font-weight: 700;
+    }
+    @media (max-width: 760px) {
+      .diagram-grid {
+        grid-template-columns: 1fr;
+      }
+      .strategy-diagram {
+        min-width: 300px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .dashboard-header {
+        padding: 22px 16px;
+      }
+      nav a {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+      main {
+        padding: 16px 12px 34px;
+      }
+      section {
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 14px;
+      }
+      .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .kpi {
+        padding: 10px;
+      }
+      .kpi-value, .kpi strong, .fact strong {
+        font-size: 20px;
+      }
+      th, td {
+        padding: 6px 7px;
+        font-size: 12px;
+      }
+    }
+    @media (max-width: 480px) {
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+      .report-nav a {
+        flex-basis: calc(50% - 4px);
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <header class="dashboard-header">
+    <h1>Current Strategy Guide: V13 Mechanics + V15 Risk Buckets</h1>
+    <p>Static guide for the current LP + Force Strike research baseline. Signal rules and backtest assumptions are tested research behavior; live MT5 execution is explicitly not final.</p>
+    <nav class="page-nav" aria-label="Dashboard pages">
+      <a class="page-link" href="index.html">Home</a>
+      <a class="page-link active" href="strategy.html">Strategy</a>
+      <a class="page-link" href="v1.html">V1</a>
+      <a class="page-link" href="v2.html">V2</a>
+      <a class="page-link" href="v3.html">V3</a>
+      <a class="page-link" href="v4.html">V4</a>
+      <a class="page-link" href="v5.html">V5</a>
+      <a class="page-link" href="v6.html">V6</a>
+      <a class="page-link" href="v7.html">V7</a>
+      <a class="page-link" href="v8.html">V8</a>
+      <a class="page-link" href="v9.html">V9</a>
+      <a class="page-link" href="v10.html">V10</a>
+      <a class="page-link" href="v11.html">V11</a>
+      <a class="page-link" href="v12.html">V12</a>
+      <a class="page-link" href="v13.html">V13</a>
+      <a class="page-link" href="v14.html">V14</a>
+      <a class="page-link" href="v15.html">V15</a>
+    </nav>
+
+    <nav class="report-nav" aria-label="Report sections">
+      <a href="#version-basis">Basis</a><a href="#signal-logic">Signal Logic</a><a href="#backtest-trade-model">Backtest Model</a><a href="#mt5-execution-status">MT5 Status</a><a href="#risk-model">Risk Model</a><a href="#negative-events">Negative Events</a><a href="#research-trail">Research Trail</a>
+    </nav>
+
+  </header>
+
+  <main>
+    <section id="version-basis" class="guide-hero" aria-labelledby="version-basis-title">
+      <div class="eyebrow">Current Research Baseline</div>
+      <h2 id="version-basis-title">V13 Mechanics + V15 Risk Buckets</h2>
+      <p>Use this page as the plain-English contract for the current research baseline. It describes the tested LP + Force Strike signal, the backtest trade simulation model, and the current V15 risk bucket read. It does not define final broker execution.</p>
+      <div class="guide-kpis">
+        <div class="fact"><span>Mechanics</span><strong>V13 LP3 take-all</strong></div>
+        <div class="fact"><span>Risk buckets</span><strong>V15 0.20 / 0.30 / 0.75</strong></div>
+        <div class="fact"><span>Entry model</span><strong>0.5 signal-candle pullback</strong></div>
+        <div class="fact"><span>Execution status</span><strong>Backtest only, MT5 not final</strong></div>
+      </div>
+    </section>
+
+    <section id="signal-logic" aria-labelledby="signal-logic-title">
+      <h2 id="signal-logic-title">Signal Logic</h2>
+      <p class="callout">A trade idea starts with an LP3 wick break, then requires raw Force Strike confirmation against the selected LP level within the fixed 6-bar signal window.</p>
+      <div class="rule-grid">
+
+        <article class="rule-card">
+          <h3>LP3 break opens the setup</h3>
+          <p>The current mechanics use LP3 across H4, H8, H12, D1, and W1. A wick through an active LP support or resistance starts the trap window.</p>
+        </article>
+
+
+        <article class="rule-card">
+          <h3>Selected LP level is deterministic</h3>
+          <p>If multiple LP supports break on one bullish setup candle, choose the lowest broken support. If multiple LP resistances break on one bearish setup candle, choose the highest broken resistance.</p>
+        </article>
+
+
+        <article class="rule-card">
+          <h3>Raw Force Strike confirms the setup</h3>
+          <p>A bullish confirmation must close at or above the selected support. A bearish confirmation must close at or below the selected resistance.</p>
+        </article>
+
+
+        <article class="rule-card">
+          <h3>Fixed 6-bar signal window</h3>
+          <p>The LP break candle is bar 1. Raw Force Strike must confirm by bar 6; a confirmation first appearing on bar 7 is expired.</p>
+        </article>
+
+
+        <article class="rule-card">
+          <h3>Trap windows stay explicit</h3>
+          <p>Overlapping bullish and bearish trap windows are handled independently, so a later opposite-side setup does not silently rewrite the earlier one.</p>
+        </article>
+
+      </div>
+      <div class="diagram-grid">
+
+    <figure class="diagram-card">
+      <figcaption>Bullish Setup</figcaption>
+
+      <svg class="strategy-diagram" viewBox="0 0 420 220" role="img" aria-labelledby="bullish-title">
+        <title id="bullish-title">Bullish LP break and Force Strike confirmation</title>
+        <rect x="0" y="0" width="420" height="220" rx="8" class="svg-bg"/>
+        <line x1="32" y1="126" x2="388" y2="126" class="svg-support"/>
+        <text x="36" y="118" class="svg-label">Selected LP support</text>
+        <line x1="74" y1="80" x2="74" y2="168" class="svg-wick"/>
+        <rect x="58" y="94" width="32" height="46" class="svg-candle-down"/>
+        <text x="38" y="188" class="svg-label">bar 1: wick break</text>
+        <path d="M110 156 C146 132, 170 118, 206 122" class="svg-arrow"/>
+        <line x1="230" y1="92" x2="230" y2="146" class="svg-wick"/>
+        <rect x="214" y="114" width="32" height="25" class="svg-candle-up"/>
+        <line x1="214" y1="126" x2="246" y2="126" class="svg-close"/>
+        <text x="200" y="74" class="svg-label">raw FS closes at/above LP</text>
+        <text x="242" y="184" class="svg-good">valid through bar 6</text>
+        <circle cx="74" cy="168" r="5" class="svg-dot"/>
+        <circle cx="230" cy="126" r="5" class="svg-dot"/>
+      </svg>
+
+      <p>Wick breaks selected support, then raw Force Strike must close back at or above that LP by bar 6.</p>
+    </figure>
+
+
+    <figure class="diagram-card">
+      <figcaption>Bearish Setup</figcaption>
+
+      <svg class="strategy-diagram" viewBox="0 0 420 220" role="img" aria-labelledby="bearish-title">
+        <title id="bearish-title">Bearish LP break and Force Strike confirmation</title>
+        <rect x="0" y="0" width="420" height="220" rx="8" class="svg-bg"/>
+        <line x1="32" y1="92" x2="388" y2="92" class="svg-resistance"/>
+        <text x="36" y="84" class="svg-label">Selected LP resistance</text>
+        <line x1="78" y1="54" x2="78" y2="144" class="svg-wick"/>
+        <rect x="62" y="78" width="32" height="42" class="svg-candle-up"/>
+        <text x="38" y="168" class="svg-label">bar 1: wick break</text>
+        <path d="M110 74 C144 96, 174 112, 208 108" class="svg-arrow"/>
+        <line x1="232" y1="74" x2="232" y2="144" class="svg-wick"/>
+        <rect x="216" y="82" width="32" height="40" class="svg-candle-down"/>
+        <line x1="216" y1="92" x2="248" y2="92" class="svg-close"/>
+        <text x="198" y="158" class="svg-label">raw FS closes at/below LP</text>
+        <text x="244" y="186" class="svg-good">valid through bar 6</text>
+        <circle cx="78" cy="54" r="5" class="svg-dot"/>
+        <circle cx="232" cy="92" r="5" class="svg-dot"/>
+      </svg>
+
+      <p>Wick breaks selected resistance, then raw Force Strike must close back at or below that LP by bar 6.</p>
+    </figure>
+
+      </div>
+    </section>
+
+    <section id="backtest-trade-model" aria-labelledby="backtest-trade-model-title">
+      <h2 id="backtest-trade-model-title">Backtest Trade Simulation Model</h2>
+      <p class="callout">Execution in the reports means simulated OHLC trade handling after a valid signal. It is not a live order-placement contract.</p>
+      <div class="rule-grid">
+
+        <article class="rule-card">
+          <h3>Entry</h3>
+          <p>After a valid signal, the simulated entry is a 0.5 signal-candle pullback. The model waits a fixed 6 bars for that pullback.</p>
+        </article>
+
+
+        <article class="rule-card">
+          <h3>Stop and target</h3>
+          <p>The stop uses the full Force Strike structure stop. The target is fixed at 1R from entry to stop distance.</p>
+        </article>
+
+
+        <article class="rule-card">
+          <h3>Invalid trade geometry</h3>
+          <p>The simulator rejects stop equals entry, stop on the wrong side of entry, and any invalid pullback range before measuring results.</p>
+        </article>
+
+
+        <article class="rule-card">
+          <h3>Conservative OHLC conflicts</h3>
+          <p>If entry, stop, and target ambiguity happens inside one candle, same-bar stop-first handling is used. Gap-through outcomes remain OHLC simulation, not tick reconstruction.</p>
+        </article>
+
+      </div>
+      <div class="diagram-grid">
+
+    <figure class="diagram-card">
+      <figcaption>Entry And Risk Model</figcaption>
+
+      <svg class="strategy-diagram" viewBox="0 0 420 240" role="img" aria-labelledby="entry-risk-title">
+        <title id="entry-risk-title">Backtest entry, stop, and one R target model</title>
+        <rect x="0" y="0" width="420" height="240" rx="8" class="svg-bg"/>
+        <line x1="48" y1="130" x2="368" y2="130" class="svg-entry"/>
+        <line x1="48" y1="176" x2="368" y2="176" class="svg-stop"/>
+        <line x1="48" y1="84" x2="368" y2="84" class="svg-target"/>
+        <text x="52" y="122" class="svg-label">0.5 signal-candle pullback entry</text>
+        <text x="52" y="168" class="svg-bad">FS structure stop</text>
+        <text x="52" y="76" class="svg-good">1R target</text>
+        <line x1="214" y1="72" x2="214" y2="176" class="svg-wick"/>
+        <rect x="198" y="102" width="32" height="44" class="svg-candle-up"/>
+        <path d="M246 130 H326" class="svg-arrow"/>
+        <text x="240" y="152" class="svg-label">wait up to 6 bars</text>
+        <path d="M336 130 V84" class="svg-arrow"/>
+        <path d="M360 130 V176" class="svg-arrow"/>
+      </svg>
+
+      <p>The pending entry sits at the 0.5 signal-candle pullback, uses the FS structure stop, and targets 1R.</p>
+    </figure>
+
+
+    <figure class="diagram-card">
+      <figcaption>Same-Bar Stop-First Conflict</figcaption>
+
+      <svg class="strategy-diagram" viewBox="0 0 420 240" role="img" aria-labelledby="same-bar-title">
+        <title id="same-bar-title">Same-bar stop and target conflict</title>
+        <rect x="0" y="0" width="420" height="240" rx="8" class="svg-bg"/>
+        <line x1="48" y1="82" x2="368" y2="82" class="svg-target"/>
+        <line x1="48" y1="130" x2="368" y2="130" class="svg-entry"/>
+        <line x1="48" y1="178" x2="368" y2="178" class="svg-stop"/>
+        <text x="52" y="74" class="svg-good">target touched</text>
+        <text x="52" y="122" class="svg-label">entry active</text>
+        <text x="52" y="170" class="svg-bad">stop touched</text>
+        <line x1="236" y1="64" x2="236" y2="192" class="svg-wick-strong"/>
+        <rect x="218" y="112" width="36" height="34" class="svg-candle-up"/>
+        <circle cx="236" cy="82" r="5" class="svg-dot-good"/>
+        <circle cx="236" cy="178" r="5" class="svg-dot-bad"/>
+        <path d="M270 150 H352" class="svg-arrow-bad"/>
+        <text x="260" y="208" class="svg-bad">OHLC conflict resolves stop-first</text>
+      </svg>
+
+      <p>When a candle can be interpreted as touching both target and stop after entry, the backtest records the stop first.</p>
+    </figure>
+
+      </div>
+    </section>
+
+    <section id="mt5-execution-status" aria-labelledby="mt5-execution-status-title">
+      <h2 id="mt5-execution-status-title">MT5 Execution Status</h2>
+      <p class="callout warning"><strong>Not Final MT5 Execution.</strong> The dashboards test signal and OHLC trade-simulation behavior. MT5 order placement, broker fills, retries, rejects, partial fills, slippage at order time, and connection failure handling still require dedicated forward and broker-integration testing.</p>
+      <div class="rule-grid">
+        <article class="rule-card">
+          <h3>What is tested now</h3>
+          <p>Historical candles, raw LP + Force Strike signal rules, simulated pending entry, simulated stop/target resolution, and portfolio risk accounting.</p>
+        </article>
+        <article class="rule-card">
+          <h3>What is not yet tested</h3>
+          <p>Live MT5 order placement, fill quality, retry logic, reject handling, partial fills, broker-specific execution constraints, and operational monitoring.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="risk-model" aria-labelledby="risk-model-title">
+      <h2 id="risk-model-title">Risk Model</h2>
+      <p class="callout">V15 did not rerun signals. It re-used the V13/V14 baseline trade rows to compare three risk buckets: H4/H8, H12/D1, and W1.</p>
+      <div class="table-scroll">
+        <table class="data-table risk-table">
+          <thead>
+            <tr>
+              <th>Risk Row</th>
+              <th>H4/H8</th>
+              <th>H12/D1</th>
+              <th>W1</th>
+              <th>Return</th>
+              <th>Realized DD</th>
+              <th>Risk-Reserved DD</th>
+              <th>Max Reserved Risk</th>
+              <th>Worst Month</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>First account-constraint candidate</td>
+              <td>0.20%</td>
+              <td>0.30%</td>
+              <td>0.75%</td>
+              <td>383.17%</td>
+              <td>6.57%</td>
+              <td>7.89%</td>
+              <td>5.75%</td>
+              <td>-3.22%</td>
+            </tr>
+            <tr>
+              <td>Higher-return growth contrast</td>
+              <td>0.25%</td>
+              <td>0.30%</td>
+              <td>0.60%</td>
+              <td>421.82%</td>
+              <td>8.22%</td>
+              <td>9.72%</td>
+              <td>5.95%</td>
+              <td>-4.05%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="negative-events" aria-labelledby="negative-events-title">
+      <h2 id="negative-events-title">Invalid / Negative Events</h2>
+      <p class="callout warning">These cases are intentionally explicit so a future implementation does not silently convert ambiguous market behavior into favorable results.</p>
+      <div class="event-grid">
+
+        <article class="event-card">
+          <span class="event-label">Expired</span>
+          <h3>Force Strike after bar 6</h3>
+          <p>A raw Force Strike close that first appears on bar 7 or later is outside the fixed signal window and is ignored.</p>
+        </article>
+
+
+        <article class="event-card">
+          <span class="event-label">Invalid</span>
+          <h3>Wrong-side close</h3>
+          <p>For a bullish setup, a close below the selected LP does not confirm. For a bearish setup, a close above the selected LP does not confirm.</p>
+        </article>
+
+
+        <article class="event-card">
+          <span class="event-label">Rejected</span>
+          <h3>Pullback not reached</h3>
+          <p>A valid signal still produces no trade if the 0.5 pullback entry is not touched inside the fixed 6-bar pullback wait.</p>
+        </article>
+
+
+        <article class="event-card">
+          <span class="event-label">Rejected</span>
+          <h3>No next candle after signal</h3>
+          <p>A signal on the final available candle cannot be tested for pullback entry and is rejected.</p>
+        </article>
+
+
+        <article class="event-card">
+          <span class="event-label">Rejected</span>
+          <h3>Bad stop or pullback geometry</h3>
+          <p>Stop equals entry, stop on the wrong side, and invalid pullback ranges are rejected before the result set is built.</p>
+        </article>
+
+
+        <article class="event-card">
+          <span class="event-label">Conservative</span>
+          <h3>Same-bar stop/target conflict</h3>
+          <p>When one OHLC bar touches both stop and target after entry, the test records the stop first.</p>
+        </article>
+
+
+        <article class="event-card">
+          <span class="event-label">Limit</span>
+          <h3>Gap-through stop or target</h3>
+          <p>Gap-through behavior is measured using OHLC candles only. It is not tick reconstruction and should not be treated as final fill logic.</p>
+        </article>
+
+
+        <article class="event-card">
+          <span class="event-label">Invalid</span>
+          <h3>Missing or zero ATR</h3>
+          <p>ATR-dependent checks require a valid positive ATR. Missing or zero ATR invalidates those checks.</p>
+        </article>
+
+
+        <article class="event-card">
+          <span class="event-label">Explicit</span>
+          <h3>Multiple broken LPs</h3>
+          <p>Bullish multi-break bars choose the lowest broken support; bearish multi-break bars choose the highest broken resistance.</p>
+        </article>
+
+
+        <article class="event-card">
+          <span class="event-label">Explicit</span>
+          <h3>Overlapping trap windows</h3>
+          <p>Bullish and bearish trap windows can overlap. They stay explicit and independently handled rather than being merged into one vague state.</p>
+        </article>
+
+
+        <article class="event-card">
+          <span class="event-label">Risk</span>
+          <h3>Risk-reserved DD can exceed realized DD</h3>
+          <p>Risk-reserved DD subtracts open reserved risk, so it can be larger than closed-trade realized DD.</p>
+        </article>
+
+
+        <article class="event-card">
+          <span class="event-label">Risk</span>
+          <h3>High return can fail practical filters</h3>
+          <p>A high-return row can still be rejected if risk-reserved DD, max reserved open risk, or monthly losses breach practical limits.</p>
+        </article>
+
+      </div>
+      <div class="diagram-grid">
+
+    <figure class="diagram-card">
+      <figcaption>Expired Window</figcaption>
+
+      <svg class="strategy-diagram" viewBox="0 0 420 220" role="img" aria-labelledby="expired-title">
+        <title id="expired-title">Expired Force Strike window at bar seven</title>
+        <rect x="0" y="0" width="420" height="220" rx="8" class="svg-bg"/>
+        <line x1="38" y1="126" x2="382" y2="126" class="svg-support"/>
+        <text x="42" y="118" class="svg-label">LP support</text>
+        <g class="timeline">
+          <circle cx="70" cy="162" r="10" class="svg-dot-good"/><text x="65" y="166">1</text>
+          <circle cx="116" cy="162" r="10" class="svg-dot-good"/><text x="111" y="166">2</text>
+          <circle cx="162" cy="162" r="10" class="svg-dot-good"/><text x="157" y="166">3</text>
+          <circle cx="208" cy="162" r="10" class="svg-dot-good"/><text x="203" y="166">4</text>
+          <circle cx="254" cy="162" r="10" class="svg-dot-good"/><text x="249" y="166">5</text>
+          <circle cx="300" cy="162" r="10" class="svg-dot-good"/><text x="295" y="166">6</text>
+          <circle cx="346" cy="162" r="12" class="svg-dot-bad"/><text x="341" y="166">7</text>
+        </g>
+        <text x="58" y="64" class="svg-label">break candle counts as bar 1</text>
+        <text x="272" y="64" class="svg-bad">FS after bar 6 is expired</text>
+        <line x1="346" y1="76" x2="346" y2="126" class="svg-wick"/>
+        <rect x="330" y="96" width="32" height="34" class="svg-candle-up"/>
+        <path d="M328 78 L364 114 M364 78 L328 114" class="svg-x"/>
+      </svg>
+
+      <p>The break candle is bar 1. A first confirmation on bar 7 is expired.</p>
+    </figure>
+
+
+    <figure class="diagram-card">
+      <figcaption>Wrong-Side Close Invalidation</figcaption>
+
+      <svg class="strategy-diagram" viewBox="0 0 420 220" role="img" aria-labelledby="wrong-side-title">
+        <title id="wrong-side-title">Wrong side close invalidation</title>
+        <rect x="0" y="0" width="420" height="220" rx="8" class="svg-bg"/>
+        <line x1="38" y1="112" x2="382" y2="112" class="svg-support"/>
+        <text x="42" y="104" class="svg-label">Selected LP support</text>
+        <line x1="92" y1="78" x2="92" y2="158" class="svg-wick"/>
+        <rect x="76" y="100" width="32" height="40" class="svg-candle-down"/>
+        <text x="58" y="178" class="svg-label">wick break starts setup</text>
+        <line x1="248" y1="86" x2="248" y2="156" class="svg-wick"/>
+        <rect x="232" y="118" width="32" height="30" class="svg-candle-down"/>
+        <line x1="232" y1="142" x2="264" y2="142" class="svg-close-bad"/>
+        <text x="214" y="74" class="svg-bad">close remains below LP</text>
+        <path d="M274 92 L310 128 M310 92 L274 128" class="svg-x"/>
+        <text x="214" y="180" class="svg-bad">wrong-side close invalidates</text>
+      </svg>
+
+      <p>A bullish setup must close back at or above support. Closing below the LP is not a confirmation.</p>
+    </figure>
+
+      </div>
+    </section>
+
+    <section id="research-trail" aria-labelledby="research-trail-title">
+      <h2 id="research-trail-title">Research Trail</h2>
+      <p>The current strategy guide is a compact reading layer over the latest versioned research pages. Use those pages for full tables, report values, and audit detail.</p>
+      <div class="trail-grid">
+
+    <article class="trail-card">
+      <h3>V13 Mechanics</h3>
+      <p>Relaxed portfolio selection set the current LP3 take-all mechanics across H4, H8, H12, D1, and W1.</p>
+      <a class="button" href="v13.html">Open V13</a>
+    </article>
+
+
+    <article class="trail-card">
+      <h3>V14 Drawdown</h3>
+      <p>Risk sizing added realized drawdown versus risk-reserved drawdown accounting and practical exposure checks.</p>
+      <a class="button" href="v14.html">Open V14</a>
+    </article>
+
+
+    <article class="trail-card">
+      <h3>V15 Buckets</h3>
+      <p>Bucket sensitivity selected the current first account-constraint row and the higher-return growth contrast.</p>
+      <a class="button" href="v15.html">Open V15</a>
+    </article>
+
+      </div>
+    </section>
+
+
+    <section id="metric-glossary" class="metric-glossary" aria-labelledby="metric-glossary-title">
+      <h2 id="metric-glossary-title">Metric Glossary</h2>
+      <dl><div><dt>Realized DD</dt><dd>Closed-trade equity drawdown only. It ignores open trade risk until a position exits.</dd></div><div><dt>Risk-Reserved DD</dt><dd>Live-account stress drawdown that subtracts full open risk while positions are active.</dd></div><div><dt>Max Reserved Risk</dt><dd>Largest total open risk reserved at one time across accepted portfolio trades.</dd></div><div><dt>Worst Month</dt><dd>Largest calendar-month loss in account-percent terms for the tested schedule.</dd></div><div><dt>Return/DD</dt><dd>Total return divided by risk-reserved drawdown where available; higher is more efficient.</dd></div><div><dt>Avg R / PF</dt><dd>Average net R per trade and profit factor. Use both with trade count before trusting a row.</dd></div></dl>
+    </section>
+
+  </main>
+  <footer>Generated static guide. Strategy behavior remains in tested Python modules; MT5 execution still needs separate broker testing.</footer>
+</body>
+</html>

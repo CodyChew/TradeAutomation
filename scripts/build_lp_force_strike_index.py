@@ -61,11 +61,26 @@ def _baseline_card(home: dict[str, Any]) -> str:
     """
 
 
+def _strategy_card() -> str:
+    return """
+    <section id="strategy-guide" class="card featured">
+      <div class="status status-active">Strategy guide</div>
+      <h2>Current Strategy Guide</h2>
+      <p>Plain-English V13 mechanics plus V15 risk buckets, with signal rules, backtest trade simulation assumptions, MT5 execution limits, and negative-event handling.</p>
+      <div class="facts">
+        <div class="fact"><span>Basis</span><strong>V13 + V15</strong></div>
+        <div class="fact"><span>Execution</span><strong>Backtest only</strong></div>
+      </div>
+      <a class="button" href="strategy.html">Open Strategy Guide</a>
+    </section>
+    """
+
+
 def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
     metadata = load_dashboard_metadata()
     home = metadata["home"]
     pages = sorted(dashboard_pages(metadata), key=lambda page: int(page["index_order"]))
-    cards = [_baseline_card(home)] + [_card(page) for page in pages]
+    cards = [_baseline_card(home), _strategy_card()] + [_card(page) for page in pages]
     html_text = f"""<!doctype html>
 <html lang="en">
 <head>
@@ -223,6 +238,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
       current_page="index.html",
       section_links=[
           ("#current-baseline", "Current Baseline"),
+          ("#strategy-guide", "Strategy Guide"),
           ("#metric-glossary", "Glossary"),
       ],
       metadata=metadata,
