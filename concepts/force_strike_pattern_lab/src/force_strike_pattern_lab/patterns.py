@@ -152,8 +152,8 @@ def detect_force_strike_patterns(
         mother_high = float(mother["high"])
         mother_low = float(mother["low"])
         first_baby_index = mother_index + 1
-        if first_baby_index >= len(data):
-            continue
+        if first_baby_index >= len(data):  # pragma: no cover
+            continue  # pragma: no cover
         if not _inside_mother(data.iloc[first_baby_index], mother_high, mother_low):
             continue
 

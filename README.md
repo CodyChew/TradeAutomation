@@ -45,6 +45,17 @@ current risk-sizing read: the first account-constraint candidate is H4/H8
 `0.25%`, H12/D1 `0.30%`, and W1 `0.60%`. Open `docs/index.html` or the GitHub
 Pages link for the latest dashboard.
 
+## Testing
+
+Core strategy, concept, market-data, and backtest logic is protected by a
+strict branch-coverage gate:
+
+```powershell
+.\venv\Scripts\python scripts\run_core_coverage.py
+```
+
+See `docs/testing_strategy.md` for the scoped rules and edge-case expectations.
+
 ## Current Shared Labs
 
 - `shared/market_data_lab`: canonical MT5 candle schema, validation, Parquet

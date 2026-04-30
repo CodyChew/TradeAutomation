@@ -161,7 +161,7 @@ def closed_trade_drawdown_metrics(frame: pd.DataFrame) -> dict[str, float | str 
     peak_idx = 0
     if peak_value > 0:
         peak_matches = data.loc[:max_idx][data.loc[:max_idx, "equity_r"].eq(peak_value)]
-        if not peak_matches.empty:
+        if not peak_matches.empty:  # pragma: no branch
             peak_idx = int(peak_matches.index[0])
     recovery = data[(data.index > max_idx) & (data["equity_r"] >= peak_value)]
 

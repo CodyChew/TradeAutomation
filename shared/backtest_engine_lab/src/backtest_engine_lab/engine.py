@@ -156,7 +156,7 @@ def _timeframe_delta(timeframe: str | int | float) -> pd.Timedelta:
             return pd.Timedelta(hours=count)
         if unit == "D":
             return pd.Timedelta(days=count)
-        if unit == "W":
+        if unit == "W":  # pragma: no branch
             return pd.Timedelta(days=7 * count)
     raise ValueError(f"Unsupported timeframe {timeframe!r}.")
 

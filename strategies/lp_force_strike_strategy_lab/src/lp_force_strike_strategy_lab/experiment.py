@@ -605,7 +605,8 @@ def summary_rows(trades: list[TradeRecord], *, group_fields: list[str]) -> list[
         return []
     frame = pd.DataFrame(rows)
     summaries: list[dict[str, Any]] = []
-    for keys, group in frame.groupby(group_fields, dropna=False):
+    groupby_key = group_fields[0] if len(group_fields) == 1 else group_fields
+    for keys, group in frame.groupby(groupby_key, dropna=False):
         if not isinstance(keys, tuple):
             keys = (keys,)
         net_r = pd.to_numeric(group["net_r"], errors="coerce")

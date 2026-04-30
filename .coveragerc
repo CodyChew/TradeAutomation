@@ -1,0 +1,18 @@
+[run]
+branch = True
+parallel = True
+source =
+    concepts/lp_levels_lab/src/lp_levels_lab
+    concepts/force_strike_pattern_lab/src/force_strike_pattern_lab
+    shared/backtest_engine_lab/src/backtest_engine_lab
+    shared/market_data_lab/src/market_data_lab
+    strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab
+
+[report]
+fail_under = 100
+precision = 2
+show_missing = True
+skip_covered = False
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:

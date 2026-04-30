@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-04-30 after adding the V15 risk-bucket sensitivity study and
-updating the dashboard/handover notes.
+Last updated: 2026-04-30 after adding the strict core coverage gate and
+strategy-rule edge-case tests.
 
 ## Purpose
 
@@ -73,6 +73,18 @@ The gate compares the local Parquet files against
 that settled `H4`, `H8`, `H12`, `D1`, and `W1` candles aggregate exactly from
 `M30`. It skips the newest one day for aggregation checks because MT5 can have
 small live-edge cache drift between native higher-timeframe candles and M30.
+
+Core logic regression gate:
+
+```powershell
+.\venv\Scripts\python scripts\run_core_coverage.py
+```
+
+Current result on 2026-04-30:
+
+- 154 unittest cases across the five core labs.
+- `100.00%` line and branch coverage for the scoped core packages.
+- Scope and edge-case rules documented in `docs/testing_strategy.md`.
 
 Known data-quality interpretation:
 
