@@ -11,10 +11,13 @@ from typing import Any
 import pandas as pd
 
 from lp_force_strike_dashboard_metadata import (
+    dashboard_base_css,
+    dashboard_header_html,
     dashboard_page,
     dashboard_page_links,
     experiment_summary_css,
     experiment_summary_html,
+    metric_glossary_html,
 )
 
 
@@ -193,7 +196,8 @@ def _table(headers: list[str], rows: list[list[Any]], *, classes: str = "") -> s
             else:
                 cells.append(f"<td>{value}</td>")
         body.append("<tr>" + "".join(cells) + "</tr>")
-    return f'<table class="{classes}"><thead><tr>{thead}</tr></thead><tbody>{"".join(body)}</tbody></table>'
+    class_attr = "data-table" + (f" {classes}" if classes else "")
+    return f'<div class="table-scroll"><table class="{class_attr}"><thead><tr>{thead}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
 
 
 def _kpi(label: str, value: Any, note: str = "") -> str:
@@ -844,6 +848,7 @@ def _html_document(
     .heat-neg-4 {{ background: #bd5b5b; color: white; }}
     .heat-neutral {{ background: #f1f4f6; color: #5a6875; }}
     .scroll {{ overflow-x: auto; max-width: 100%; }}
+    {dashboard_base_css(table_min_width="720px")}
     footer {{ color: var(--muted); padding: 0 max(18px, 5vw) 28px; }}
     @media (max-width: 760px) {{
       header {{ padding: 22px 16px; }}
@@ -865,29 +870,25 @@ def _html_document(
   </style>
 </head>
 <body>
-  <header>
-    <h1>LP + Force Strike Dashboard - by Cody</h1>
-    <p>Static analysis report generated from <code>{_escape(run_dir)}</code>. Use this page to choose the next research slice; do not treat the aggregate result as a final strategy verdict.</p>
-    <nav class="page-nav" aria-label="Dashboard pages">
-      {_page_links(current_page)}
-    </nav>
-    <nav class="report-nav" aria-label="Report sections">
-      <a href="#experiment-summary">Experiment Summary</a>
-      <a href="#overview">Overview</a>
-      <a href="#guide">Metric Guide</a>
-      <a href="#timeframes">Timeframes</a>
-      <a href="#robustness">Robustness</a>
-      <a href="#drawdown">Drawdown</a>
-      <a href="#stability">Stability</a>
-      <a href="#candidates">Candidates</a>
-      <a href="#models">Model Families</a>
-      <a href="#side">Side</a>
-      <a href="#symbols">Symbols</a>
-      <a href="#skips">Skipped</a>
-    </nav>
-  </header>
+  {dashboard_header_html(
+      title="LP + Force Strike Dashboard - by Cody",
+      subtitle_html=f"Static analysis report generated from <code>{_escape(run_dir)}</code>. Use this page to choose the next research slice; do not treat the aggregate result as a final strategy verdict.",
+      current_page=current_page,
+      section_links=[
+          ("#experiment-summary", "Snapshot"),
+          ("#overview", "Overview"),
+          ("#metric-glossary", "Glossary"),
+          ("#guide", "Metric Guide"),
+          ("#timeframes", "Timeframes"),
+          ("#robustness", "Robustness"),
+          ("#drawdown", "Drawdown"),
+          ("#candidates", "Candidates"),
+          ("#symbols", "Symbols"),
+      ],
+  )}
   <main>
     {experiment_summary_html(page_metadata)}
+    {metric_glossary_html()}
 
     <section id="overview">
       <h2>Overview</h2>

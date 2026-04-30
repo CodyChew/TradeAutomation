@@ -37,6 +37,22 @@ class DashboardPagesTests(unittest.TestCase):
             for link in expected_links:
                 self.assertIn(link, html, f"{path.name} missing {link}")
 
+    def test_generated_dashboards_use_shared_static_chrome(self) -> None:
+        paths = [DOCS_ROOT / "index.html"] + [DOCS_ROOT / f"v{version}.html" for version in range(1, 16)]
+
+        for path in paths:
+            html = path.read_text(encoding="utf-8")
+            self.assertIn('class="dashboard-header"', html, f"{path.name} missing shared header")
+            self.assertIn('class="report-nav"', html, f"{path.name} missing section navigation")
+            self.assertIn('id="metric-glossary"', html, f"{path.name} missing metric glossary")
+            self.assertIn("Risk-Reserved DD", html, f"{path.name} missing risk-reserved DD definition")
+            self.assertNotIn("<script", html.lower(), f"{path.name} should remain CSS-only")
+
+        for version in range(1, 16):
+            html = (DOCS_ROOT / f"v{version}.html").read_text(encoding="utf-8")
+            self.assertIn('class="table-scroll"', html, f"v{version}.html missing table scroll wrapper")
+            self.assertIn('class="data-table', html, f"v{version}.html missing data-table class")
+
     def test_entry_wait_pages_show_rejected_conclusion(self) -> None:
         expected = "Do not replace the fixed 6-bar pullback wait"
 
@@ -125,6 +141,29 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("H4/H8 0.20%, H12/D1 0.30%, W1 0.75%", html)
         self.assertIn("Grid Heatmap By W1 Risk", html)
         self.assertIn("Recommended Ladder Timeframe Contribution", html)
+
+    def test_risk_dashboard_drawdown_meanings_and_values_are_preserved(self) -> None:
+        v14_html = (DOCS_ROOT / "v14.html").read_text(encoding="utf-8")
+        self.assertIn("Realized DD", v14_html)
+        self.assertIn("Risk-Reserved DD", v14_html)
+        self.assertIn("Closed-trade equity drawdown only", v14_html)
+        self.assertIn("Live-account stress drawdown", v14_html)
+        self.assertIn("Tight H12-D1 basket", v14_html)
+        self.assertIn("324.18%", v14_html)
+        self.assertIn("5.90%", v14_html)
+        self.assertIn("7.86%", v14_html)
+
+        v15_html = (DOCS_ROOT / "v15.html").read_text(encoding="utf-8")
+        self.assertIn("Realized DD", v15_html)
+        self.assertIn("Reserved DD", v15_html)
+        self.assertIn("Highest-return practical row", v15_html)
+        self.assertIn("421.82%", v15_html)
+        self.assertIn("8.22%", v15_html)
+        self.assertIn("9.72%", v15_html)
+        self.assertIn("Most-efficient practical row", v15_html)
+        self.assertIn("383.17%", v15_html)
+        self.assertIn("6.57%", v15_html)
+        self.assertIn("7.89%", v15_html)
 
     def test_lp_pivot_candidate_labels_are_readable(self) -> None:
         label = _candidate_short("lp_pivot_2__signal_zone_0p5_pullback__fs_structure__1r")

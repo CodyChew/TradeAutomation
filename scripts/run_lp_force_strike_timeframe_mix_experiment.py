@@ -12,10 +12,12 @@ from typing import Any
 import pandas as pd
 
 from lp_force_strike_dashboard_metadata import (
+    dashboard_base_css,
+    dashboard_header_html,
     dashboard_page,
-    dashboard_page_links,
     experiment_summary_css,
     experiment_summary_html,
+    metric_glossary_html,
 )
 
 
@@ -186,7 +188,8 @@ def _table(headers: list[str], rows: list[list[Any]], *, classes: str = "") -> s
             else:
                 cells.append(f"<td>{value}</td>")
         body.append("<tr>" + "".join(cells) + "</tr>")
-    return f'<table class="{classes}"><thead><tr>{thead}</tr></thead><tbody>{"".join(body)}</tbody></table>'
+    class_attr = "data-table" + (f" {classes}" if classes else "")
+    return f'<div class="table-scroll"><table class="{class_attr}"><thead><tr>{thead}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
 
 
 def _summary_table(frame: pd.DataFrame, *, limit: int | None = None) -> str:
@@ -411,6 +414,7 @@ def _html_report(run_dir: Path, config: dict[str, Any], summary: pd.DataFrame, *
     .positive {{ color: var(--good); font-weight: 700; }}
     .negative {{ color: var(--bad); font-weight: 700; }}
     .neutral {{ color: var(--muted); }}
+    {dashboard_base_css(table_min_width="980px")}
     footer {{ color: var(--muted); padding: 0 max(18px, 5vw) 28px; }}
     @media (max-width: 760px) {{
       header {{ padding: 22px 16px; }}
@@ -428,15 +432,24 @@ def _html_report(run_dir: Path, config: dict[str, Any], summary: pd.DataFrame, *
   </style>
 </head>
 <body>
-  <header>
-    <h1>LP + Force Strike V11 Timeframe Mix - by Cody</h1>
-    <p>Static V11 report generated from <code>{_escape(run_dir)}</code>. This page keeps V10 LP3 cap 4R mechanics fixed and only changes timeframe inclusion.</p>
-    <nav aria-label="Dashboard pages">
-      {dashboard_page_links(current_page)}
-    </nav>
-  </header>
+  {dashboard_header_html(
+      title="LP + Force Strike V11 Timeframe Mix - by Cody",
+      subtitle_html=f"Static V11 report generated from <code>{_escape(run_dir)}</code>. This page keeps V10 LP3 cap 4R mechanics fixed and only changes timeframe inclusion.",
+      current_page=current_page,
+      section_links=[
+          ("#experiment-summary", "Snapshot"),
+          ("#overview", "Overview"),
+          ("#metric-glossary", "Glossary"),
+          ("#best-timeframe-mix", "Best Mix"),
+          ("#baseline-comparison", "Baseline"),
+          ("#h4-h8-decision", "H4/H8"),
+          ("#underwater-reduction", "Underwater"),
+          ("#lp-diagnostics", "Diagnostics"),
+      ],
+  )}
   <main>
     {experiment_summary_html(page_metadata)}
+    {metric_glossary_html()}
     <section id="overview">
       <h2>Recommended / Rejected Conclusion</h2>
       <div class="kpis">

@@ -12,10 +12,13 @@ from typing import Any
 import pandas as pd
 
 from lp_force_strike_dashboard_metadata import (
+    dashboard_base_css,
+    dashboard_header_html,
     dashboard_page,
     dashboard_page_links,
     experiment_summary_css,
     experiment_summary_html,
+    metric_glossary_html,
 )
 
 
@@ -129,7 +132,8 @@ def _table(headers: list[str], rows: list[list[Any]], *, classes: str = "") -> s
             else:
                 cells.append(f"<td>{value}</td>")
         body.append("<tr>" + "".join(cells) + "</tr>")
-    return f'<table class="{classes}"><thead><tr>{thead}</tr></thead><tbody>{"".join(body)}</tbody></table>'
+    class_attr = "data-table" + (f" {classes}" if classes else "")
+    return f'<div class="table-scroll"><table class="{class_attr}"><thead><tr>{thead}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
 
 
 def _page_nav(current_page: str) -> str:
@@ -238,6 +242,7 @@ def _html_report(run_dir: Path, config: dict[str, Any], filter_results: pd.DataF
     .positive {{ color: var(--good); font-weight: 700; }}
     .negative {{ color: var(--bad); font-weight: 700; }}
     .neutral {{ color: var(--muted); }}
+    {dashboard_base_css(table_min_width="720px")}
     @media (max-width: 760px) {{
       header {{ padding: 22px 16px; }}
       nav a {{ flex: 1 1 auto; text-align: center; }}
@@ -255,17 +260,24 @@ def _html_report(run_dir: Path, config: dict[str, Any], filter_results: pd.DataF
   </style>
 </head>
 <body>
-  <header>
-    <h1>LP + Force Strike V4 Stability Dashboard - by Cody</h1>
-    <p>Walk-forward stability check using V3 trades. Stable symbol/timeframe pairs are selected from training data before evaluating the later test period.</p>
-    <nav aria-label="Dashboard pages">
-      {_page_nav(current_page)}
-    </nav>
-  </header>
+  {dashboard_header_html(
+      title="LP + Force Strike V4 Stability Dashboard - by Cody",
+      subtitle_html="Walk-forward stability check using V3 trades. Stable symbol/timeframe pairs are selected from training data before evaluating the later test period.",
+      current_page=current_page,
+      section_links=[
+          ("#experiment-summary", "Snapshot"),
+          ("#overview", "Overview"),
+          ("#metric-glossary", "Glossary"),
+          ("#test-period", "Test Results"),
+          ("#training-period", "Training Results"),
+          ("#allowed-pairs", "Allowed Pairs"),
+      ],
+  )}
   <main>
     {experiment_summary_html(page_metadata)}
+    {metric_glossary_html()}
 
-    <section>
+    <section id="overview">
       <h2>Overview</h2>
       <div class="kpis">
         <div class="kpi"><span>Split Time</span><strong>{_escape(config["split_time_utc"])}</strong></div>
@@ -275,15 +287,15 @@ def _html_report(run_dir: Path, config: dict[str, Any], filter_results: pd.DataF
       </div>
       <div class="note">Current best test candidate: {_escape(best_label)}. This is still in-sample research at the strategy-family level; use it to choose the next controlled experiment, not as a live-trading verdict.</div>
     </section>
-    <section>
+    <section id="test-period">
       <h2>Test Period Results</h2>
       <div class="scroll">{_table(["Candidate", "Filter", "Pairs", "Trades", "Win Rate", "Avg R", "Total R", "PF"], _filter_rows(filter_results, "test"))}</div>
     </section>
-    <section>
+    <section id="training-period">
       <h2>Training Period Results</h2>
       <div class="scroll">{_table(["Candidate", "Filter", "Pairs", "Trades", "Win Rate", "Avg R", "Total R", "PF"], _filter_rows(filter_results, "train"))}</div>
     </section>
-    <section>
+    <section id="allowed-pairs">
       <h2>Allowed Symbol/Timeframe Pairs</h2>
       <div class="note">These pairs are selected using training-period performance only.</div>
       <div class="scroll">{_table(["Candidate", "Filter", "Symbol", "TF", "Train Trades", "Train Avg R", "Train Total R", "Train PF"], _allowed_pair_rows(allowed_pairs))}</div>

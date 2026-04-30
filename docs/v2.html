@@ -274,6 +274,285 @@
     .heat-neg-4 { background: #bd5b5b; color: white; }
     .heat-neutral { background: #f1f4f6; color: #5a6875; }
     .scroll { overflow-x: auto; max-width: 100%; }
+
+    :root {
+      --bg: #f3f6f8;
+      --panel: #ffffff;
+      --panel-soft: #f8fafb;
+      --ink: #17202a;
+      --muted: #5d6d7e;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --accent-2: #3f7f5f;
+      --good: #256f46;
+      --bad: #9f3333;
+      --warn: #8a5a00;
+      --focus: #f2c94c;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 Inter, Segoe UI, Roboto, Arial, sans-serif;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+    code { overflow-wrap: anywhere; }
+    .dashboard-header {
+      background: #17202a;
+      color: white;
+      padding: 28px max(18px, 5vw);
+      border-bottom: 4px solid #57a773;
+    }
+    .dashboard-header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 4vw, 30px);
+      letter-spacing: 0;
+    }
+    .dashboard-header p {
+      margin: 0;
+      color: #d8e0e8;
+      max-width: 1080px;
+      overflow-wrap: anywhere;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .page-nav {
+      margin-top: 18px;
+    }
+    .report-nav {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, .18);
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+    }
+    nav a:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .page-nav a.active {
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }
+    .report-nav a {
+      background: rgba(255, 255, 255, .03);
+      color: #edf4f7;
+    }
+    main {
+      padding: 24px max(18px, 5vw) 48px;
+    }
+    section {
+      margin: 0 0 22px;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(23, 32, 42, .05);
+      max-width: 100%;
+      overflow: visible;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 15px;
+      color: #34495e;
+      letter-spacing: 0;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi, .fact {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi-label, .fact span, .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .kpi-value, .kpi strong, .fact strong {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-note {
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 18px;
+    }
+    .note {
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+      margin-bottom: 14px;
+    }
+    .warning {
+      background: #fff8e8;
+      border-left-color: var(--warn);
+      color: #4d3b13;
+    }
+    .metric-glossary {
+      border-top: 4px solid #5c7f95;
+    }
+    .metric-glossary dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 10px;
+    }
+    .metric-glossary dl > div {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .metric-glossary dt {
+      margin: 0 0 5px;
+      font-weight: 700;
+    }
+    .metric-glossary dd {
+      margin: 0;
+      color: var(--muted);
+    }
+    .table-scroll, .scroll, .summary-comparison {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th, td {
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      box-shadow: 1px 0 0 var(--line);
+    }
+    th:first-child {
+      z-index: 3;
+    }
+    td:first-child {
+      background: var(--panel);
+      font-weight: 600;
+    }
+    th {
+      color: #3f4d5c;
+      background: #eef3f6;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tbody tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+    tbody tr:hover td {
+      background: #eef6f2;
+    }
+    .positive {
+      color: var(--good);
+      font-weight: 700;
+    }
+    .negative {
+      color: var(--bad);
+      font-weight: 700;
+    }
+    .neutral {
+      color: var(--muted);
+    }
+    footer {
+      color: var(--muted);
+      padding: 0 max(18px, 5vw) 28px;
+    }
+
+    @media (max-width: 760px) {
+      .dashboard-header {
+        padding: 22px 16px;
+      }
+      nav a {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+      main {
+        padding: 16px 12px 34px;
+      }
+      section {
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 14px;
+      }
+      .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .kpi {
+        padding: 10px;
+      }
+      .kpi-value, .kpi strong, .fact strong {
+        font-size: 20px;
+      }
+      th, td {
+        padding: 6px 7px;
+        font-size: 12px;
+      }
+    }
+    @media (max-width: 480px) {
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+      .report-nav a {
+        flex-basis: calc(50% - 4px);
+      }
+    }
+
     footer { color: var(--muted); padding: 0 max(18px, 5vw) 28px; }
     @media (max-width: 760px) {
       header { padding: 22px 16px; }
@@ -295,9 +574,10 @@
   </style>
 </head>
 <body>
-  <header>
+
+  <header class="dashboard-header">
     <h1>LP + Force Strike Dashboard - by Cody</h1>
-    <p>Static analysis report generated from <code>C:\Users\chewc\OneDrive\Desktop\TradeAutomation\reports\strategies\lp_force_strike_experiment_v2_focus\20260428_161441</code>. Use this page to choose the next research slice; do not treat the aggregate result as a final strategy verdict.</p>
+    <p>Static analysis report generated from <code>reports\strategies\lp_force_strike_experiment_v2_focus\20260428_161441</code>. Use this page to choose the next research slice; do not treat the aggregate result as a final strategy verdict.</p>
     <nav class="page-nav" aria-label="Dashboard pages">
       <a class="page-link" href="index.html">Home</a>
       <a class="page-link" href="v1.html">V1</a>
@@ -316,21 +596,13 @@
       <a class="page-link" href="v14.html">V14</a>
       <a class="page-link" href="v15.html">V15</a>
     </nav>
+
     <nav class="report-nav" aria-label="Report sections">
-      <a href="#experiment-summary">Experiment Summary</a>
-      <a href="#overview">Overview</a>
-      <a href="#guide">Metric Guide</a>
-      <a href="#timeframes">Timeframes</a>
-      <a href="#robustness">Robustness</a>
-      <a href="#drawdown">Drawdown</a>
-      <a href="#stability">Stability</a>
-      <a href="#candidates">Candidates</a>
-      <a href="#models">Model Families</a>
-      <a href="#side">Side</a>
-      <a href="#symbols">Symbols</a>
-      <a href="#skips">Skipped</a>
+      <a href="#experiment-summary">Snapshot</a><a href="#overview">Overview</a><a href="#metric-glossary">Glossary</a><a href="#guide">Metric Guide</a><a href="#timeframes">Timeframes</a><a href="#robustness">Robustness</a><a href="#drawdown">Drawdown</a><a href="#candidates">Candidates</a><a href="#symbols">Symbols</a>
     </nav>
+
   </header>
+
   <main>
 
     <section id="experiment-summary" class="experiment-summary">
@@ -341,6 +613,7 @@
         </div>
         <span class="status-badge status-neutral">Historical focus</span>
       </div>
+
       <div class="summary-grid">
         <div><h3>What This Tests</h3><p>Does the midpoint-pullback family still work when M30 is removed and ATR risk-width filters are compared?</p></div>
         <div><h3>Setup Tested</h3><p>Focused H4, D1, and W1 test using midpoint-pullback entries, Force Strike structure stops, ATR max-risk variants, and fixed R targets.</p></div>
@@ -349,7 +622,12 @@
       </div>
       <div class="conclusion-box"><strong>Conclusion:</strong> The midpoint-pullback structure-stop family stayed positive across H4, D1, and W1. The 1ATR and 1.25ATR variants were close.</div>
 
+    </section>
 
+
+    <section id="metric-glossary" class="metric-glossary" aria-labelledby="metric-glossary-title">
+      <h2 id="metric-glossary-title">Metric Glossary</h2>
+      <dl><div><dt>Realized DD</dt><dd>Closed-trade equity drawdown only. It ignores open trade risk until a position exits.</dd></div><div><dt>Risk-Reserved DD</dt><dd>Live-account stress drawdown that subtracts full open risk while positions are active.</dd></div><div><dt>Max Reserved Risk</dt><dd>Largest total open risk reserved at one time across accepted portfolio trades.</dd></div><div><dt>Worst Month</dt><dd>Largest calendar-month loss in account-percent terms for the tested schedule.</dd></div><div><dt>Return/DD</dt><dd>Total return divided by risk-reserved drawdown where available; higher is more efficient.</dd></div><div><dt>Avg R / PF</dt><dd>Average net R per trade and profit factor. Use both with trade count before trusting a row.</dd></div></dl>
     </section>
 
 
@@ -393,24 +671,24 @@
 
       </div>
       <div class="note">Read by timeframe first. Overall metrics are weighted by trade count. Read each timeframe separately before making strategy decisions.</div>
-      <table class=""><thead><tr><th>Timeframe</th><th>Signals</th><th>Signal Share</th><th>Trades</th><th>Skipped</th></tr></thead><tbody><tr><td>H4</td><td>6,940</td><td><div class="bar-wrap"><div class="bar" style="width:84.60%"></div><span>84.6%</span></div></td><td>109,025</td><td>64,475</td></tr><tr><td>D1</td><td>1,058</td><td><div class="bar-wrap"><div class="bar" style="width:12.90%"></div><span>12.9%</span></div></td><td>16,365</td><td>10,085</td></tr><tr><td>W1</td><td>205</td><td><div class="bar-wrap"><div class="bar" style="width:2.50%"></div><span>2.5%</span></div></td><td>3,295</td><td>1,830</td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Timeframe</th><th>Signals</th><th>Signal Share</th><th>Trades</th><th>Skipped</th></tr></thead><tbody><tr><td>H4</td><td>6,940</td><td><div class="bar-wrap"><div class="bar" style="width:84.60%"></div><span>84.6%</span></div></td><td>109,025</td><td>64,475</td></tr><tr><td>D1</td><td>1,058</td><td><div class="bar-wrap"><div class="bar" style="width:12.90%"></div><span>12.9%</span></div></td><td>16,365</td><td>10,085</td></tr><tr><td>W1</td><td>205</td><td><div class="bar-wrap"><div class="bar" style="width:2.50%"></div><span>2.5%</span></div></td><td>3,295</td><td>1,830</td></tr></tbody></table></div>
     </section>
 
     <section id="guide">
       <h2>Metric Guide</h2>
       <div class="note">Start with Avg R and PF, then confirm the sample size with Trades. Bars is duration, not profit.</div>
-      <table class=""><thead><tr><th>Metric</th><th>How To Read It</th></tr></thead><tbody><tr><td>Avg R</td><td>Average net result per trade in risk units. This is the first metric to check.</td></tr><tr><td>Total R</td><td>Sum of net R across all trades in the row. Useful, but high-trade-count groups dominate it.</td></tr><tr><td>PF</td><td>Profit factor: gross wins divided by gross losses. Above 1.0 means profitable before deeper checks.</td></tr><tr><td>Win Rate</td><td>Share of positive trades. It must be read together with target size and Avg R.</td></tr><tr><td>Bars</td><td>Average candles held per trade. On H4, 5 bars is about 20 hours; on D1, 5 bars is about 5 days.</td></tr><tr><td>Trades</td><td>Number of simulated trades. More trades give more confidence; tiny samples can mislead.</td></tr><tr><td>Skipped</td><td>Signal/candidate attempts that did not become trades, usually because midpoint entry was not reached or risk was too wide.</td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Metric</th><th>How To Read It</th></tr></thead><tbody><tr><td>Avg R</td><td>Average net result per trade in risk units. This is the first metric to check.</td></tr><tr><td>Total R</td><td>Sum of net R across all trades in the row. Useful, but high-trade-count groups dominate it.</td></tr><tr><td>PF</td><td>Profit factor: gross wins divided by gross losses. Above 1.0 means profitable before deeper checks.</td></tr><tr><td>Win Rate</td><td>Share of positive trades. It must be read together with target size and Avg R.</td></tr><tr><td>Bars</td><td>Average candles held per trade. On H4, 5 bars is about 20 hours; on D1, 5 bars is about 5 days.</td></tr><tr><td>Trades</td><td>Number of simulated trades. More trades give more confidence; tiny samples can mislead.</td></tr><tr><td>Skipped</td><td>Signal/candidate attempts that did not become trades, usually because midpoint entry was not reached or risk was too wide.</td></tr></tbody></table></div>
     </section>
 
     <section id="timeframes">
       <h2>Best Candidates By Timeframe</h2>
-      <h3>H4</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>midpoint / structure / 1R</td><td>5,642</td><td>56.9%</td><td class="positive">0.084</td><td class="positive">475.9</td><td>1.19</td><td>2.0</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>5,340</td><td>57.0%</td><td class="positive">0.083</td><td class="positive">444.4</td><td>1.18</td><td>1.6</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>4,966</td><td>56.9%</td><td class="positive">0.080</td><td class="positive">395.9</td><td>1.17</td><td>1.5</td></tr><tr><td>midpoint / structure / 1.25R</td><td>5,642</td><td>49.8%</td><td class="positive">0.065</td><td class="positive">367.7</td><td>1.12</td><td>2.5</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.25R</td><td>5,340</td><td>49.8%</td><td class="positive">0.063</td><td class="positive">338.5</td><td>1.12</td><td>2.0</td></tr></tbody></table><h3>D1</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>752</td><td>61.4%</td><td class="positive">0.212</td><td class="positive">159.3</td><td>1.54</td><td>1.6</td></tr><tr><td>midpoint / structure / 1R</td><td>855</td><td>61.2%</td><td class="positive">0.208</td><td class="positive">177.5</td><td>1.53</td><td>2.0</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>815</td><td>61.1%</td><td class="positive">0.206</td><td class="positive">167.7</td><td>1.52</td><td>1.8</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>607</td><td>61.1%</td><td class="positive">0.203</td><td class="positive">123.2</td><td>1.51</td><td>1.3</td></tr><tr><td>midpoint / structure / 1.25R</td><td>855</td><td>52.9%</td><td class="positive">0.174</td><td class="positive">148.5</td><td>1.36</td><td>2.5</td></tr></tbody></table><h3>W1</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>152</td><td>64.5%</td><td class="positive">0.283</td><td class="positive">43.0</td><td>1.79</td><td>1.5</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>160</td><td>64.4%</td><td class="positive">0.281</td><td class="positive">45.0</td><td>1.78</td><td>1.5</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>125</td><td>63.2%</td><td class="positive">0.257</td><td class="positive">32.1</td><td>1.69</td><td>1.3</td></tr><tr><td>midpoint / structure / 1R</td><td>170</td><td>62.9%</td><td class="positive">0.252</td><td class="positive">42.9</td><td>1.68</td><td>1.9</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.25R</td><td>152</td><td>55.3%</td><td class="positive">0.237</td><td class="positive">36.0</td><td>1.53</td><td>1.9</td></tr></tbody></table>
+      <h3>H4</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>midpoint / structure / 1R</td><td>5,642</td><td>56.9%</td><td class="positive">0.084</td><td class="positive">475.9</td><td>1.19</td><td>2.0</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>5,340</td><td>57.0%</td><td class="positive">0.083</td><td class="positive">444.4</td><td>1.18</td><td>1.6</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>4,966</td><td>56.9%</td><td class="positive">0.080</td><td class="positive">395.9</td><td>1.17</td><td>1.5</td></tr><tr><td>midpoint / structure / 1.25R</td><td>5,642</td><td>49.8%</td><td class="positive">0.065</td><td class="positive">367.7</td><td>1.12</td><td>2.5</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.25R</td><td>5,340</td><td>49.8%</td><td class="positive">0.063</td><td class="positive">338.5</td><td>1.12</td><td>2.0</td></tr></tbody></table></div><h3>D1</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>752</td><td>61.4%</td><td class="positive">0.212</td><td class="positive">159.3</td><td>1.54</td><td>1.6</td></tr><tr><td>midpoint / structure / 1R</td><td>855</td><td>61.2%</td><td class="positive">0.208</td><td class="positive">177.5</td><td>1.53</td><td>2.0</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>815</td><td>61.1%</td><td class="positive">0.206</td><td class="positive">167.7</td><td>1.52</td><td>1.8</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>607</td><td>61.1%</td><td class="positive">0.203</td><td class="positive">123.2</td><td>1.51</td><td>1.3</td></tr><tr><td>midpoint / structure / 1.25R</td><td>855</td><td>52.9%</td><td class="positive">0.174</td><td class="positive">148.5</td><td>1.36</td><td>2.5</td></tr></tbody></table></div><h3>W1</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>152</td><td>64.5%</td><td class="positive">0.283</td><td class="positive">43.0</td><td>1.79</td><td>1.5</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>160</td><td>64.4%</td><td class="positive">0.281</td><td class="positive">45.0</td><td>1.78</td><td>1.5</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>125</td><td>63.2%</td><td class="positive">0.257</td><td class="positive">32.1</td><td>1.69</td><td>1.3</td></tr><tr><td>midpoint / structure / 1R</td><td>170</td><td>62.9%</td><td class="positive">0.252</td><td class="positive">42.9</td><td>1.68</td><td>1.9</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.25R</td><td>152</td><td>55.3%</td><td class="positive">0.237</td><td class="positive">36.0</td><td>1.53</td><td>1.9</td></tr></tbody></table></div>
     </section>
 
     <section id="robustness">
       <h2>Robust Candidates Across Focus Timeframes</h2>
       <div class="note">This section ignores M30 because it dominates the sample count and currently behaves differently. Favor rows with positive Avg R and PF above 1 across all focused timeframes.</div>
-      <table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>+ Avg R TFs</th><th>PF &gt; 1 TFs</th><th>Avg Focus R</th><th>Worst Focus R</th><th>H4</th><th>D1</th><th>W1</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>5,870</td><td>3/3</td><td>3/3</td><td class="positive">0.191</td><td class="positive">0.080</td><td class="positive">0.080</td><td class="positive">0.212</td><td class="positive">0.283</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>6,315</td><td>3/3</td><td>3/3</td><td class="positive">0.190</td><td class="positive">0.083</td><td class="positive">0.083</td><td class="positive">0.206</td><td class="positive">0.281</td></tr><tr><td>midpoint / structure / 1R</td><td>6,667</td><td>3/3</td><td>3/3</td><td class="positive">0.181</td><td class="positive">0.084</td><td class="positive">0.084</td><td class="positive">0.208</td><td class="positive">0.252</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>4,721</td><td>3/3</td><td>3/3</td><td class="positive">0.172</td><td class="positive">0.056</td><td class="positive">0.056</td><td class="positive">0.203</td><td class="positive">0.257</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.25R</td><td>6,315</td><td>3/3</td><td>3/3</td><td class="positive">0.153</td><td class="positive">0.063</td><td class="positive">0.063</td><td class="positive">0.165</td><td class="positive">0.231</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.25R</td><td>5,870</td><td>3/3</td><td>3/3</td><td class="positive">0.151</td><td class="positive">0.061</td><td class="positive">0.061</td><td class="positive">0.156</td><td class="positive">0.237</td></tr><tr><td>midpoint / structure / 1.25R</td><td>6,667</td><td>3/3</td><td>3/3</td><td class="positive">0.141</td><td class="positive">0.065</td><td class="positive">0.065</td><td class="positive">0.174</td><td class="positive">0.185</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1.25R</td><td>4,721</td><td>3/3</td><td>3/3</td><td class="positive">0.136</td><td class="positive">0.054</td><td class="positive">0.054</td><td class="positive">0.156</td><td class="positive">0.199</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.5R</td><td>6,315</td><td>3/3</td><td>3/3</td><td class="positive">0.111</td><td class="positive">0.039</td><td class="positive">0.039</td><td class="positive">0.143</td><td class="positive">0.150</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.5R</td><td>5,870</td><td>3/3</td><td>3/3</td><td class="positive">0.110</td><td class="positive">0.037</td><td class="positive">0.037</td><td class="positive">0.133</td><td class="positive">0.161</td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Candidate</th><th>Trades</th><th>+ Avg R TFs</th><th>PF &gt; 1 TFs</th><th>Avg Focus R</th><th>Worst Focus R</th><th>H4</th><th>D1</th><th>W1</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>5,870</td><td>3/3</td><td>3/3</td><td class="positive">0.191</td><td class="positive">0.080</td><td class="positive">0.080</td><td class="positive">0.212</td><td class="positive">0.283</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>6,315</td><td>3/3</td><td>3/3</td><td class="positive">0.190</td><td class="positive">0.083</td><td class="positive">0.083</td><td class="positive">0.206</td><td class="positive">0.281</td></tr><tr><td>midpoint / structure / 1R</td><td>6,667</td><td>3/3</td><td>3/3</td><td class="positive">0.181</td><td class="positive">0.084</td><td class="positive">0.084</td><td class="positive">0.208</td><td class="positive">0.252</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>4,721</td><td>3/3</td><td>3/3</td><td class="positive">0.172</td><td class="positive">0.056</td><td class="positive">0.056</td><td class="positive">0.203</td><td class="positive">0.257</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.25R</td><td>6,315</td><td>3/3</td><td>3/3</td><td class="positive">0.153</td><td class="positive">0.063</td><td class="positive">0.063</td><td class="positive">0.165</td><td class="positive">0.231</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.25R</td><td>5,870</td><td>3/3</td><td>3/3</td><td class="positive">0.151</td><td class="positive">0.061</td><td class="positive">0.061</td><td class="positive">0.156</td><td class="positive">0.237</td></tr><tr><td>midpoint / structure / 1.25R</td><td>6,667</td><td>3/3</td><td>3/3</td><td class="positive">0.141</td><td class="positive">0.065</td><td class="positive">0.065</td><td class="positive">0.174</td><td class="positive">0.185</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1.25R</td><td>4,721</td><td>3/3</td><td>3/3</td><td class="positive">0.136</td><td class="positive">0.054</td><td class="positive">0.054</td><td class="positive">0.156</td><td class="positive">0.199</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.5R</td><td>6,315</td><td>3/3</td><td>3/3</td><td class="positive">0.111</td><td class="positive">0.039</td><td class="positive">0.039</td><td class="positive">0.143</td><td class="positive">0.150</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.5R</td><td>5,870</td><td>3/3</td><td>3/3</td><td class="positive">0.110</td><td class="positive">0.037</td><td class="positive">0.037</td><td class="positive">0.133</td><td class="positive">0.161</td></tr></tbody></table></div>
     </section>
 
     <section id="drawdown">
@@ -454,36 +732,36 @@
 
       </div>
       <div class="note">This is a closed-trade R equity curve for one candidate. It is not yet a portfolio simulation with max open trades, position sizing, daily drawdown limits, or overlapping exposure.</div>
-      <table class=""><thead><tr><th>Start</th><th>End</th><th>Days</th><th>Max DD</th><th>Trough</th><th>Recovered?</th></tr></thead><tbody><tr><td>2022-02-24</td><td>2022-08-26</td><td>183.2</td><td class="negative">22.125</td><td>2022-05-17</td><td>yes</td></tr><tr><td>2022-08-26</td><td>2023-01-20</td><td>146.5</td><td class="negative">26.440</td><td>2022-10-11</td><td>yes</td></tr><tr><td>2017-03-07</td><td>2017-06-22</td><td>106.7</td><td class="negative">14.375</td><td>2017-04-28</td><td>yes</td></tr><tr><td>2023-02-23</td><td>2023-05-26</td><td>92.0</td><td class="negative">16.976</td><td>2023-04-24</td><td>yes</td></tr><tr><td>2018-12-19</td><td>2019-03-18</td><td>88.8</td><td class="negative">10.798</td><td>2019-01-21</td><td>yes</td></tr><tr><td>2019-08-23</td><td>2019-11-13</td><td>82.0</td><td class="negative">13.976</td><td>2019-09-23</td><td>yes</td></tr><tr><td>2024-09-13</td><td>2024-12-03</td><td>81.3</td><td class="negative">15.742</td><td>2024-10-28</td><td>yes</td></tr><tr><td>2016-05-18</td><td>2016-08-02</td><td>75.3</td><td class="negative">13.041</td><td>2016-07-05</td><td>yes</td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Start</th><th>End</th><th>Days</th><th>Max DD</th><th>Trough</th><th>Recovered?</th></tr></thead><tbody><tr><td>2022-02-24</td><td>2022-08-26</td><td>183.2</td><td class="negative">22.125</td><td>2022-05-17</td><td>yes</td></tr><tr><td>2022-08-26</td><td>2023-01-20</td><td>146.5</td><td class="negative">26.440</td><td>2022-10-11</td><td>yes</td></tr><tr><td>2017-03-07</td><td>2017-06-22</td><td>106.7</td><td class="negative">14.375</td><td>2017-04-28</td><td>yes</td></tr><tr><td>2023-02-23</td><td>2023-05-26</td><td>92.0</td><td class="negative">16.976</td><td>2023-04-24</td><td>yes</td></tr><tr><td>2018-12-19</td><td>2019-03-18</td><td>88.8</td><td class="negative">10.798</td><td>2019-01-21</td><td>yes</td></tr><tr><td>2019-08-23</td><td>2019-11-13</td><td>82.0</td><td class="negative">13.976</td><td>2019-09-23</td><td>yes</td></tr><tr><td>2024-09-13</td><td>2024-12-03</td><td>81.3</td><td class="negative">15.742</td><td>2024-10-28</td><td>yes</td></tr><tr><td>2016-05-18</td><td>2016-08-02</td><td>75.3</td><td class="negative">13.041</td><td>2016-07-05</td><td>yes</td></tr></tbody></table></div>
 
     </section>
 
     <section id="stability">
       <h2>Symbol-Timeframe Stability</h2>
       <div class="note">Profit factor cannot be negative. PF below 1.0 or negative Avg R is the warning condition. This table checks weak symbol/timeframe rows for the top robust candidates.</div>
-      <table class=""><thead><tr><th>Candidate</th><th>Symbol</th><th>TF</th><th>Trades</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>GBPJPY</td><td>H4</td><td>180</td><td class="negative">-0.039</td><td class="negative">-7.0</td><td>0.93</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>GBPCAD</td><td>H4</td><td>229</td><td class="negative">-0.013</td><td class="negative">-3.0</td><td>0.97</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>AUDCHF</td><td>H4</td><td>226</td><td class="negative">-0.000</td><td class="negative">-0.1</td><td>1.00</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>USDCAD</td><td>D1</td><td>25</td><td class="negative">-0.128</td><td class="negative">-3.2</td><td>0.77</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>CHFJPY</td><td>D1</td><td>28</td><td class="negative">-0.087</td><td class="negative">-2.4</td><td>0.84</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>AUDNZD</td><td>W1</td><td>4</td><td class="negative">-0.513</td><td class="negative">-2.1</td><td>0.32</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>AUDUSD</td><td>W1</td><td>6</td><td class="negative">-0.338</td><td class="negative">-2.0</td><td>0.50</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>GBPCAD</td><td>W1</td><td>6</td><td class="negative">-0.338</td><td class="negative">-2.0</td><td>0.50</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>EURCAD</td><td>W1</td><td>5</td><td class="negative">-0.206</td><td class="negative">-1.0</td><td>0.66</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>USDCAD</td><td>W1</td><td>5</td><td class="negative">-0.204</td><td class="negative">-1.0</td><td>0.66</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>GBPUSD</td><td>W1</td><td>7</td><td class="negative">-0.146</td><td class="negative">-1.0</td><td>0.75</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>EURUSD</td><td>W1</td><td>6</td><td class="negative">-0.002</td><td class="negative">-0.0</td><td>1.00</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>AUDNZD</td><td>H4</td><td>248</td><td class="negative">-0.023</td><td class="negative">-5.7</td><td>0.96</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>GBPJPY</td><td>H4</td><td>189</td><td class="negative">-0.022</td><td class="negative">-4.1</td><td>0.96</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>GBPCAD</td><td>H4</td><td>239</td><td class="negative">-0.013</td><td class="negative">-3.2</td><td>0.97</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>AUDCHF</td><td>H4</td><td>240</td><td class="negative">-0.011</td><td class="negative">-2.7</td><td>0.98</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>USDCAD</td><td>D1</td><td>26</td><td class="negative">-0.161</td><td class="negative">-4.2</td><td>0.72</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>CHFJPY</td><td>D1</td><td>31</td><td class="negative">-0.112</td><td class="negative">-3.5</td><td>0.80</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>AUDNZD</td><td>W1</td><td>4</td><td class="negative">-0.513</td><td class="negative">-2.1</td><td>0.32</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>AUDUSD</td><td>W1</td><td>7</td><td class="negative">-0.433</td><td class="negative">-3.0</td><td>0.40</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>GBPCAD</td><td>W1</td><td>6</td><td class="negative">-0.338</td><td class="negative">-2.0</td><td>0.50</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>GBPUSD</td><td>W1</td><td>7</td><td class="negative">-0.146</td><td class="negative">-1.0</td><td>0.75</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>EURCAD</td><td>W1</td><td>6</td><td class="negative">-0.006</td><td class="negative">-0.0</td><td>0.99</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>USDCAD</td><td>W1</td><td>6</td><td class="negative">-0.003</td><td class="negative">-0.0</td><td>0.99</td></tr><tr><td>midpoint / structure / 1R</td><td>GBPJPY</td><td>H4</td><td>202</td><td class="negative">-0.036</td><td class="negative">-7.3</td><td>0.93</td></tr><tr><td>midpoint / structure / 1R</td><td>GBPCAD</td><td>H4</td><td>253</td><td class="negative">-0.013</td><td class="negative">-3.4</td><td>0.97</td></tr><tr><td>midpoint / structure / 1R</td><td>AUDNZD</td><td>H4</td><td>261</td><td class="negative">-0.006</td><td class="negative">-1.5</td><td>0.99</td></tr><tr><td>midpoint / structure / 1R</td><td>USDCAD</td><td>D1</td><td>29</td><td class="negative">-0.179</td><td class="negative">-5.2</td><td>0.70</td></tr><tr><td>midpoint / structure / 1R</td><td>CHFJPY</td><td>D1</td><td>33</td><td class="negative">-0.045</td><td class="negative">-1.5</td><td>0.91</td></tr><tr><td>midpoint / structure / 1R</td><td>AUDUSD</td><td>W1</td><td>7</td><td class="negative">-0.433</td><td class="negative">-3.0</td><td>0.40</td></tr><tr><td>midpoint / structure / 1R</td><td>GBPCAD</td><td>W1</td><td>6</td><td class="negative">-0.338</td><td class="negative">-2.0</td><td>0.50</td></tr><tr><td>midpoint / structure / 1R</td><td>USDCAD</td><td>W1</td><td>8</td><td class="negative">-0.253</td><td class="negative">-2.0</td><td>0.60</td></tr><tr><td>midpoint / structure / 1R</td><td>AUDNZD</td><td>W1</td><td>5</td><td class="negative">-0.214</td><td class="negative">-1.1</td><td>0.65</td></tr><tr><td>midpoint / structure / 1R</td><td>GBPUSD</td><td>W1</td><td>7</td><td class="negative">-0.146</td><td class="negative">-1.0</td><td>0.75</td></tr><tr><td>midpoint / structure / 1R</td><td>EURCAD</td><td>W1</td><td>6</td><td class="negative">-0.006</td><td class="negative">-0.0</td><td>0.99</td></tr><tr><td>midpoint / structure / 1R</td><td>USDCHF</td><td>W1</td><td>8</td><td class="negative">-0.004</td><td class="negative">-0.0</td><td>0.99</td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Candidate</th><th>Symbol</th><th>TF</th><th>Trades</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>GBPJPY</td><td>H4</td><td>180</td><td class="negative">-0.039</td><td class="negative">-7.0</td><td>0.93</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>GBPCAD</td><td>H4</td><td>229</td><td class="negative">-0.013</td><td class="negative">-3.0</td><td>0.97</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>AUDCHF</td><td>H4</td><td>226</td><td class="negative">-0.000</td><td class="negative">-0.1</td><td>1.00</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>USDCAD</td><td>D1</td><td>25</td><td class="negative">-0.128</td><td class="negative">-3.2</td><td>0.77</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>CHFJPY</td><td>D1</td><td>28</td><td class="negative">-0.087</td><td class="negative">-2.4</td><td>0.84</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>AUDNZD</td><td>W1</td><td>4</td><td class="negative">-0.513</td><td class="negative">-2.1</td><td>0.32</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>AUDUSD</td><td>W1</td><td>6</td><td class="negative">-0.338</td><td class="negative">-2.0</td><td>0.50</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>GBPCAD</td><td>W1</td><td>6</td><td class="negative">-0.338</td><td class="negative">-2.0</td><td>0.50</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>EURCAD</td><td>W1</td><td>5</td><td class="negative">-0.206</td><td class="negative">-1.0</td><td>0.66</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>USDCAD</td><td>W1</td><td>5</td><td class="negative">-0.204</td><td class="negative">-1.0</td><td>0.66</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>GBPUSD</td><td>W1</td><td>7</td><td class="negative">-0.146</td><td class="negative">-1.0</td><td>0.75</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>EURUSD</td><td>W1</td><td>6</td><td class="negative">-0.002</td><td class="negative">-0.0</td><td>1.00</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>AUDNZD</td><td>H4</td><td>248</td><td class="negative">-0.023</td><td class="negative">-5.7</td><td>0.96</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>GBPJPY</td><td>H4</td><td>189</td><td class="negative">-0.022</td><td class="negative">-4.1</td><td>0.96</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>GBPCAD</td><td>H4</td><td>239</td><td class="negative">-0.013</td><td class="negative">-3.2</td><td>0.97</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>AUDCHF</td><td>H4</td><td>240</td><td class="negative">-0.011</td><td class="negative">-2.7</td><td>0.98</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>USDCAD</td><td>D1</td><td>26</td><td class="negative">-0.161</td><td class="negative">-4.2</td><td>0.72</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>CHFJPY</td><td>D1</td><td>31</td><td class="negative">-0.112</td><td class="negative">-3.5</td><td>0.80</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>AUDNZD</td><td>W1</td><td>4</td><td class="negative">-0.513</td><td class="negative">-2.1</td><td>0.32</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>AUDUSD</td><td>W1</td><td>7</td><td class="negative">-0.433</td><td class="negative">-3.0</td><td>0.40</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>GBPCAD</td><td>W1</td><td>6</td><td class="negative">-0.338</td><td class="negative">-2.0</td><td>0.50</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>GBPUSD</td><td>W1</td><td>7</td><td class="negative">-0.146</td><td class="negative">-1.0</td><td>0.75</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>EURCAD</td><td>W1</td><td>6</td><td class="negative">-0.006</td><td class="negative">-0.0</td><td>0.99</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>USDCAD</td><td>W1</td><td>6</td><td class="negative">-0.003</td><td class="negative">-0.0</td><td>0.99</td></tr><tr><td>midpoint / structure / 1R</td><td>GBPJPY</td><td>H4</td><td>202</td><td class="negative">-0.036</td><td class="negative">-7.3</td><td>0.93</td></tr><tr><td>midpoint / structure / 1R</td><td>GBPCAD</td><td>H4</td><td>253</td><td class="negative">-0.013</td><td class="negative">-3.4</td><td>0.97</td></tr><tr><td>midpoint / structure / 1R</td><td>AUDNZD</td><td>H4</td><td>261</td><td class="negative">-0.006</td><td class="negative">-1.5</td><td>0.99</td></tr><tr><td>midpoint / structure / 1R</td><td>USDCAD</td><td>D1</td><td>29</td><td class="negative">-0.179</td><td class="negative">-5.2</td><td>0.70</td></tr><tr><td>midpoint / structure / 1R</td><td>CHFJPY</td><td>D1</td><td>33</td><td class="negative">-0.045</td><td class="negative">-1.5</td><td>0.91</td></tr><tr><td>midpoint / structure / 1R</td><td>AUDUSD</td><td>W1</td><td>7</td><td class="negative">-0.433</td><td class="negative">-3.0</td><td>0.40</td></tr><tr><td>midpoint / structure / 1R</td><td>GBPCAD</td><td>W1</td><td>6</td><td class="negative">-0.338</td><td class="negative">-2.0</td><td>0.50</td></tr><tr><td>midpoint / structure / 1R</td><td>USDCAD</td><td>W1</td><td>8</td><td class="negative">-0.253</td><td class="negative">-2.0</td><td>0.60</td></tr><tr><td>midpoint / structure / 1R</td><td>AUDNZD</td><td>W1</td><td>5</td><td class="negative">-0.214</td><td class="negative">-1.1</td><td>0.65</td></tr><tr><td>midpoint / structure / 1R</td><td>GBPUSD</td><td>W1</td><td>7</td><td class="negative">-0.146</td><td class="negative">-1.0</td><td>0.75</td></tr><tr><td>midpoint / structure / 1R</td><td>EURCAD</td><td>W1</td><td>6</td><td class="negative">-0.006</td><td class="negative">-0.0</td><td>0.99</td></tr><tr><td>midpoint / structure / 1R</td><td>USDCHF</td><td>W1</td><td>8</td><td class="negative">-0.004</td><td class="negative">-0.0</td><td>0.99</td></tr></tbody></table></div>
     </section>
 
     <section id="candidates">
       <h2>Candidate Heatmap</h2>
-      <div class="scroll"><table class="compact"><thead><tr><th>Candidate</th><th>H4</th><th>D1</th><th>W1</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td class="heat-cell heat-pos-2">0.080</td><td class="heat-cell heat-pos-3">0.212</td><td class="heat-cell heat-pos-4">0.283</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td class="heat-cell heat-pos-2">0.083</td><td class="heat-cell heat-pos-3">0.206</td><td class="heat-cell heat-pos-4">0.281</td></tr><tr><td>midpoint / structure / 1R</td><td class="heat-cell heat-pos-2">0.084</td><td class="heat-cell heat-pos-3">0.208</td><td class="heat-cell heat-pos-4">0.252</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td class="heat-cell heat-pos-1">0.056</td><td class="heat-cell heat-pos-3">0.203</td><td class="heat-cell heat-pos-4">0.257</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.25R</td><td class="heat-cell heat-pos-1">0.063</td><td class="heat-cell heat-pos-3">0.165</td><td class="heat-cell heat-pos-4">0.231</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.25R</td><td class="heat-cell heat-pos-1">0.061</td><td class="heat-cell heat-pos-3">0.156</td><td class="heat-cell heat-pos-4">0.237</td></tr><tr><td>midpoint / structure / 1.25R</td><td class="heat-cell heat-pos-1">0.065</td><td class="heat-cell heat-pos-3">0.174</td><td class="heat-cell heat-pos-3">0.185</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1.25R</td><td class="heat-cell heat-pos-1">0.054</td><td class="heat-cell heat-pos-3">0.156</td><td class="heat-cell heat-pos-3">0.199</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.5R</td><td class="heat-cell heat-pos-1">0.039</td><td class="heat-cell heat-pos-3">0.143</td><td class="heat-cell heat-pos-3">0.150</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.5R</td><td class="heat-cell heat-pos-1">0.037</td><td class="heat-cell heat-pos-2">0.133</td><td class="heat-cell heat-pos-3">0.161</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 2R</td><td class="heat-cell heat-pos-1">0.000</td><td class="heat-cell heat-pos-2">0.110</td><td class="heat-cell heat-pos-4">0.218</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 2R</td><td class="heat-cell heat-neg-1">-0.003</td><td class="heat-cell heat-pos-2">0.100</td><td class="heat-cell heat-pos-4">0.223</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.7R</td><td class="heat-cell heat-pos-1">0.015</td><td class="heat-cell heat-pos-2">0.117</td><td class="heat-cell heat-pos-3">0.175</td></tr><tr><td>midpoint / structure / 1.5R</td><td class="heat-cell heat-pos-1">0.046</td><td class="heat-cell heat-pos-3">0.148</td><td class="heat-cell heat-pos-2">0.111</td></tr><tr><td>midpoint / structure / 2R</td><td class="heat-cell heat-pos-1">0.008</td><td class="heat-cell heat-pos-2">0.114</td><td class="heat-cell heat-pos-3">0.179</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.7R</td><td class="heat-cell heat-pos-1">0.009</td><td class="heat-cell heat-pos-2">0.107</td><td class="heat-cell heat-pos-3">0.183</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 2R</td><td class="heat-cell heat-pos-1">0.008</td><td class="heat-cell heat-pos-2">0.117</td><td class="heat-cell heat-pos-3">0.169</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1.5R</td><td class="heat-cell heat-pos-1">0.044</td><td class="heat-cell heat-pos-2">0.134</td><td class="heat-cell heat-pos-2">0.113</td></tr><tr><td>midpoint / structure / 1.7R</td><td class="heat-cell heat-pos-1">0.023</td><td class="heat-cell heat-pos-2">0.121</td><td class="heat-cell heat-pos-2">0.137</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1.7R</td><td class="heat-cell heat-pos-1">0.015</td><td class="heat-cell heat-pos-2">0.115</td><td class="heat-cell heat-pos-2">0.138</td></tr><tr><td>midpoint / structure &lt;= 0.5ATR / 1.25R</td><td class="heat-cell heat-neg-1">-0.058</td><td class="heat-cell heat-pos-2">0.091</td><td class="heat-cell heat-pos-3">0.202</td></tr><tr><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td class="heat-cell heat-neg-1">-0.033</td><td class="heat-cell heat-pos-3">0.156</td><td class="heat-cell heat-pos-2">0.087</td></tr><tr><td>midpoint / structure &lt;= 0.5ATR / 1R</td><td class="heat-cell heat-neg-2">-0.092</td><td class="heat-cell heat-pos-2">0.091</td><td class="heat-cell heat-pos-3">0.183</td></tr><tr><td>midpoint / structure &lt;= 0.5ATR / 1.7R</td><td class="heat-cell heat-neg-1">-0.041</td><td class="heat-cell heat-pos-2">0.126</td><td class="heat-cell heat-pos-1">0.029</td></tr><tr><td>midpoint / structure &lt;= 0.5ATR / 1.5R</td><td class="heat-cell heat-neg-1">-0.037</td><td class="heat-cell heat-pos-2">0.123</td><td class="heat-cell heat-pos-1">0.000</td></tr></tbody></table></div>
+      <div class="scroll"><div class="table-scroll"><table class="data-table compact"><thead><tr><th>Candidate</th><th>H4</th><th>D1</th><th>W1</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td class="heat-cell heat-pos-2">0.080</td><td class="heat-cell heat-pos-3">0.212</td><td class="heat-cell heat-pos-4">0.283</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td class="heat-cell heat-pos-2">0.083</td><td class="heat-cell heat-pos-3">0.206</td><td class="heat-cell heat-pos-4">0.281</td></tr><tr><td>midpoint / structure / 1R</td><td class="heat-cell heat-pos-2">0.084</td><td class="heat-cell heat-pos-3">0.208</td><td class="heat-cell heat-pos-4">0.252</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td class="heat-cell heat-pos-1">0.056</td><td class="heat-cell heat-pos-3">0.203</td><td class="heat-cell heat-pos-4">0.257</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.25R</td><td class="heat-cell heat-pos-1">0.063</td><td class="heat-cell heat-pos-3">0.165</td><td class="heat-cell heat-pos-4">0.231</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.25R</td><td class="heat-cell heat-pos-1">0.061</td><td class="heat-cell heat-pos-3">0.156</td><td class="heat-cell heat-pos-4">0.237</td></tr><tr><td>midpoint / structure / 1.25R</td><td class="heat-cell heat-pos-1">0.065</td><td class="heat-cell heat-pos-3">0.174</td><td class="heat-cell heat-pos-3">0.185</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1.25R</td><td class="heat-cell heat-pos-1">0.054</td><td class="heat-cell heat-pos-3">0.156</td><td class="heat-cell heat-pos-3">0.199</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.5R</td><td class="heat-cell heat-pos-1">0.039</td><td class="heat-cell heat-pos-3">0.143</td><td class="heat-cell heat-pos-3">0.150</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.5R</td><td class="heat-cell heat-pos-1">0.037</td><td class="heat-cell heat-pos-2">0.133</td><td class="heat-cell heat-pos-3">0.161</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 2R</td><td class="heat-cell heat-pos-1">0.000</td><td class="heat-cell heat-pos-2">0.110</td><td class="heat-cell heat-pos-4">0.218</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 2R</td><td class="heat-cell heat-neg-1">-0.003</td><td class="heat-cell heat-pos-2">0.100</td><td class="heat-cell heat-pos-4">0.223</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.7R</td><td class="heat-cell heat-pos-1">0.015</td><td class="heat-cell heat-pos-2">0.117</td><td class="heat-cell heat-pos-3">0.175</td></tr><tr><td>midpoint / structure / 1.5R</td><td class="heat-cell heat-pos-1">0.046</td><td class="heat-cell heat-pos-3">0.148</td><td class="heat-cell heat-pos-2">0.111</td></tr><tr><td>midpoint / structure / 2R</td><td class="heat-cell heat-pos-1">0.008</td><td class="heat-cell heat-pos-2">0.114</td><td class="heat-cell heat-pos-3">0.179</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.7R</td><td class="heat-cell heat-pos-1">0.009</td><td class="heat-cell heat-pos-2">0.107</td><td class="heat-cell heat-pos-3">0.183</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 2R</td><td class="heat-cell heat-pos-1">0.008</td><td class="heat-cell heat-pos-2">0.117</td><td class="heat-cell heat-pos-3">0.169</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1.5R</td><td class="heat-cell heat-pos-1">0.044</td><td class="heat-cell heat-pos-2">0.134</td><td class="heat-cell heat-pos-2">0.113</td></tr><tr><td>midpoint / structure / 1.7R</td><td class="heat-cell heat-pos-1">0.023</td><td class="heat-cell heat-pos-2">0.121</td><td class="heat-cell heat-pos-2">0.137</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1.7R</td><td class="heat-cell heat-pos-1">0.015</td><td class="heat-cell heat-pos-2">0.115</td><td class="heat-cell heat-pos-2">0.138</td></tr><tr><td>midpoint / structure &lt;= 0.5ATR / 1.25R</td><td class="heat-cell heat-neg-1">-0.058</td><td class="heat-cell heat-pos-2">0.091</td><td class="heat-cell heat-pos-3">0.202</td></tr><tr><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td class="heat-cell heat-neg-1">-0.033</td><td class="heat-cell heat-pos-3">0.156</td><td class="heat-cell heat-pos-2">0.087</td></tr><tr><td>midpoint / structure &lt;= 0.5ATR / 1R</td><td class="heat-cell heat-neg-2">-0.092</td><td class="heat-cell heat-pos-2">0.091</td><td class="heat-cell heat-pos-3">0.183</td></tr><tr><td>midpoint / structure &lt;= 0.5ATR / 1.7R</td><td class="heat-cell heat-neg-1">-0.041</td><td class="heat-cell heat-pos-2">0.126</td><td class="heat-cell heat-pos-1">0.029</td></tr><tr><td>midpoint / structure &lt;= 0.5ATR / 1.5R</td><td class="heat-cell heat-neg-1">-0.037</td><td class="heat-cell heat-pos-2">0.123</td><td class="heat-cell heat-pos-1">0.000</td></tr></tbody></table></div></div>
       <h3>Overall Leaderboard</h3>
-      <table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>midpoint / structure / 1R</td><td>6,667</td><td>57.6%</td><td class="positive">0.104</td><td class="positive">696.4</td><td>1.23</td><td>2.0</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>6,315</td><td>57.7%</td><td class="positive">0.104</td><td class="positive">657.1</td><td>1.23</td><td>1.7</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>5,870</td><td>57.7%</td><td class="positive">0.102</td><td class="positive">598.2</td><td>1.23</td><td>1.5</td></tr><tr><td>midpoint / structure / 1.25R</td><td>6,667</td><td>50.3%</td><td class="positive">0.082</td><td class="positive">547.7</td><td>1.16</td><td>2.5</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.25R</td><td>6,315</td><td>50.3%</td><td class="positive">0.081</td><td class="positive">510.2</td><td>1.15</td><td>2.1</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>4,721</td><td>56.9%</td><td class="positive">0.080</td><td class="positive">378.5</td><td>1.18</td><td>1.3</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.25R</td><td>5,870</td><td>50.2%</td><td class="positive">0.078</td><td class="positive">456.8</td><td>1.15</td><td>1.9</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1.25R</td><td>4,721</td><td>50.2%</td><td class="positive">0.071</td><td class="positive">336.0</td><td>1.13</td><td>1.5</td></tr><tr><td>midpoint / structure / 1.5R</td><td>6,667</td><td>44.4%</td><td class="positive">0.060</td><td class="positive">402.7</td><td>1.10</td><td>3.0</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1.5R</td><td>4,721</td><td>44.6%</td><td class="positive">0.057</td><td class="positive">270.5</td><td>1.10</td><td>1.8</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.5R</td><td>6,315</td><td>44.2%</td><td class="positive">0.055</td><td class="positive">348.7</td><td>1.09</td><td>2.5</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.5R</td><td>5,870</td><td>44.2%</td><td class="positive">0.052</td><td class="positive">306.4</td><td>1.09</td><td>2.2</td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Bars</th></tr></thead><tbody><tr><td>midpoint / structure / 1R</td><td>6,667</td><td>57.6%</td><td class="positive">0.104</td><td class="positive">696.4</td><td>1.23</td><td>2.0</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>6,315</td><td>57.7%</td><td class="positive">0.104</td><td class="positive">657.1</td><td>1.23</td><td>1.7</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>5,870</td><td>57.7%</td><td class="positive">0.102</td><td class="positive">598.2</td><td>1.23</td><td>1.5</td></tr><tr><td>midpoint / structure / 1.25R</td><td>6,667</td><td>50.3%</td><td class="positive">0.082</td><td class="positive">547.7</td><td>1.16</td><td>2.5</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.25R</td><td>6,315</td><td>50.3%</td><td class="positive">0.081</td><td class="positive">510.2</td><td>1.15</td><td>2.1</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>4,721</td><td>56.9%</td><td class="positive">0.080</td><td class="positive">378.5</td><td>1.18</td><td>1.3</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.25R</td><td>5,870</td><td>50.2%</td><td class="positive">0.078</td><td class="positive">456.8</td><td>1.15</td><td>1.9</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1.25R</td><td>4,721</td><td>50.2%</td><td class="positive">0.071</td><td class="positive">336.0</td><td>1.13</td><td>1.5</td></tr><tr><td>midpoint / structure / 1.5R</td><td>6,667</td><td>44.4%</td><td class="positive">0.060</td><td class="positive">402.7</td><td>1.10</td><td>3.0</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1.5R</td><td>4,721</td><td>44.6%</td><td class="positive">0.057</td><td class="positive">270.5</td><td>1.10</td><td>1.8</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1.5R</td><td>6,315</td><td>44.2%</td><td class="positive">0.055</td><td class="positive">348.7</td><td>1.09</td><td>2.5</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1.5R</td><td>5,870</td><td>44.2%</td><td class="positive">0.052</td><td class="positive">306.4</td><td>1.09</td><td>2.2</td></tr></tbody></table></div>
     </section>
 
     <section id="models">
       <h2>Model Family Slices</h2>
       <div class="split">
-        <div><h3>Entry Model</h3><table class=""><thead><tr><th>TF</th><th>Entry Model</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>signal_midpoint_pullback</td><td>109,025</td><td>44.9%</td><td class="positive">0.032</td><td class="positive">3,486.5</td><td>1.05</td></tr><tr><td>D1</td><td>signal_midpoint_pullback</td><td>16,365</td><td>47.8%</td><td class="positive">0.145</td><td class="positive">2,373.6</td><td>1.27</td></tr><tr><td>W1</td><td>signal_midpoint_pullback</td><td>3,295</td><td>49.1%</td><td class="positive">0.187</td><td class="positive">616.2</td><td>1.37</td></tr></tbody></table></div>
+        <div><h3>Entry Model</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>TF</th><th>Entry Model</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>signal_midpoint_pullback</td><td>109,025</td><td>44.9%</td><td class="positive">0.032</td><td class="positive">3,486.5</td><td>1.05</td></tr><tr><td>D1</td><td>signal_midpoint_pullback</td><td>16,365</td><td>47.8%</td><td class="positive">0.145</td><td class="positive">2,373.6</td><td>1.27</td></tr><tr><td>W1</td><td>signal_midpoint_pullback</td><td>3,295</td><td>49.1%</td><td class="positive">0.187</td><td class="positive">616.2</td><td>1.37</td></tr></tbody></table></div></div>
         <div><h3>Entry Zone</h3><p>No entry zone rows are available for this run.</p></div>
       </div>
       <div class="split">
-        <div><h3>Stop Model</h3><table class=""><thead><tr><th>TF</th><th>Stop Model</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>fs_structure</td><td>28,210</td><td>45.2%</td><td class="positive">0.045</td><td class="positive">1,279.6</td><td>1.08</td></tr><tr><td>H4</td><td>fs_structure_max_atr</td><td>80,815</td><td>44.8%</td><td class="positive">0.027</td><td class="positive">2,206.9</td><td>1.05</td></tr><tr><td>D1</td><td>fs_structure</td><td>4,275</td><td>48.1%</td><td class="positive">0.153</td><td class="positive">653.8</td><td>1.29</td></tr><tr><td>D1</td><td>fs_structure_max_atr</td><td>12,090</td><td>47.7%</td><td class="positive">0.142</td><td class="positive">1,719.8</td><td>1.27</td></tr><tr><td>W1</td><td>fs_structure_max_atr</td><td>2,445</td><td>49.3%</td><td class="positive">0.192</td><td class="positive">469.1</td><td>1.38</td></tr><tr><td>W1</td><td>fs_structure</td><td>850</td><td>48.5%</td><td class="positive">0.173</td><td class="positive">147.0</td><td>1.33</td></tr></tbody></table></div>
+        <div><h3>Stop Model</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>TF</th><th>Stop Model</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>fs_structure</td><td>28,210</td><td>45.2%</td><td class="positive">0.045</td><td class="positive">1,279.6</td><td>1.08</td></tr><tr><td>H4</td><td>fs_structure_max_atr</td><td>80,815</td><td>44.8%</td><td class="positive">0.027</td><td class="positive">2,206.9</td><td>1.05</td></tr><tr><td>D1</td><td>fs_structure</td><td>4,275</td><td>48.1%</td><td class="positive">0.153</td><td class="positive">653.8</td><td>1.29</td></tr><tr><td>D1</td><td>fs_structure_max_atr</td><td>12,090</td><td>47.7%</td><td class="positive">0.142</td><td class="positive">1,719.8</td><td>1.27</td></tr><tr><td>W1</td><td>fs_structure_max_atr</td><td>2,445</td><td>49.3%</td><td class="positive">0.192</td><td class="positive">469.1</td><td>1.38</td></tr><tr><td>W1</td><td>fs_structure</td><td>850</td><td>48.5%</td><td class="positive">0.173</td><td class="positive">147.0</td><td>1.33</td></tr></tbody></table></div></div>
         <div><h3>Exit Model</h3><p>No exit model rows are available for this run.</p></div>
       </div>
       <div class="split">
-        <div><h3>Target R</h3><table class=""><thead><tr><th>TF</th><th>Target R</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>1.0</td><td>21,805</td><td>56.1%</td><td class="positive">0.063</td><td class="positive">1,368.2</td><td>1.13</td></tr><tr><td>H4</td><td>1.25</td><td>21,805</td><td>49.4%</td><td class="positive">0.051</td><td class="positive">1,117.3</td><td>1.10</td></tr><tr><td>H4</td><td>1.5</td><td>21,805</td><td>43.8%</td><td class="positive">0.035</td><td class="positive">752.6</td><td>1.06</td></tr><tr><td>H4</td><td>1.7</td><td>21,805</td><td>39.7%</td><td class="positive">0.011</td><td class="positive">245.4</td><td>1.02</td></tr><tr><td>H4</td><td>2.0</td><td>21,805</td><td>35.4%</td><td class="positive">0.000</td><td class="positive">3.1</td><td>1.00</td></tr><tr><td>D1</td><td>1.0</td><td>3,273</td><td>60.8%</td><td class="positive">0.199</td><td class="positive">649.9</td><td>1.50</td></tr><tr><td>D1</td><td>1.25</td><td>3,273</td><td>52.2%</td><td class="positive">0.158</td><td class="positive">517.3</td><td>1.33</td></tr><tr><td>D1</td><td>1.5</td><td>3,273</td><td>46.3%</td><td class="positive">0.139</td><td class="positive">454.8</td><td>1.25</td></tr><tr><td>D1</td><td>1.7</td><td>3,273</td><td>42.0%</td><td class="positive">0.116</td><td class="positive">379.7</td><td>1.20</td></tr><tr><td>D1</td><td>2.0</td><td>3,273</td><td>37.7%</td><td class="positive">0.114</td><td class="positive">371.9</td><td>1.18</td></tr><tr><td>W1</td><td>1.0</td><td>659</td><td>63.4%</td><td class="positive">0.262</td><td class="positive">172.5</td><td>1.71</td></tr><tr><td>W1</td><td>1.25</td><td>659</td><td>54.2%</td><td class="positive">0.212</td><td class="positive">139.7</td><td>1.46</td></tr><tr><td>W1</td><td>2.0</td><td>659</td><td>39.8%</td><td class="positive">0.189</td><td class="positive">124.7</td><td>1.31</td></tr><tr><td>W1</td><td>1.7</td><td>659</td><td>42.8%</td><td class="positive">0.148</td><td class="positive">97.8</td><td>1.26</td></tr><tr><td>W1</td><td>1.5</td><td>659</td><td>45.2%</td><td class="positive">0.124</td><td class="positive">81.5</td><td>1.22</td></tr></tbody></table></div>
-        <div><h3>Side</h3><table class=""><thead><tr><th>TF</th><th>Side</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>short</td><td>51,750</td><td>45.0%</td><td class="positive">0.033</td><td class="positive">1,702.6</td><td>1.06</td></tr><tr><td>H4</td><td>long</td><td>57,275</td><td>44.8%</td><td class="positive">0.031</td><td class="positive">1,783.9</td><td>1.05</td></tr><tr><td>D1</td><td>long</td><td>8,630</td><td>49.5%</td><td class="positive">0.188</td><td class="positive">1,618.2</td><td>1.37</td></tr><tr><td>D1</td><td>short</td><td>7,735</td><td>45.9%</td><td class="positive">0.098</td><td class="positive">755.4</td><td>1.18</td></tr><tr><td>W1</td><td>long</td><td>1,550</td><td>51.9%</td><td class="positive">0.256</td><td class="positive">397.2</td><td>1.53</td></tr><tr><td>W1</td><td>short</td><td>1,745</td><td>46.6%</td><td class="positive">0.125</td><td class="positive">219.0</td><td>1.23</td></tr></tbody></table></div>
+        <div><h3>Target R</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>TF</th><th>Target R</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>1.0</td><td>21,805</td><td>56.1%</td><td class="positive">0.063</td><td class="positive">1,368.2</td><td>1.13</td></tr><tr><td>H4</td><td>1.25</td><td>21,805</td><td>49.4%</td><td class="positive">0.051</td><td class="positive">1,117.3</td><td>1.10</td></tr><tr><td>H4</td><td>1.5</td><td>21,805</td><td>43.8%</td><td class="positive">0.035</td><td class="positive">752.6</td><td>1.06</td></tr><tr><td>H4</td><td>1.7</td><td>21,805</td><td>39.7%</td><td class="positive">0.011</td><td class="positive">245.4</td><td>1.02</td></tr><tr><td>H4</td><td>2.0</td><td>21,805</td><td>35.4%</td><td class="positive">0.000</td><td class="positive">3.1</td><td>1.00</td></tr><tr><td>D1</td><td>1.0</td><td>3,273</td><td>60.8%</td><td class="positive">0.199</td><td class="positive">649.9</td><td>1.50</td></tr><tr><td>D1</td><td>1.25</td><td>3,273</td><td>52.2%</td><td class="positive">0.158</td><td class="positive">517.3</td><td>1.33</td></tr><tr><td>D1</td><td>1.5</td><td>3,273</td><td>46.3%</td><td class="positive">0.139</td><td class="positive">454.8</td><td>1.25</td></tr><tr><td>D1</td><td>1.7</td><td>3,273</td><td>42.0%</td><td class="positive">0.116</td><td class="positive">379.7</td><td>1.20</td></tr><tr><td>D1</td><td>2.0</td><td>3,273</td><td>37.7%</td><td class="positive">0.114</td><td class="positive">371.9</td><td>1.18</td></tr><tr><td>W1</td><td>1.0</td><td>659</td><td>63.4%</td><td class="positive">0.262</td><td class="positive">172.5</td><td>1.71</td></tr><tr><td>W1</td><td>1.25</td><td>659</td><td>54.2%</td><td class="positive">0.212</td><td class="positive">139.7</td><td>1.46</td></tr><tr><td>W1</td><td>2.0</td><td>659</td><td>39.8%</td><td class="positive">0.189</td><td class="positive">124.7</td><td>1.31</td></tr><tr><td>W1</td><td>1.7</td><td>659</td><td>42.8%</td><td class="positive">0.148</td><td class="positive">97.8</td><td>1.26</td></tr><tr><td>W1</td><td>1.5</td><td>659</td><td>45.2%</td><td class="positive">0.124</td><td class="positive">81.5</td><td>1.22</td></tr></tbody></table></div></div>
+        <div><h3>Side</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>TF</th><th>Side</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>H4</td><td>short</td><td>51,750</td><td>45.0%</td><td class="positive">0.033</td><td class="positive">1,702.6</td><td>1.06</td></tr><tr><td>H4</td><td>long</td><td>57,275</td><td>44.8%</td><td class="positive">0.031</td><td class="positive">1,783.9</td><td>1.05</td></tr><tr><td>D1</td><td>long</td><td>8,630</td><td>49.5%</td><td class="positive">0.188</td><td class="positive">1,618.2</td><td>1.37</td></tr><tr><td>D1</td><td>short</td><td>7,735</td><td>45.9%</td><td class="positive">0.098</td><td class="positive">755.4</td><td>1.18</td></tr><tr><td>W1</td><td>long</td><td>1,550</td><td>51.9%</td><td class="positive">0.256</td><td class="positive">397.2</td><td>1.53</td></tr><tr><td>W1</td><td>short</td><td>1,745</td><td>46.6%</td><td class="positive">0.125</td><td class="positive">219.0</td><td>1.23</td></tr></tbody></table></div></div>
       </div>
       <div class="split">
         <div><h3>LP Pivot Strength</h3><p>No lp pivot strength rows are available for this run.</p></div>
@@ -493,18 +771,18 @@
     <section id="side">
       <h2>Best Candidates By Timeframe And Side</h2>
       <div class="note">Use this to see whether bullish force bottoms or bearish force tops are carrying the result. If one side is weak, it should become a filter candidate before execution work.</div>
-      <h3>H4 Long</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>2,810</td><td>56.6%</td><td class="positive">0.077</td><td class="positive">216.6</td><td>1.17</td></tr><tr><td>midpoint / structure / 1R</td><td>2,977</td><td>56.5%</td><td class="positive">0.076</td><td class="positive">225.8</td><td>1.17</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>2,604</td><td>56.5%</td><td class="positive">0.072</td><td class="positive">188.2</td><td>1.16</td></tr></tbody></table><h3>H4 Short</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure / 1R</td><td>2,665</td><td>57.5%</td><td class="positive">0.094</td><td class="positive">250.1</td><td>1.21</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>2,530</td><td>57.4%</td><td class="positive">0.090</td><td class="positive">227.8</td><td>1.20</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>2,362</td><td>57.4%</td><td class="positive">0.088</td><td class="positive">207.8</td><td>1.19</td></tr></tbody></table><h3>D1 Long</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>119</td><td>44.5%</td><td class="positive">0.312</td><td class="positive">37.1</td><td>1.55</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>320</td><td>63.7%</td><td class="positive">0.256</td><td class="positive">81.9</td><td>1.69</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>402</td><td>63.4%</td><td class="positive">0.253</td><td class="positive">101.7</td><td>1.68</td></tr></tbody></table><h3>D1 Short</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>382</td><td>59.4%</td><td class="positive">0.171</td><td class="positive">65.2</td><td>1.41</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>350</td><td>59.1%</td><td class="positive">0.164</td><td class="positive">57.5</td><td>1.39</td></tr><tr><td>midpoint / structure / 1R</td><td>403</td><td>59.1%</td><td class="positive">0.164</td><td class="positive">66.1</td><td>1.39</td></tr></tbody></table><h3>W1 Long</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>22</td><td>45.5%</td><td class="positive">0.355</td><td class="positive">7.8</td><td>1.65</td></tr><tr><td>midpoint / structure / 1R</td><td>81</td><td>66.7%</td><td class="positive">0.327</td><td class="positive">26.5</td><td>1.97</td></tr><tr><td>midpoint / structure &lt;= 0.5ATR / 1.25R</td><td>22</td><td>59.1%</td><td class="positive">0.321</td><td class="positive">7.1</td><td>1.78</td></tr></tbody></table><h3>W1 Short</h3><table class=""><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>81</td><td>63.0%</td><td class="positive">0.253</td><td class="positive">20.5</td><td>1.68</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>83</td><td>62.7%</td><td class="positive">0.247</td><td class="positive">20.5</td><td>1.66</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>66</td><td>62.1%</td><td class="positive">0.236</td><td class="positive">15.6</td><td>1.62</td></tr></tbody></table>
+      <h3>H4 Long</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>2,810</td><td>56.6%</td><td class="positive">0.077</td><td class="positive">216.6</td><td>1.17</td></tr><tr><td>midpoint / structure / 1R</td><td>2,977</td><td>56.5%</td><td class="positive">0.076</td><td class="positive">225.8</td><td>1.17</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>2,604</td><td>56.5%</td><td class="positive">0.072</td><td class="positive">188.2</td><td>1.16</td></tr></tbody></table></div><h3>H4 Short</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure / 1R</td><td>2,665</td><td>57.5%</td><td class="positive">0.094</td><td class="positive">250.1</td><td>1.21</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>2,530</td><td>57.4%</td><td class="positive">0.090</td><td class="positive">227.8</td><td>1.20</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>2,362</td><td>57.4%</td><td class="positive">0.088</td><td class="positive">207.8</td><td>1.19</td></tr></tbody></table></div><h3>D1 Long</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>119</td><td>44.5%</td><td class="positive">0.312</td><td class="positive">37.1</td><td>1.55</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>320</td><td>63.7%</td><td class="positive">0.256</td><td class="positive">81.9</td><td>1.69</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>402</td><td>63.4%</td><td class="positive">0.253</td><td class="positive">101.7</td><td>1.68</td></tr></tbody></table></div><h3>D1 Short</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>382</td><td>59.4%</td><td class="positive">0.171</td><td class="positive">65.2</td><td>1.41</td></tr><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>350</td><td>59.1%</td><td class="positive">0.164</td><td class="positive">57.5</td><td>1.39</td></tr><tr><td>midpoint / structure / 1R</td><td>403</td><td>59.1%</td><td class="positive">0.164</td><td class="positive">66.1</td><td>1.39</td></tr></tbody></table></div><h3>W1 Long</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>22</td><td>45.5%</td><td class="positive">0.355</td><td class="positive">7.8</td><td>1.65</td></tr><tr><td>midpoint / structure / 1R</td><td>81</td><td>66.7%</td><td class="positive">0.327</td><td class="positive">26.5</td><td>1.97</td></tr><tr><td>midpoint / structure &lt;= 0.5ATR / 1.25R</td><td>22</td><td>59.1%</td><td class="positive">0.321</td><td class="positive">7.1</td><td>1.78</td></tr></tbody></table></div><h3>W1 Short</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th><th>PF</th></tr></thead><tbody><tr><td>midpoint / structure &lt;= 1ATR / 1R</td><td>81</td><td>63.0%</td><td class="positive">0.253</td><td class="positive">20.5</td><td>1.68</td></tr><tr><td>midpoint / structure &lt;= 1.25ATR / 1R</td><td>83</td><td>62.7%</td><td class="positive">0.247</td><td class="positive">20.5</td><td>1.66</td></tr><tr><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>66</td><td>62.1%</td><td class="positive">0.236</td><td class="positive">15.6</td><td>1.62</td></tr></tbody></table></div>
     </section>
 
     <section id="symbols">
       <h2>Symbol Outliers</h2>
-      <div class="split"><div><h3>Best Symbol/Candidate Rows</h3><table class=""><thead><tr><th>Symbol</th><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th></tr></thead><tbody><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>86</td><td>47.7%</td><td class="positive">0.343</td><td class="positive">29.5</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.5ATR / 1.7R</td><td>86</td><td>52.3%</td><td class="positive">0.326</td><td class="positive">28.0</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.5ATR / 1.5R</td><td>86</td><td>55.8%</td><td class="positive">0.308</td><td class="positive">26.5</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.75ATR / 2R</td><td>198</td><td>43.9%</td><td class="positive">0.245</td><td class="positive">48.4</td></tr><tr><td>EURUSD</td><td>midpoint / structure &lt;= 0.5ATR / 1.7R</td><td>98</td><td>48.0%</td><td class="positive">0.230</td><td class="positive">22.6</td></tr><tr><td>EURNZD</td><td>midpoint / structure / 2R</td><td>281</td><td>43.1%</td><td class="positive">0.230</td><td class="positive">64.7</td></tr><tr><td>USDJPY</td><td>midpoint / structure / 1.25R</td><td>250</td><td>55.6%</td><td class="positive">0.229</td><td class="positive">57.3</td></tr><tr><td>USDJPY</td><td>midpoint / structure &lt;= 0.75ATR / 1.25R</td><td>164</td><td>55.5%</td><td class="positive">0.224</td><td class="positive">36.7</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.5ATR / 1.25R</td><td>86</td><td>58.1%</td><td class="positive">0.221</td><td class="positive">19.0</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 1.25ATR / 2R</td><td>265</td><td>42.6%</td><td class="positive">0.216</td><td class="positive">57.1</td></tr><tr><td>EURAUD</td><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>97</td><td>42.3%</td><td class="positive">0.214</td><td class="positive">20.8</td></tr><tr><td>USDJPY</td><td>midpoint / structure / 1R</td><td>250</td><td>61.6%</td><td class="positive">0.211</td><td class="positive">52.6</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>198</td><td>64.1%</td><td class="positive">0.209</td><td class="positive">41.4</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.75ATR / 1.7R</td><td>198</td><td>47.5%</td><td class="positive">0.208</td><td class="positive">41.2</td></tr><tr><td>USDJPY</td><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>164</td><td>61.6%</td><td class="positive">0.208</td><td class="positive">34.1</td></tr></tbody></table></div><div><h3>Worst Symbol/Candidate Rows</h3><table class=""><thead><tr><th>Symbol</th><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th></tr></thead><tbody><tr><td>GBPJPY</td><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>81</td><td>24.7%</td><td class="negative">-0.320</td><td class="negative">-25.9</td></tr><tr><td>AUDCHF</td><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>98</td><td>26.5%</td><td class="negative">-0.317</td><td class="negative">-31.0</td></tr><tr><td>GBPJPY</td><td>midpoint / structure &lt;= 0.5ATR / 1.7R</td><td>81</td><td>29.6%</td><td class="negative">-0.261</td><td class="negative">-21.1</td></tr><tr><td>AUDCHF</td><td>midpoint / structure &lt;= 0.5ATR / 1.7R</td><td>98</td><td>31.6%</td><td class="negative">-0.259</td><td class="negative">-25.4</td></tr><tr><td>AUDCHF</td><td>midpoint / structure &lt;= 0.5ATR / 1.5R</td><td>98</td><td>34.7%</td><td class="negative">-0.246</td><td class="negative">-24.1</td></tr><tr><td>GBPCAD</td><td>midpoint / structure &lt;= 0.5ATR / 1R</td><td>87</td><td>41.4%</td><td class="negative">-0.237</td><td class="negative">-20.6</td></tr><tr><td>AUDCHF</td><td>midpoint / structure &lt;= 0.5ATR / 1R</td><td>98</td><td>43.9%</td><td class="negative">-0.236</td><td class="negative">-23.1</td></tr><tr><td>GBPJPY</td><td>midpoint / structure &lt;= 1ATR / 2R</td><td>205</td><td>27.8%</td><td class="negative">-0.212</td><td class="negative">-43.4</td></tr><tr><td>EURJPY</td><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>92</td><td>28.3%</td><td class="negative">-0.196</td><td class="negative">-18.0</td></tr><tr><td>AUDCHF</td><td>midpoint / structure &lt;= 0.5ATR / 1.25R</td><td>98</td><td>40.8%</td><td class="negative">-0.195</td><td class="negative">-19.1</td></tr><tr><td>GBPJPY</td><td>midpoint / structure &lt;= 0.75ATR / 2R</td><td>168</td><td>28.6%</td><td class="negative">-0.194</td><td class="negative">-32.5</td></tr><tr><td>GBPJPY</td><td>midpoint / structure &lt;= 1.25ATR / 2R</td><td>217</td><td>28.6%</td><td class="negative">-0.187</td><td class="negative">-40.5</td></tr><tr><td>GBPCAD</td><td>midpoint / structure &lt;= 0.5ATR / 1.25R</td><td>87</td><td>39.1%</td><td class="negative">-0.185</td><td class="negative">-16.1</td></tr><tr><td>AUDNZD</td><td>midpoint / structure &lt;= 0.5ATR / 1.25R</td><td>98</td><td>41.8%</td><td class="negative">-0.179</td><td class="negative">-17.5</td></tr><tr><td>AUDCAD</td><td>midpoint / structure &lt;= 0.5ATR / 1.5R</td><td>78</td><td>37.2%</td><td class="negative">-0.176</td><td class="negative">-13.7</td></tr></tbody></table></div></div>
+      <div class="split"><div><h3>Best Symbol/Candidate Rows</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Symbol</th><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th></tr></thead><tbody><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>86</td><td>47.7%</td><td class="positive">0.343</td><td class="positive">29.5</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.5ATR / 1.7R</td><td>86</td><td>52.3%</td><td class="positive">0.326</td><td class="positive">28.0</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.5ATR / 1.5R</td><td>86</td><td>55.8%</td><td class="positive">0.308</td><td class="positive">26.5</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.75ATR / 2R</td><td>198</td><td>43.9%</td><td class="positive">0.245</td><td class="positive">48.4</td></tr><tr><td>EURUSD</td><td>midpoint / structure &lt;= 0.5ATR / 1.7R</td><td>98</td><td>48.0%</td><td class="positive">0.230</td><td class="positive">22.6</td></tr><tr><td>EURNZD</td><td>midpoint / structure / 2R</td><td>281</td><td>43.1%</td><td class="positive">0.230</td><td class="positive">64.7</td></tr><tr><td>USDJPY</td><td>midpoint / structure / 1.25R</td><td>250</td><td>55.6%</td><td class="positive">0.229</td><td class="positive">57.3</td></tr><tr><td>USDJPY</td><td>midpoint / structure &lt;= 0.75ATR / 1.25R</td><td>164</td><td>55.5%</td><td class="positive">0.224</td><td class="positive">36.7</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.5ATR / 1.25R</td><td>86</td><td>58.1%</td><td class="positive">0.221</td><td class="positive">19.0</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 1.25ATR / 2R</td><td>265</td><td>42.6%</td><td class="positive">0.216</td><td class="positive">57.1</td></tr><tr><td>EURAUD</td><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>97</td><td>42.3%</td><td class="positive">0.214</td><td class="positive">20.8</td></tr><tr><td>USDJPY</td><td>midpoint / structure / 1R</td><td>250</td><td>61.6%</td><td class="positive">0.211</td><td class="positive">52.6</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>198</td><td>64.1%</td><td class="positive">0.209</td><td class="positive">41.4</td></tr><tr><td>EURNZD</td><td>midpoint / structure &lt;= 0.75ATR / 1.7R</td><td>198</td><td>47.5%</td><td class="positive">0.208</td><td class="positive">41.2</td></tr><tr><td>USDJPY</td><td>midpoint / structure &lt;= 0.75ATR / 1R</td><td>164</td><td>61.6%</td><td class="positive">0.208</td><td class="positive">34.1</td></tr></tbody></table></div></div><div><h3>Worst Symbol/Candidate Rows</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Symbol</th><th>Candidate</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Total R</th></tr></thead><tbody><tr><td>GBPJPY</td><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>81</td><td>24.7%</td><td class="negative">-0.320</td><td class="negative">-25.9</td></tr><tr><td>AUDCHF</td><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>98</td><td>26.5%</td><td class="negative">-0.317</td><td class="negative">-31.0</td></tr><tr><td>GBPJPY</td><td>midpoint / structure &lt;= 0.5ATR / 1.7R</td><td>81</td><td>29.6%</td><td class="negative">-0.261</td><td class="negative">-21.1</td></tr><tr><td>AUDCHF</td><td>midpoint / structure &lt;= 0.5ATR / 1.7R</td><td>98</td><td>31.6%</td><td class="negative">-0.259</td><td class="negative">-25.4</td></tr><tr><td>AUDCHF</td><td>midpoint / structure &lt;= 0.5ATR / 1.5R</td><td>98</td><td>34.7%</td><td class="negative">-0.246</td><td class="negative">-24.1</td></tr><tr><td>GBPCAD</td><td>midpoint / structure &lt;= 0.5ATR / 1R</td><td>87</td><td>41.4%</td><td class="negative">-0.237</td><td class="negative">-20.6</td></tr><tr><td>AUDCHF</td><td>midpoint / structure &lt;= 0.5ATR / 1R</td><td>98</td><td>43.9%</td><td class="negative">-0.236</td><td class="negative">-23.1</td></tr><tr><td>GBPJPY</td><td>midpoint / structure &lt;= 1ATR / 2R</td><td>205</td><td>27.8%</td><td class="negative">-0.212</td><td class="negative">-43.4</td></tr><tr><td>EURJPY</td><td>midpoint / structure &lt;= 0.5ATR / 2R</td><td>92</td><td>28.3%</td><td class="negative">-0.196</td><td class="negative">-18.0</td></tr><tr><td>AUDCHF</td><td>midpoint / structure &lt;= 0.5ATR / 1.25R</td><td>98</td><td>40.8%</td><td class="negative">-0.195</td><td class="negative">-19.1</td></tr><tr><td>GBPJPY</td><td>midpoint / structure &lt;= 0.75ATR / 2R</td><td>168</td><td>28.6%</td><td class="negative">-0.194</td><td class="negative">-32.5</td></tr><tr><td>GBPJPY</td><td>midpoint / structure &lt;= 1.25ATR / 2R</td><td>217</td><td>28.6%</td><td class="negative">-0.187</td><td class="negative">-40.5</td></tr><tr><td>GBPCAD</td><td>midpoint / structure &lt;= 0.5ATR / 1.25R</td><td>87</td><td>39.1%</td><td class="negative">-0.185</td><td class="negative">-16.1</td></tr><tr><td>AUDNZD</td><td>midpoint / structure &lt;= 0.5ATR / 1.25R</td><td>98</td><td>41.8%</td><td class="negative">-0.179</td><td class="negative">-17.5</td></tr><tr><td>AUDCAD</td><td>midpoint / structure &lt;= 0.5ATR / 1.5R</td><td>78</td><td>37.2%</td><td class="negative">-0.176</td><td class="negative">-13.7</td></tr></tbody></table></div></div></div>
     </section>
 
     <section id="skips">
       <h2>Skipped Trade Attempts</h2>
       <div class="note">Skipped attempts are not failed backtests. They usually mean pullback entry was not reached, risk was wider than the ATR filter, a 1R entry-cancel rule fired, or no next candle existed.</div>
-      <table class=""><thead><tr><th>Timeframe</th><th>Reason</th><th>Skipped</th></tr></thead><tbody><tr><td>H4</td><td>entry_not_reached</td><td>32,450</td></tr><tr><td>H4</td><td>risk_too_wide</td><td>32,005</td></tr><tr><td>H4</td><td>missing_atr</td><td>20</td></tr><tr><td>D1</td><td>entry_not_reached</td><td>5,075</td></tr><tr><td>D1</td><td>risk_too_wide</td><td>5,010</td></tr><tr><td>W1</td><td>risk_too_wide</td><td>935</td></tr><tr><td>W1</td><td>entry_not_reached</td><td>875</td></tr><tr><td>W1</td><td>missing_atr</td><td>20</td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Timeframe</th><th>Reason</th><th>Skipped</th></tr></thead><tbody><tr><td>H4</td><td>entry_not_reached</td><td>32,450</td></tr><tr><td>H4</td><td>risk_too_wide</td><td>32,005</td></tr><tr><td>H4</td><td>missing_atr</td><td>20</td></tr><tr><td>D1</td><td>entry_not_reached</td><td>5,075</td></tr><tr><td>D1</td><td>risk_too_wide</td><td>5,010</td></tr><tr><td>W1</td><td>risk_too_wide</td><td>935</td></tr><tr><td>W1</td><td>entry_not_reached</td><td>875</td></tr><tr><td>W1</td><td>missing_atr</td><td>20</td></tr></tbody></table></div>
     </section>
   </main>
   <footer>Generated from LP Force Strike experiment reports. Source CSVs remain the audit trail.</footer>

@@ -5,7 +5,13 @@ import html
 from pathlib import Path
 from typing import Any
 
-from lp_force_strike_dashboard_metadata import dashboard_page_links, dashboard_pages, load_dashboard_metadata
+from lp_force_strike_dashboard_metadata import (
+    dashboard_base_css,
+    dashboard_header_html,
+    dashboard_pages,
+    load_dashboard_metadata,
+    metric_glossary_html,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -43,7 +49,7 @@ def _card(page: dict[str, Any]) -> str:
 def _baseline_card(home: dict[str, Any]) -> str:
     baseline = home["current_baseline"]
     return f"""
-    <section class="card featured">
+    <section id="current-baseline" class="card featured">
       <div class="status status-active">{_escape(baseline['status_label'])}</div>
       <h2>{_escape(baseline['title'])}</h2>
       <p>{_escape(baseline['description'])}</p>
@@ -195,6 +201,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
       border-radius: 6px;
       font-weight: 700;
     }}
+    {dashboard_base_css(table_min_width="720px", extra_css=".metric-glossary { grid-column: 1 / -1; }")}
     footer {{
       padding: 0 max(18px, 6vw) 32px;
       color: var(--muted);
@@ -210,15 +217,19 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
   </style>
 </head>
 <body>
-  <header>
-    <h1>{_escape(home['title'])}</h1>
-    <p>{_escape(home['intro'])}</p>
-    <nav aria-label="Dashboard pages">
-      {dashboard_page_links("index.html", metadata)}
-    </nav>
-  </header>
+  {dashboard_header_html(
+      title=str(home["title"]),
+      subtitle_html=_escape(home["intro"]),
+      current_page="index.html",
+      section_links=[
+          ("#current-baseline", "Current Baseline"),
+          ("#metric-glossary", "Glossary"),
+      ],
+      metadata=metadata,
+  )}
   <main>
     {"".join(cards)}
+    {metric_glossary_html()}
   </main>
   <footer>Generated dashboards are static research snapshots. Strategy behavior remains in tested Python modules.</footer>
 </body>

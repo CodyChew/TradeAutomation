@@ -155,6 +155,285 @@
     .positive { color: var(--good); font-weight: 700; }
     .negative { color: var(--bad); font-weight: 700; }
     .neutral { color: var(--muted); }
+
+    :root {
+      --bg: #f3f6f8;
+      --panel: #ffffff;
+      --panel-soft: #f8fafb;
+      --ink: #17202a;
+      --muted: #5d6d7e;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --accent-2: #3f7f5f;
+      --good: #256f46;
+      --bad: #9f3333;
+      --warn: #8a5a00;
+      --focus: #f2c94c;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 Inter, Segoe UI, Roboto, Arial, sans-serif;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+    code { overflow-wrap: anywhere; }
+    .dashboard-header {
+      background: #17202a;
+      color: white;
+      padding: 28px max(18px, 5vw);
+      border-bottom: 4px solid #57a773;
+    }
+    .dashboard-header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 4vw, 30px);
+      letter-spacing: 0;
+    }
+    .dashboard-header p {
+      margin: 0;
+      color: #d8e0e8;
+      max-width: 1080px;
+      overflow-wrap: anywhere;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .page-nav {
+      margin-top: 18px;
+    }
+    .report-nav {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, .18);
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+    }
+    nav a:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .page-nav a.active {
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }
+    .report-nav a {
+      background: rgba(255, 255, 255, .03);
+      color: #edf4f7;
+    }
+    main {
+      padding: 24px max(18px, 5vw) 48px;
+    }
+    section {
+      margin: 0 0 22px;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(23, 32, 42, .05);
+      max-width: 100%;
+      overflow: visible;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 15px;
+      color: #34495e;
+      letter-spacing: 0;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi, .fact {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi-label, .fact span, .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .kpi-value, .kpi strong, .fact strong {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-note {
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 18px;
+    }
+    .note {
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+      margin-bottom: 14px;
+    }
+    .warning {
+      background: #fff8e8;
+      border-left-color: var(--warn);
+      color: #4d3b13;
+    }
+    .metric-glossary {
+      border-top: 4px solid #5c7f95;
+    }
+    .metric-glossary dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 10px;
+    }
+    .metric-glossary dl > div {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .metric-glossary dt {
+      margin: 0 0 5px;
+      font-weight: 700;
+    }
+    .metric-glossary dd {
+      margin: 0;
+      color: var(--muted);
+    }
+    .table-scroll, .scroll, .summary-comparison {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%;
+      min-width: 980px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th, td {
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      box-shadow: 1px 0 0 var(--line);
+    }
+    th:first-child {
+      z-index: 3;
+    }
+    td:first-child {
+      background: var(--panel);
+      font-weight: 600;
+    }
+    th {
+      color: #3f4d5c;
+      background: #eef3f6;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tbody tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+    tbody tr:hover td {
+      background: #eef6f2;
+    }
+    .positive {
+      color: var(--good);
+      font-weight: 700;
+    }
+    .negative {
+      color: var(--bad);
+      font-weight: 700;
+    }
+    .neutral {
+      color: var(--muted);
+    }
+    footer {
+      color: var(--muted);
+      padding: 0 max(18px, 5vw) 28px;
+    }
+
+    @media (max-width: 760px) {
+      .dashboard-header {
+        padding: 22px 16px;
+      }
+      nav a {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+      main {
+        padding: 16px 12px 34px;
+      }
+      section {
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 14px;
+      }
+      .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .kpi {
+        padding: 10px;
+      }
+      .kpi-value, .kpi strong, .fact strong {
+        font-size: 20px;
+      }
+      th, td {
+        padding: 6px 7px;
+        font-size: 12px;
+      }
+    }
+    @media (max-width: 480px) {
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+      .report-nav a {
+        flex-basis: calc(50% - 4px);
+      }
+    }
+
     footer { color: var(--muted); padding: 0 max(18px, 5vw) 28px; }
     @media (max-width: 760px) {
       header { padding: 22px 16px; }
@@ -172,10 +451,11 @@
   </style>
 </head>
 <body>
-  <header>
+
+  <header class="dashboard-header">
     <h1>LP + Force Strike V11 Timeframe Mix - by Cody</h1>
-    <p>Static V11 report generated from <code>C:\Users\chewc\OneDrive\Desktop\TradeAutomation\reports\strategies\lp_force_strike_experiment_v11_timeframe_mix\20260429_144259</code>. This page keeps V10 LP3 cap 4R mechanics fixed and only changes timeframe inclusion.</p>
-    <nav aria-label="Dashboard pages">
+    <p>Static V11 report generated from <code>reports\strategies\lp_force_strike_experiment_v11_timeframe_mix\20260429_144259</code>. This page keeps V10 LP3 cap 4R mechanics fixed and only changes timeframe inclusion.</p>
+    <nav class="page-nav" aria-label="Dashboard pages">
       <a class="page-link" href="index.html">Home</a>
       <a class="page-link" href="v1.html">V1</a>
       <a class="page-link" href="v2.html">V2</a>
@@ -193,7 +473,13 @@
       <a class="page-link" href="v14.html">V14</a>
       <a class="page-link" href="v15.html">V15</a>
     </nav>
+
+    <nav class="report-nav" aria-label="Report sections">
+      <a href="#experiment-summary">Snapshot</a><a href="#overview">Overview</a><a href="#metric-glossary">Glossary</a><a href="#best-timeframe-mix">Best Mix</a><a href="#baseline-comparison">Baseline</a><a href="#h4-h8-decision">H4/H8</a><a href="#underwater-reduction">Underwater</a><a href="#lp-diagnostics">Diagnostics</a>
+    </nav>
+
   </header>
+
   <main>
 
     <section id="experiment-summary" class="experiment-summary">
@@ -204,13 +490,6 @@
         </div>
         <span class="status-badge status-active">Timeframe mix study</span>
       </div>
-      <div class="summary-grid">
-        <div><h3>What This Tests</h3><p>Should the V10 LP3 cap 4R portfolio keep trading all H4/H8/H12/D1/W1 signals, or should weaker lower-timeframe exposure be removed?</p></div>
-        <div><h3>Setup Tested</h3><p>Existing V9 trades only. V10 mechanics stay fixed: LP3, 4R max-open-risk cap, one open trade per symbol, higher-timeframe same-time priority, and 30R / 180D guardrails. V11 tests practical timeframe baskets and limited LP4/LP5 diagnostics.</p></div>
-        <div><h3>How To Read This Page</h3><p>Start with Best Timeframe Mix. Then compare the H4/H8 Decision table and Underwater Reduction table before using total R alone.</p></div>
-        <div><h3>Use / Do Not Use</h3><p>Keep all timeframes for the current practical baseline. Use V12 to retest LP3/LP4/LP5 on all timeframes and the cleaner no-H4 diagnostic set.</p></div>
-      </div>
-      <div class="conclusion-box"><strong>Conclusion:</strong> Keep all H4/H8/H12/D1/W1 timeframes for the current LP3 cap 4R baseline. The all-timeframe row still passed guardrails and produced the highest Total R. Removing H4 or H8 lowered drawdown, but the return sacrifice or underwater miss was not worth replacing the baseline.</div>
 
       <div class="decision-brief">
         <h3>Decision Brief</h3>
@@ -219,7 +498,20 @@
         <p class="brief-next"><strong>Next:</strong> Keep all timeframes and finalize the LP pivot default.</p>
       </div>
 
+      <div class="summary-grid">
+        <div><h3>What This Tests</h3><p>Should the V10 LP3 cap 4R portfolio keep trading all H4/H8/H12/D1/W1 signals, or should weaker lower-timeframe exposure be removed?</p></div>
+        <div><h3>Setup Tested</h3><p>Existing V9 trades only. V10 mechanics stay fixed: LP3, 4R max-open-risk cap, one open trade per symbol, higher-timeframe same-time priority, and 30R / 180D guardrails. V11 tests practical timeframe baskets and limited LP4/LP5 diagnostics.</p></div>
+        <div><h3>How To Read This Page</h3><p>Start with Best Timeframe Mix. Then compare the H4/H8 Decision table and Underwater Reduction table before using total R alone.</p></div>
+        <div><h3>Use / Do Not Use</h3><p>Keep all timeframes for the current practical baseline. Use V12 to retest LP3/LP4/LP5 on all timeframes and the cleaner no-H4 diagnostic set.</p></div>
+      </div>
+      <div class="conclusion-box"><strong>Conclusion:</strong> Keep all H4/H8/H12/D1/W1 timeframes for the current LP3 cap 4R baseline. The all-timeframe row still passed guardrails and produced the highest Total R. Removing H4 or H8 lowered drawdown, but the return sacrifice or underwater miss was not worth replacing the baseline.</div>
 
+    </section>
+
+
+    <section id="metric-glossary" class="metric-glossary" aria-labelledby="metric-glossary-title">
+      <h2 id="metric-glossary-title">Metric Glossary</h2>
+      <dl><div><dt>Realized DD</dt><dd>Closed-trade equity drawdown only. It ignores open trade risk until a position exits.</dd></div><div><dt>Risk-Reserved DD</dt><dd>Live-account stress drawdown that subtracts full open risk while positions are active.</dd></div><div><dt>Max Reserved Risk</dt><dd>Largest total open risk reserved at one time across accepted portfolio trades.</dd></div><div><dt>Worst Month</dt><dd>Largest calendar-month loss in account-percent terms for the tested schedule.</dd></div><div><dt>Return/DD</dt><dd>Total return divided by risk-reserved drawdown where available; higher is more efficient.</dd></div><div><dt>Avg R / PF</dt><dd>Average net R per trade and profit factor. Use both with trade count before trusting a row.</dd></div></dl>
     </section>
 
     <section id="overview">
@@ -266,32 +558,32 @@
     <section id="best-timeframe-mix">
       <h2>Best Timeframe Mix</h2>
       <div class="note">Pass requires max closed-trade drawdown &lt;= 30.0R and longest underwater period &lt;= 180.0 days. Rank is by Total R after those guardrails pass.</div>
-      <table class=""><thead><tr><th>Timeframe Set</th><th>Timeframes</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>All H4+H8+H12+D1+W1</td><td>H4+H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>10,037</td><td>13,012</td><td class="positive">1,100.9R</td><td>57.6%</td><td>1.25</td><td class="negative">26.7R</td><td>162</td><td>41.21</td><td>Yes</td></tr><tr><td>Remove H4</td><td>H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>5,361</td><td>6,395</td><td class="positive">792.6R</td><td>58.8%</td><td>1.35</td><td class="negative">23.5R</td><td>159</td><td>33.77</td><td>Yes</td></tr><tr><td>H8+H12</td><td>H8+H12</td><td>LP3</td><td>main</td><td>4,789</td><td>5,210</td><td class="positive">655.0R</td><td>58.4%</td><td>1.32</td><td class="negative">25.3R</td><td>172</td><td>25.93</td><td>Yes</td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Timeframe Set</th><th>Timeframes</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>All H4+H8+H12+D1+W1</td><td>H4+H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>10,037</td><td>13,012</td><td class="positive">1,100.9R</td><td>57.6%</td><td>1.25</td><td class="negative">26.7R</td><td>162</td><td>41.21</td><td>Yes</td></tr><tr><td>Remove H4</td><td>H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>5,361</td><td>6,395</td><td class="positive">792.6R</td><td>58.8%</td><td>1.35</td><td class="negative">23.5R</td><td>159</td><td>33.77</td><td>Yes</td></tr><tr><td>H8+H12</td><td>H8+H12</td><td>LP3</td><td>main</td><td>4,789</td><td>5,210</td><td class="positive">655.0R</td><td>58.4%</td><td>1.32</td><td class="negative">25.3R</td><td>172</td><td>25.93</td><td>Yes</td></tr></tbody></table></div>
     </section>
     <section id="baseline-comparison">
       <h2>Baseline Comparison</h2>
       <div class="note">This compares the V10 all-timeframe baseline against the best passing V11 timeframe mix.</div>
-      <table class=""><thead><tr><th>Row</th><th>Set</th><th>Trades</th><th>Total R</th><th>Max DD</th><th>Underwater Days</th><th>Pass</th></tr></thead><tbody><tr><td>V10 baseline all TF</td><td>All H4+H8+H12+D1+W1</td><td>10,037</td><td class="positive">1,100.9R</td><td>26.7R</td><td>162</td><td>Yes</td></tr><tr><td>Best V11 mix</td><td>All H4+H8+H12+D1+W1</td><td>10,037</td><td class="positive">1,100.9R</td><td>26.7R</td><td>162</td><td>Yes</td></tr><tr><td>Delta</td><td></td><td>+0.0</td><td class="neutral">+0.0R</td><td>+0.0R</td><td>+0.0</td><td></td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Row</th><th>Set</th><th>Trades</th><th>Total R</th><th>Max DD</th><th>Underwater Days</th><th>Pass</th></tr></thead><tbody><tr><td>V10 baseline all TF</td><td>All H4+H8+H12+D1+W1</td><td>10,037</td><td class="positive">1,100.9R</td><td>26.7R</td><td>162</td><td>Yes</td></tr><tr><td>Best V11 mix</td><td>All H4+H8+H12+D1+W1</td><td>10,037</td><td class="positive">1,100.9R</td><td>26.7R</td><td>162</td><td>Yes</td></tr><tr><td>Delta</td><td></td><td>+0.0</td><td class="neutral">+0.0R</td><td>+0.0R</td><td>+0.0</td><td></td></tr></tbody></table></div>
     </section>
     <section id="h4-h8-decision">
       <h2>H4/H8 Decision</h2>
       <div class="note">This isolates the practical decision: keep all, remove H4, remove H8, or remove both lower intraday buckets.</div>
-      <table class=""><thead><tr><th>Timeframe Set</th><th>Timeframes</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>All H4+H8+H12+D1+W1</td><td>H4+H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>10,037</td><td>13,012</td><td class="positive">1,100.9R</td><td>57.6%</td><td>1.25</td><td class="negative">26.7R</td><td>162</td><td>41.21</td><td>Yes</td></tr><tr><td>Remove H4</td><td>H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>5,361</td><td>6,395</td><td class="positive">792.6R</td><td>58.8%</td><td>1.35</td><td class="negative">23.5R</td><td>159</td><td>33.77</td><td>Yes</td></tr><tr><td>Remove H8</td><td>H4+H12+D1+W1</td><td>LP3</td><td>main</td><td>8,451</td><td>9,937</td><td class="positive">943.9R</td><td>57.8%</td><td>1.25</td><td class="negative">23.5R</td><td>182</td><td>40.22</td><td>No</td></tr><tr><td>Remove H4+H8</td><td>H12+D1+W1</td><td>LP3</td><td>main</td><td>3,003</td><td>3,320</td><td class="positive">567.7R</td><td>60.6%</td><td>1.47</td><td class="negative">19.4R</td><td>254</td><td>29.23</td><td>No</td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Timeframe Set</th><th>Timeframes</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>All H4+H8+H12+D1+W1</td><td>H4+H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>10,037</td><td>13,012</td><td class="positive">1,100.9R</td><td>57.6%</td><td>1.25</td><td class="negative">26.7R</td><td>162</td><td>41.21</td><td>Yes</td></tr><tr><td>Remove H4</td><td>H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>5,361</td><td>6,395</td><td class="positive">792.6R</td><td>58.8%</td><td>1.35</td><td class="negative">23.5R</td><td>159</td><td>33.77</td><td>Yes</td></tr><tr><td>Remove H8</td><td>H4+H12+D1+W1</td><td>LP3</td><td>main</td><td>8,451</td><td>9,937</td><td class="positive">943.9R</td><td>57.8%</td><td>1.25</td><td class="negative">23.5R</td><td>182</td><td>40.22</td><td>No</td></tr><tr><td>Remove H4+H8</td><td>H12+D1+W1</td><td>LP3</td><td>main</td><td>3,003</td><td>3,320</td><td class="positive">567.7R</td><td>60.6%</td><td>1.47</td><td class="negative">19.4R</td><td>254</td><td>29.23</td><td>No</td></tr></tbody></table></div>
     </section>
     <section id="underwater-reduction">
       <h2>Underwater Reduction</h2>
       <div class="note">Sorted by shortest underwater period first. Use this to judge smoother execution, not just total return.</div>
-      <table class=""><thead><tr><th>Timeframe Set</th><th>Timeframes</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>Remove H4</td><td>H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>5,361</td><td>6,395</td><td class="positive">792.6R</td><td>58.8%</td><td>1.35</td><td class="negative">23.5R</td><td>159</td><td>33.77</td><td>Yes</td></tr><tr><td>All H4+H8+H12+D1+W1</td><td>H4+H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>10,037</td><td>13,012</td><td class="positive">1,100.9R</td><td>57.6%</td><td>1.25</td><td class="negative">26.7R</td><td>162</td><td>41.21</td><td>Yes</td></tr><tr><td>H8+H12</td><td>H8+H12</td><td>LP3</td><td>main</td><td>4,789</td><td>5,210</td><td class="positive">655.0R</td><td>58.4%</td><td>1.32</td><td class="negative">25.3R</td><td>172</td><td>25.93</td><td>Yes</td></tr><tr><td>Remove H8</td><td>H4+H12+D1+W1</td><td>LP3</td><td>main</td><td>8,451</td><td>9,937</td><td class="positive">943.9R</td><td>57.8%</td><td>1.25</td><td class="negative">23.5R</td><td>182</td><td>40.22</td><td>No</td></tr><tr><td>H4</td><td>H4</td><td>LP3</td><td>main</td><td>6,516</td><td>6,617</td><td class="positive">545.9R</td><td>57.0%</td><td>1.18</td><td class="negative">31.2R</td><td>218</td><td>17.52</td><td>No</td></tr><tr><td>H12</td><td>H12</td><td>LP3</td><td>main</td><td>2,105</td><td>2,135</td><td class="positive">364.3R</td><td>60.0%</td><td>1.42</td><td class="negative">15.2R</td><td>252</td><td>23.92</td><td>No</td></tr><tr><td>Remove H4+H8</td><td>H12+D1+W1</td><td>LP3</td><td>main</td><td>3,003</td><td>3,320</td><td class="positive">567.7R</td><td>60.6%</td><td>1.47</td><td class="negative">19.4R</td><td>254</td><td>29.23</td><td>No</td></tr><tr><td>H12+D1</td><td>H12+D1</td><td>LP3</td><td>main</td><td>2,918</td><td>3,129</td><td class="positive">547.7R</td><td>60.6%</td><td>1.46</td><td class="negative">20.5R</td><td>256</td><td>26.75</td><td>No</td></tr><tr><td>D1</td><td>D1</td><td>LP3</td><td>main</td><td>981</td><td>994</td><td class="positive">188.0R</td><td>60.4%</td><td>1.48</td><td class="negative">10.6R</td><td>330</td><td>17.79</td><td>No</td></tr><tr><td>D1+W1</td><td>D1+W1</td><td>LP3</td><td>main</td><td>1,141</td><td>1,185</td><td class="positive">228.7R</td><td>60.8%</td><td>1.50</td><td class="negative">11.6R</td><td>338</td><td>19.70</td><td>No</td></tr><tr><td>H8</td><td>H8</td><td>LP3</td><td>main</td><td>3,038</td><td>3,075</td><td class="positive">324.1R</td><td>57.1%</td><td>1.24</td><td class="negative">24.2R</td><td>345</td><td>13.41</td><td>No</td></tr><tr><td>H4+H8</td><td>H4+H8</td><td>LP3</td><td>main</td><td>8,782</td><td>9,692</td><td class="positive">800.3R</td><td>57.0%</td><td>1.20</td><td class="negative">35.7R</td><td>360</td><td>22.42</td><td>No</td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Timeframe Set</th><th>Timeframes</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>Remove H4</td><td>H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>5,361</td><td>6,395</td><td class="positive">792.6R</td><td>58.8%</td><td>1.35</td><td class="negative">23.5R</td><td>159</td><td>33.77</td><td>Yes</td></tr><tr><td>All H4+H8+H12+D1+W1</td><td>H4+H8+H12+D1+W1</td><td>LP3</td><td>main</td><td>10,037</td><td>13,012</td><td class="positive">1,100.9R</td><td>57.6%</td><td>1.25</td><td class="negative">26.7R</td><td>162</td><td>41.21</td><td>Yes</td></tr><tr><td>H8+H12</td><td>H8+H12</td><td>LP3</td><td>main</td><td>4,789</td><td>5,210</td><td class="positive">655.0R</td><td>58.4%</td><td>1.32</td><td class="negative">25.3R</td><td>172</td><td>25.93</td><td>Yes</td></tr><tr><td>Remove H8</td><td>H4+H12+D1+W1</td><td>LP3</td><td>main</td><td>8,451</td><td>9,937</td><td class="positive">943.9R</td><td>57.8%</td><td>1.25</td><td class="negative">23.5R</td><td>182</td><td>40.22</td><td>No</td></tr><tr><td>H4</td><td>H4</td><td>LP3</td><td>main</td><td>6,516</td><td>6,617</td><td class="positive">545.9R</td><td>57.0%</td><td>1.18</td><td class="negative">31.2R</td><td>218</td><td>17.52</td><td>No</td></tr><tr><td>H12</td><td>H12</td><td>LP3</td><td>main</td><td>2,105</td><td>2,135</td><td class="positive">364.3R</td><td>60.0%</td><td>1.42</td><td class="negative">15.2R</td><td>252</td><td>23.92</td><td>No</td></tr><tr><td>Remove H4+H8</td><td>H12+D1+W1</td><td>LP3</td><td>main</td><td>3,003</td><td>3,320</td><td class="positive">567.7R</td><td>60.6%</td><td>1.47</td><td class="negative">19.4R</td><td>254</td><td>29.23</td><td>No</td></tr><tr><td>H12+D1</td><td>H12+D1</td><td>LP3</td><td>main</td><td>2,918</td><td>3,129</td><td class="positive">547.7R</td><td>60.6%</td><td>1.46</td><td class="negative">20.5R</td><td>256</td><td>26.75</td><td>No</td></tr><tr><td>D1</td><td>D1</td><td>LP3</td><td>main</td><td>981</td><td>994</td><td class="positive">188.0R</td><td>60.4%</td><td>1.48</td><td class="negative">10.6R</td><td>330</td><td>17.79</td><td>No</td></tr><tr><td>D1+W1</td><td>D1+W1</td><td>LP3</td><td>main</td><td>1,141</td><td>1,185</td><td class="positive">228.7R</td><td>60.8%</td><td>1.50</td><td class="negative">11.6R</td><td>338</td><td>19.70</td><td>No</td></tr><tr><td>H8</td><td>H8</td><td>LP3</td><td>main</td><td>3,038</td><td>3,075</td><td class="positive">324.1R</td><td>57.1%</td><td>1.24</td><td class="negative">24.2R</td><td>345</td><td>13.41</td><td>No</td></tr><tr><td>H4+H8</td><td>H4+H8</td><td>LP3</td><td>main</td><td>8,782</td><td>9,692</td><td class="positive">800.3R</td><td>57.0%</td><td>1.20</td><td class="negative">35.7R</td><td>360</td><td>22.42</td><td>No</td></tr></tbody></table></div>
     </section>
     <section id="rejected-interesting">
       <h2>Rejected But Interesting</h2>
       <div class="note warning">These main rows failed the V11 guardrails. They can be research leads, but they should not replace the baseline yet.</div>
-      <table class=""><thead><tr><th>Timeframe Set</th><th>Timeframes</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>Remove H8</td><td>H4+H12+D1+W1</td><td>LP3</td><td>main</td><td>8,451</td><td>9,937</td><td class="positive">943.9R</td><td>57.8%</td><td>1.25</td><td class="negative">23.5R</td><td>182</td><td>40.22</td><td>No</td></tr><tr><td>H4+H8</td><td>H4+H8</td><td>LP3</td><td>main</td><td>8,782</td><td>9,692</td><td class="positive">800.3R</td><td>57.0%</td><td>1.20</td><td class="negative">35.7R</td><td>360</td><td>22.42</td><td>No</td></tr><tr><td>Remove H4+H8</td><td>H12+D1+W1</td><td>LP3</td><td>main</td><td>3,003</td><td>3,320</td><td class="positive">567.7R</td><td>60.6%</td><td>1.47</td><td class="negative">19.4R</td><td>254</td><td>29.23</td><td>No</td></tr><tr><td>H12+D1</td><td>H12+D1</td><td>LP3</td><td>main</td><td>2,918</td><td>3,129</td><td class="positive">547.7R</td><td>60.6%</td><td>1.46</td><td class="negative">20.5R</td><td>256</td><td>26.75</td><td>No</td></tr><tr><td>H4</td><td>H4</td><td>LP3</td><td>main</td><td>6,516</td><td>6,617</td><td class="positive">545.9R</td><td>57.0%</td><td>1.18</td><td class="negative">31.2R</td><td>218</td><td>17.52</td><td>No</td></tr><tr><td>H12</td><td>H12</td><td>LP3</td><td>main</td><td>2,105</td><td>2,135</td><td class="positive">364.3R</td><td>60.0%</td><td>1.42</td><td class="negative">15.2R</td><td>252</td><td>23.92</td><td>No</td></tr><tr><td>H8</td><td>H8</td><td>LP3</td><td>main</td><td>3,038</td><td>3,075</td><td class="positive">324.1R</td><td>57.1%</td><td>1.24</td><td class="negative">24.2R</td><td>345</td><td>13.41</td><td>No</td></tr><tr><td>D1+W1</td><td>D1+W1</td><td>LP3</td><td>main</td><td>1,141</td><td>1,185</td><td class="positive">228.7R</td><td>60.8%</td><td>1.50</td><td class="negative">11.6R</td><td>338</td><td>19.70</td><td>No</td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Timeframe Set</th><th>Timeframes</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>Remove H8</td><td>H4+H12+D1+W1</td><td>LP3</td><td>main</td><td>8,451</td><td>9,937</td><td class="positive">943.9R</td><td>57.8%</td><td>1.25</td><td class="negative">23.5R</td><td>182</td><td>40.22</td><td>No</td></tr><tr><td>H4+H8</td><td>H4+H8</td><td>LP3</td><td>main</td><td>8,782</td><td>9,692</td><td class="positive">800.3R</td><td>57.0%</td><td>1.20</td><td class="negative">35.7R</td><td>360</td><td>22.42</td><td>No</td></tr><tr><td>Remove H4+H8</td><td>H12+D1+W1</td><td>LP3</td><td>main</td><td>3,003</td><td>3,320</td><td class="positive">567.7R</td><td>60.6%</td><td>1.47</td><td class="negative">19.4R</td><td>254</td><td>29.23</td><td>No</td></tr><tr><td>H12+D1</td><td>H12+D1</td><td>LP3</td><td>main</td><td>2,918</td><td>3,129</td><td class="positive">547.7R</td><td>60.6%</td><td>1.46</td><td class="negative">20.5R</td><td>256</td><td>26.75</td><td>No</td></tr><tr><td>H4</td><td>H4</td><td>LP3</td><td>main</td><td>6,516</td><td>6,617</td><td class="positive">545.9R</td><td>57.0%</td><td>1.18</td><td class="negative">31.2R</td><td>218</td><td>17.52</td><td>No</td></tr><tr><td>H12</td><td>H12</td><td>LP3</td><td>main</td><td>2,105</td><td>2,135</td><td class="positive">364.3R</td><td>60.0%</td><td>1.42</td><td class="negative">15.2R</td><td>252</td><td>23.92</td><td>No</td></tr><tr><td>H8</td><td>H8</td><td>LP3</td><td>main</td><td>3,038</td><td>3,075</td><td class="positive">324.1R</td><td>57.1%</td><td>1.24</td><td class="negative">24.2R</td><td>345</td><td>13.41</td><td>No</td></tr><tr><td>D1+W1</td><td>D1+W1</td><td>LP3</td><td>main</td><td>1,141</td><td>1,185</td><td class="positive">228.7R</td><td>60.8%</td><td>1.50</td><td class="negative">11.6R</td><td>338</td><td>19.70</td><td>No</td></tr></tbody></table></div>
     </section>
     <section id="lp-diagnostics">
       <h2>LP4/LP5 Diagnostics</h2>
       <div class="note">Diagnostics only run on all timeframes, remove H4, and remove H4+H8. V12 can retest LP pivot defaults after V11 selects a timeframe set.</div>
-      <table class=""><thead><tr><th>Timeframe Set</th><th>Timeframes</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>All H4+H8+H12+D1+W1</td><td>H4+H8+H12+D1+W1</td><td>LP4</td><td>diagnostic</td><td>7,793</td><td>9,512</td><td class="positive">1,004.3R</td><td>58.5%</td><td>1.30</td><td class="negative">34.4R</td><td>271</td><td>29.21</td><td>No</td></tr><tr><td>All H4+H8+H12+D1+W1</td><td>H4+H8+H12+D1+W1</td><td>LP5</td><td>diagnostic</td><td>6,431</td><td>7,519</td><td class="positive">888.4R</td><td>59.0%</td><td>1.32</td><td class="negative">24.0R</td><td>229</td><td>36.98</td><td>No</td></tr><tr><td>Remove H4</td><td>H8+H12+D1+W1</td><td>LP4</td><td>diagnostic</td><td>4,197</td><td>4,798</td><td class="positive">729.3R</td><td>60.1%</td><td>1.42</td><td class="negative">21.6R</td><td>150</td><td>33.71</td><td>Yes</td></tr><tr><td>Remove H4</td><td>H8+H12+D1+W1</td><td>LP5</td><td>diagnostic</td><td>3,397</td><td>3,828</td><td class="positive">634.1R</td><td>60.7%</td><td>1.46</td><td class="negative">19.4R</td><td>138</td><td>32.75</td><td>Yes</td></tr><tr><td>Remove H4+H8</td><td>H12+D1+W1</td><td>LP4</td><td>diagnostic</td><td>2,282</td><td>2,458</td><td class="positive">478.5R</td><td>61.7%</td><td>1.53</td><td class="negative">19.2R</td><td>230</td><td>24.94</td><td>No</td></tr><tr><td>Remove H4+H8</td><td>H12+D1+W1</td><td>LP5</td><td>diagnostic</td><td>1,843</td><td>1,966</td><td class="positive">392.4R</td><td>61.8%</td><td>1.54</td><td class="negative">15.9R</td><td>266</td><td>24.70</td><td>No</td></tr></tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Timeframe Set</th><th>Timeframes</th><th>LP</th><th>Role</th><th>Accepted</th><th>Available</th><th>Total R</th><th>Win Rate</th><th>PF</th><th>Max DD</th><th>Underwater Days</th><th>Return/DD</th><th>Pass</th></tr></thead><tbody><tr><td>All H4+H8+H12+D1+W1</td><td>H4+H8+H12+D1+W1</td><td>LP4</td><td>diagnostic</td><td>7,793</td><td>9,512</td><td class="positive">1,004.3R</td><td>58.5%</td><td>1.30</td><td class="negative">34.4R</td><td>271</td><td>29.21</td><td>No</td></tr><tr><td>All H4+H8+H12+D1+W1</td><td>H4+H8+H12+D1+W1</td><td>LP5</td><td>diagnostic</td><td>6,431</td><td>7,519</td><td class="positive">888.4R</td><td>59.0%</td><td>1.32</td><td class="negative">24.0R</td><td>229</td><td>36.98</td><td>No</td></tr><tr><td>Remove H4</td><td>H8+H12+D1+W1</td><td>LP4</td><td>diagnostic</td><td>4,197</td><td>4,798</td><td class="positive">729.3R</td><td>60.1%</td><td>1.42</td><td class="negative">21.6R</td><td>150</td><td>33.71</td><td>Yes</td></tr><tr><td>Remove H4</td><td>H8+H12+D1+W1</td><td>LP5</td><td>diagnostic</td><td>3,397</td><td>3,828</td><td class="positive">634.1R</td><td>60.7%</td><td>1.46</td><td class="negative">19.4R</td><td>138</td><td>32.75</td><td>Yes</td></tr><tr><td>Remove H4+H8</td><td>H12+D1+W1</td><td>LP4</td><td>diagnostic</td><td>2,282</td><td>2,458</td><td class="positive">478.5R</td><td>61.7%</td><td>1.53</td><td class="negative">19.2R</td><td>230</td><td>24.94</td><td>No</td></tr><tr><td>Remove H4+H8</td><td>H12+D1+W1</td><td>LP5</td><td>diagnostic</td><td>1,843</td><td>1,966</td><td class="positive">392.4R</td><td>61.8%</td><td>1.54</td><td class="negative">15.9R</td><td>266</td><td>24.70</td><td>No</td></tr></tbody></table></div>
     </section>
   </main>
   <footer>Generated from existing V9 trade logs. No signal rerun was performed.</footer>

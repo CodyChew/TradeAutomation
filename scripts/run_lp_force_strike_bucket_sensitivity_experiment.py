@@ -12,10 +12,12 @@ from typing import Any
 import pandas as pd
 
 from lp_force_strike_dashboard_metadata import (
+    dashboard_base_css,
+    dashboard_header_html,
     dashboard_page,
-    dashboard_page_links,
     experiment_summary_css,
     experiment_summary_html,
+    metric_glossary_html,
 )
 from run_lp_force_strike_risk_sizing_experiment import (
     _fmt_int,
@@ -434,6 +436,7 @@ def _html_report(
     .positive {{ color: var(--good); font-weight: 700; }}
     .negative {{ color: var(--bad); font-weight: 700; }}
     .neutral {{ color: var(--muted); }}
+    {dashboard_base_css(table_min_width="960px")}
     footer {{ color: var(--muted); padding: 0 max(18px, 5vw) 28px; }}
     @media (max-width: 760px) {{
       header {{ padding: 22px 16px; }}
@@ -451,15 +454,25 @@ def _html_report(
   </style>
 </head>
 <body>
-  <header>
-    <h1>LP + Force Strike V15 Bucket Sensitivity - by Cody</h1>
-    <p>Static V15 report generated from <code>{_escape(run_dir)}</code>. This page tests 64 risk ladders across H4/H8, H12/D1, and W1 buckets.</p>
-    <nav aria-label="Dashboard pages">
-      {dashboard_page_links(current_page)}
-    </nav>
-  </header>
+  {dashboard_header_html(
+      title="LP + Force Strike V15 Bucket Sensitivity - by Cody",
+      subtitle_html=f"Static V15 report generated from <code>{_escape(run_dir)}</code>. This page tests 64 risk ladders across H4/H8, H12/D1, and W1 buckets.",
+      current_page=current_page,
+      section_links=[
+          ("#experiment-summary", "Snapshot"),
+          ("#recommendation", "Recommendation"),
+          ("#metric-glossary", "Glossary"),
+          ("#practical", "Practical Rows"),
+          ("#efficiency", "Efficiency"),
+          ("#bucket-effects", "Buckets"),
+          ("#heatmap", "Heatmap"),
+          ("#all-grid", "All Rows"),
+          ("#timeframes", "Timeframes"),
+      ],
+  )}
   <main>
     {experiment_summary_html(page_metadata)}
+    {metric_glossary_html()}
     <section id="recommendation">
       <h2>Recommendation Card</h2>
       <div class="kpis">

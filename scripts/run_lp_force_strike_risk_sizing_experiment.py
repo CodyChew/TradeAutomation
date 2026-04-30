@@ -11,10 +11,12 @@ from typing import Any
 import pandas as pd
 
 from lp_force_strike_dashboard_metadata import (
+    dashboard_base_css,
+    dashboard_header_html,
     dashboard_page,
-    dashboard_page_links,
     experiment_summary_css,
     experiment_summary_html,
+    metric_glossary_html,
 )
 
 
@@ -94,7 +96,8 @@ def _table(headers: list[str], rows: list[list[Any]], *, classes: str = "") -> s
             else:
                 cells.append(f"<td>{value}</td>")
         body.append("<tr>" + "".join(cells) + "</tr>")
-    return f'<table class="{classes}"><thead><tr>{thead}</tr></thead><tbody>{"".join(body)}</tbody></table>'
+    class_attr = "data-table" + (f" {classes}" if classes else "")
+    return f'<div class="table-scroll"><table class="{class_attr}"><thead><tr>{thead}</tr></thead><tbody>{"".join(body)}</tbody></table></div>'
 
 
 def _risk_label(schedule: dict[str, Any]) -> str:
@@ -727,6 +730,7 @@ def _html_report(
     .positive {{ color: var(--good); font-weight: 700; }}
     .negative {{ color: var(--bad); font-weight: 700; }}
     .neutral {{ color: var(--muted); }}
+    {dashboard_base_css(table_min_width="1080px")}
     footer {{ color: var(--muted); padding: 0 max(18px, 5vw) 28px; }}
     @media (max-width: 760px) {{
       header {{ padding: 22px 16px; }}
@@ -744,15 +748,25 @@ def _html_report(
   </style>
 </head>
 <body>
-  <header>
-    <h1>LP + Force Strike V14 Risk Sizing - by Cody</h1>
-    <p>Static V14 report generated from <code>{_escape(run_dir)}</code>. This page converts the V13 take-all baseline into account-risk drawdowns.</p>
-    <nav aria-label="Dashboard pages">
-      {dashboard_page_links(current_page)}
-    </nav>
-  </header>
+  {dashboard_header_html(
+      title="LP + Force Strike V14 Risk Sizing - by Cody",
+      subtitle_html=f"Static V14 report generated from <code>{_escape(run_dir)}</code>. This page converts the V13 take-all baseline into account-risk drawdowns.",
+      current_page=current_page,
+      section_links=[
+          ("#experiment-summary", "Snapshot"),
+          ("#recommendation", "Recommendation"),
+          ("#metric-glossary", "Glossary"),
+          ("#risk-composition", "Risk Composition"),
+          ("#risk-calibration", "Calibration"),
+          ("#leaderboard", "Leaderboard"),
+          ("#reserved", "Reserved DD"),
+          ("#periods", "Periods"),
+          ("#exposure", "Exposure"),
+      ],
+  )}
   <main>
     {experiment_summary_html(page_metadata)}
+    {metric_glossary_html()}
     <section id="recommendation">
       <h2>Recommendation Card</h2>
       <div class="kpis">
