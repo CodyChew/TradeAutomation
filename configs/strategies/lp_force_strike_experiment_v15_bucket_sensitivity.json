@@ -1,0 +1,68 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v15_bucket_sensitivity",
+  "input_trades_path": "reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831/trades.csv",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v15_bucket_sensitivity",
+  "pivot_strength": 3,
+  "base_candidate_id": "signal_zone_0p5_pullback__fs_structure__1r",
+  "timeframes": [
+    "H4",
+    "H8",
+    "H12",
+    "D1",
+    "W1"
+  ],
+  "buckets": [
+    {
+      "bucket_id": "ltf",
+      "label": "H4/H8",
+      "timeframes": [
+        "H4",
+        "H8"
+      ],
+      "risk_pct_values": [
+        0.1,
+        0.15,
+        0.2,
+        0.25
+      ]
+    },
+    {
+      "bucket_id": "h12_d1",
+      "label": "H12/D1",
+      "timeframes": [
+        "H12",
+        "D1"
+      ],
+      "risk_pct_values": [
+        0.2,
+        0.3,
+        0.4,
+        0.5
+      ]
+    },
+    {
+      "bucket_id": "w1",
+      "label": "W1",
+      "timeframes": [
+        "W1"
+      ],
+      "risk_pct_values": [
+        0.3,
+        0.45,
+        0.6,
+        0.75
+      ]
+    }
+  ],
+  "practical_filters": {
+    "max_reserved_drawdown_pct": 10.0,
+    "max_reserved_open_risk_pct": 6.0,
+    "min_worst_month_pct": -5.0
+  },
+  "baseline_schedule": {
+    "lower_risk_pct": 0.15,
+    "middle_risk_pct": 0.3,
+    "w1_risk_pct": 0.45,
+    "label": "V14 tight H12-D1 basket"
+  }
+}

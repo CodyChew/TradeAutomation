@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-04-30 local time after adding the V14 tight H12-D1 risk
-basket to the risk-sizing dashboard and documentation.
+Last updated: 2026-04-30 local time after adding the V15 risk-bucket
+sensitivity study to the dashboard and documentation.
 
 ## Purpose
 
@@ -13,7 +13,8 @@ patterns. It now has two layers:
 
 It still does not contain live execution or a combined TradingView indicator.
 V10-V13 add portfolio-style research analytics. V14 adds account-risk sizing
-and drawdown views, but not broker execution rules.
+and drawdown views. V15 adds 3-bucket risk-ladder sensitivity, but not broker
+execution rules.
 
 ## Concept Dependencies
 
@@ -669,6 +670,69 @@ Does a deliberately more aggressive lower-timeframe ladder improve total return
 enough to justify additional H4/H8 noise and drawdown?
 ```
 
+## Experiment V15 Risk Bucket Sensitivity
+
+Experiment V15 tests the V14 follow-up question by separating account risk into
+three buckets: `H4/H8`, `H12/D1`, and `W1`.
+
+Detailed notes:
+
+```text
+docs/lp_force_strike_experiment_v15_bucket_sensitivity.md
+```
+
+Run details:
+
+- config:
+  `../../configs/strategies/lp_force_strike_experiment_v15_bucket_sensitivity.json`
+- input trades:
+  `reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260429_123831/trades.csv`
+- report:
+  `reports/strategies/lp_force_strike_experiment_v15_bucket_sensitivity/20260430_125620`
+- dashboard: `docs/v15.html`
+- fixed model: LP3, all `H4/H8/H12/D1/W1`, `take_all`, 0.5 signal-candle
+  pullback, full FS structure stop, single 1R target, fixed 6-bar pullback
+  wait.
+
+Grid:
+
+- `H4/H8`: `0.10%`, `0.15%`, `0.20%`, `0.25%`.
+- `H12/D1`: `0.20%`, `0.30%`, `0.40%`, `0.50%`.
+- `W1`: `0.30%`, `0.45%`, `0.60%`, `0.75%`.
+
+Practical filters:
+
+- risk-reserved max DD <= `10%`;
+- max reserved open risk <= `6%`;
+- worst month >= `-5%`.
+
+Main result:
+
+| Row | H4/H8 | H12/D1 | W1 | Total return | Reserved DD | Max open risk | Worst month |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| V14 tight baseline | 0.15% | 0.30% | 0.45% | 324.2% | 7.9% | 5.1% | -3.03% |
+| Most-efficient practical | 0.20% | 0.30% | 0.75% | 383.2% | 7.9% | 5.75% | -3.22% |
+| Highest-return practical | 0.25% | 0.30% | 0.60% | 421.8% | 9.7% | 5.95% | -4.05% |
+
+Current conclusion:
+
+- Use the most-efficient practical row as the first account-constraint
+  candidate: H4/H8 `0.20%`, H12/D1 `0.30%`, W1 `0.75%`.
+- Keep H4/H8 `0.25%`, H12/D1 `0.30%`, W1 `0.60%` as the growth alternative.
+- H4/H8 upweighting helped materially, but H4/H8 `0.25%` sits at the top of
+  the tested lower-timeframe range and near the open-risk limit.
+- Do not increase H12/D1 above `0.30%` without a separate drawdown-tolerance
+  decision because no `0.40%` or `0.50%` middle-bucket row passed the practical
+  filters.
+
+Decision question:
+
+```text
+Can the V15 efficient bucket row survive daily loss, max loss, same-symbol
+stacking, and concurrent-trade constraints, and how much extra return does the
+growth alternative retain after those constraints?
+```
+
 ## Dashboard Interpretation UX
 
 The dashboard interpretation metadata lives in:
@@ -677,7 +741,7 @@ The dashboard interpretation metadata lives in:
 ../../configs/dashboards/lp_force_strike_pages.json
 ```
 
-On 2026-04-30, V6-V14 were given a `decision_brief` section in that metadata.
+On 2026-04-30, V6-V15 were given a `decision_brief` section in that metadata.
 The shared renderer now shows a prominent `Decision Brief` near the top of each
 page, before the tables. This preserves the concise chat-style interpretation
 the user found useful, for example the V11 bullets explaining why removing H4
@@ -689,12 +753,20 @@ V14 is rendered by:
 ../../scripts/run_lp_force_strike_risk_sizing_experiment.py
 ```
 
+V15 is rendered by:
+
+```text
+../../scripts/run_lp_force_strike_bucket_sensitivity_experiment.py
+```
+
 That generator also owns the V14 `Risk Schedule Composition` and `Risk
-Tolerance Calibration` tables, so do not hand-edit `docs/v14.html` directly.
+Tolerance Calibration` tables. The V15 generator owns the bucket leaderboard,
+bucket-effect, heatmap, and contribution sections. Do not hand-edit generated
+dashboard pages directly.
 
 ## Boundary
 
 This lab intentionally excludes SMA context, broker order execution, and EA
 logic. V10/V11/V12/V13 portfolio analytics are research-only closed-trade R
-simulations. V14 adds account-risk sizing, but still does not model live broker
-execution.
+simulations. V14 and V15 add account-risk sizing, but still do not model live
+broker execution.

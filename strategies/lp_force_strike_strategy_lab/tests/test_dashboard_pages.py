@@ -23,16 +23,16 @@ class DashboardPagesTests(unittest.TestCase):
         metadata = load_dashboard_metadata()
         pages = {page["page"]: page for page in metadata["pages"]}
 
-        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 15)})
-        for version in range(1, 15):
+        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 16)})
+        for version in range(1, 16):
             page = pages[f"v{version}.html"]
             for field in ("title", "question", "setup", "how_to_read", "conclusion", "action", "status_label"):
                 self.assertTrue(page[field], f"missing {field} for v{version}")
 
     def test_every_generated_dashboard_links_to_all_pages(self) -> None:
-        expected_links = ['href="index.html"'] + [f'href="v{version}.html"' for version in range(1, 15)]
+        expected_links = ['href="index.html"'] + [f'href="v{version}.html"' for version in range(1, 16)]
 
-        for path in [DOCS_ROOT / "index.html"] + [DOCS_ROOT / f"v{version}.html" for version in range(1, 15)]:
+        for path in [DOCS_ROOT / "index.html"] + [DOCS_ROOT / f"v{version}.html" for version in range(1, 16)]:
             html = path.read_text(encoding="utf-8")
             for link in expected_links:
                 self.assertIn(link, html, f"{path.name} missing {link}")
@@ -80,7 +80,7 @@ class DashboardPagesTests(unittest.TestCase):
         metadata = load_dashboard_metadata()
         pages = {page["page"]: page for page in metadata["pages"]}
 
-        for version in range(10, 15):
+        for version in range(10, 16):
             self.assertIn("decision_brief", pages[f"v{version}.html"])
             html = (DOCS_ROOT / f"v{version}.html").read_text(encoding="utf-8")
             self.assertIn("Decision Brief", html)
@@ -114,6 +114,17 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Worst Day / Week / Month", html)
         self.assertIn("Max Concurrent Exposure", html)
         self.assertIn("Timeframe Contribution", html)
+
+    def test_v15_dashboard_shows_bucket_sensitivity_sections(self) -> None:
+        html = (DOCS_ROOT / "v15.html").read_text(encoding="utf-8")
+
+        self.assertIn("Decision Brief", html)
+        self.assertIn("Risk Bucket Sensitivity", html)
+        self.assertIn("Practical Return Leaderboard", html)
+        self.assertIn("Most-efficient practical row", html)
+        self.assertIn("H4/H8 0.20%, H12/D1 0.30%, W1 0.75%", html)
+        self.assertIn("Grid Heatmap By W1 Risk", html)
+        self.assertIn("Recommended Ladder Timeframe Contribution", html)
 
     def test_lp_pivot_candidate_labels_are_readable(self) -> None:
         label = _candidate_short("lp_pivot_2__signal_zone_0p5_pullback__fs_structure__1r")

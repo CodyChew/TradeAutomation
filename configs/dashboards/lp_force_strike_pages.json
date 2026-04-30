@@ -3,17 +3,17 @@
     "title": "TradeAutomation Research Dashboards",
     "intro": "Versioned static dashboards for LP + Force Strike experiments. Use stable version pages for comparison instead of overwriting old analysis.",
     "current_baseline": {
-      "title": "Current Baseline: LP3 take-all all timeframes",
-      "description": "V13 relaxed the old hard guardrails and selected take-all as the current research baseline: LP3 across H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait. This has higher return and shorter underwater than cap 4R, but requires accepting same-symbol stacking and higher concurrent exposure.",
+      "title": "Current Baseline: LP3 take-all with V15 risk buckets",
+      "description": "The strategy baseline remains V13: LP3 take-all across H4/H8/H12/D1/W1 with 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait. V15 bucket sensitivity moves the first account-constraint candidate to H4/H8 0.20%, H12/D1 0.30%, and W1 0.75%; the higher-return growth row is H4/H8 0.25%, H12/D1 0.30%, and W1 0.60%.",
       "status_label": "Active baseline",
       "facts": [
-        ["Total R", "1,512.3R"],
-        ["Max DD", "33.4R"],
-        ["Underwater", "111D"],
-        ["Max Concurrent", "17"]
+        ["Risk Ladder", "0.20 / 0.30 / 0.75"],
+        ["Return", "383.2%"],
+        ["Reserved DD", "7.9%"],
+        ["Growth Row", "421.8%"]
       ],
-      "button_href": "v13.html",
-      "button_label": "Open Relaxed Portfolio Study"
+      "button_href": "v15.html",
+      "button_label": "Open Bucket Sensitivity"
     }
   },
   "pages": [
@@ -393,6 +393,36 @@
           "Conservative equal-LTF: total +240.3%, risk-reserved DD 6.7%, max open risk 4.2%; smoother if drawdown tolerance is lower."
         ],
         "next_step": "Use V14 to choose account risk, then test account-level constraints such as daily loss, max loss, and execution limits."
+      }
+    },
+    {
+      "page": "v15.html",
+      "nav_label": "V15",
+      "index_order": -5,
+      "title": "V15 Risk Bucket Sensitivity",
+      "status_label": "Risk ladder sensitivity",
+      "status_kind": "active",
+      "question": "Which 3-bucket account-risk ladder is strongest when H4/H8, H12/D1, and W1 risk are varied separately?",
+      "setup": "Existing V9 trade rows only. The strategy model stays fixed: LP3, all H4/H8/H12/D1/W1, take-all handling, 0.5 signal-candle pullback, full Force Strike structure stop, single 1R target, and fixed 6-bar pullback wait. V15 tests 64 bucket ladders.",
+      "how_to_read": "Start with the Decision Brief and Recommendation Card. Practical rows require risk-reserved DD at or below 10%, max reserved open risk at or below 6%, and worst month no worse than -5%. Then compare the highest-return practical row against the most-efficient practical row.",
+      "conclusion": "Upweighting H4/H8 helped materially, but the cleanest next account-constraint candidate is the most-efficient practical row: H4/H8 0.20%, H12/D1 0.30%, and W1 0.75%. The highest-return practical row, H4/H8 0.25%, H12/D1 0.30%, and W1 0.60%, is a growth-tilted alternative near the open-risk limit.",
+      "action": "Use the most-efficient practical row for the next account-constraint test. Keep the highest-return practical row as the growth alternative, and do not increase H12/D1 above 0.30% without a separate drawdown tolerance decision.",
+      "facts": [
+        ["Efficient Ladder", "0.20 / 0.30 / 0.75"],
+        ["Efficient Return", "383.2%"],
+        ["Efficient DD", "7.9%"],
+        ["Growth Return", "421.8%"]
+      ],
+      "decision_brief": {
+        "headline": "V15 result: higher H4/H8 risk helped, but use the efficient bucket row before account constraints.",
+        "key_results": [
+          "V15 tested 64 ladders across H4/H8 0.10-0.25%, H12/D1 0.20-0.50%, and W1 0.30-0.75%.",
+          "Most-efficient practical row: H4/H8 0.20%, H12/D1 0.30%, W1 0.75%, total +383.2%, risk-reserved DD 7.9%, max open risk 5.75%, worst month -3.22%.",
+          "Highest-return practical row: H4/H8 0.25%, H12/D1 0.30%, W1 0.60%, total +421.8%, risk-reserved DD 9.7%, max open risk 5.95%, worst month -4.05%.",
+          "V14 tight H12-D1 baseline was H4/H8 0.15%, H12/D1 0.30%, W1 0.45%, total +324.2%, risk-reserved DD 7.9%, max open risk 5.1%.",
+          "H12/D1 above 0.30% did not pass the practical filters, while H4/H8 at 0.25% is useful but sits at the top of the tested lower-timeframe range."
+        ],
+        "next_step": "Run account-level constraints using H4/H8 0.20%, H12/D1 0.30%, W1 0.75% as the first candidate, with 0.25/0.30/0.60 as the growth alternative."
       }
     }
   ]

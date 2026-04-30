@@ -39,12 +39,11 @@ Static research dashboards are published from `docs/`:
 
 The current LP + Force Strike research baseline is V13: LP3 take-all across
 H4/H8/H12/D1/W1, using the 0.5 signal-candle pullback, full Force Strike
-structure stop, single 1R target, and fixed 6-bar pullback wait. V14 adds the
-current risk-sizing read: tight H12-D1 basket risk, with H4/H8 sized equally,
-H12/D1 grouped together, and W1 kept higher. V14 also includes a risk tolerance
-calibration table for scaling the recommended ladder to different target
-drawdowns. Open `docs/index.html` or the GitHub Pages link for the latest
-dashboard.
+structure stop, single 1R target, and fixed 6-bar pullback wait. V15 is the
+current risk-sizing read: the first account-constraint candidate is H4/H8
+`0.20%`, H12/D1 `0.30%`, and W1 `0.75%`; the growth contrast is H4/H8
+`0.25%`, H12/D1 `0.30%`, and W1 `0.60%`. Open `docs/index.html` or the GitHub
+Pages link for the latest dashboard.
 
 ## Current Shared Labs
 
