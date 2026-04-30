@@ -105,4 +105,8 @@ dry-run MT5 adapter that:
 - checks current bid/ask and spread;
 - runs `order_check` against the generated intent;
 - logs whether the order would be accepted or rejected;
+- emits Telegram notification events for signal, rejection, order-check, and
+  executor-error states;
 - never sends an order unless an explicit live flag is later added.
+
+Telegram is reporting only. It must not decide whether a trade is valid.
