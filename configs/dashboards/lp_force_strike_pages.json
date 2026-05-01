@@ -424,6 +424,35 @@
         ],
         "next_step": "Run account-level constraints using H4/H8 0.20%, H12/D1 0.30%, W1 0.75% as the first candidate, with 0.25/0.30/0.60 as the growth alternative."
       }
+    },
+    {
+      "page": "v16.html",
+      "nav_label": "V16",
+      "index_order": -6,
+      "title": "V16 Bid/Ask Execution Realism",
+      "status_label": "Execution realism",
+      "status_kind": "active",
+      "question": "Does broker-realistic bid/ask triggering materially weaken the V15 baseline, and should Force Strike stops include a spread-based buffer?",
+      "setup": "Research-only rerun of the current LP3, H4/H8/H12/D1/W1, 0.5 pullback, FS structure stop, 1R target, fixed 6-bar pullback model. OHLC is treated as Bid and Ask is approximated from each candle's stored spread_points and point.",
+      "how_to_read": "Start with Decision Read, then compare raw R deltas and V15 bucket sensitivity per buffer. Do not change live stops until the no-buffer and buffer rows are reviewed together.",
+      "conclusion": "Bid/ask realism did not weaken the current baseline. The no-buffer model slightly improved raw total R while missing less than 1% of baseline trades. A 1.5x spread buffer improved some bucket rows, but it changes outcomes materially enough that live stops should stay no-buffer until a focused buffer follow-up confirms it.",
+      "action": "Keep current live stop placement unchanged for now. Use V16 as evidence that bid/ask mechanics are acceptable, and treat spread buffers as a promising follow-up rather than an immediate live-rule change.",
+      "facts": [
+        ["Execution", "Bid/Ask"],
+        ["Buffers", "0x to 2x spread"],
+        ["Universe", "28 pairs / 5 TF"],
+        ["Status", "No live change"]
+      ],
+      "decision_brief": {
+        "headline": "V16 result: bid/ask realism is not a material regression; do not change live stops yet.",
+        "key_results": [
+          "No-buffer V16: 12,917 trades versus 13,012 baseline trades, total 1,535.2R versus 1,512.3R, PF 1.270 versus 1.265.",
+          "No-buffer V16 missed 95 baseline trades, changed 284 exit reasons, and still passed V15 practical bucket filters.",
+          "The 1.5x spread-buffer variant had the best raw total R at 1,587.1R and a strong high-return bucket row, but it changed 722 exit reasons and 493 win/loss signs.",
+          "Because buffer behavior is more invasive than bid/ask realism itself, keep live FS structure stops unchanged until a focused buffer-specific validation is reviewed."
+        ],
+        "next_step": "Keep no-buffer live stops for now. If improving stop robustness becomes a priority, run a focused buffer validation by timeframe and symbol group."
+      }
     }
   ]
 }

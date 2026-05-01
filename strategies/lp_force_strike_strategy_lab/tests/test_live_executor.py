@@ -391,6 +391,36 @@ class LiveExecutorTests(unittest.TestCase):
 
             self.assertEqual(load_live_state(path), original)
 
+    def test_live_state_save_falls_back_when_replace_is_denied(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "state.json"
+            original = LiveExecutorState(processed_signal_keys=("original",))
+            updated = LiveExecutorState(processed_signal_keys=("updated",))
+            save_live_state(path, original)
+
+            with (
+                mock.patch.object(live_module.os, "replace", side_effect=PermissionError("access denied")),
+                mock.patch.object(live_module.time, "sleep"),
+            ):
+                save_live_state(path, updated)
+
+            self.assertEqual(load_live_state(path), updated)
+            self.assertEqual(list(Path(tmpdir).glob(".state.json.*.tmp")), [])
+
+    def test_live_state_save_fallback_ignores_temp_cleanup_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "state.json"
+            updated = LiveExecutorState(processed_signal_keys=("updated",))
+
+            with (
+                mock.patch.object(live_module.os, "replace", side_effect=PermissionError("access denied")),
+                mock.patch.object(live_module.time, "sleep"),
+                mock.patch.object(live_module.Path, "unlink", side_effect=OSError("locked temp")),
+            ):
+                save_live_state(path, updated)
+
+            self.assertEqual(load_live_state(path), updated)
+
     def test_dynamic_spread_gate_and_broker_risk_sizing_inputs(self) -> None:
         spec = MT5SymbolExecutionSpec("EURUSD", 5, 0.0001, 10.0, 0.0001, 0.01, 100.0, 0.01)
         market = MT5MarketSnapshot(bid=1.1018, ask=1.1020)

@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LP + Force Strike V16 Execution Realism - by Cody</title>
+  <style>
+
+    :root {
+      --bg: #f3f6f8;
+      --panel: #ffffff;
+      --panel-soft: #f8fafb;
+      --ink: #17202a;
+      --muted: #5d6d7e;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --accent-2: #3f7f5f;
+      --good: #256f46;
+      --bad: #9f3333;
+      --warn: #8a5a00;
+      --focus: #f2c94c;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 Inter, Segoe UI, Roboto, Arial, sans-serif;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+    code { overflow-wrap: anywhere; }
+    .dashboard-header {
+      background: #17202a;
+      color: white;
+      padding: 28px max(18px, 5vw);
+      border-bottom: 4px solid #57a773;
+    }
+    .dashboard-header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 4vw, 30px);
+      letter-spacing: 0;
+    }
+    .dashboard-header p {
+      margin: 0;
+      color: #d8e0e8;
+      max-width: 1080px;
+      overflow-wrap: anywhere;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .page-nav {
+      margin-top: 18px;
+    }
+    .report-nav {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, .18);
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+    }
+    nav a:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .page-nav a.active {
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }
+    .report-nav a {
+      background: rgba(255, 255, 255, .03);
+      color: #edf4f7;
+    }
+    main {
+      padding: 24px max(18px, 5vw) 48px;
+    }
+    section {
+      margin: 0 0 22px;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(23, 32, 42, .05);
+      max-width: 100%;
+      overflow: visible;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 15px;
+      color: #34495e;
+      letter-spacing: 0;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi, .fact {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi-label, .fact span, .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .kpi-value, .kpi strong, .fact strong {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-note {
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 18px;
+    }
+    .note {
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+      margin-bottom: 14px;
+    }
+    .warning {
+      background: #fff8e8;
+      border-left-color: var(--warn);
+      color: #4d3b13;
+    }
+    .metric-glossary {
+      border-top: 4px solid #5c7f95;
+    }
+    .metric-glossary dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 10px;
+    }
+    .metric-glossary dl > div {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .metric-glossary dt {
+      margin: 0 0 5px;
+      font-weight: 700;
+    }
+    .metric-glossary dd {
+      margin: 0;
+      color: var(--muted);
+    }
+    .table-scroll, .scroll, .summary-comparison {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th, td {
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      box-shadow: 1px 0 0 var(--line);
+    }
+    th:first-child {
+      z-index: 3;
+    }
+    td:first-child {
+      background: var(--panel);
+      font-weight: 600;
+    }
+    th {
+      color: #3f4d5c;
+      background: #eef3f6;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tbody tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+    tbody tr:hover td {
+      background: #eef6f2;
+    }
+    .positive {
+      color: var(--good);
+      font-weight: 700;
+    }
+    .negative {
+      color: var(--bad);
+      font-weight: 700;
+    }
+    .neutral {
+      color: var(--muted);
+    }
+    footer {
+      color: var(--muted);
+      padding: 0 max(18px, 5vw) 28px;
+    }
+
+    @media (max-width: 760px) {
+      .dashboard-header {
+        padding: 22px 16px;
+      }
+      nav a {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+      main {
+        padding: 16px 12px 34px;
+      }
+      section {
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 14px;
+      }
+      .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .kpi {
+        padding: 10px;
+      }
+      .kpi-value, .kpi strong, .fact strong {
+        font-size: 20px;
+      }
+      th, td {
+        padding: 6px 7px;
+        font-size: 12px;
+      }
+    }
+    @media (max-width: 480px) {
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+      .report-nav a {
+        flex-basis: calc(50% - 4px);
+      }
+    }
+
+
+    .experiment-summary {
+      border-top: 4px solid var(--accent);
+    }
+    .summary-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .summary-heading h2 {
+      margin-bottom: 0;
+    }
+    .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .status-badge {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      background: #f7f9fb;
+      color: var(--muted);
+    }
+    .status-active {
+      color: var(--good);
+      border-color: #b9dbc7;
+      background: #edf8f1;
+    }
+    .status-rejected {
+      color: var(--bad);
+      border-color: #e7bcbc;
+      background: #fff1f1;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+      gap: 12px;
+    }
+    .summary-grid div {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fbfc;
+      padding: 12px;
+    }
+    .summary-grid h3 {
+      margin: 0 0 6px;
+    }
+    .summary-grid p {
+      margin: 0;
+      color: var(--ink);
+    }
+    .conclusion-box {
+      margin-top: 14px;
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+    }
+    .decision-brief {
+      margin-top: 14px;
+      border: 1px solid #cbd8e4;
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 14px 16px;
+    }
+    .decision-brief h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--ink);
+    }
+    .decision-brief .brief-headline {
+      margin: 0 0 8px;
+      font-weight: 700;
+    }
+    .decision-brief ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .decision-brief li {
+      margin: 6px 0;
+    }
+    .decision-brief .brief-next {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+    .summary-comparison {
+      margin-top: 14px;
+      overflow-x: auto;
+    }
+    .comparison-table td:first-child,
+    .comparison-table th:first-child {
+      text-align: left;
+    }
+    @media (max-width: 760px) {
+      .summary-heading {
+        display: block;
+      }
+      .status-badge {
+        display: inline-block;
+        margin-top: 10px;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <header class="dashboard-header">
+    <h1>LP + Force Strike V16 Execution Realism - by Cody</h1>
+    <p>Research-only V16 report generated from local historical candle data. OHLC is treated as Bid, Ask is approximated as Bid plus each candle&#x27;s stored spread, and no MT5 live state or orders are touched.</p>
+    <nav class="page-nav" aria-label="Dashboard pages">
+      <a class="page-link" href="index.html">Home</a>
+      <a class="page-link" href="strategy.html">Strategy</a>
+      <a class="page-link" href="live_ops.html">Live Ops</a>
+      <a class="page-link" href="v1.html">V1</a>
+      <a class="page-link" href="v2.html">V2</a>
+      <a class="page-link" href="v3.html">V3</a>
+      <a class="page-link" href="v4.html">V4</a>
+      <a class="page-link" href="v5.html">V5</a>
+      <a class="page-link" href="v6.html">V6</a>
+      <a class="page-link" href="v7.html">V7</a>
+      <a class="page-link" href="v8.html">V8</a>
+      <a class="page-link" href="v9.html">V9</a>
+      <a class="page-link" href="v10.html">V10</a>
+      <a class="page-link" href="v11.html">V11</a>
+      <a class="page-link" href="v12.html">V12</a>
+      <a class="page-link" href="v13.html">V13</a>
+      <a class="page-link" href="v14.html">V14</a>
+      <a class="page-link" href="v15.html">V15</a>
+      <a class="page-link active" href="v16.html">V16</a>
+    </nav>
+
+    <nav class="report-nav" aria-label="Report sections">
+      <a href="#decision">Decision</a><a href="#trade-r">Trade R</a><a href="#buckets">Buckets</a><a href="#spread">Spread Impact</a><a href="#rules">Rules</a>
+    </nav>
+
+  </header>
+
+  <main>
+
+    <section id="experiment-summary" class="experiment-summary">
+      <div class="summary-heading">
+        <div>
+          <div class="eyebrow">V16 Research Snapshot</div>
+          <h2>V16 Bid/Ask Execution Realism</h2>
+        </div>
+        <span class="status-badge status-active">Execution realism</span>
+      </div>
+
+      <div class="decision-brief">
+        <h3>Decision Brief</h3>
+        <p class="brief-headline">V16 result: bid/ask realism is not a material regression; do not change live stops yet.</p>
+        <ul><li>No-buffer V16: 12,917 trades versus 13,012 baseline trades, total 1,535.2R versus 1,512.3R, PF 1.270 versus 1.265.</li><li>No-buffer V16 missed 95 baseline trades, changed 284 exit reasons, and still passed V15 practical bucket filters.</li><li>The 1.5x spread-buffer variant had the best raw total R at 1,587.1R and a strong high-return bucket row, but it changed 722 exit reasons and 493 win/loss signs.</li><li>Because buffer behavior is more invasive than bid/ask realism itself, keep live FS structure stops unchanged until a focused buffer-specific validation is reviewed.</li></ul>
+        <p class="brief-next"><strong>Next:</strong> Keep no-buffer live stops for now. If improving stop robustness becomes a priority, run a focused buffer validation by timeframe and symbol group.</p>
+      </div>
+
+      <div class="summary-grid">
+        <div><h3>What This Tests</h3><p>Does broker-realistic bid/ask triggering materially weaken the V15 baseline, and should Force Strike stops include a spread-based buffer?</p></div>
+        <div><h3>Setup Tested</h3><p>Research-only rerun of the current LP3, H4/H8/H12/D1/W1, 0.5 pullback, FS structure stop, 1R target, fixed 6-bar pullback model. OHLC is treated as Bid and Ask is approximated from each candle&#x27;s stored spread_points and point.</p></div>
+        <div><h3>How To Read This Page</h3><p>Start with Decision Read, then compare raw R deltas and V15 bucket sensitivity per buffer. Do not change live stops until the no-buffer and buffer rows are reviewed together.</p></div>
+        <div><h3>Use / Do Not Use</h3><p>Keep current live stop placement unchanged for now. Use V16 as evidence that bid/ask mechanics are acceptable, and treat spread buffers as a promising follow-up rather than an immediate live-rule change.</p></div>
+      </div>
+      <div class="conclusion-box"><strong>Conclusion:</strong> Bid/ask realism did not weaken the current baseline. The no-buffer model slightly improved raw total R while missing less than 1% of baseline trades. A 1.5x spread buffer improved some bucket rows, but it changes outcomes materially enough that live stops should stay no-buffer until a focused buffer follow-up confirms it.</div>
+
+    </section>
+
+    <section id="decision">
+      <h2>Decision Read</h2>
+      <p class="callout"><strong>A stop buffer has potential, but needs review before live changes.</strong> Bid/Ask Buffer 1p5x spread ranked best on efficient bucket return/reserved-DD.</p>
+      <div class="kpi-grid">
+        <div class="kpi"><span>No-buffer total R delta</span><strong class="positive">22.94</strong><small>vs V15 OHLC baseline</small></div>
+        <div class="kpi"><span>No-buffer trade count</span><strong>12,917</strong><small>95 missed vs OHLC</small></div>
+        <div class="kpi"><span>Best practical buffer</span><strong>Bid/Ask Buffer 1p5x spread</strong><small>by return/reserved-DD</small></div>
+        <div class="kpi"><span>Best efficient return</span><strong class="positive">284.98%</strong><small>reserved DD 5.50%</small></div>
+      </div>
+    </section>
+    <section id="trade-r">
+      <h2>Trade-Level Bid/Ask Result</h2>
+      <p>This compares closed-trade R before position sizing. A negative delta means bid/ask mechanics or stop buffers reduced raw R versus the current V15 OHLC trade file.</p>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Trades</th><th>Total R</th><th>Avg R</th><th>PF</th><th>Missed</th><th>R Delta</th><th>Avg Spread/R</th></tr></thead><tbody><tr><td>Bid/Ask Buffer 0x spread</td><td>12,917</td><td class="positive">1,535.23</td><td class="positive">0.12</td><td>1.27</td><td>95</td><td class="positive">22.94</td><td>4.28%</td></tr><tr><td>Bid/Ask Buffer 0p5x spread</td><td>12,917</td><td class="positive">1,547.16</td><td class="positive">0.12</td><td>1.27</td><td>95</td><td class="positive">34.88</td><td>3.99%</td></tr><tr><td>Bid/Ask Buffer 1x spread</td><td>12,917</td><td class="positive">1,559.15</td><td class="positive">0.12</td><td>1.27</td><td>95</td><td class="positive">46.86</td><td>3.76%</td></tr><tr><td>Bid/Ask Buffer 1p5x spread</td><td>12,917</td><td class="positive">1,587.13</td><td class="positive">0.12</td><td>1.28</td><td>95</td><td class="positive">74.85</td><td>3.58%</td></tr><tr><td>Bid/Ask Buffer 2x spread</td><td>12,917</td><td class="positive">1,545.12</td><td class="positive">0.12</td><td>1.27</td><td>95</td><td class="positive">32.84</td><td>3.41%</td></tr></tbody></table></div>
+    </section>
+    <section id="buckets">
+      <h2>V15 Bucket Sensitivity Rerun</h2>
+      <p>Each variant is fed through the existing V15 risk-bucket pipeline, using the same practical filters: reserved DD <= 10%, max reserved open risk <= 6%, worst month >= -5%.</p>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Efficient Schedule</th><th>Return</th><th>Reserved DD</th><th>Max Open Risk</th><th>Worst Month</th><th>Return/DD</th><th>Practical</th></tr></thead><tbody><tr><td>Bid/Ask Buffer 0x spread</td><td>bucket_ltf0p20_h12_d10p20_w10p75</td><td class="positive">331.52%</td><td>6.85%</td><td>4.55%</td><td>-3.40%</td><td>48.40</td><td>yes</td></tr><tr><td>Bid/Ask Buffer 0p5x spread</td><td>bucket_ltf0p15_h12_d10p20_w10p75</td><td class="positive">286.16%</td><td>5.95%</td><td>4.20%</td><td>-2.65%</td><td>48.09</td><td>yes</td></tr><tr><td>Bid/Ask Buffer 1x spread</td><td>bucket_ltf0p20_h12_d10p30_w10p75</td><td class="positive">391.38%</td><td>8.05%</td><td>5.75%</td><td>-3.30%</td><td>48.62</td><td>yes</td></tr><tr><td>Bid/Ask Buffer 1p5x spread</td><td>bucket_ltf0p15_h12_d10p20_w10p60</td><td class="positive">284.98%</td><td>5.50%</td><td>4.05%</td><td>-2.95%</td><td>51.81</td><td>yes</td></tr><tr><td>Bid/Ask Buffer 2x spread</td><td>bucket_ltf0p15_h12_d10p20_w10p75</td><td class="positive">284.15%</td><td>5.70%</td><td>4.20%</td><td>-3.25%</td><td>49.85</td><td>yes</td></tr></tbody></table></div>
+    </section>
+    <section id="spread">
+      <h2>Highest Spread Pressure Pockets</h2>
+      <p>No-buffer bid/ask rows sorted by average signal-candle spread as a share of trade risk. This is where spread realism matters most.</p>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Symbol</th><th>TF</th><th>Trades</th><th>Total R</th><th>Avg R</th><th>Avg Spread/R</th><th>Avg Spread Pts</th></tr></thead><tbody><tr><td>NZDCHF</td><td>H4</td><td>255</td><td class="positive">49.00</td><td>0.19</td><td>12.19%</td><td>13.22</td></tr><tr><td>CADCHF</td><td>H4</td><td>268</td><td class="positive">4.00</td><td>0.01</td><td>11.77%</td><td>12.02</td></tr><tr><td>AUDNZD</td><td>H4</td><td>254</td><td class="positive">8.00</td><td>0.03</td><td>9.84%</td><td>13.00</td></tr><tr><td>AUDCHF</td><td>H4</td><td>248</td><td class="positive">6.00</td><td>0.02</td><td>8.28%</td><td>9.82</td></tr><tr><td>NZDCHF</td><td>H8</td><td>87</td><td class="positive">19.00</td><td>0.22</td><td>8.07%</td><td>11.83</td></tr><tr><td>AUDCAD</td><td>H4</td><td>216</td><td class="positive">6.00</td><td>0.03</td><td>7.79%</td><td>11.22</td></tr><tr><td>CADCHF</td><td>H8</td><td>126</td><td class="positive">12.00</td><td>0.10</td><td>7.75%</td><td>12.12</td></tr><tr><td>EURNZD</td><td>H4</td><td>231</td><td class="positive">31.00</td><td>0.13</td><td>7.55%</td><td>21.59</td></tr><tr><td>NZDCAD</td><td>H4</td><td>223</td><td class="negative">-1.00</td><td>-0.00</td><td>7.09%</td><td>10.09</td></tr><tr><td>CADCHF</td><td>H12</td><td>88</td><td class="positive">2.00</td><td>0.02</td><td>6.70%</td><td>13.26</td></tr><tr><td>GBPCHF</td><td>H4</td><td>271</td><td class="positive">7.00</td><td>0.03</td><td>6.28%</td><td>11.30</td></tr><tr><td>NZDUSD</td><td>H4</td><td>198</td><td class="positive">16.00</td><td>0.08</td><td>6.12%</td><td>7.47</td></tr><tr><td>AUDNZD</td><td>H8</td><td>110</td><td class="positive">34.00</td><td>0.31</td><td>5.96%</td><td>12.38</td></tr><tr><td>AUDCAD</td><td>H12</td><td>88</td><td class="positive">6.00</td><td>0.07</td><td>5.87%</td><td>14.75</td></tr><tr><td>EURCHF</td><td>H4</td><td>286</td><td class="positive">8.00</td><td>0.03</td><td>5.77%</td><td>5.71</td></tr><tr><td>NZDJPY</td><td>H4</td><td>228</td><td class="positive">40.00</td><td>0.18</td><td>5.65%</td><td>8.74</td></tr><tr><td>AUDCHF</td><td>H8</td><td>117</td><td class="positive">9.00</td><td>0.08</td><td>5.53%</td><td>9.99</td></tr><tr><td>AUDNZD</td><td>H12</td><td>78</td><td class="positive">16.00</td><td>0.21</td><td>5.43%</td><td>12.33</td></tr><tr><td>EURNZD</td><td>H8</td><td>103</td><td class="negative">-1.00</td><td>-0.01</td><td>5.33%</td><td>22.13</td></tr><tr><td>NZDCHF</td><td>H12</td><td>68</td><td class="positive">16.00</td><td>0.24</td><td>5.32%</td><td>11.54</td></tr><tr><td>EURCAD</td><td>H4</td><td>228</td><td class="positive">26.00</td><td>0.11</td><td>5.08%</td><td>9.41</td></tr><tr><td>AUDCAD</td><td>H8</td><td>114</td><td class="positive">16.00</td><td>0.14</td><td>5.05%</td><td>11.45</td></tr><tr><td>CADJPY</td><td>H4</td><td>200</td><td class="positive">18.00</td><td>0.09</td><td>5.02%</td><td>8.42</td></tr><tr><td>EURUSD</td><td>H4</td><td>232</td><td class="positive">6.00</td><td>0.03</td><td>5.00%</td><td>7.93</td></tr><tr><td>GBPCAD</td><td>H4</td><td>251</td><td class="negative">-1.00</td><td>-0.00</td><td>4.99%</td><td>13.08</td></tr></tbody></table></div>
+    </section>
+    <section id="rules">
+      <h2>Execution Rules Tested</h2>
+      <ul>
+        <li>OHLC is interpreted as Bid; Ask OHLC is Bid OHLC plus that bar's stored <code>spread_points * point</code>.</li>
+        <li>Long entry requires Ask low <= BUY LIMIT entry. Long stop/target uses Bid touches.</li>
+        <li>Short entry requires Bid high >= SELL LIMIT entry. Short stop/target uses Ask touches.</li>
+        <li>Same-bar TP/SL conflict remains stop-first.</li>
+        <li>Stop buffers test 0.0x, 0.5x, 1.0x, 1.5x, and 2.0x signal-candle spread, with target recalculated to 1R.</li>
+      </ul>
+    </section>
+
+    <section id="metric-glossary" class="metric-glossary" aria-labelledby="metric-glossary-title">
+      <h2 id="metric-glossary-title">Metric Glossary</h2>
+      <dl><div><dt>Realized DD</dt><dd>Closed-trade equity drawdown only. It ignores open trade risk until a position exits.</dd></div><div><dt>Risk-Reserved DD</dt><dd>Live-account stress drawdown that subtracts full open risk while positions are active.</dd></div><div><dt>Max Reserved Risk</dt><dd>Largest total open risk reserved at one time across accepted portfolio trades.</dd></div><div><dt>Worst Month</dt><dd>Largest calendar-month loss in account-percent terms for the tested schedule.</dd></div><div><dt>Return/DD</dt><dd>Total return divided by risk-reserved drawdown where available; higher is more efficient.</dd></div><div><dt>Avg R / PF</dt><dd>Average net R per trade and profit factor. Use both with trade count before trusting a row.</dd></div></dl>
+    </section>
+
+  </main>
+  <footer>Generated from <code>reports\strategies\lp_force_strike_experiment_v16_execution_realism\20260501_060205</code>. Research-only; no MT5 live calls.</footer>
+</body>
+</html>

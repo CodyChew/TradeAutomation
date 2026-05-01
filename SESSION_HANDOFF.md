@@ -1,8 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-01 SGT after the LPFS active-window LP selector patch,
-V9-to-V15 revalidation, live-send runner start/stop notifications, and
-handoff cleanup.
+Last updated: 2026-05-01 SGT after the LPFS V16 bid/ask execution-realism
+study, live state OneDrive save hardening, and dashboard/handoff refresh.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -42,9 +41,12 @@ so H4/H8 are `0.01%`, H12/D1 are `0.015%`, and W1 is `0.0375%`.
 - Research/backtest model:
   `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/experiment.py`
   plus `shared/backtest_engine_lab`.
+- Bid/ask execution realism:
+  `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/execution_realism.py`
+  and `scripts/run_lp_force_strike_v16_execution_realism.py`.
 - Portfolio and sizing research:
   `portfolio.py`, `stability.py`, V13-V15 scripts, and generated `docs/v13.html`
-  through `docs/v15.html`.
+  through `docs/v16.html`.
 - Broker boundary:
   `execution_contract.py` is pure Python and must not import MetaTrader5.
 - Live MT5 behavior:
@@ -86,6 +88,11 @@ place duplicate pending orders if the same setup still passes all checks.
 The runner now holds `data/live/lpfs_live_state.json.lock` while active. A
 second runner against the same state exits fail-closed before MT5
 initialization.
+
+`save_live_state()` normally uses atomic temp-file replace. On Windows/OneDrive,
+the state file can be a reparse-point placeholder and deny `os.replace()`.
+The save path now retries and falls back to direct state-file writing on
+`PermissionError` so the live runner does not crash during state persistence.
 
 ## Last Verified Live-Test Snapshot
 
@@ -143,8 +150,9 @@ Skipped in that fresh cycle:
   state still tracks the order, the next reconciliation should emit a
   cancelled/missing lifecycle alert and remove it from pending tracking.
 - MT5 broker state is the source of truth for orders, positions, and deals.
-- Local live state is written atomically and persisted immediately after
-  broker-affecting safety mutations.
+- Local live state is persisted immediately after broker-affecting safety
+  mutations. It uses atomic replace when Windows allows it, with a OneDrive-safe
+  fallback for replace-denied state files.
 - Before live `order_send`, the runner checks for an exact matching strategy
   pending order or matching open position and adopts it instead of sending a
   duplicate.
@@ -205,19 +213,20 @@ After an order is pending, spread widening does not auto-cancel it and does not
 currently trigger a dedicated Telegram alert. Reconciliation keeps the order
 until fill, expiry, or broker/user removal.
 
-Execution-realism research gap:
+V16 execution-realism result:
 
-- The current V9/V15 baseline includes candle-spread cost drag through the
-  shared backtest engine, but stop/target trigger detection is still OHLC
-  reference-price based.
-- Live MT5 stops are bid/ask side dependent. A short can hit SL through Ask
-  even when a Bid-only chart does not visibly touch the stop.
-- Next research should rerun the current baseline with bid/ask-aware entry, TP,
-  and SL trigger assumptions, then test small stop buffers beyond the Force
-  Strike structure.
-- The buffer test must compare net profitability, drawdown, win rate, PF, trade
-  count, and bucket suitability because a wider stop changes risk distance,
-  volume, and 1R target distance.
+- Report: `docs/v16.html`.
+- Run folder:
+  `reports/strategies/lp_force_strike_experiment_v16_execution_realism/20260501_060205`.
+- No-buffer bid/ask model: `12,917` trades versus `13,012` V15 OHLC baseline
+  trades, total `1,535.2R` versus `1,512.3R`, PF `1.270` versus `1.265`.
+- No-buffer missed only `95` baseline trades, changed `284` exit reasons, and
+  still passed V15 practical bucket filters.
+- Best raw buffer was `1.5x` signal-candle spread: `1,587.1R`, but it changed
+  `722` exit reasons and `493` win/loss signs.
+- Decision: bid/ask realism is not a material regression. Keep current live FS
+  structure stops unchanged for now. Treat spread buffers as promising follow-up
+  research, not an immediate live-rule change.
 - Do not change live stop placement until this research delta is known.
 
 A read-only sanity check over 720 recent detected setups showed:

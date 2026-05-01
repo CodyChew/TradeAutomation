@@ -1,8 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-01 local time after the active-window LP selector patch,
-V9-to-V15 revalidation, live Telegram UX refactor, runner start/stop
-notifications, and handoff cleanup.
+Last updated: 2026-05-01 local time after the V16 bid/ask execution-realism
+study, live state OneDrive save hardening, and dashboard/handoff refresh.
 
 ## Purpose
 
@@ -24,7 +23,8 @@ patterns. It now has these layers:
 
 It still does not contain a combined TradingView indicator. V10-V13 add
 portfolio-style research analytics. V14 adds account-risk sizing and drawdown
-views. V15 adds 3-bucket risk-ladder sensitivity. The dry-run phase is
+views. V15 adds 3-bucket risk-ladder sensitivity. V16 adds broker-side bid/ask
+trigger realism and spread-buffer research. The dry-run phase is
 explicitly broker-safe and does not send orders; the live-send phase can place
 real pending orders only when local live config is explicitly enabled.
 
@@ -942,14 +942,14 @@ written.
   compatibility code.
 - After a pending order is placed, spread widening does not auto-cancel it and
   does not currently trigger a dedicated Telegram alert.
-- Research gap: V9/V15 include candle-spread cost drag through the shared
-  backtest engine, but stop/target triggers are still based on OHLC reference
-  highs/lows rather than full bid/ask paths. This matters most for short SLs,
-  because a live short is stopped by Ask while most MT5 charts show Bid. Next
-  research should compare the current baseline with bid/ask-aware triggers and
-  test whether a small stop buffer beyond the Force Strike structure improves
-  profitability after the larger risk distance, smaller size, and adjusted 1R
-  target are accounted for.
+- V16 closed the first execution-realism gap. The no-buffer bid/ask model did
+  not materially weaken the baseline: `12,917` trades versus `13,012` V15 OHLC
+  trades, `1,535.2R` versus `1,512.3R`, and PF `1.270` versus `1.265`.
+- V16 stop-buffer variants were mixed. The `1.5x` signal-candle-spread buffer
+  had the strongest raw R (`1,587.1R`) and a strong high-return bucket row, but
+  it changed `722` exit reasons and `493` win/loss signs. Keep live FS
+  structure stops unchanged until a focused buffer-specific follow-up is
+  reviewed.
 - The live runner now sends best-effort Telegram process notifications on
   start and stop. The stop alert is emitted for completed cycle runs, Ctrl+C,
   and uncaught runtime errors after state save is attempted.
@@ -967,9 +967,52 @@ Expected next scope:
    re-arming the current latest-candle setups.
 4. Add retry policy and a real kill switch before unattended operation on a VPS
    or scheduled startup.
-5. Add a research-only execution-realism experiment for bid/ask-aware
-   entry/exit triggers and Force Strike structure stop buffers. Do not change
-   the live stop placement until the profitability and drawdown delta is known.
+5. If stop robustness becomes a priority, run a focused spread-buffer
+   validation by timeframe and symbol group. Do not change the live stop
+   placement from no-buffer based on V16 alone.
+
+## Experiment V16 Bid/Ask Execution Realism
+
+Experiment V16 is configured by:
+
+```text
+../../configs/strategies/lp_force_strike_experiment_v16_execution_realism.json
+```
+
+Run command:
+
+```powershell
+.\venv\Scripts\python scripts\run_lp_force_strike_v16_execution_realism.py --config configs\strategies\lp_force_strike_experiment_v16_execution_realism.json --docs-output docs\v16.html
+```
+
+Latest local run:
+
+- report folder:
+  `reports/strategies/lp_force_strike_experiment_v16_execution_realism/20260501_060205`
+- dashboard: `../../docs/v16.html`
+- scope: 28 major/cross pairs x H4/H8/H12/D1/W1
+- model: LP3, 0.5 signal-candle pullback, FS structure stop, 1R target,
+  fixed 6-bar pullback wait
+- execution realism: OHLC as Bid, Ask approximated as Bid plus each candle's
+  `spread_points * point`
+- buffer variants: `0.0x`, `0.5x`, `1.0x`, `1.5x`, and `2.0x` signal-candle
+  spread
+
+Key result:
+
+- V15 OHLC baseline: `13,012` trades, `1,512.3R`, PF `1.265`.
+- V16 no-buffer bid/ask: `12,917` trades, `1,535.2R`, PF `1.270`.
+- No-buffer missed only `95` baseline trades and passed V15 practical bucket
+  filters.
+- V16 `1.5x` buffer: `12,917` trades, `1,587.1R`, PF `1.280`, but changed
+  `722` exit reasons and `493` win/loss signs versus baseline.
+
+Decision:
+
+- Bid/ask realism is not a material regression.
+- Keep current live FS structure stops unchanged for now.
+- Treat spread buffers as promising follow-up research because buffer behavior
+  is more invasive than bid/ask realism itself.
 
 ## Dashboard Interpretation UX
 

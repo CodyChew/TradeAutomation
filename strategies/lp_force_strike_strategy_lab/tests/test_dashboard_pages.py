@@ -23,19 +23,19 @@ class DashboardPagesTests(unittest.TestCase):
         metadata = load_dashboard_metadata()
         pages = {page["page"]: page for page in metadata["pages"]}
 
-        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 16)})
-        for version in range(1, 16):
+        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 17)})
+        for version in range(1, 17):
             page = pages[f"v{version}.html"]
             for field in ("title", "question", "setup", "how_to_read", "conclusion", "action", "status_label"):
                 self.assertTrue(page[field], f"missing {field} for v{version}")
 
     def test_every_generated_dashboard_links_to_all_pages(self) -> None:
         expected_links = ['href="index.html"', 'href="strategy.html"', 'href="live_ops.html"'] + [
-            f'href="v{version}.html"' for version in range(1, 16)
+            f'href="v{version}.html"' for version in range(1, 17)
         ]
 
         for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html"] + [
-            DOCS_ROOT / f"v{version}.html" for version in range(1, 16)
+            DOCS_ROOT / f"v{version}.html" for version in range(1, 17)
         ]:
             html = path.read_text(encoding="utf-8")
             for link in expected_links:
@@ -43,7 +43,7 @@ class DashboardPagesTests(unittest.TestCase):
 
     def test_generated_dashboards_use_shared_static_chrome(self) -> None:
         paths = [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html"] + [
-            DOCS_ROOT / f"v{version}.html" for version in range(1, 16)
+            DOCS_ROOT / f"v{version}.html" for version in range(1, 17)
         ]
 
         for path in paths:
@@ -54,7 +54,7 @@ class DashboardPagesTests(unittest.TestCase):
             self.assertIn("Risk-Reserved DD", html, f"{path.name} missing risk-reserved DD definition")
             self.assertNotIn("<script", html.lower(), f"{path.name} should remain CSS-only")
 
-        for version in range(1, 16):
+        for version in range(1, 17):
             html = (DOCS_ROOT / f"v{version}.html").read_text(encoding="utf-8")
             self.assertIn('class="table-scroll"', html, f"v{version}.html missing table scroll wrapper")
             self.assertIn('class="data-table', html, f"v{version}.html missing data-table class")
@@ -150,7 +150,7 @@ class DashboardPagesTests(unittest.TestCase):
         metadata = load_dashboard_metadata()
         pages = {page["page"]: page for page in metadata["pages"]}
 
-        for version in range(10, 16):
+        for version in range(10, 17):
             self.assertIn("decision_brief", pages[f"v{version}.html"])
             html = (DOCS_ROOT / f"v{version}.html").read_text(encoding="utf-8")
             self.assertIn("Decision Brief", html)
@@ -195,6 +195,17 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("H4/H8 0.20%, H12/D1 0.30%, W1 0.75%", html)
         self.assertIn("Grid Heatmap By W1 Risk", html)
         self.assertIn("Recommended Ladder Timeframe Contribution", html)
+
+    def test_v16_dashboard_shows_execution_realism_sections(self) -> None:
+        html = (DOCS_ROOT / "v16.html").read_text(encoding="utf-8")
+
+        self.assertIn("Decision Brief", html)
+        self.assertIn("Decision Read", html)
+        self.assertIn("Trade-Level Bid/Ask Result", html)
+        self.assertIn("V15 Bucket Sensitivity Rerun", html)
+        self.assertIn("Highest Spread Pressure Pockets", html)
+        self.assertIn("Long entry requires Ask low", html)
+        self.assertIn("Research-only; no MT5 live calls", html)
 
     def test_risk_dashboard_drawdown_meanings_and_values_are_preserved(self) -> None:
         v14_html = (DOCS_ROOT / "v14.html").read_text(encoding="utf-8")

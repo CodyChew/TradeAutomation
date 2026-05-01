@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field, replace
 import json
 import os
 from pathlib import Path
+import time
 from typing import Any, Iterable, Sequence
 
 import pandas as pd
@@ -353,9 +354,24 @@ def load_live_state(path: str | Path) -> LiveExecutorState:
 def save_live_state(path: str | Path, state: LiveExecutorState) -> None:
     state_path = Path(path)
     state_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(state.to_dict(), indent=2)
     temp_path = state_path.with_name(f".{state_path.name}.{os.getpid()}.tmp")
-    temp_path.write_text(json.dumps(state.to_dict(), indent=2), encoding="utf-8")
-    os.replace(temp_path, state_path)
+    temp_path.write_text(payload, encoding="utf-8")
+
+    for attempt in range(3):
+        try:
+            os.replace(temp_path, state_path)
+            return
+        except PermissionError:
+            time.sleep(0.05 * (attempt + 1))
+
+    # OneDrive can expose synced files as Windows reparse points and reject
+    # replacing them even when writing their contents is allowed.
+    state_path.write_text(payload, encoding="utf-8")
+    try:
+        temp_path.unlink()
+    except OSError:
+        pass
 
 
 def live_execution_safety_from_config(config: LiveSendExecutorConfig) -> ExecutionSafetyLimits:
