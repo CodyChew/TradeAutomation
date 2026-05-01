@@ -375,7 +375,7 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
         ),
         (
             "Selected LP level is deterministic",
-            "If multiple LP supports break on one bullish setup candle, choose the lowest broken support. If multiple LP resistances break on one bearish setup candle, choose the highest broken resistance.",
+            "If multiple LP break windows are still valid, bullish chooses the lowest support and bearish chooses the highest resistance. Equal-price ties use the latest break.",
         ),
         (
             "Raw Force Strike confirms the setup",
@@ -417,7 +417,7 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
         ("Conservative", "Same-bar stop/target conflict", "When one OHLC bar touches both stop and target after entry, the test records the stop first."),
         ("Limit", "Gap-through stop or target", "Gap-through behavior is measured using OHLC candles only. It is not tick reconstruction and should not be treated as final fill logic."),
         ("Invalid", "Missing or zero ATR", "ATR-dependent checks require a valid positive ATR. Missing or zero ATR invalidates those checks."),
-        ("Explicit", "Multiple broken LPs", "Bullish multi-break bars choose the lowest broken support; bearish multi-break bars choose the highest broken resistance."),
+        ("Explicit", "Multiple valid LPs", "Bullish active windows choose the lowest support; bearish active windows choose the highest resistance. Equal-price ties use the latest break."),
         ("Explicit", "Overlapping trap windows", "Bullish and bearish trap windows can overlap. They stay explicit and independently handled rather than being merged into one vague state."),
         ("Risk", "Risk-reserved DD can exceed realized DD", "Risk-reserved DD subtracts open reserved risk, so it can be larger than closed-trade realized DD."),
         ("Risk", "High return can fail practical filters", "A high-return row can still be rejected if risk-reserved DD, max reserved open risk, or monthly losses breach practical limits."),

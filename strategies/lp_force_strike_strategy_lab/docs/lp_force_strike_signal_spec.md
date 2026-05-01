@@ -21,11 +21,11 @@ same-bar assumptions stay consistent.
 
 ## Force Bottom
 
-A bullish force bottom setup starts when a candle wick-breaks one or more active
+A bullish force bottom setup starts when price wick-breaks one or more active
 support LP levels.
 
-If multiple support LPs break on the same candle, the selected LP is the lowest
-broken support price.
+If multiple support LP break windows are still active, the selected LP is the
+lowest valid support price. Equal-price ties use the latest LP break.
 
 A bullish raw Force Strike signal is valid when:
 
@@ -35,11 +35,11 @@ A bullish raw Force Strike signal is valid when:
 
 ## Force Top
 
-A bearish force top setup starts when a candle wick-breaks one or more active
+A bearish force top setup starts when price wick-breaks one or more active
 resistance LP levels.
 
-If multiple resistance LPs break on the same candle, the selected LP is the
-highest broken resistance price.
+If multiple resistance LP break windows are still active, the selected LP is
+the highest valid resistance price. Equal-price ties use the latest LP break.
 
 A bearish raw Force Strike signal is valid when:
 

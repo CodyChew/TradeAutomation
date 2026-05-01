@@ -33,9 +33,9 @@ that behavior into a core package and cover it there.
 - LP + Force Strike signals require a wick break, a raw Force Strike signal
   inside the configured break window, and a close back beyond the broken LP
   level. Bullish closes may equal support; bearish closes may equal resistance.
-- When multiple support levels break on one bar, the bullish trap uses the
-  lowest broken support. When multiple resistance levels break on one bar, the
-  bearish trap uses the highest broken resistance.
+- When multiple support break windows are valid, the bullish trap uses the
+  lowest support. When multiple resistance break windows are valid, the bearish
+  trap uses the highest resistance. Equal-price ties use the latest break.
 - The current research baseline keeps the fixed 6-bar pullback wait. The V7/V8
   1R-cancel wait is a tested alternative, not the default.
 - Pullback entries are invalid when the signal candle range is zero or inverted,

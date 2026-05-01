@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-01 local time after the live Telegram UX refactor, fresh
-live-send test cycle, and handoff cleanup.
+Last updated: 2026-05-01 local time after the active-window LP selector patch,
+V9-to-V15 revalidation, live Telegram UX refactor, and handoff cleanup.
 
 ## Purpose
 
@@ -48,16 +48,19 @@ consistent across strategy labs.
 
 - Bullish force bottom starts when price wick-breaks active support LP.
 - Bearish force top starts when price wick-breaks active resistance LP.
-- If a candle breaks multiple support LPs, bullish uses the lowest broken
-  support.
-- If a candle breaks multiple resistance LPs, bearish uses the highest broken
-  resistance.
+- If multiple support LP-break windows match one FS signal, bullish uses the
+  lowest valid support LP.
+- If multiple resistance LP-break windows match one FS signal, bearish uses the
+  highest valid resistance LP.
 - A valid raw Force Strike signal must occur within 6 bars from the LP break.
 - The LP break candle is counted as bar 1.
 - Bullish FS execution candle must close at or above the selected support LP.
 - Bearish FS execution candle must close at or below the selected resistance LP.
-- If multiple LP-break windows match one FS signal, the most recent valid break
-  window is used.
+- Equal-price LP selection ties use the latest valid break window.
+
+On 2026-05-01, this selector was revalidated by regenerating V9 and rerunning
+V10-V15 from the new V9 trade source. Old/new V9 `signals.csv` and `trades.csv`
+were byte-identical, so the V15 baseline metrics stayed unchanged.
 
 ## Experiment V1
 

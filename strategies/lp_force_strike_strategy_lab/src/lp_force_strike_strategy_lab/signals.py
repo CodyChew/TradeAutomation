@@ -108,6 +108,17 @@ def _signal_from_match(window: _TrapWindow, pattern: ForceStrikePattern) -> LPFo
     )
 
 
+def _select_matching_window(matches: list[_TrapWindow]) -> _TrapWindow:
+    """Select the most extreme valid LP across the active trap window."""
+
+    if not matches:
+        raise ValueError("matches must not be empty.")
+    side = matches[0].side
+    if side == "bullish":
+        return min(matches, key=lambda window: (window.lp_event.price, -window.lp_event.break_index))
+    return max(matches, key=lambda window: (window.lp_event.price, window.lp_event.break_index))
+
+
 def detect_lp_force_strike_signals(
     frame: pd.DataFrame,
     timeframe: str | int | float,
@@ -158,7 +169,7 @@ def detect_lp_force_strike_signals(
         if not matches:
             continue
 
-        selected = max(matches, key=lambda window: window.lp_event.break_index)
+        selected = _select_matching_window(matches)
         signals.append(_signal_from_match(selected, pattern))
         open_windows = [window for window in open_windows if window is not selected]
 

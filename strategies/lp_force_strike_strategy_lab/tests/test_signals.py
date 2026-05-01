@@ -13,11 +13,14 @@ for src_root in [
     PROJECT_ROOT / "src",
     WORKSPACE_ROOT / "concepts" / "lp_levels_lab" / "src",
     WORKSPACE_ROOT / "concepts" / "force_strike_pattern_lab" / "src",
+    WORKSPACE_ROOT / "shared" / "backtest_engine_lab" / "src",
 ]:
     if str(src_root) not in sys.path:
         sys.path.insert(0, str(src_root))
 
 from lp_force_strike_strategy_lab import detect_lp_force_strike_signals
+from lp_force_strike_strategy_lab.signals import _TrapWindow, _select_matching_window
+from lp_levels_lab import LPBreakEvent
 
 
 def _frame(rows: list[dict]) -> pd.DataFrame:
@@ -68,6 +71,20 @@ def _bearish_multiple_resistance_rows(signal_close: float = 11.0) -> list[dict]:
     ]
 
 
+def _lp_break(side: str, price: float, break_index: int) -> LPBreakEvent:
+    break_time = pd.Timestamp("2026-01-01T00:00:00Z") + pd.Timedelta(hours=break_index)
+    return LPBreakEvent(
+        side=side,  # type: ignore[arg-type]
+        price=price,
+        pivot_index=max(0, break_index - 3),
+        pivot_time_utc=break_time - pd.Timedelta(hours=3),
+        confirmed_index=max(0, break_index - 1),
+        confirmed_time_utc=break_time - pd.Timedelta(hours=1),
+        break_index=break_index,
+        break_time_utc=break_time,
+    )
+
+
 class LPForceStrikeSignalTests(unittest.TestCase):
     def test_bullish_force_bottom_uses_lowest_broken_support(self) -> None:
         signals = detect_lp_force_strike_signals(_frame(_bullish_multiple_support_rows()), "M30", pivot_strength=2)
@@ -90,6 +107,34 @@ class LPForceStrikeSignalTests(unittest.TestCase):
         self.assertEqual(signals[0].lp_break_index, 8)
         self.assertEqual(signals[0].fs_signal_index, 10)
         self.assertEqual(signals[0].bars_from_lp_break, 3)
+
+    def test_bullish_active_window_uses_lowest_support_not_latest_break(self) -> None:
+        older_extreme = _TrapWindow("bullish", "force_bottom", _lp_break("support", 1.08, 5))
+        newer_non_extreme = _TrapWindow("bullish", "force_bottom", _lp_break("support", 1.10, 8))
+
+        selected = _select_matching_window([older_extreme, newer_non_extreme])
+
+        self.assertIs(selected, older_extreme)
+
+    def test_bearish_active_window_uses_highest_resistance_not_latest_break(self) -> None:
+        older_extreme = _TrapWindow("bearish", "force_top", _lp_break("resistance", 1.12, 5))
+        newer_non_extreme = _TrapWindow("bearish", "force_top", _lp_break("resistance", 1.10, 8))
+
+        selected = _select_matching_window([older_extreme, newer_non_extreme])
+
+        self.assertIs(selected, older_extreme)
+
+    def test_active_window_extreme_tie_uses_latest_break(self) -> None:
+        earlier = _TrapWindow("bearish", "force_top", _lp_break("resistance", 1.12, 5))
+        later = _TrapWindow("bearish", "force_top", _lp_break("resistance", 1.12, 8))
+
+        selected = _select_matching_window([earlier, later])
+
+        self.assertIs(selected, later)
+
+    def test_active_window_selector_validates_non_empty_matches(self) -> None:
+        with self.assertRaisesRegex(ValueError, "matches"):
+            _select_matching_window([])
 
     def test_force_strike_signal_must_be_inside_six_bar_window(self) -> None:
         signals = detect_lp_force_strike_signals(

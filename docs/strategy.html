@@ -500,7 +500,7 @@
 
         <article class="rule-card">
           <h3>Selected LP level is deterministic</h3>
-          <p>If multiple LP supports break on one bullish setup candle, choose the lowest broken support. If multiple LP resistances break on one bearish setup candle, choose the highest broken resistance.</p>
+          <p>If multiple LP break windows are still valid, bullish chooses the lowest support and bearish chooses the highest resistance. Equal-price ties use the latest break.</p>
         </article>
 
 
@@ -782,8 +782,8 @@
 
         <article class="event-card">
           <span class="event-label">Explicit</span>
-          <h3>Multiple broken LPs</h3>
-          <p>Bullish multi-break bars choose the lowest broken support; bearish multi-break bars choose the highest broken resistance.</p>
+          <h3>Multiple valid LPs</h3>
+          <p>Bullish active windows choose the lowest support; bearish active windows choose the highest resistance. Equal-price ties use the latest break.</p>
         </article>
 
 

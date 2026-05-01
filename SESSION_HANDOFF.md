@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-01 SGT after the LPFS live Telegram UX refactor, fresh
-live-send test cycle, and documentation cleanup.
+Last updated: 2026-05-01 SGT after the LPFS active-window LP selector patch,
+V9-to-V15 revalidation, and live-send documentation cleanup.
 
 ## Read First
 
@@ -85,6 +85,9 @@ Skipped in the fresh cycle:
 
 - The live runner processes closed candles only.
 - It only acts when the LPFS signal candle is the latest closed candle.
+- LPFS selector rule: if multiple LP-break windows match one FS signal,
+  bullish uses the lowest valid support LP and bearish uses the highest valid
+  resistance LP. Equal-price ties use the latest valid break.
 - Signal idempotency key:
   `lpfs:{SYMBOL}:{TIMEFRAME}:{SIGNAL_INDEX}:{SIDE}:{CANDIDATE_ID}:{FS_SIGNAL_TIME}`.
 - A new signal candle creates a new key.
@@ -162,8 +165,18 @@ Full strict gate:
 
 Latest full strict result on 2026-05-01:
 
-- `205` unittest cases across core labs.
+- `209` unittest cases across core labs.
 - `100.00%` line and branch coverage.
+
+Latest selector revalidation on 2026-05-01:
+
+- Patched LPFS from latest matching LP break to most-extreme valid LP across the
+  active trap window.
+- Regenerated V9 into
+  `reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260501_032404`.
+- Old/new V9 `signals.csv` and `trades.csv` were byte-identical, so V10-V15
+  metrics stayed unchanged.
+- V15 efficient row remains H4/H8 `0.20%`, H12/D1 `0.30%`, W1 `0.75%`.
 
 ## Current Code Additions
 

@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-01 local time after the LPFS live Telegram UX refactor,
-fresh live-send test cycle, and handoff cleanup.
+Last updated: 2026-05-01 local time after the LPFS active-window selector patch,
+V9-to-V15 revalidation, live Telegram UX refactor, and handoff cleanup.
 
 ## Purpose
 
@@ -87,7 +87,7 @@ Core logic regression gate:
 
 Current result on 2026-05-01:
 
-- 205 unittest cases across the five core labs.
+- 209 unittest cases across the five core labs.
 - `100.00%` line and branch coverage for the scoped core packages.
 - Scope and edge-case rules documented in `docs/testing_strategy.md`.
 
@@ -308,6 +308,10 @@ Latest V15 risk-bucket read:
 
 - V15 did not rerun MT5 data or signals. It used the V13/V14 baseline trade
   rows.
+- On 2026-05-01, the LPFS selector was patched to use the most extreme valid LP
+  across the active trap window, then V9 was regenerated. Old/new V9
+  `signals.csv` and `trades.csv` were byte-identical, so V10-V15 metrics stayed
+  unchanged.
 - V15 tested 64 ladders across three buckets: `H4/H8`, `H12/D1`, and `W1`.
 - Practical filters were risk-reserved DD <= `10%`, max reserved open risk <=
   `6%`, and worst month >= `-5%`.
