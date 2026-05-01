@@ -318,6 +318,11 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             "Operational contract for order keys, duplicate prevention, and MT5 source-of-truth behavior.",
         ),
         (
+            "Phase 2 plan",
+            "docs/phase2_production_hardening.md",
+            "Production-hardening plan for launcher, kill switch, watchdog, runtime folder, Task Scheduler, and VPS.",
+        ),
+        (
             "State file",
             "data/live/lpfs_live_state.json",
             "Restart continuity, processed signal keys, pending orders, active positions, Telegram message IDs.",
@@ -357,6 +362,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
           ("#lifecycle-scenarios", "Scenarios"),
           ("#telegram", "Telegram"),
           ("#commands", "Commands"),
+          ("#limits", "Limits"),
           ("#files", "Files"),
       ],
       metadata=metadata,
@@ -444,6 +450,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         {_step_cards([
             ("Limit", "Not a daemon", "The runner only keeps checking when started with multiple cycles or wrapped by an external scheduler/process manager."),
             ("Protection", "Single-runner lock", "A lock file beside the live state blocks a second live runner from starting against the same state."),
+            ("Next phase", "Production wrapper", "Phase 2 should add a launcher, kill switch, watchdog, logs, heartbeat, Task Scheduler rehearsal, and then VPS hosting."),
             ("Limit", "No spread auto-cancel", "Spread is a send gate. Once an order is pending, spread widening does not cancel it and does not have a dedicated Telegram alert yet."),
             ("Limit", "Manual deletion is respected", "Deleting a pending order manually does not automatically re-arm that same signal because the signal key stays processed."),
             ("Limit", "Close reason depends on broker history", "TP/SL classification uses MT5 deal/order history. Ambiguous broker comments may fall back to a less specific close alert."),

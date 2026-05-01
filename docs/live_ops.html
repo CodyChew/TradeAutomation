@@ -417,7 +417,7 @@
     </nav>
 
     <nav class="report-nav" aria-label="Report sections">
-      <a href="#live-status">Status</a><a href="#cycle-model">Cycle Model</a><a href="#signal-send-path">Send Path</a><a href="#spread-policy">Spread Policy</a><a href="#lifecycle-scenarios">Scenarios</a><a href="#telegram">Telegram</a><a href="#commands">Commands</a><a href="#files">Files</a>
+      <a href="#live-status">Status</a><a href="#cycle-model">Cycle Model</a><a href="#signal-send-path">Send Path</a><a href="#spread-policy">Spread Policy</a><a href="#lifecycle-scenarios">Scenarios</a><a href="#telegram">Telegram</a><a href="#commands">Commands</a><a href="#limits">Limits</a><a href="#files">Files</a>
     </nav>
 
   </header>
@@ -723,6 +723,13 @@
 
 
         <article class="step-card">
+          <span>Next phase</span>
+          <h3>Production wrapper</h3>
+          <p>Phase 2 should add a launcher, kill switch, watchdog, logs, heartbeat, Task Scheduler rehearsal, and then VPS hosting.</p>
+        </article>
+
+
+        <article class="step-card">
           <span>Limit</span>
           <h3>No spread auto-cancel</h3>
           <p>Spread is a send gate. Once an order is pending, spread widening does not cancel it and does not have a dedicated Telegram alert yet.</p>
@@ -748,7 +755,7 @@
     <section id="files" aria-labelledby="files-title">
       <h2 id="files-title">Where To Inspect The Implementation</h2>
       <div class="file-grid">
-        <article class="file-card"><h3>Live runner</h3><p><code>scripts/run_lp_force_strike_live_executor.py</code></p><p>CLI wrapper for cycle count and sleep interval. It does not run as a service by itself.</p></article><article class="file-card"><h3>Live engine</h3><p><code>strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py</code></p><p>Live-send guards, MT5 request construction, reconciliation, and lifecycle notifications.</p></article><article class="file-card"><h3>Execution contract</h3><p><code>docs/mt5_execution_contract.md</code></p><p>Operational contract for order keys, duplicate prevention, and MT5 source-of-truth behavior.</p></article><article class="file-card"><h3>State file</h3><p><code>data/live/lpfs_live_state.json</code></p><p>Restart continuity, processed signal keys, pending orders, active positions, Telegram message IDs.</p></article><article class="file-card"><h3>Journal</h3><p><code>data/live/lpfs_live_journal.jsonl</code></p><p>Durable audit log with raw technical fields and notification payloads.</p></article><article class="file-card"><h3>Handoff</h3><p><code>SESSION_HANDOFF.md</code></p><p>Current project snapshot for the next Codex run.</p></article>
+        <article class="file-card"><h3>Live runner</h3><p><code>scripts/run_lp_force_strike_live_executor.py</code></p><p>CLI wrapper for cycle count and sleep interval. It does not run as a service by itself.</p></article><article class="file-card"><h3>Live engine</h3><p><code>strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py</code></p><p>Live-send guards, MT5 request construction, reconciliation, and lifecycle notifications.</p></article><article class="file-card"><h3>Execution contract</h3><p><code>docs/mt5_execution_contract.md</code></p><p>Operational contract for order keys, duplicate prevention, and MT5 source-of-truth behavior.</p></article><article class="file-card"><h3>Phase 2 plan</h3><p><code>docs/phase2_production_hardening.md</code></p><p>Production-hardening plan for launcher, kill switch, watchdog, runtime folder, Task Scheduler, and VPS.</p></article><article class="file-card"><h3>State file</h3><p><code>data/live/lpfs_live_state.json</code></p><p>Restart continuity, processed signal keys, pending orders, active positions, Telegram message IDs.</p></article><article class="file-card"><h3>Journal</h3><p><code>data/live/lpfs_live_journal.jsonl</code></p><p>Durable audit log with raw technical fields and notification payloads.</p></article><article class="file-card"><h3>Handoff</h3><p><code>SESSION_HANDOFF.md</code></p><p>Current project snapshot for the next Codex run.</p></article>
       </div>
     </section>
   </main>

@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-01 local time after the LPFS active-window selector patch,
-V9-to-V15 revalidation, live Telegram UX refactor, and handoff cleanup.
+Last updated: 2026-05-01 local time after LPFS V17 proximity research,
+controlled live validation, and Phase 2 production-hardening planning.
 
 ## Purpose
 
@@ -18,8 +18,10 @@ source of truth for strategy research and future live execution work.
 4. `docs/strategy.html` for the current V13 mechanics + V15 risk-bucket guide.
 5. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before continuing execution work.
-6. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
-7. `concepts/lp_levels_lab/PROJECT_STATE.md` and
+6. `docs/phase2_production_hardening.md` before adding watchdogs, scheduled
+   startup, VPS deployment, or other production operations.
+7. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
+8. `concepts/lp_levels_lab/PROJECT_STATE.md` and
    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
    concept behavior.
 
@@ -87,7 +89,7 @@ Core logic regression gate:
 
 Current result on 2026-05-01:
 
-- 218 unittest cases across the five core labs.
+- 246 unittest cases across the five core labs after V17.
 - `100.00%` line and branch coverage for the scoped core packages.
 - Scope and edge-case rules documented in `docs/testing_strategy.md`.
 
@@ -127,12 +129,14 @@ concepts/lp_levels_lab/tradingview/lp_levels.pine
 
 ## Current Strategy Model Under Test
 
-The current best model family is:
+The current live/research baseline is V13 mechanics with V15 risk buckets:
 
 ```text
+LP3 take_all across H4/H8/H12/D1/W1
 0.5 signal-candle pullback
 full Force Strike structure stop
 single 1R target
+fixed 6-bar pullback wait
 ```
 
 The strategy combines:
@@ -142,6 +146,17 @@ The strategy combines:
 - pullback entry into the signal candle zone;
 - OHLC bracket simulation with candle spread and conservative same-bar
   stop-first handling.
+
+Live broker testing currently scales the V15 risk ladder with
+`live_send.risk_bucket_scale=0.05`, so H4/H8 are `0.01%`, H12/D1 are `0.015%`,
+and W1 is `0.0375%`.
+
+Latest research decisions:
+
+- V16 bid/ask execution realism did not materially weaken V15. Keep current
+  live FS structure stops unchanged; spread buffers remain follow-up research.
+- V17 LP-FS proximity tightening did not beat current V15. Do not require the
+  Force Strike structure to touch/cross the selected LP.
 
 ## Latest Timeframe Comparison
 
@@ -188,9 +203,15 @@ Static dashboards exist at:
 - `docs/v13.html`: relaxed portfolio rule selection.
 - `docs/v14.html`: risk sizing and drawdown study.
 - `docs/v15.html`: 3-bucket risk ladder sensitivity.
+- `docs/v16.html`: bid/ask execution realism and spread-buffer research.
+- `docs/v17.html`: LP-FS proximity tightening research.
 - `docs/strategy.html`: current strategy guide for V13 mechanics + V15 risk
   buckets, including signal rules, backtest trade model, MT5-not-final status,
   edge cases, and deterministic inline SVG diagrams.
+- `docs/live_ops.html`: live-run behavior, lifecycle scenarios, and operator
+  commands.
+- `docs/phase2_production_hardening.md`: next production-hardening plan for
+  launcher, watchdog, kill switch, runtime folder, Task Scheduler, and VPS.
 
 The dashboard generator is:
 
@@ -524,8 +545,12 @@ Next execution phase:
 3. The live runner is a finite-cycle CLI. For a manual long run, use a very
    large cycle count and Ctrl+C to stop it; do not present this as guaranteed
    Windows service uptime.
-4. Add retry policy and a real kill switch before leaving the runner
-   unattended on a VPS or scheduled startup.
+4. Keep collecting low-risk forward evidence from MT5, Telegram, live state,
+   and the JSONL journal before changing strategy rules or scaling risk.
+5. Phase 2 should harden operations without changing strategy behavior. The
+   recommended path is documented in `docs/phase2_production_hardening.md`:
+   production launcher, kill switch, watchdog, non-OneDrive runtime folder,
+   heartbeat, Task Scheduler rehearsal, then Windows VPS.
 
 ## Force Strike Side-Lab Comparison Learnings
 
@@ -584,12 +609,16 @@ the user explicitly asks.
 Continue from TradeAutomation/PROJECT_STATE.md. Focus on the LP + Force Strike
 strategy lab. Read SESSION_HANDOFF.md first, then PROJECT_STATE.md,
 strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md, docs/strategy.html,
-docs/mt5_execution_contract.md, docs/telegram_notifications.md, and
-docs/dry_run_executor.md. The current baseline is V13 `take_all` with LP3
-across H4/H8/H12/D1/W1 and V15 efficient risk buckets: H4/H8 0.20%, H12/D1
-0.30%, W1 0.75%. A guarded live-send runner exists at
+docs/mt5_execution_contract.md, docs/telegram_notifications.md,
+docs/dry_run_executor.md, and docs/phase2_production_hardening.md. The current
+baseline is V13 `take_all` with LP3 across H4/H8/H12/D1/W1 and V15 efficient
+risk buckets: H4/H8 0.20%, H12/D1 0.30%, W1 0.75%. V16 and V17 did not justify
+changing live rules. A guarded live-send runner exists at
 scripts/run_lp_force_strike_live_executor.py with risk_bucket_scale=0.05,
 max_open_risk_pct=0.65, dynamic spread gating, restart-safe state, MT5
 order/position/deal reconciliation, and compact Telegram lifecycle cards.
 Connected MT5 is a real account; do not run live-send or clear state casually.
+The next phase is production hardening: launcher, kill switch, watchdog,
+non-OneDrive runtime folder, heartbeat, Task Scheduler rehearsal, then Windows
+VPS.
 ```

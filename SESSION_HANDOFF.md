@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
 Last updated: 2026-05-01 SGT after the LPFS V17 LP-FS proximity tightening
-study, live state OneDrive save hardening, and dashboard/handoff refresh.
+study, controlled live validation, and Phase 2 production-hardening planning.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -15,6 +15,8 @@ file, and the JSONL journal before making operational decisions.
 4. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before touching execution code.
 5. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
+6. `docs/phase2_production_hardening.md` before adding watchdogs, scheduled
+   startup, VPS deployment, or other production operations.
 
 ## Current Project Focus
 
@@ -65,6 +67,9 @@ so H4/H8 are `0.01%`, H12/D1 are `0.015%`, and W1 is `0.0375%`.
 - Runtime files:
   `data/live/lpfs_live_state.json` and `data/live/lpfs_live_journal.jsonl` are
   ignored local truth for continuity and audit; do not commit them.
+- Phase 2 operations plan:
+  `docs/phase2_production_hardening.md` captures the recommended launcher,
+  kill switch, watchdog, runtime-folder, Task Scheduler, and VPS path.
 
 ## Safety Status
 
@@ -256,6 +261,29 @@ A read-only sanity check over 720 recent detected setups showed:
 Current recommendation: keep `10%`. Consider an H4-only relaxation to `15%`
 only if live evidence shows too many good H4 setups are skipped.
 
+## Phase 2 Readiness
+
+Current stage: controlled live validation on a real MT5 account with low-risk
+scaled V15 sizing. The live executor is mature enough to observe real broker
+lifecycle events, but it is still a finite CLI loop, not a production daemon.
+
+Next phase: production hardening without changing strategy rules. The plan is
+in `docs/phase2_production_hardening.md` and should be implemented in this
+order:
+
+1. Add a production PowerShell launcher.
+2. Add a kill switch checked before MT5 initialization and live cycles.
+3. Add a watchdog wrapper for unexpected crashes.
+4. Redirect stdout/stderr to timestamped logs.
+5. Move production runtime files away from OneDrive.
+6. Add a heartbeat file updated every cycle.
+7. Rehearse Task Scheduler startup locally.
+8. Move to a Windows VPS only after local rehearsal passes.
+
+Do not change signal rules, stops, targets, spread threshold, risk buckets, or
+pending expiration as part of Phase 2. V16 and V17 both support keeping current
+V15 live behavior unchanged while operations are hardened.
+
 ## Verification Commands
 
 Targeted tests:
@@ -300,6 +328,7 @@ Latest selector revalidation on 2026-05-01:
 - `scripts/summarize_lpfs_live_trades.py`
 - `scripts/build_lp_force_strike_live_ops_page.py`
 - `scripts/run_lp_force_strike_v17_lp_fs_proximity.py`
+- `docs/phase2_production_hardening.md`
 - `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/proximity.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_live_executor.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_live_runner.py`

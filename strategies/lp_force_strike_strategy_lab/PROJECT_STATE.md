@@ -975,13 +975,50 @@ Expected next scope:
 3. If a user manually deletes a pending order, let the next reconciliation
    record it as cancelled/missing; do not clear state unless intentionally
    re-arming the current latest-candle setups.
-4. Add retry policy and a real kill switch before unattended operation on a VPS
-   or scheduled startup.
-5. If stop robustness becomes a priority, run a focused spread-buffer
+4. Keep low-risk live validation running long enough to collect real broker
+   lifecycle evidence before scaling risk or changing strategy rules.
+5. Implement Phase 2 production hardening from
+   `../../docs/phase2_production_hardening.md`: launcher, kill switch,
+   watchdog, non-OneDrive runtime folder, heartbeat, Task Scheduler rehearsal,
+   then Windows VPS.
+6. If stop robustness becomes a priority, run a focused spread-buffer
    validation by timeframe and symbol group. Do not change the live stop
    placement from no-buffer based on V16 alone.
-6. If discretionary review needs more context, surface LP-FS proximity as a
+7. If discretionary review needs more context, surface LP-FS proximity as a
    setup-quality label in dashboards/Telegram, not as a live trade filter.
+
+## Phase 2 Production Hardening
+
+Phase 2 is an operations project, not a strategy project. The purpose is to make
+the existing real-order-capable runner observable and restart-safe under normal
+production failures: Python crash, MT5 disconnect, Windows restart, Telegram
+failure, state-file lock, or operator emergency stop.
+
+Canonical plan:
+
+```text
+../../docs/phase2_production_hardening.md
+```
+
+Recommended path:
+
+1. Build and test a local PowerShell production launcher.
+2. Add a file-based kill switch.
+3. Add a watchdog wrapper that restarts after unexpected crashes but respects
+   the kill switch.
+4. Write stdout/stderr to timestamped logs.
+5. Move production runtime state and journal away from OneDrive.
+6. Add a heartbeat file updated every cycle.
+7. Rehearse Task Scheduler startup locally.
+8. Move to a Windows VPS after local rehearsal passes.
+
+Acceptance criteria include single-runner protection, no duplicate orders after
+restart, kill-switch stop before order send, state/journal/log survival across
+reboot, Telegram process alerts, and MT5 reconciliation before new signal
+scanning.
+
+Do not change signal rules, risk buckets, spread gate, order geometry, or
+expiration behavior while implementing Phase 2.
 
 ## Experiment V16 Bid/Ask Execution Realism
 
@@ -1078,6 +1115,7 @@ The dashboard interpretation metadata lives in:
 ```
 
 On 2026-04-30, V6-V15 were given a `decision_brief` section in that metadata.
+V16 and V17 also have decision briefs for execution realism and LP-FS proximity.
 The shared renderer now shows a prominent `Decision Brief` near the top of each
 page, before the tables. This preserves the concise chat-style interpretation
 the user found useful, for example the V11 bullets explaining why removing H4
