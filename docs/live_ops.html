@@ -479,7 +479,7 @@
         <article class="step-card">
           <span>Startup</span>
           <h3>Reconcile broker state first</h3>
-          <p>Every live-send cycle loads local state, pulls MT5 pending orders and positions by strategy magic, checks recent history, then only scans for fresh closed-candle signals.</p>
+          <p>Every live-send cycle loads atomically persisted local state, pulls MT5 pending orders and positions by strategy magic, checks recent history, then only scans for fresh closed-candle signals.</p>
         </article>
 
 
@@ -500,14 +500,14 @@
         <article class="step-card">
           <span>Send</span>
           <h3>Refresh quote before order_send</h3>
-          <p>Immediately before sending, the runner refreshes the quote and runs the spread gate again. The order is sent only after broker order_check passes.</p>
+          <p>Immediately before sending, the runner refreshes the quote, reruns the spread gate, and checks for an already matching broker order/position. A matching broker item is adopted; otherwise the order is sent only after broker order_check passes.</p>
         </article>
 
 
         <article class="step-card">
           <span>Manage</span>
           <h3>Let MT5 be the truth</h3>
-          <p>Open pending orders and positions are reconciled each cycle. Fills, cancellations, expiries, and closes come from MT5 orders, positions, and deal history.</p>
+          <p>Open pending orders and positions are reconciled each cycle. Fills, cancellations, expiries, and closes come from MT5 orders, positions, and deal history. Broker-affecting state is saved immediately after each safety mutation.</p>
         </article>
 
       </div>
@@ -598,10 +598,11 @@
         <thead><tr><th>Scenario</th><th>When checked</th><th>Action</th></tr></thead>
         <tbody><tr><td>Pending still open</td><td>Every cycle</td><td>Keep order unless expired. Spread widening after placement does not cancel the order and has no dedicated Telegram alert yet.</td></tr>
 <tr><td>Pending expired</td><td>Every cycle</td><td>Cancel the MT5 order when expiry is reached, remove it from active state, and send a cancelled/expired Telegram event.</td></tr>
-<tr><td>Pending filled</td><td>Every cycle</td><td>Detect matching MT5 position, move state from pending to active, and send ENTERED as a reply to the original order card when message_id exists.</td></tr>
+<tr><td>Pending filled</td><td>Every cycle</td><td>Detect a matching MT5 position by comment or broker history linkage, move state from pending to active, and send ENTERED as a reply to the original order card when message_id exists.</td></tr>
+<tr><td>Existing broker item found</td><td>Before order_send</td><td>If an exact same pending order or already-open matching position exists under the strategy magic/comment, adopt it into local state and do not send a duplicate order.</td></tr>
 <tr><td>Pending missing</td><td>Every cycle</td><td>If no matching position exists, treat as broker/user removed or rejected, clear state, and alert once.</td></tr>
 <tr><td>Position still open</td><td>Every cycle</td><td>Keep tracking the position. MT5 remains the source of truth for SL, TP, volume, and position ID.</td></tr>
-<tr><td>Position closed</td><td>Every cycle</td><td>Query deal history by position ID first, classify TP/SL where possible, compute PnL/R/hold time, then send the close card once.</td></tr>
+<tr><td>Position closed</td><td>Every cycle</td><td>Query deal history by position ID first, classify TP/SL where possible, compute PnL/R/hold time, then send the close card once. Manual or unknown exits are shown as TRADE CLOSED, not as stop losses.</td></tr>
 <tr><td>Manual trade</td><td>Every cycle</td><td>Ignored unless it uses the same strategy magic and compact LPFS comment. Manual trades with normal manual magic should not interfere.</td></tr>
 <tr><td>Manual deletion</td><td>Every cycle</td><td>The exact signal stays processed locally, so the runner will not re-place that same signal unless state/journal are intentionally reset.</td></tr></tbody>
       </table>
@@ -631,6 +632,13 @@
           <span>TAKE PROFIT / STOP LOSS</span>
           <strong>Reply to order</strong>
           <p>Exit price/time, PnL, R, hold time, deal ticket, position ID, ref.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>ORDER ADOPTED / TRADE CLOSED</span>
+          <strong>Recovery and manual exits</strong>
+          <p>Adopted broker items are not resent; manual/unknown exits keep real MT5 PnL and R without a false SL label.</p>
         </article>
 
 
@@ -702,6 +710,13 @@
           <span>Limit</span>
           <h3>Not a daemon</h3>
           <p>The runner only keeps checking when started with multiple cycles or wrapped by an external scheduler/process manager.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Protection</span>
+          <h3>Single-runner lock</h3>
+          <p>A lock file beside the live state blocks a second live runner from starting against the same state.</p>
         </article>
 
 

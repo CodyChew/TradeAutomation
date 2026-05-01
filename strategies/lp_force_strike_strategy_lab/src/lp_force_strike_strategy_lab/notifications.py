@@ -21,12 +21,14 @@ NotificationKind = Literal[
     "order_check_passed",
     "order_check_failed",
     "order_sent",
+    "order_adopted",
     "order_rejected",
     "pending_expired",
     "pending_cancelled",
     "position_opened",
     "stop_loss_hit",
     "take_profit_hit",
+    "position_closed",
     "runner_started",
     "runner_stopped",
     "executor_error",
@@ -43,12 +45,14 @@ NOTIFICATION_KINDS: tuple[str, ...] = (
     "order_check_passed",
     "order_check_failed",
     "order_sent",
+    "order_adopted",
     "order_rejected",
     "pending_expired",
     "pending_cancelled",
     "position_opened",
     "stop_loss_hit",
     "take_profit_hit",
+    "position_closed",
     "runner_started",
     "runner_stopped",
     "executor_error",
@@ -253,12 +257,14 @@ def format_notification_message(event: NotificationEvent, *, max_field_value_len
         "setup_rejected",
         "order_check_failed",
         "order_sent",
+        "order_adopted",
         "order_rejected",
         "pending_expired",
         "pending_cancelled",
         "position_opened",
         "stop_loss_hit",
         "take_profit_hit",
+        "position_closed",
         "runner_started",
         "runner_stopped",
     }:
@@ -403,11 +409,11 @@ def _format_dry_run_message(event: NotificationEvent, *, max_field_value_length:
 def _format_live_trade_message(event: NotificationEvent, *, max_field_value_length: int) -> str:
     if event.kind in {"runner_started", "runner_stopped"}:
         return _format_runner_card(event, max_field_value_length=max_field_value_length)
-    if event.kind == "order_sent":
+    if event.kind in {"order_sent", "order_adopted"}:
         return _format_order_placed_card(event, max_field_value_length=max_field_value_length)
     if event.kind == "position_opened":
         return _format_position_opened_card(event, max_field_value_length=max_field_value_length)
-    if event.kind in {"stop_loss_hit", "take_profit_hit"}:
+    if event.kind in {"stop_loss_hit", "take_profit_hit", "position_closed"}:
         return _format_position_closed_card(event, max_field_value_length=max_field_value_length)
     return _format_live_exception_card(event, max_field_value_length=max_field_value_length)
 
@@ -457,8 +463,9 @@ def _format_runner_card(event: NotificationEvent, *, max_field_value_length: int
 
 
 def _format_order_placed_card(event: NotificationEvent, *, max_field_value_length: int) -> str:
+    title = "ORDER ADOPTED" if event.kind == "order_adopted" else "ORDER PLACED"
     lines = [
-        "LPFS LIVE | ORDER PLACED",
+        f"LPFS LIVE | {title}",
         f"{_market_context(event)} | {_format_order_type(_field(event, 'order_type', 'LIMIT'))} #{_field(event, 'order_ticket', 'n/a')}",
         (
             f"Plan: Entry {_format_event_price(event, 'entry')} | "
@@ -479,7 +486,12 @@ def _format_order_placed_card(event: NotificationEvent, *, max_field_value_lengt
         lines.append(f"Spread: {spread_text} of risk | Expires {expiry_text}")
     reason = _sentence_case(event.message)
     if reason:
-        lines.append(f"Why: {_trim(reason, max_field_value_length)}")
+        label = "Recovery" if event.kind == "order_adopted" else "Why"
+        lines.append(f"{label}: {_trim(reason, max_field_value_length)}")
+    if event.kind == "order_adopted":
+        source = _field(event, "adoption_source")
+        if source:
+            lines.append(f"Source: {_trim(source, max_field_value_length)}")
     _append_signal_id(lines, event, max_field_value_length=max_field_value_length)
     return "\n".join(lines)
 
@@ -508,7 +520,11 @@ def _format_position_opened_card(event: NotificationEvent, *, max_field_value_le
 
 
 def _format_position_closed_card(event: NotificationEvent, *, max_field_value_length: int) -> str:
-    title = "TAKE PROFIT" if event.kind == "take_profit_hit" else "STOP LOSS"
+    title = {
+        "take_profit_hit": "TAKE PROFIT",
+        "stop_loss_hit": "STOP LOSS",
+        "position_closed": "TRADE CLOSED",
+    }.get(event.kind, "TRADE CLOSED")
     position = _field(event, "position_id", "n/a")
     deal = _field(event, "deal_ticket")
     lines = [
@@ -529,6 +545,9 @@ def _format_position_closed_card(event: NotificationEvent, *, max_field_value_le
     if hold != "n/a" or closed:
         closed_text = "n/a" if not closed else format_trader_timestamp(closed)
         lines.append(f"Hold: {hold} | Closed {closed_text}")
+    if event.kind == "position_closed":
+        reason = _field(event, "close_reason") or event.status or "unknown"
+        lines.append(f"Reason: {_trim(str(reason).replace('_', ' ').capitalize(), max_field_value_length)}")
     if deal:
         lines.append(f"Deal: #{deal}")
     _append_signal_id(lines, event, max_field_value_length=max_field_value_length)

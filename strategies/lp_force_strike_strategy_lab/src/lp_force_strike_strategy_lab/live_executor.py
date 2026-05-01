@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
 import json
+import os
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
@@ -352,7 +353,9 @@ def load_live_state(path: str | Path) -> LiveExecutorState:
 def save_live_state(path: str | Path, state: LiveExecutorState) -> None:
     state_path = Path(path)
     state_path.parent.mkdir(parents=True, exist_ok=True)
-    state_path.write_text(json.dumps(state.to_dict(), indent=2), encoding="utf-8")
+    temp_path = state_path.with_name(f".{state_path.name}.{os.getpid()}.tmp")
+    temp_path.write_text(json.dumps(state.to_dict(), indent=2), encoding="utf-8")
+    os.replace(temp_path, state_path)
 
 
 def live_execution_safety_from_config(config: LiveSendExecutorConfig) -> ExecutionSafetyLimits:
@@ -611,6 +614,10 @@ def process_trade_setup_live_send(
         retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:final_spread", event)
         return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check)
 
+    adopted = _adopt_existing_broker_item(mt5_module, decision.intent, config=config, state=checked_state, symbol_spec=symbol_spec, notifier=notifier)
+    if adopted is not None:
+        return adopted
+
     outcome = send_pending_order(mt5_module, decision.intent)
     if not outcome.sent or outcome.order_ticket is None:
         event = NotificationEvent(
@@ -630,6 +637,7 @@ def process_trade_setup_live_send(
 
     placed = _tracked_order_from_intent(decision.intent, outcome.order_ticket, price_digits=symbol_spec.digits)
     next_state = replace(checked_state, pending_orders=(*checked_state.pending_orders, placed))
+    save_live_state(config.state_path, next_state)
     event = _order_sent_event(placed, outcome, final_spread)
     next_state = _record_event_once(
         config,
@@ -678,7 +686,7 @@ def reconcile_live_state(
                 kept_pending.append(pending)
             continue
 
-        position = _matching_position_for_order(pending, positions)
+        position = _matching_position_for_order(mt5_module, pending, positions, config)
         if position is not None:
             tracked_position = _tracked_position_from_pending(pending, position, config)
             new_active.append(tracked_position)
@@ -731,7 +739,9 @@ def reconcile_live_state(
             last_seen_close_time_utc=close.close_time_utc,
         )
 
-    return replace(next_state, active_positions=tuple(kept_active))
+    next_state = replace(next_state, active_positions=tuple(kept_active))
+    save_live_state(config.state_path, next_state)
+    return next_state
 
 
 def run_live_send_cycle(
@@ -745,6 +755,7 @@ def run_live_send_cycle(
     """Run one finite live-send polling cycle."""
 
     current_state = reconcile_live_state(mt5_module, config=config, state=state, notifier=notifier)
+    save_live_state(config.state_path, current_state)
     frames_processed = 0
     orders_sent = 0
     setups_rejected = 0
@@ -769,6 +780,7 @@ def run_live_send_cycle(
                     notifier=notifier,
                 )
                 current_state = result.state
+                save_live_state(config.state_path, current_state)
                 orders_sent += 1 if result.status == "order_sent" else 0
                 setups_rejected += 1 if result.status == "rejected" else 0
                 setups_blocked += 1 if result.status == "blocked" else 0
@@ -850,11 +862,13 @@ def _record_event_once(
     telegram_message_ids = dict(state.telegram_message_ids)
     if store_thread_key and delivery is not None and delivery.sent and delivery.message_id is not None:
         telegram_message_ids[store_thread_key] = int(delivery.message_id)
-    return replace(
+    next_state = replace(
         state,
         notified_event_keys=_append_unique(state.notified_event_keys, event_key),
         telegram_message_ids=telegram_message_ids,
     )
+    save_live_state(config.state_path, next_state)
+    return next_state
 
 
 def _tracked_order_from_intent(intent: MT5OrderIntent, order_ticket: int, *, price_digits: int | None = None) -> LiveTrackedOrder:
@@ -902,6 +916,101 @@ def _tracked_position_from_pending(pending: LiveTrackedOrder, position: Any, con
     )
 
 
+def _tracked_position_from_intent(
+    intent: MT5OrderIntent,
+    position: Any,
+    config: LiveSendExecutorConfig,
+    *,
+    price_digits: int | None,
+) -> LiveTrackedPosition:
+    position_id = _position_id(position)
+    return LiveTrackedPosition(
+        signal_key=intent.signal_key,
+        position_id=position_id,
+        order_ticket=int(getattr(position, "ticket", 0) or position_id),
+        symbol=intent.symbol,
+        timeframe=intent.timeframe,
+        side=intent.side,
+        volume=float(getattr(position, "volume", intent.volume) or intent.volume),
+        entry_price=float(getattr(position, "price_open", intent.entry_price) or intent.entry_price),
+        stop_loss=float(getattr(position, "sl", intent.stop_loss) or intent.stop_loss),
+        take_profit=float(getattr(position, "tp", intent.take_profit) or intent.take_profit),
+        target_risk_pct=intent.target_risk_pct,
+        actual_risk_pct=intent.actual_risk_pct,
+        opened_time_utc=_position_time_utc(position, config),
+        magic=intent.magic,
+        comment=intent.comment,
+        setup_id=intent.setup_id,
+        price_digits=price_digits,
+    )
+
+
+def _adopt_existing_broker_item(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    *,
+    config: LiveSendExecutorConfig,
+    state: LiveExecutorState,
+    symbol_spec: MT5SymbolExecutionSpec,
+    notifier: TelegramNotifier | None = None,
+) -> LiveSetupResult | None:
+    order = _matching_broker_order_for_intent(mt5_module, intent, config, symbol_spec)
+    if order is not None:
+        ticket = int(getattr(order, "ticket", 0) or 0)
+        if ticket <= 0:
+            return None
+        tracked = _tracked_order_from_intent(intent, ticket, price_digits=symbol_spec.digits)
+        next_state = replace(state, pending_orders=(*state.pending_orders, tracked))
+        save_live_state(config.state_path, next_state)
+        event = _order_adopted_event(tracked, source="pending order", broker_item=order)
+        next_state = _record_event_once(
+            config,
+            next_state,
+            notifier,
+            f"order_adopted:{ticket}",
+            event,
+            store_thread_key=f"order:{ticket}",
+        )
+        return LiveSetupResult(
+            state=next_state,
+            signal_key=intent.signal_key,
+            status="order_adopted",
+            order_send=_adopted_outcome(mt5_module, intent, ticket, "existing pending order"),
+        )
+
+    position = _matching_broker_position_for_intent(mt5_module, intent, config, symbol_spec)
+    if position is None:
+        return None
+    tracked_position = _tracked_position_from_intent(intent, position, config, price_digits=symbol_spec.digits)
+    next_state = replace(state, active_positions=(*state.active_positions, tracked_position))
+    save_live_state(config.state_path, next_state)
+    event = _order_adopted_event(tracked_position, source="open position", broker_item=position)
+    next_state = _record_event_once(
+        config,
+        next_state,
+        notifier,
+        f"position_adopted:{tracked_position.position_id}",
+        event,
+        store_thread_key=f"order:{tracked_position.order_ticket}",
+    )
+    return LiveSetupResult(
+        state=next_state,
+        signal_key=intent.signal_key,
+        status="order_adopted",
+        order_send=_adopted_outcome(mt5_module, intent, tracked_position.order_ticket, "existing open position"),
+    )
+
+
+def _adopted_outcome(mt5_module: Any, intent: MT5OrderIntent, ticket: int, source: str) -> LiveOrderSendOutcome:
+    return LiveOrderSendOutcome(
+        sent=True,
+        request=build_order_check_request(mt5_module, intent),
+        retcode=None,
+        comment=f"adopted {source}; no order_send call",
+        order_ticket=ticket,
+    )
+
+
 def _order_sent_event(order: LiveTrackedOrder, outcome: LiveOrderSendOutcome, spread: DynamicSpreadGate) -> NotificationEvent:
     return NotificationEvent(
         kind="order_sent",
@@ -929,6 +1038,35 @@ def _order_sent_event(order: LiveTrackedOrder, outcome: LiveOrderSendOutcome, sp
             "comment": outcome.comment,
         },
         message="closed-candle LP + Force Strike setup, 50% pullback entry, FS structure stop, 1R target.",
+    )
+
+
+def _order_adopted_event(item: LiveTrackedOrder | LiveTrackedPosition, *, source: str, broker_item: Any) -> NotificationEvent:
+    return NotificationEvent(
+        kind="order_adopted",
+        mode="LIVE",
+        title="Existing live order adopted",
+        severity="warning",
+        symbol=item.symbol,
+        timeframe=item.timeframe,
+        side=item.side,
+        status="adopted",
+        signal_key=item.signal_key,
+        fields={
+            "adoption_source": source,
+            "order_ticket": item.order_ticket,
+            "position_id": getattr(item, "position_id", None),
+            "order_type": "BUY_LIMIT" if item.side == "long" else "SELL_LIMIT",
+            "entry": item.entry_price,
+            "stop_loss": item.stop_loss,
+            "take_profit": item.take_profit,
+            "volume": item.volume,
+            "actual_risk_pct": item.actual_risk_pct,
+            "target_risk_pct": item.target_risk_pct,
+            "price_digits": item.price_digits,
+            "broker_comment": str(getattr(broker_item, "comment", "") or ""),
+        },
+        message=f"Existing MT5 {source} matched this LPFS setup; no new order sent.",
     )
 
 
@@ -964,12 +1102,21 @@ def _close_event(active: LiveTrackedPosition, close: LiveCloseEvent) -> Notifica
     r_result = 0.0 if risk_price <= 0 else (close.close_price - active.entry_price) / risk_price
     if active.side == "short":
         r_result *= -1
-    kind = "take_profit_hit" if close.close_reason == "tp" else "stop_loss_hit"
+    if close.close_reason == "tp":
+        kind = "take_profit_hit"
+    elif close.close_reason == "sl":
+        kind = "stop_loss_hit"
+    else:
+        kind = "position_closed"
     return NotificationEvent(
         kind=kind,
         mode="LIVE",
-        title="Take profit hit" if kind == "take_profit_hit" else "Stop loss hit",
-        severity="info" if kind == "take_profit_hit" else "warning",
+        title={
+            "take_profit_hit": "Take profit hit",
+            "stop_loss_hit": "Stop loss hit",
+            "position_closed": "Position closed",
+        }[kind],
+        severity="warning" if kind == "stop_loss_hit" else "info",
         symbol=active.symbol,
         timeframe=active.timeframe,
         side=active.side,
@@ -989,6 +1136,7 @@ def _close_event(active: LiveTrackedPosition, close: LiveCloseEvent) -> Notifica
             "closed_utc": close.close_time_utc,
             "price_digits": active.price_digits,
             "broker_comment": close.close_comment,
+            "close_reason": close.close_reason,
         },
     )
 
@@ -1046,16 +1194,100 @@ def _rejection_event(status: str, message: str, signal_key: str, fields: dict[st
     )
 
 
-def _matching_position_for_order(order: LiveTrackedOrder, positions: Sequence[Any]) -> Any | None:
-    for position in positions:
-        if str(getattr(position, "symbol", "") or "").upper() != order.symbol:
+def _matching_broker_order_for_intent(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    config: LiveSendExecutorConfig,
+    spec: MT5SymbolExecutionSpec,
+) -> Any | None:
+    for order in current_strategy_orders(mt5_module, config):
+        if str(getattr(order, "symbol", "") or "").upper() != intent.symbol:
             continue
-        if int(getattr(position, "magic", 0) or 0) != order.magic:
+        if int(getattr(order, "type", -1) or -1) != _mt5_pending_order_type(mt5_module, intent):
             continue
+        if str(getattr(order, "comment", "") or "") != intent.comment:
+            continue
+        if not _any_volume_matches(order, intent.volume, spec):
+            continue
+        if not _price_attr_matches(order, ("price_open", "price"), intent.entry_price, spec):
+            continue
+        if not _price_attr_matches(order, ("sl",), intent.stop_loss, spec):
+            continue
+        if not _price_attr_matches(order, ("tp",), intent.take_profit, spec):
+            continue
+        return order
+    return None
+
+
+def _matching_broker_position_for_intent(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    config: LiveSendExecutorConfig,
+    spec: MT5SymbolExecutionSpec,
+) -> Any | None:
+    expected_type = getattr(mt5_module, "ORDER_TYPE_BUY", 0) if intent.side == "long" else getattr(mt5_module, "ORDER_TYPE_SELL", 1)
+    for position in current_strategy_positions(mt5_module, config):
+        if str(getattr(position, "symbol", "") or "").upper() != intent.symbol:
+            continue
+        if int(getattr(position, "type", expected_type) or expected_type) != expected_type:
+            continue
+        if str(getattr(position, "comment", "") or "") != intent.comment:
+            continue
+        if not _any_volume_matches(position, intent.volume, spec):
+            continue
+        if not _price_attr_matches(position, ("sl",), intent.stop_loss, spec):
+            continue
+        if not _price_attr_matches(position, ("tp",), intent.take_profit, spec):
+            continue
+        return position
+    return None
+
+
+def _matching_position_for_order(
+    mt5_module: Any,
+    order: LiveTrackedOrder,
+    positions: Sequence[Any],
+    config: LiveSendExecutorConfig,
+) -> Any | None:
+    candidates = [
+        position
+        for position in positions
+        if str(getattr(position, "symbol", "") or "").upper() == order.symbol
+        and int(getattr(position, "magic", 0) or 0) == order.magic
+    ]
+    for position in candidates:
         comment = str(getattr(position, "comment", "") or "")
-        if order.comment in comment or abs(float(getattr(position, "volume", 0.0) or 0.0) - order.volume) < 1e-9:
+        if order.comment and order.comment in comment:
+            return position
+    linked_position_id = _position_id_from_order_history(mt5_module, order, config)
+    if linked_position_id is None:
+        return None
+    for position in candidates:
+        if _position_id(position) == linked_position_id:
             return position
     return None
+
+
+def _position_id_from_order_history(mt5_module: Any, order: LiveTrackedOrder, config: LiveSendExecutorConfig) -> int | None:
+    history_order = _history_order_for_ticket(mt5_module, order, config)
+    if history_order is not None:
+        for attr in ("position_id", "position_by_id"):
+            value = _optional_int(getattr(history_order, attr, None))
+            if value is not None:
+                return value
+    for deal in _history_deals_for_order_ticket(mt5_module, order.order_ticket, config):
+        value = _optional_int(getattr(deal, "position_id", None))
+        if value is not None:
+            return value
+    return None
+
+
+def _history_deals_for_order_ticket(mt5_module: Any, order_ticket: int, config: LiveSendExecutorConfig) -> tuple[Any, ...]:
+    end = pd.Timestamp.now(tz="UTC")
+    start = end - pd.Timedelta(days=config.history_lookback_days)
+    result = mt5_module.history_deals_get(start.to_pydatetime(), end.to_pydatetime())
+    deals = [] if result is None else list(result)
+    return tuple(deal for deal in deals if int(getattr(deal, "order", 0) or 0) == int(order_ticket))
 
 
 def _history_deals_for_position(mt5_module: Any, position_id: int, config: LiveSendExecutorConfig) -> tuple[Any, ...]:
@@ -1168,6 +1400,36 @@ def _accepted_send_retcodes(mt5_module: Any) -> set[int]:
     if retcode_placed is not None:
         accepted.add(int(retcode_placed))
     return accepted
+
+
+def _mt5_pending_order_type(mt5_module: Any, intent: MT5OrderIntent) -> int:
+    return int(
+        getattr(mt5_module, "ORDER_TYPE_BUY_LIMIT")
+        if intent.order_type == "BUY_LIMIT"
+        else getattr(mt5_module, "ORDER_TYPE_SELL_LIMIT")
+    )
+
+
+def _any_volume_matches(item: Any, expected: float, spec: MT5SymbolExecutionSpec) -> bool:
+    tolerance = max(float(spec.volume_step) * 1e-6, 1e-9)
+    for attr in ("volume_initial", "volume_current", "volume"):
+        raw_value = getattr(item, attr, None)
+        if raw_value in (None, ""):
+            continue
+        if abs(float(raw_value) - float(expected)) <= tolerance:
+            return True
+    return False
+
+
+def _price_attr_matches(item: Any, attrs: Sequence[str], expected: float, spec: MT5SymbolExecutionSpec) -> bool:
+    tolerance = max(abs(float(spec.point)) / 2.0, 1e-9)
+    for attr in attrs:
+        raw_value = getattr(item, attr, None)
+        if raw_value in (None, ""):
+            continue
+        if abs(float(raw_value) - float(expected)) <= tolerance:
+            return True
+    return False
 
 
 def _optional_int(value: Any) -> int | None:

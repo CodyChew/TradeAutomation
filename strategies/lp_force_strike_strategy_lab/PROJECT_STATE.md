@@ -819,10 +819,10 @@ Supported event kinds include:
 - setup rejected;
 - order intent created;
 - order-check passed or failed;
-- order sent or rejected;
+- order sent, adopted, or rejected;
 - pending expired or cancelled;
 - position opened;
-- stop loss / take profit hit;
+- stop loss / take profit hit or manual/unknown position closed;
 - runner started / runner stopped;
 - executor error;
 - kill switch activated.
@@ -838,18 +838,20 @@ exact floats, and diagnostics stay in JSONL.
 Live Telegram messages add real broker lifecycle alerts:
 
 - `ORDER PLACED`;
+- `ORDER ADOPTED`;
 - `ENTERED`;
 - `TAKE PROFIT`;
 - `STOP LOSS`;
+- `TRADE CLOSED`;
 - `WAITING` for retryable spread-only blocks;
 - `SKIPPED` / `REJECTED` / `CANCELLED`;
 - `RUNNER STARTED` / `RUNNER STOPPED` for process lifecycle status.
 
 Fill, close, expiry, and cancellation alerts reply to the original
-`ORDER PLACED` Telegram message when Telegram returns a message ID. The live
-state stores those IDs under `telegram_message_ids`. The manual summary script
-is `../../scripts/summarize_lpfs_live_trades.py --config config.local.json
---limit 5`.
+`ORDER PLACED` or `ORDER ADOPTED` Telegram message when Telegram returns a
+message ID. The live state stores those IDs under `telegram_message_ids`. The
+manual summary script is `../../scripts/summarize_lpfs_live_trades.py --config
+config.local.json --limit 5`.
 
 Runner start/stop cards are intentionally separate from trade lifecycle cards.
 They show cadence, requested/completed cycles, runtime, state-save status, and
@@ -894,6 +896,18 @@ written.
 - Scaled risk ladder: H4/H8 `0.01%`, H12/D1 `0.015%`, W1 `0.0375%`.
 - MT5 is the source of truth. The executor reconciles open orders, historical
   orders, open positions, and close deals before scanning new signals.
+- Live state writes are atomic, and broker-affecting state is persisted
+  immediately after successful live send/adoption, reconciliation mutations, and
+  notification idempotency changes.
+- The runner holds a single-runner lock beside the live state file. A second
+  runner against the same state exits fail-closed before MT5 initialization.
+- Immediately before live `order_send`, the executor checks MT5 for an exact
+  matching strategy pending order or matching open position and adopts that
+  broker item instead of sending a duplicate.
+- Pending-to-position fill matching now requires broker comment or historical
+  order/deal linkage; same symbol/magic/volume alone is not considered enough.
+- Manual or unknown close reasons are reported as `TRADE CLOSED` with MT5 PnL/R,
+  not mislabeled as stop losses.
 - Late-start missed-entry guard is active: if MT5 bars after the signal candle
   already touched the planned pullback entry before the live order could be
   placed, the setup is rejected instead of placing a stale pending order.
@@ -928,6 +942,14 @@ written.
   compatibility code.
 - After a pending order is placed, spread widening does not auto-cancel it and
   does not currently trigger a dedicated Telegram alert.
+- Research gap: V9/V15 include candle-spread cost drag through the shared
+  backtest engine, but stop/target triggers are still based on OHLC reference
+  highs/lows rather than full bid/ask paths. This matters most for short SLs,
+  because a live short is stopped by Ask while most MT5 charts show Bid. Next
+  research should compare the current baseline with bid/ask-aware triggers and
+  test whether a small stop buffer beyond the Force Strike structure improves
+  profitability after the larger risk distance, smaller size, and adjusted 1R
+  target are accounted for.
 - The live runner now sends best-effort Telegram process notifications on
   start and stop. The stop alert is emitted for completed cycle runs, Ctrl+C,
   and uncaught runtime errors after state save is attempted.
@@ -945,6 +967,9 @@ Expected next scope:
    re-arming the current latest-candle setups.
 4. Add retry policy and a real kill switch before unattended operation on a VPS
    or scheduled startup.
+5. Add a research-only execution-realism experiment for bid/ask-aware
+   entry/exit triggers and Force Strike structure stop buffers. Do not change
+   the live stop placement until the profitability and drawdown delta is known.
 
 ## Dashboard Interpretation UX
 

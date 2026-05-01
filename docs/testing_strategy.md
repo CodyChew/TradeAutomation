@@ -43,6 +43,11 @@ that behavior into a core package and cover it there.
   stop distance is not positive.
 - Bracket simulation is conservative on same-bar conflicts: if stop and target
   are both touched in the same candle, the stop is recorded first.
+- Current LPFS research includes candle-spread cost drag, but it does not yet
+  fully model bid/ask-side stop and target triggers. A future execution-realism
+  experiment should compare the current OHLC trigger baseline against
+  bid/ask-aware triggers and small Force Strike structure stop buffers before
+  changing live stop placement.
 - Realized drawdown measures closed-trade equity only. Risk-reserved drawdown
   subtracts open reserved risk while trades are active and is the safer account
   stress metric.

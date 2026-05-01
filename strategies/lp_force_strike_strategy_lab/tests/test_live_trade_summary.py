@@ -127,6 +127,39 @@ class LiveTradeSummaryTests(unittest.TestCase):
         empty = build_recent_trade_summary_message(events=[], limit=5)
         self.assertIn("No closed trades found", empty)
 
+    def test_summary_pairs_adopted_orders_and_manual_closes(self) -> None:
+        events = [
+            _journal_row(
+                "order_adopted",
+                fields={"order_ticket": 9003, "entry": 1.2, "volume": 0.01, "price_digits": 5},
+                symbol="GBPUSD",
+            ),
+            _journal_row(
+                "position_opened",
+                fields={"position_id": 7003, "order_ticket": 9003, "opened_utc": "2026-05-01T10:00:00+00:00"},
+                symbol="GBPUSD",
+            ),
+            _journal_row(
+                "position_closed",
+                fields={
+                    "position_id": 7003,
+                    "deal_ticket": 3003,
+                    "close_price": 1.202,
+                    "close_profit": 4.0,
+                    "r_result": 0.4,
+                    "closed_utc": "2026-05-01T11:00:00+00:00",
+                },
+                symbol="GBPUSD",
+            ),
+        ]
+
+        trades = build_closed_trade_summaries(events)
+        self.assertEqual(len(trades), 1)
+        self.assertEqual(trades[0].close_kind, "TRADE CLOSED")
+        self.assertEqual(trades[0].entry_price, 1.2)
+        message = build_recent_trade_summary_message(events=events, limit=5)
+        self.assertIn("Exit mix: TP 0 | SL 0 | Other 1", message)
+
     def test_summary_loads_jsonl_and_script_prints_without_posting(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             journal = Path(tmpdir) / "journal.jsonl"

@@ -49,10 +49,11 @@ so H4/H8 are `0.01%`, H12/D1 are `0.015%`, and W1 is `0.0375%`.
   `execution_contract.py` is pure Python and must not import MetaTrader5.
 - Live MT5 behavior:
   `live_executor.py` owns live-send checks, order_send, reconciliation, state,
-  fill/close handling, and lifecycle events.
+  duplicate/adoption recovery, fill/close handling, and lifecycle events.
 - Runner CLI:
   `scripts/run_lp_force_strike_live_executor.py` owns cycle count, sleep,
-  process start/stop notifications, final state save, and MT5 shutdown.
+  single-runner locking, process start/stop notifications, final state save,
+  and MT5 shutdown.
 - Telegram UX:
   `notifications.py`, `docs/telegram_notifications.md`, and
   `scripts/summarize_lpfs_live_trades.py`.
@@ -81,6 +82,10 @@ a very large cycle count and stop with Ctrl+C:
 Do not clear `data/live/lpfs_live_state.json` unless the user explicitly wants
 to re-arm already processed latest-candle signals. Clearing live state can
 place duplicate pending orders if the same setup still passes all checks.
+
+The runner now holds `data/live/lpfs_live_state.json.lock` while active. A
+second runner against the same state exits fail-closed before MT5
+initialization.
 
 ## Last Verified Live-Test Snapshot
 
@@ -138,6 +143,15 @@ Skipped in that fresh cycle:
   state still tracks the order, the next reconciliation should emit a
   cancelled/missing lifecycle alert and remove it from pending tracking.
 - MT5 broker state is the source of truth for orders, positions, and deals.
+- Local live state is written atomically and persisted immediately after
+  broker-affecting safety mutations.
+- Before live `order_send`, the runner checks for an exact matching strategy
+  pending order or matching open position and adopts it instead of sending a
+  duplicate.
+- Pending-to-position fill matching requires broker comment or historical
+  order/deal linkage; same volume alone is not enough.
+- Manual or unknown broker exits are shown as `LPFS LIVE | TRADE CLOSED`, not
+  as stop losses, while still using MT5 PnL/R.
 - Telegram is best-effort UX only and must never decide trade validity.
 
 ## Notification UX
@@ -145,9 +159,11 @@ Skipped in that fresh cycle:
 Telegram now sends compact plain-text trader cards:
 
 - `LPFS LIVE | ORDER PLACED`
+- `LPFS LIVE | ORDER ADOPTED`
 - `LPFS LIVE | ENTERED`
 - `LPFS LIVE | TAKE PROFIT`
 - `LPFS LIVE | STOP LOSS`
+- `LPFS LIVE | TRADE CLOSED`
 - `LPFS LIVE | WAITING`
 - `LPFS LIVE | SKIPPED`
 - `LPFS LIVE | REJECTED`
@@ -189,6 +205,21 @@ After an order is pending, spread widening does not auto-cancel it and does not
 currently trigger a dedicated Telegram alert. Reconciliation keeps the order
 until fill, expiry, or broker/user removal.
 
+Execution-realism research gap:
+
+- The current V9/V15 baseline includes candle-spread cost drag through the
+  shared backtest engine, but stop/target trigger detection is still OHLC
+  reference-price based.
+- Live MT5 stops are bid/ask side dependent. A short can hit SL through Ask
+  even when a Bid-only chart does not visibly touch the stop.
+- Next research should rerun the current baseline with bid/ask-aware entry, TP,
+  and SL trigger assumptions, then test small stop buffers beyond the Force
+  Strike structure.
+- The buffer test must compare net profitability, drawdown, win rate, PF, trade
+  count, and bucket suitability because a wider stop changes risk distance,
+  volume, and 1R target distance.
+- Do not change live stop placement until this research delta is known.
+
 A read-only sanity check over 720 recent detected setups showed:
 
 - `5%` gate: 607/720 pass (`84.3%`).
@@ -220,7 +251,7 @@ Full strict gate:
 
 Latest full strict result on 2026-05-01:
 
-- `211` unittest cases across core labs.
+- `218` unittest cases across core labs.
 - `100.00%` line and branch coverage.
 
 Latest selector revalidation on 2026-05-01:

@@ -37,12 +37,14 @@ The contract supports these event names:
 - `order_check_passed`
 - `order_check_failed`
 - `order_sent`
+- `order_adopted`
 - `order_rejected`
 - `pending_expired`
 - `pending_cancelled`
 - `position_opened`
 - `stop_loss_hit`
 - `take_profit_hit`
+- `position_closed`
 - `runner_started`
 - `runner_stopped`
 - `executor_error`
@@ -67,12 +69,14 @@ details remain in the local journal.
 Live order management adds:
 
 - `order_sent`
+- `order_adopted`
 - `order_rejected`
 - `pending_expired`
 - `pending_cancelled`
 - `position_opened`
 - `stop_loss_hit`
 - `take_profit_hit`
+- `position_closed`
 - `runner_started`
 - `runner_stopped`
 
@@ -110,11 +114,16 @@ comments, exact floats, and diagnostic fields stay in the JSONL journal.
 - `order_sent`: `LPFS LIVE | ORDER PLACED`, market, order type/ticket,
   entry/SL/TP, actual/target risk, lot size, spread as percent of risk, SGT
   expiry, setup reason, and signal ref.
+- `order_adopted`: `LPFS LIVE | ORDER ADOPTED`, matching broker order/position
+  details, recovery note, and signal ref. It means no duplicate `order_send`
+  was made.
 - `position_opened`: `LPFS LIVE | ENTERED`, market, position/order IDs, fill,
   size, risk, broker SL/TP, SGT open time, and signal ref.
 - `take_profit_hit` / `stop_loss_hit`: `LPFS LIVE | TAKE PROFIT` or
   `LPFS LIVE | STOP LOSS`, market, position ID, exit, PnL, R, entry, size,
   hold time, SGT close time, deal ticket, and signal ref.
+- `position_closed`: `LPFS LIVE | TRADE CLOSED` for manual or unknown broker
+  close reasons, still using MT5 PnL/R and deal details.
 - spread-only `setup_rejected`: `WAITING`, human reason, spread ratio, retry
   action, and signal ref.
 - other `setup_rejected` / `order_check_failed` / `order_rejected`: `SKIPPED`
@@ -126,8 +135,9 @@ comments, exact floats, and diagnostic fields stay in the JSONL journal.
   cadence, cycle counts, runtime, state-save status, and SGT start/stop time.
 
 Live fill, close, expiry, and cancellation cards reply to the original
-`ORDER PLACED` Telegram message when Telegram returns a `message_id`. Missing
-message IDs or Telegram failures do not affect trading or reconciliation.
+`ORDER PLACED` or `ORDER ADOPTED` Telegram message when Telegram returns a
+`message_id`. Missing message IDs or Telegram failures do not affect trading or
+reconciliation.
 
 Manual recent trade summaries can be printed or posted:
 

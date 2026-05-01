@@ -462,6 +462,38 @@ class NotificationTests(unittest.TestCase):
         self.assertNotIn("Retcode:", order)
         self.assertNotIn("Broker:", order)
 
+        adopted = format_notification_message(
+            NotificationEvent(
+                kind="order_adopted",
+                mode="LIVE",
+                title="Adopted",
+                symbol="EURUSD",
+                timeframe="H4",
+                side="long",
+                signal_key="lpfs:EURUSD:H4:10:long:c:2026-01-01T00:00:00Z",
+                fields={
+                    "order_ticket": 7777,
+                    "order_type": "BUY_LIMIT",
+                    "entry": 1.1,
+                    "stop_loss": 1.095,
+                    "take_profit": 1.105,
+                    "actual_risk_pct": 0.01,
+                    "target_risk_pct": 0.01,
+                    "volume": 0.02,
+                    "adoption_source": "pending order",
+                },
+                message="Existing MT5 pending order matched this LPFS setup; no new order sent.",
+            )
+        )
+        self.assertIn("LPFS LIVE | ORDER ADOPTED", adopted)
+        self.assertIn("Recovery: Existing MT5 pending order matched this LPFS setup", adopted)
+        self.assertIn("Source: pending order", adopted)
+        adopted_without_source = format_notification_message(
+            NotificationEvent(kind="order_adopted", mode="LIVE", title="Adopted", message="Existing MT5 order matched.")
+        )
+        self.assertIn("LPFS LIVE | ORDER ADOPTED", adopted_without_source)
+        self.assertNotIn("Source:", adopted_without_source)
+
         opened = format_notification_message(
             NotificationEvent(
                 kind="position_opened",
@@ -516,6 +548,33 @@ class NotificationTests(unittest.TestCase):
         self.assertIn("Hold: 3h 30m | Closed 2026-01-01 16:00 SGT", closed)
         self.assertIn("Deal: #3001", closed)
 
+        manual_closed = format_notification_message(
+            NotificationEvent(
+                kind="position_closed",
+                mode="LIVE",
+                title="Closed",
+                symbol="EURUSD",
+                timeframe="H4",
+                side="long",
+                signal_key="lpfs:EURUSD:H4:10:long:c:2026-01-01T00:00:00Z",
+                fields={
+                    "position_id": 7001,
+                    "deal_ticket": 3002,
+                    "entry": 1.1,
+                    "close_price": 1.102,
+                    "volume": 0.02,
+                    "close_profit": 4.0,
+                    "r_result": 0.4,
+                    "opened_utc": "2026-01-01T04:30:00+00:00",
+                    "closed_utc": "2026-01-01T07:00:00+00:00",
+                    "close_reason": "manual",
+                },
+            )
+        )
+        self.assertIn("LPFS LIVE | TRADE CLOSED", manual_closed)
+        self.assertIn("PnL +4.00 | R +0.40R", manual_closed)
+        self.assertIn("Reason: Manual", manual_closed)
+
         cancelled = format_notification_message(
             NotificationEvent(
                 kind="pending_cancelled",
@@ -545,6 +604,9 @@ class NotificationTests(unittest.TestCase):
         self.assertIn("LPFS LIVE | STOP LOSS", bare_closed)
         self.assertIn("Exit: n/a | PnL n/a | R n/a", bare_closed)
         self.assertNotIn("Hold:", bare_closed)
+        bare_manual = format_notification_message(NotificationEvent(kind="position_closed", mode="LIVE", title="Closed"))
+        self.assertIn("LPFS LIVE | TRADE CLOSED", bare_manual)
+        self.assertIn("Reason: Unknown", bare_manual)
 
         rejected = format_notification_message(NotificationEvent(kind="order_rejected", mode="LIVE", title="Rejected"))
         self.assertIn("LPFS LIVE | REJECTED", rejected)

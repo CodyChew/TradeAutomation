@@ -202,6 +202,9 @@ For detected setups, the runner:
 - rejects duplicate signal keys using local state;
 - logs live `bid`, `ask`, and `spread_points`;
 - translates ready intents to MT5 `order_check` requests;
+- immediately before live `order_send`, refreshes quotes and checks MT5 for an
+  exact matching strategy pending order or already-open matching position. A
+  match is adopted into local state instead of sending a duplicate;
 - records pass/fail retcodes and comments.
 
 The local journal records each lifecycle event. Telegram is intentionally
@@ -213,10 +216,14 @@ Live-send Telegram cards are compact and trader-oriented:
 
 - `ORDER PLACED`: market, order type/ticket, entry, SL, TP, risk, size,
   spread, expiry, setup reason, and ref.
+- `ORDER ADOPTED`: a matching MT5 order/position was found and tracked locally;
+  no new order was sent.
 - `ENTERED`: market, position/order IDs, fill, size, risk, SL, TP, open time,
   and ref.
 - `TAKE PROFIT` / `STOP LOSS`: market, position ID, exit, PnL, R, entry, size,
   hold time, close time, deal ticket, and ref.
+- `TRADE CLOSED`: manual or unknown close using real MT5 PnL/R, without
+  mislabeling the exit as SL.
 - `SKIPPED` / `REJECTED` / `CANCELLED`: human reason, action taken, key metric,
   and ref.
 - `RUNNER STARTED` / `RUNNER STOPPED`: live process status, cadence, cycle
@@ -259,7 +266,9 @@ Both are ignored because `data/` is local. The journal is append-only JSONL and
 redacts sensitive fields before writing. The state files store processed
 signal keys, checked signal keys, tracked pending orders, tracked active
 positions, notification idempotency keys, and Telegram order-card message IDs.
-Restarts reconcile MT5 first, then continue from the local state.
+Live-send state is written atomically and saved immediately after
+broker-affecting safety mutations. Restarts reconcile MT5 first, then continue
+from the local state.
 
 Do not clear live-send state casually. Clearing it intentionally re-arms
 already processed latest-candle signals and can place the same pending orders
@@ -282,6 +291,8 @@ Sensitive values must never appear in these files:
 - The live-send runner can call `order_send` when explicitly enabled.
 - Live-send uses MT5 as source of truth for pending orders, positions, and
   close deals.
+- The live runner holds a single-runner lock beside the state file. A second
+  runner against the same state exits fail-closed before MT5 initialization.
 - Live-send skips stale late-start setups when the planned entry already traded
   before the pending order was placed.
 - Live-send treats spread-too-wide setups as retryable WAITING events. It can
@@ -292,9 +303,10 @@ Sensitive values must never appear in these files:
 - Manual deletion of an MT5 pending order does not re-arm the signal. On the
   next reconciliation, the tracked pending order is treated as cancelled/missing
   and the original signal remains processed.
-- Live-send tracks order placement, fill, TP/SL close, cancellation, and expiry
-  notifications in local state so restarts do not replay alerts. It also stores
-  Telegram order-card message IDs for best-effort lifecycle replies.
+- Live-send tracks order placement/adoption, fill, TP/SL/manual close,
+  cancellation, and expiry notifications in local state so restarts do not
+  replay alerts. It also stores Telegram order-card message IDs for best-effort
+  lifecycle replies.
 - The live runner sends and journals start/stop process notifications when
   Telegram is configured. Stop cards are emitted for completed cycles, Ctrl+C,
   and uncaught runtime errors after state save is attempted.

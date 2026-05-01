@@ -183,7 +183,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         (
             "Startup",
             "Reconcile broker state first",
-            "Every live-send cycle loads local state, pulls MT5 pending orders and positions by strategy magic, checks recent history, then only scans for fresh closed-candle signals.",
+            "Every live-send cycle loads atomically persisted local state, pulls MT5 pending orders and positions by strategy magic, checks recent history, then only scans for fresh closed-candle signals.",
         ),
         (
             "Signal",
@@ -198,12 +198,12 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         (
             "Send",
             "Refresh quote before order_send",
-            "Immediately before sending, the runner refreshes the quote and runs the spread gate again. The order is sent only after broker order_check passes.",
+            "Immediately before sending, the runner refreshes the quote, reruns the spread gate, and checks for an already matching broker order/position. A matching broker item is adopted; otherwise the order is sent only after broker order_check passes.",
         ),
         (
             "Manage",
             "Let MT5 be the truth",
-            "Open pending orders and positions are reconciled each cycle. Fills, cancellations, expiries, and closes come from MT5 orders, positions, and deal history.",
+            "Open pending orders and positions are reconciled each cycle. Fills, cancellations, expiries, and closes come from MT5 orders, positions, and deal history. Broker-affecting state is saved immediately after each safety mutation.",
         ),
     ]
 
@@ -221,7 +221,12 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         [
             "Pending filled",
             "Every cycle",
-            "Detect matching MT5 position, move state from pending to active, and send ENTERED as a reply to the original order card when message_id exists.",
+            "Detect a matching MT5 position by comment or broker history linkage, move state from pending to active, and send ENTERED as a reply to the original order card when message_id exists.",
+        ],
+        [
+            "Existing broker item found",
+            "Before order_send",
+            "If an exact same pending order or already-open matching position exists under the strategy magic/comment, adopt it into local state and do not send a duplicate order.",
         ],
         [
             "Pending missing",
@@ -236,7 +241,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         [
             "Position closed",
             "Every cycle",
-            "Query deal history by position ID first, classify TP/SL where possible, compute PnL/R/hold time, then send the close card once.",
+            "Query deal history by position ID first, classify TP/SL where possible, compute PnL/R/hold time, then send the close card once. Manual or unknown exits are shown as TRADE CLOSED, not as stop losses.",
         ],
         [
             "Manual trade",
@@ -417,6 +422,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             ("ORDER PLACED", "Standalone card", "Ticket, market, entry/SL/TP, actual/target risk, size, spread, expiry, ref."),
             ("ENTERED", "Reply to order", "Fill time/price, position ID, volume, SL/TP, risk, ref."),
             ("TAKE PROFIT / STOP LOSS", "Reply to order", "Exit price/time, PnL, R, hold time, deal ticket, position ID, ref."),
+            ("ORDER ADOPTED / TRADE CLOSED", "Recovery and manual exits", "Adopted broker items are not resent; manual/unknown exits keep real MT5 PnL and R without a false SL label."),
             ("SKIPPED / REJECTED / CANCELLED", "Readable reason", "Human reason, action taken, key metric, and ref. Raw fields remain in JSONL."),
             ("RUNNER STARTED / STOPPED", "Process heartbeat", "Cadence, cycle count, runtime, state-save status, and SGT start/stop time."),
         ])}
@@ -437,6 +443,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
       <div class="scenario-grid">
         {_step_cards([
             ("Limit", "Not a daemon", "The runner only keeps checking when started with multiple cycles or wrapped by an external scheduler/process manager."),
+            ("Protection", "Single-runner lock", "A lock file beside the live state blocks a second live runner from starting against the same state."),
             ("Limit", "No spread auto-cancel", "Spread is a send gate. Once an order is pending, spread widening does not cancel it and does not have a dedicated Telegram alert yet."),
             ("Limit", "Manual deletion is respected", "Deleting a pending order manually does not automatically re-arm that same signal because the signal key stays processed."),
             ("Limit", "Close reason depends on broker history", "TP/SL classification uses MT5 deal/order history. Ambiguous broker comments may fall back to a less specific close alert."),

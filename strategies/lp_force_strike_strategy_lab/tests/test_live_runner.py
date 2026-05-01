@@ -21,7 +21,12 @@ for src_root in [
         sys.path.insert(0, str(src_root))
 
 from lp_force_strike_strategy_lab import NotificationDelivery  # noqa: E402
-from scripts.run_lp_force_strike_live_executor import _send_runner_lifecycle_event  # noqa: E402
+from scripts.run_lp_force_strike_live_executor import (  # noqa: E402
+    LiveRunnerLock,
+    RunnerLockActive,
+    _runner_lock_path,
+    _send_runner_lifecycle_event,
+)
 
 
 class RecordingNotifier:
@@ -41,6 +46,22 @@ class RecordingNotifier:
 
 
 class LiveRunnerNotificationTests(unittest.TestCase):
+    def test_runner_lock_blocks_second_holder_and_releases(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock_path = _runner_lock_path(Path(tmpdir) / "state.json")
+            first = LiveRunnerLock(lock_path)
+            first.acquire()
+            try:
+                second = LiveRunnerLock(lock_path)
+                with self.assertRaises(RunnerLockActive):
+                    second.acquire()
+            finally:
+                first.release()
+
+            second = LiveRunnerLock(lock_path)
+            second.acquire()
+            second.release()
+
     def test_runner_start_notification_is_journaled_and_sent(self) -> None:
         notifier = RecordingNotifier()
         with tempfile.TemporaryDirectory() as tmpdir:

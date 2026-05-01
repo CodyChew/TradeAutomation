@@ -87,7 +87,7 @@ Core logic regression gate:
 
 Current result on 2026-05-01:
 
-- 211 unittest cases across the five core labs.
+- 218 unittest cases across the five core labs.
 - `100.00%` line and branch coverage for the scoped core packages.
 - Scope and edge-case rules documented in `docs/testing_strategy.md`.
 
@@ -273,6 +273,12 @@ Next useful research:
   readiness;
 - build the MT5 dry-run executor with broker `order_check`, audit journal, and
   Telegram events before any `order_send` path;
+- run an execution-realism pass that compares the current OHLC baseline against
+  bid/ask-aware entry, TP, and SL triggers, including short SLs that can be hit
+  by Ask even when the Bid chart does not visibly touch the stop;
+- test whether adding a small stop buffer beyond the Force Strike structure
+  improves or hurts expectancy after accounting for larger risk distance,
+  smaller position size, and changed TP distance;
 - later test daily/max loss constraints, same-symbol stacking limits, and max
   concurrent trade limits against broker-realistic behavior.
 
@@ -361,11 +367,12 @@ account checks pass:
   contract. It reconciles MT5 open orders, historical orders, positions, and
   deal history before scanning new signals, sends pending
   `BUY_LIMIT`/`SELL_LIMIT` orders only after all checks pass, rejects stale
-  late-start setups whose entry already traded before placement, and writes
-  restart-safe state for pending orders, active positions, sent notification
-  keys, and last seen close deal.
+  late-start setups whose entry already traded before placement, adopts exact
+  matching broker orders/positions instead of re-sending duplicates, and writes
+  atomically persisted restart-safe state for pending orders, active positions,
+  sent notification keys, and last seen close deal.
 - `scripts/run_lp_force_strike_live_executor.py` is the finite-cycle live-send
-  runner.
+  runner and holds a single-runner lock beside the live state file.
 - `config.local.example.json` documents the ignored local config shape.
 - `docs/dry_run_executor.md` documents setup, credentials, journal/state files,
   and the dry-run operating limits.
@@ -395,9 +402,9 @@ Telegram contract facts:
 - The notifier defaults to dry-run behavior and uses injectable HTTP clients in
   tests.
 - Event types include signal detected, setup rejected, order intent created,
-  order-check passed/failed, order sent/rejected, pending expired/cancelled,
-  position opened, SL/TP hit, runner started/stopped, executor error, and kill
-  switch activated.
+  order-check passed/failed, order sent/adopted/rejected, pending
+  expired/cancelled, position opened, SL/TP/manual close, runner
+  started/stopped, executor error, and kill switch activated.
 
 Dry-run adapter facts:
 
@@ -443,6 +450,13 @@ Live-send adapter facts:
 - Scaled risk ladder: H4/H8 `0.01%`, H12/D1 `0.015%`, W1 `0.0375%`.
 - Dynamic spread gate: spread must be <= 10% of the setup's entry-to-stop
   distance before `order_check` and again immediately before `order_send`.
+- Single-runner protection: a lock file beside `lpfs_live_state.json` prevents
+  two live runners from managing the same state concurrently.
+- State persistence is atomic and broker-affecting state is saved immediately
+  after safety mutations, including successful live send/adoption.
+- Immediately before `order_send`, live-send checks for an exact matching
+  broker pending order or already-open matching position and adopts it instead
+  of sending a duplicate.
 - Current spread-too-wide behavior is retryable for that exact signal key.
   Spread-only blocks send/log one WAITING event, do not mark the signal
   processed, and can place later if spread improves before entry touch or
@@ -450,16 +464,27 @@ Live-send adapter facts:
   explicitly instead of keeping compatibility code.
 - Once a pending order is placed, spread widening does not auto-cancel it and
   does not currently trigger a dedicated Telegram alert.
+- Research gap: the historical baseline includes candle-spread cost drag, but
+  exits are still triggered from OHLC reference highs/lows rather than full
+  bid/ask paths. A short can be stopped live by Ask even if a Bid-only chart
+  does not show the stop touched. Before changing live behavior, rerun V9/V15
+  with bid/ask-aware trigger assumptions and compare a no-buffer baseline
+  against small Force Strike structure stop buffers.
 - Late-start missed-entry guard: if MT5 bars after the signal candle already
   touched the planned pullback entry before the live order could be placed, the
   setup is rejected instead of placing a stale pending order.
 - Every live pending order carries broker-side SL, TP, expiration, magic number,
   and compact comment; the full signal key stays in local state.
-- Telegram lifecycle alerts cover `ORDER PLACED`, `ENTERED`, `TAKE PROFIT`,
-  `STOP LOSS`, `WAITING`, `SKIPPED`, `REJECTED`, `CANCELLED`,
-  `RUNNER STARTED`, and `RUNNER STOPPED`. Spread-only WAITING cards are
-  retryable; fill, close, expiry, and cancellation cards reply to the original
-  order card when Telegram returns a message ID.
+- Pending-to-position reconciliation requires broker comment or historical
+  order/deal linkage; same symbol/magic/volume alone is not enough.
+- Telegram lifecycle alerts cover `ORDER PLACED`, `ORDER ADOPTED`, `ENTERED`,
+  `TAKE PROFIT`, `STOP LOSS`, `TRADE CLOSED`, `WAITING`, `SKIPPED`,
+  `REJECTED`, `CANCELLED`, `RUNNER STARTED`, and `RUNNER STOPPED`.
+  Spread-only WAITING cards are retryable; fill, close, expiry, and
+  cancellation cards reply to the original order/adoption card when Telegram
+  returns a message ID.
+- Manual or unknown close reasons are reported as `TRADE CLOSED` with MT5 PnL/R
+  instead of being mislabeled as stop losses.
 - Runner start/stop cards are process heartbeat alerts. They show cadence,
   requested/completed cycles, runtime, state-save status, and SGT start/stop
   time. They are also written to the live JSONL journal.

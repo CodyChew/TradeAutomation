@@ -118,6 +118,11 @@ open orders, positions, historical orders, and local state before scanning for
 new signals. If this key already exists in processed/tracked state, the setup is
 skipped as already processed.
 
+Live-send also checks MT5 one final time immediately before `order_send`. If an
+exact matching strategy pending order already exists, or a matching open
+position exists under the same strategy magic/comment, the runner adopts that
+broker item into local state and does not send a duplicate order.
+
 Manual deletion of a pending order in MT5 does not create a new signal. If the
 local live state still tracks the order, the next reconciliation emits a
 cancelled/missing lifecycle alert and removes the pending item from local
@@ -152,6 +157,8 @@ It adds:
   `live_send.live_send_enabled=true`, and
   `live_send.real_money_ack="I_UNDERSTAND_THIS_SENDS_REAL_ORDERS"`;
 - MT5 account login/server validation before any cycle;
+- a single-runner lock beside the live state file. A second runner exits
+  fail-closed before MT5 initialization;
 - dynamic spread gate: current spread must be no more than
   `live_send.max_spread_risk_fraction` of entry-to-stop distance, default
   `0.10`;
@@ -165,15 +172,27 @@ It adds:
 - `order_check` before every live send;
 - a final quote refresh and second dynamic spread gate immediately before
   `order_send`;
+- exact broker duplicate/adoption guard immediately before `order_send`;
 - spread is a placement gate only. After a pending order is placed, spread
   widening does not auto-cancel it and does not currently emit a dedicated
   Telegram alert;
+- research gap: historical V9/V15 results include candle-spread cost drag, but
+  stop/target triggers are still based on OHLC reference highs/lows. Live MT5
+  uses bid/ask side triggers, so a short can be stopped by Ask even when the
+  Bid chart does not visibly touch the stop. Before changing live stop
+  placement, rerun the baseline with bid/ask-aware entry/TP/SL trigger
+  assumptions and test whether small Force Strike structure stop buffers help
+  or hurt net profitability;
 - broker-side SL, TP, expiration, magic number, and compact comment on every
   pending order;
-- restart-safe local state for processed signals, pending orders, active
-  positions, sent notification keys, and last seen close deal;
+- atomically written, restart-safe local state for processed signals, pending
+  orders, active positions, sent notification keys, and last seen close deal.
+  Broker-affecting state is persisted immediately after safety mutations;
 - reconciliation through MT5 open orders, open positions, historical orders,
-  and deal history;
+  and deal history. Pending-to-position matching requires broker comment or
+  historical order/deal linkage, not volume alone;
+- truthful close classification: TP and SL stay specific, while manual or
+  ambiguous exits are reported as `TRADE CLOSED` with MT5 PnL/R;
 - best-effort runner start/stop process notifications so the operator can see
   when the program starts, exits by completed cycles or Ctrl+C, or stops after
   an uncaught runtime error.

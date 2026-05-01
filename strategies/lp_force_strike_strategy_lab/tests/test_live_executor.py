@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -377,6 +378,19 @@ class LiveExecutorTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "risk_bucket_scale"):
                 live_risk_buckets_from_config(_config(tmpdir, risk_bucket_scale=0))
 
+    def test_atomic_live_state_save_preserves_previous_file_on_replace_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "state.json"
+            original = LiveExecutorState(processed_signal_keys=("original",))
+            updated = LiveExecutorState(processed_signal_keys=("updated",))
+            save_live_state(path, original)
+
+            with mock.patch.object(live_module.os, "replace", side_effect=OSError("disk failure")):
+                with self.assertRaises(OSError):
+                    save_live_state(path, updated)
+
+            self.assertEqual(load_live_state(path), original)
+
     def test_dynamic_spread_gate_and_broker_risk_sizing_inputs(self) -> None:
         spec = MT5SymbolExecutionSpec("EURUSD", 5, 0.0001, 10.0, 0.0001, 0.01, 100.0, 0.01)
         market = MT5MarketSnapshot(bid=1.1018, ask=1.1020)
@@ -549,6 +563,9 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(result.state.telegram_message_ids["order:9001"], 1)
             self.assertAlmostEqual(result.state.pending_orders[0].volume, 0.02)
             self.assertEqual(result.state.pending_orders[0].price_digits, 5)
+            loaded_state = load_live_state(config.state_path)
+            self.assertEqual(len(loaded_state.pending_orders), 1)
+            self.assertEqual(loaded_state.pending_orders[0].order_ticket, 9001)
 
             journal_row = json.loads(Path(config.journal_path).read_text(encoding="utf-8").strip().splitlines()[-1])
             self.assertEqual(journal_row["notification_event"]["kind"], "order_sent")
@@ -616,6 +633,107 @@ class LiveExecutorTests(unittest.TestCase):
                 state=LiveExecutorState(),
             )
             self.assertEqual(rejected_send.status, "order_rejected")
+
+    def test_successful_order_send_persists_state_before_notification_delivery(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            with mock.patch.object(live_module, "_record_event_once", side_effect=RuntimeError("notification failed")):
+                with self.assertRaisesRegex(RuntimeError, "notification failed"):
+                    process_trade_setup_live_send(mt5, _setup(), config=config, state=LiveExecutorState())
+
+            loaded = load_live_state(config.state_path)
+            self.assertEqual(len(loaded.pending_orders), 1)
+            self.assertEqual(loaded.pending_orders[0].order_ticket, 9001)
+            self.assertIn(live_module.signal_key_for_setup(_setup()), loaded.processed_signal_keys)
+
+    def test_process_live_setup_adopts_existing_broker_order_without_resending(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            mt5.orders = [
+                SimpleNamespace(
+                    ticket=7777,
+                    symbol="EURUSD",
+                    magic=131500,
+                    type=mt5.ORDER_TYPE_BUY_LIMIT,
+                    comment="LPFS H4 L 10",
+                    volume_initial=0.02,
+                    price_open=1.1,
+                    sl=1.095,
+                    tp=1.105,
+                )
+            ]
+            notifier_client = FakeNotifierClient()
+            notifier = TelegramNotifier(TelegramConfig("token", "chat", dry_run=False), notifier_client)
+
+            adopted = process_trade_setup_live_send(mt5, _setup(), config=config, state=LiveExecutorState(), notifier=notifier)
+
+            self.assertEqual(adopted.status, "order_adopted")
+            self.assertEqual(mt5.order_send_requests, [])
+            self.assertEqual(adopted.state.pending_orders[0].order_ticket, 7777)
+            self.assertIn("LPFS LIVE | ORDER ADOPTED", notifier_client.payloads[0]["text"])
+            self.assertIn("no new order sent", notifier_client.payloads[0]["text"])
+            row = json.loads(Path(config.journal_path).read_text(encoding="utf-8").strip().splitlines()[-1])
+            self.assertEqual(row["notification_event"]["kind"], "order_adopted")
+
+            position_config = _config(
+                tmpdir,
+                journal_path=str(Path(tmpdir) / "adopt_position.jsonl"),
+                state_path=str(Path(tmpdir) / "adopt_position_state.json"),
+            )
+            mt5.orders = []
+            mt5.positions = [
+                SimpleNamespace(
+                    identifier=8888,
+                    ticket=0,
+                    symbol="EURUSD",
+                    magic=131500,
+                    type=mt5.ORDER_TYPE_BUY,
+                    comment="LPFS H4 L 10",
+                    volume=0.02,
+                    price_open=1.1,
+                    sl=1.095,
+                    tp=1.105,
+                    time_msc=int(pd.Timestamp("2026-01-01T04:30:00Z").timestamp() * 1000),
+                    time=0,
+                )
+            ]
+            mt5.order_send_requests.clear()
+            adopted_position = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=position_config,
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(adopted_position.status, "order_adopted")
+            self.assertEqual(mt5.order_send_requests, [])
+            self.assertEqual(adopted_position.state.active_positions[0].position_id, 8888)
+            self.assertEqual(adopted_position.state.active_positions[0].order_ticket, 8888)
+
+    def test_process_live_setup_does_not_adopt_mismatched_broker_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            mt5.orders = [
+                SimpleNamespace(
+                    ticket=7777,
+                    symbol="EURUSD",
+                    magic=131500,
+                    type=mt5.ORDER_TYPE_BUY_LIMIT,
+                    comment="LPFS H4 L 10",
+                    volume_initial=0.02,
+                    price_open=1.1,
+                    sl=1.096,
+                    tp=1.105,
+                )
+            ]
+
+            result = process_trade_setup_live_send(mt5, _setup(), config=config, state=LiveExecutorState())
+
+            self.assertEqual(result.status, "order_sent")
+            self.assertEqual(len(mt5.order_send_requests), 1)
+            self.assertEqual(result.state.pending_orders[0].order_ticket, 9001)
 
     def test_lifecycle_notifications_reply_to_order_thread_and_enrich_journal(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -748,8 +866,26 @@ class LiveExecutorTests(unittest.TestCase):
                     time_msc=0,
                 ),
             ]
-            volume_matched = reconcile_live_state(mt5, config=config, state=LiveExecutorState(pending_orders=(_pending(order_ticket=9010),)))
-            self.assertEqual(volume_matched.active_positions[0].position_id, 7002)
+            volume_only_not_matched = reconcile_live_state(mt5, config=config, state=LiveExecutorState(pending_orders=(_pending(order_ticket=9010),)))
+            self.assertEqual(volume_only_not_matched.active_positions, ())
+
+            mt5.history_orders = [SimpleNamespace(ticket=9010, magic=131500, symbol="EURUSD", position_id=7002)]
+            history_linked = reconcile_live_state(mt5, config=config, state=LiveExecutorState(pending_orders=(_pending(order_ticket=9010),)))
+            self.assertEqual(history_linked.active_positions[0].position_id, 7002)
+
+            mt5.history_orders = [SimpleNamespace(ticket=9013, magic=131500, symbol="EURUSD", position_id=0, position_by_id=7002)]
+            position_by_linked = reconcile_live_state(mt5, config=config, state=LiveExecutorState(pending_orders=(_pending(order_ticket=9013),)))
+            self.assertEqual(position_by_linked.active_positions[0].position_id, 7002)
+
+            mt5.history_orders = []
+            mt5.deals = [SimpleNamespace(order=9011, position_id=0), SimpleNamespace(order=9011, position_id=7002)]
+            deal_linked = reconcile_live_state(mt5, config=config, state=LiveExecutorState(pending_orders=(_pending(order_ticket=9011),)))
+            self.assertEqual(deal_linked.active_positions[0].position_id, 7002)
+
+            mt5.history_orders = [SimpleNamespace(ticket=9012, magic=131500, symbol="EURUSD", position_id=9999)]
+            mt5.deals = []
+            not_linked = reconcile_live_state(mt5, config=config, state=LiveExecutorState(pending_orders=(_pending(order_ticket=9012),)))
+            self.assertEqual(not_linked.active_positions, ())
 
             mt5.positions = []
             mt5.history_orders = [SimpleNamespace(ticket=9002, magic=131500, symbol="EURUSD", comment="cancelled in mt5")]
@@ -878,6 +1014,9 @@ class LiveExecutorTests(unittest.TestCase):
                 close_comment="manual",
             ).to_dict()
             self.assertEqual(close_payload["close_reason"], "manual")
+            manual_event = live_module._close_event(_active(), LiveCloseEvent(**close_payload))
+            self.assertEqual(manual_event.kind, "position_closed")
+            self.assertEqual(manual_event.fields["close_reason"], "manual")
 
     def test_reconciliation_helpers_filter_and_read_history(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -921,8 +1060,10 @@ class LiveExecutorTests(unittest.TestCase):
 
             self.assertIsNone(
                 live_module._matching_position_for_order(
+                    mt5,
                     _pending(),
                     [SimpleNamespace(symbol="EURUSD", magic=999, comment="manual", volume=0.03)],
+                    config,
                 )
             )
 
@@ -957,6 +1098,59 @@ class LiveExecutorTests(unittest.TestCase):
                 order_send=lambda request: SimpleNamespace(retcode=0, comment="removed"),
             )
             self.assertTrue(cancel_pending_order(remove_mt5, _pending()).sent)
+
+    def test_broker_adoption_matchers_are_exact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            spec = MT5SymbolExecutionSpec("EURUSD", 5, 0.0001, 10.0, 0.0001, 0.01, 100.0, 0.01)
+            intent = MT5OrderIntent(
+                signal_key="lpfs:EURUSD:H4:10:long",
+                symbol="EURUSD",
+                timeframe="H4",
+                side="long",
+                order_type="BUY_LIMIT",
+                volume=0.02,
+                entry_price=1.1,
+                stop_loss=1.095,
+                take_profit=1.105,
+                target_risk_pct=0.01,
+                actual_risk_pct=0.01,
+                expiration_time_utc=pd.Timestamp("2026-01-02T04:00:00Z"),
+                magic=131500,
+                comment="LPFS H4 L 10",
+                setup_id="setup",
+            )
+
+            mt5.orders = [
+                SimpleNamespace(ticket=1, symbol="GBPUSD", magic=131500, type=mt5.ORDER_TYPE_BUY_LIMIT, comment="LPFS H4 L 10", volume_initial=0.02, price_open=1.1, sl=1.095, tp=1.105),
+                SimpleNamespace(ticket=2, symbol="EURUSD", magic=999, type=mt5.ORDER_TYPE_BUY_LIMIT, comment="LPFS H4 L 10", volume_initial=0.02, price_open=1.1, sl=1.095, tp=1.105),
+                SimpleNamespace(ticket=3, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_SELL_LIMIT, comment="LPFS H4 L 10", volume_initial=0.02, price_open=1.1, sl=1.095, tp=1.105),
+                SimpleNamespace(ticket=4, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_BUY_LIMIT, comment="manual", volume_initial=0.02, price_open=1.1, sl=1.095, tp=1.105),
+                SimpleNamespace(ticket=5, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_BUY_LIMIT, comment="LPFS H4 L 10", volume_initial=0.03, price_open=1.1, sl=1.095, tp=1.105),
+                SimpleNamespace(ticket=6, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_BUY_LIMIT, comment="LPFS H4 L 10", volume_initial=0.02, price_open=1.101, sl=1.095, tp=1.105),
+                SimpleNamespace(ticket=7, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_BUY_LIMIT, comment="LPFS H4 L 10", volume_initial=0.02, price_open=1.1, sl=1.095, tp=1.106),
+                SimpleNamespace(ticket=8, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_BUY_LIMIT, comment="LPFS H4 L 10", volume_initial=0.02, price_open=1.1, sl=1.095, tp=1.105),
+            ]
+            self.assertEqual(live_module._matching_broker_order_for_intent(mt5, intent, config, spec).ticket, 8)
+
+            mt5.positions = [
+                SimpleNamespace(identifier=1, symbol="GBPUSD", magic=131500, type=mt5.ORDER_TYPE_BUY, comment="LPFS H4 L 10", volume=0.02, sl=1.095, tp=1.105),
+                SimpleNamespace(identifier=2, symbol="EURUSD", magic=999, type=mt5.ORDER_TYPE_BUY, comment="LPFS H4 L 10", volume=0.02, sl=1.095, tp=1.105),
+                SimpleNamespace(identifier=3, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_SELL, comment="LPFS H4 L 10", volume=0.02, sl=1.095, tp=1.105),
+                SimpleNamespace(identifier=4, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_BUY, comment="manual", volume=0.02, sl=1.095, tp=1.105),
+                SimpleNamespace(identifier=5, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_BUY, comment="LPFS H4 L 10", volume=0.03, sl=1.095, tp=1.105),
+                SimpleNamespace(identifier=6, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_BUY, comment="LPFS H4 L 10", volume=0.02, sl=1.096, tp=1.105),
+                SimpleNamespace(identifier=7, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_BUY, comment="LPFS H4 L 10", volume=0.02, sl=1.095, tp=1.106),
+                SimpleNamespace(identifier=8, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_BUY, comment="LPFS H4 L 10", volume=0.02, sl=1.095, tp=1.105),
+            ]
+            self.assertEqual(live_module._matching_broker_position_for_intent(mt5, intent, config, spec).identifier, 8)
+
+            self.assertFalse(live_module._any_volume_matches(SimpleNamespace(volume_initial=None, volume_current="", volume=0.03), 0.02, spec))
+            self.assertFalse(live_module._price_attr_matches(SimpleNamespace(price_open=None, price="", sl=1.096), ("price_open", "price", "sl"), 1.1, spec))
+
+            mt5.orders = [SimpleNamespace(ticket=0, symbol="EURUSD", magic=131500, type=mt5.ORDER_TYPE_BUY_LIMIT, comment="LPFS H4 L 10", volume_initial=0.02, price_open=1.1, sl=1.095, tp=1.105)]
+            self.assertIsNone(live_module._adopt_existing_broker_item(mt5, intent, config=config, state=LiveExecutorState(), symbol_spec=spec))
 
     def test_run_live_send_cycle_reconciles_processes_and_saves_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

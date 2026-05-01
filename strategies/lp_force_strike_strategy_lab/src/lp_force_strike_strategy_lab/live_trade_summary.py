@@ -58,7 +58,7 @@ def load_live_journal_events(path: str | Path) -> list[dict[str, Any]]:
 
 
 def build_closed_trade_summaries(events: Sequence[dict[str, Any]]) -> list[LPFSLiveClosedTrade]:
-    """Pair order_sent, position_opened, and TP/SL notification_event rows."""
+    """Pair order/adoption, position_opened, and close notification_event rows."""
 
     orders_by_ticket: dict[int, dict[str, Any]] = {}
     positions_by_id: dict[int, dict[str, Any]] = {}
@@ -70,7 +70,7 @@ def build_closed_trade_summaries(events: Sequence[dict[str, Any]]) -> list[LPFSL
             continue
         fields = dict(event.get("fields", {}) or {})
         kind = str(event.get("kind", "") or "")
-        if kind == "order_sent":
+        if kind in {"order_sent", "order_adopted"}:
             ticket = _safe_int(fields.get("order_ticket"))
             if ticket is not None:
                 orders_by_ticket[ticket] = event
@@ -80,7 +80,7 @@ def build_closed_trade_summaries(events: Sequence[dict[str, Any]]) -> list[LPFSL
             if position_id is not None:
                 positions_by_id[position_id] = event
             continue
-        if kind not in {"take_profit_hit", "stop_loss_hit"}:
+        if kind not in {"take_profit_hit", "stop_loss_hit", "position_closed"}:
             continue
 
         position_id = _safe_int(fields.get("position_id"))
@@ -99,7 +99,11 @@ def build_closed_trade_summaries(events: Sequence[dict[str, Any]]) -> list[LPFSL
                 symbol=symbol.upper(),
                 timeframe=timeframe.upper(),
                 side=side.upper(),
-                close_kind="TAKE PROFIT" if kind == "take_profit_hit" else "STOP LOSS",
+                close_kind={
+                    "take_profit_hit": "TAKE PROFIT",
+                    "stop_loss_hit": "STOP LOSS",
+                    "position_closed": "TRADE CLOSED",
+                }[kind],
                 position_id=position_id,
                 deal_ticket=_safe_int(fields.get("deal_ticket")),
                 entry_price=_first_float(fields.get("entry"), opened_fields.get("fill_price"), order_fields.get("entry")),
@@ -142,7 +146,10 @@ def build_recent_trade_summary_message(
         "LPFS LIVE | RECENT TRADE SUMMARY",
         f"Trades: {len(recent)} | Wins {wins} | Losses {losses}",
         f"Net PnL {total_pnl} | Avg {avg_r}",
-        f"Exit mix: TP {exit_mix.get('TAKE PROFIT', 0)} | SL {exit_mix.get('STOP LOSS', 0)}",
+        (
+            f"Exit mix: TP {exit_mix.get('TAKE PROFIT', 0)} | "
+            f"SL {exit_mix.get('STOP LOSS', 0)} | Other {exit_mix.get('TRADE CLOSED', 0)}"
+        ),
         "",
     ]
 
