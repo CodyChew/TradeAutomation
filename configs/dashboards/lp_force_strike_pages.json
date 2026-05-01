@@ -453,6 +453,35 @@
         ],
         "next_step": "Keep no-buffer live stops for now. If improving stop robustness becomes a priority, run a focused buffer validation by timeframe and symbol group."
       }
+    },
+    {
+      "page": "v17.html",
+      "nav_label": "V17",
+      "index_order": -7,
+      "title": "V17 LP-FS Proximity Tightening",
+      "status_label": "Proximity study",
+      "status_kind": "active",
+      "question": "Do LP + Force Strike trades perform better when the Force Strike structure touches or forms close to the broken LP?",
+      "setup": "Research-only filter study using the current V15 OHLC trade rows: LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, fixed 6-bar signal window, and fixed 6-bar pullback wait.",
+      "how_to_read": "Start with Decision Read, then compare raw R, V15 bucket sensitivity, quality buckets, and strict-touch symbol/timeframe concentration before changing live behavior.",
+      "conclusion": "Current V15 remains better than the tested proximity filters. Strict touch improved average R and PF slightly, but it removed 654 trades, gave up about 41.0R, and did not beat V15 on bucket return/DD efficiency.",
+      "action": "Keep live signal rules unchanged. Use proximity as a future setup-quality label if desired, but do not require Force Strike structure to touch the LP.",
+      "facts": [
+        ["Baseline", "V15 OHLC"],
+        ["Strict Touch", "12,358 trades"],
+        ["Current Return/DD", "48.56"],
+        ["Decision", "Keep V15"]
+      ],
+      "decision_brief": {
+        "headline": "V17 result: keep current V15 unchanged.",
+        "key_results": [
+          "Current V15: 13,012 trades, 1,512.3R, PF 1.265, efficient bucket return +383.2%, return/DD 48.56.",
+          "Strict touch: 12,358 trades, 1,471.3R, PF 1.272, efficient bucket return +364.3%, return/DD 46.64.",
+          "Near-touch filters at 0.25, 0.50, and 1.00 ATR all passed practical filters, but none beat current V15 on return/DD.",
+          "Farther-than-1.00 ATR trades were only 110 trades and were net positive in this run, so a hard proximity filter would remove some real edge."
+        ],
+        "next_step": "Keep live rules unchanged. If desired, add a trader-facing setup quality label later instead of filtering orders."
+      }
     }
   ]
 }

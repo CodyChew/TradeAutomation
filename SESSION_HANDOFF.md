@@ -1,6 +1,6 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-01 SGT after the LPFS V16 bid/ask execution-realism
+Last updated: 2026-05-01 SGT after the LPFS V17 LP-FS proximity tightening
 study, live state OneDrive save hardening, and dashboard/handoff refresh.
 
 This is the canonical context-transfer file for the next AI/Codex session.
@@ -44,9 +44,12 @@ so H4/H8 are `0.01%`, H12/D1 are `0.015%`, and W1 is `0.0375%`.
 - Bid/ask execution realism:
   `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/execution_realism.py`
   and `scripts/run_lp_force_strike_v16_execution_realism.py`.
+- LP-FS proximity research:
+  `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/proximity.py`
+  and `scripts/run_lp_force_strike_v17_lp_fs_proximity.py`.
 - Portfolio and sizing research:
   `portfolio.py`, `stability.py`, V13-V15 scripts, and generated `docs/v13.html`
-  through `docs/v16.html`.
+  through `docs/v17.html`.
 - Broker boundary:
   `execution_contract.py` is pure Python and must not import MetaTrader5.
 - Live MT5 behavior:
@@ -227,7 +230,22 @@ V16 execution-realism result:
 - Decision: bid/ask realism is not a material regression. Keep current live FS
   structure stops unchanged for now. Treat spread buffers as promising follow-up
   research, not an immediate live-rule change.
-- Do not change live stop placement until this research delta is known.
+
+V17 LP-FS proximity result:
+
+- Report: `docs/v17.html`.
+- Run folder:
+  `reports/strategies/lp_force_strike_experiment_v17_lp_fs_proximity/20260501_122711`.
+- Baseline V15 OHLC: `13,012` trades, `1,512.3R`, PF `1.265`.
+- Strict touch only: `12,358` trades, `1,471.3R`, PF `1.272`.
+  Quality improved slightly, but it cut `654` trades and gave up about `41R`.
+- Farther-than-1ATR setups were a small but positive bucket:
+  `110` trades, `17.6R`, PF `1.391`.
+- V15 bucket sensitivity still favored current V15: return/DD `48.56`
+  versus strict-touch `46.64`.
+- Decision: keep current V15 unchanged. Do not require the Force Strike
+  structure to touch the selected LP. A future dashboard/live label can show
+  LP-FS proximity as setup quality, but it is not a trade filter.
 
 A read-only sanity check over 720 recent detected setups showed:
 
@@ -258,9 +276,9 @@ Full strict gate:
 .\venv\Scripts\python scripts\run_core_coverage.py
 ```
 
-Latest full strict result on 2026-05-01:
+Latest full strict result on 2026-05-01 after V17:
 
-- `218` unittest cases across core labs.
+- `246` unittest cases across core labs.
 - `100.00%` line and branch coverage.
 
 Latest selector revalidation on 2026-05-01:
@@ -281,9 +299,13 @@ Latest selector revalidation on 2026-05-01:
 - `scripts/run_lp_force_strike_live_executor.py`
 - `scripts/summarize_lpfs_live_trades.py`
 - `scripts/build_lp_force_strike_live_ops_page.py`
+- `scripts/run_lp_force_strike_v17_lp_fs_proximity.py`
+- `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/proximity.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_live_executor.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_live_runner.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_live_trade_summary.py`
+- `strategies/lp_force_strike_strategy_lab/tests/test_proximity.py`
+- `strategies/lp_force_strike_strategy_lab/tests/test_v17_lp_fs_proximity_report.py`
 
 The tracked code also includes the execution contract, dry-run executor,
 dashboard docs, and notification UX changes. Do not revert unrelated user/local

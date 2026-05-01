@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LP + Force Strike V17 LP-FS Proximity - by Cody</title>
+  <style>
+
+    :root {
+      --bg: #f3f6f8;
+      --panel: #ffffff;
+      --panel-soft: #f8fafb;
+      --ink: #17202a;
+      --muted: #5d6d7e;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --accent-2: #3f7f5f;
+      --good: #256f46;
+      --bad: #9f3333;
+      --warn: #8a5a00;
+      --focus: #f2c94c;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 Inter, Segoe UI, Roboto, Arial, sans-serif;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+    code { overflow-wrap: anywhere; }
+    .dashboard-header {
+      background: #17202a;
+      color: white;
+      padding: 28px max(18px, 5vw);
+      border-bottom: 4px solid #57a773;
+    }
+    .dashboard-header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 4vw, 30px);
+      letter-spacing: 0;
+    }
+    .dashboard-header p {
+      margin: 0;
+      color: #d8e0e8;
+      max-width: 1080px;
+      overflow-wrap: anywhere;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .page-nav {
+      margin-top: 18px;
+    }
+    .report-nav {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, .18);
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+    }
+    nav a:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .page-nav a.active {
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }
+    .report-nav a {
+      background: rgba(255, 255, 255, .03);
+      color: #edf4f7;
+    }
+    main {
+      padding: 24px max(18px, 5vw) 48px;
+    }
+    section {
+      margin: 0 0 22px;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(23, 32, 42, .05);
+      max-width: 100%;
+      overflow: visible;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 15px;
+      color: #34495e;
+      letter-spacing: 0;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi, .fact {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi-label, .fact span, .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .kpi-value, .kpi strong, .fact strong {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-note {
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 18px;
+    }
+    .note {
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+      margin-bottom: 14px;
+    }
+    .warning {
+      background: #fff8e8;
+      border-left-color: var(--warn);
+      color: #4d3b13;
+    }
+    .metric-glossary {
+      border-top: 4px solid #5c7f95;
+    }
+    .metric-glossary dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 10px;
+    }
+    .metric-glossary dl > div {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .metric-glossary dt {
+      margin: 0 0 5px;
+      font-weight: 700;
+    }
+    .metric-glossary dd {
+      margin: 0;
+      color: var(--muted);
+    }
+    .table-scroll, .scroll, .summary-comparison {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th, td {
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      box-shadow: 1px 0 0 var(--line);
+    }
+    th:first-child {
+      z-index: 3;
+    }
+    td:first-child {
+      background: var(--panel);
+      font-weight: 600;
+    }
+    th {
+      color: #3f4d5c;
+      background: #eef3f6;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tbody tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+    tbody tr:hover td {
+      background: #eef6f2;
+    }
+    .positive {
+      color: var(--good);
+      font-weight: 700;
+    }
+    .negative {
+      color: var(--bad);
+      font-weight: 700;
+    }
+    .neutral {
+      color: var(--muted);
+    }
+    footer {
+      color: var(--muted);
+      padding: 0 max(18px, 5vw) 28px;
+    }
+
+    @media (max-width: 760px) {
+      .dashboard-header {
+        padding: 22px 16px;
+      }
+      nav a {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+      main {
+        padding: 16px 12px 34px;
+      }
+      section {
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 14px;
+      }
+      .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .kpi {
+        padding: 10px;
+      }
+      .kpi-value, .kpi strong, .fact strong {
+        font-size: 20px;
+      }
+      th, td {
+        padding: 6px 7px;
+        font-size: 12px;
+      }
+    }
+    @media (max-width: 480px) {
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+      .report-nav a {
+        flex-basis: calc(50% - 4px);
+      }
+    }
+
+
+    .experiment-summary {
+      border-top: 4px solid var(--accent);
+    }
+    .summary-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .summary-heading h2 {
+      margin-bottom: 0;
+    }
+    .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .status-badge {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      background: #f7f9fb;
+      color: var(--muted);
+    }
+    .status-active {
+      color: var(--good);
+      border-color: #b9dbc7;
+      background: #edf8f1;
+    }
+    .status-rejected {
+      color: var(--bad);
+      border-color: #e7bcbc;
+      background: #fff1f1;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+      gap: 12px;
+    }
+    .summary-grid div {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fbfc;
+      padding: 12px;
+    }
+    .summary-grid h3 {
+      margin: 0 0 6px;
+    }
+    .summary-grid p {
+      margin: 0;
+      color: var(--ink);
+    }
+    .conclusion-box {
+      margin-top: 14px;
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+    }
+    .decision-brief {
+      margin-top: 14px;
+      border: 1px solid #cbd8e4;
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 14px 16px;
+    }
+    .decision-brief h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--ink);
+    }
+    .decision-brief .brief-headline {
+      margin: 0 0 8px;
+      font-weight: 700;
+    }
+    .decision-brief ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .decision-brief li {
+      margin: 6px 0;
+    }
+    .decision-brief .brief-next {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+    .summary-comparison {
+      margin-top: 14px;
+      overflow-x: auto;
+    }
+    .comparison-table td:first-child,
+    .comparison-table th:first-child {
+      text-align: left;
+    }
+    @media (max-width: 760px) {
+      .summary-heading {
+        display: block;
+      }
+      .status-badge {
+        display: inline-block;
+        margin-top: 10px;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <header class="dashboard-header">
+    <h1>LP + Force Strike V17 LP-FS Proximity - by Cody</h1>
+    <p>Research-only V17 report generated from the existing V15 OHLC trade rows. It filters by how close the Force Strike structure is to the selected LP; no MT5 live state or orders are touched.</p>
+    <nav class="page-nav" aria-label="Dashboard pages">
+      <a class="page-link" href="index.html">Home</a>
+      <a class="page-link" href="strategy.html">Strategy</a>
+      <a class="page-link" href="live_ops.html">Live Ops</a>
+      <a class="page-link" href="v1.html">V1</a>
+      <a class="page-link" href="v2.html">V2</a>
+      <a class="page-link" href="v3.html">V3</a>
+      <a class="page-link" href="v4.html">V4</a>
+      <a class="page-link" href="v5.html">V5</a>
+      <a class="page-link" href="v6.html">V6</a>
+      <a class="page-link" href="v7.html">V7</a>
+      <a class="page-link" href="v8.html">V8</a>
+      <a class="page-link" href="v9.html">V9</a>
+      <a class="page-link" href="v10.html">V10</a>
+      <a class="page-link" href="v11.html">V11</a>
+      <a class="page-link" href="v12.html">V12</a>
+      <a class="page-link" href="v13.html">V13</a>
+      <a class="page-link" href="v14.html">V14</a>
+      <a class="page-link" href="v15.html">V15</a>
+      <a class="page-link" href="v16.html">V16</a>
+      <a class="page-link active" href="v17.html">V17</a>
+    </nav>
+
+    <nav class="report-nav" aria-label="Report sections">
+      <a href="#decision">Decision</a><a href="#variants">Variants</a><a href="#buckets">Buckets</a><a href="#quality">Quality</a><a href="#symbols">Symbol/TF</a><a href="#rules">Rules</a>
+    </nav>
+
+  </header>
+
+  <main>
+
+    <section id="experiment-summary" class="experiment-summary">
+      <div class="summary-heading">
+        <div>
+          <div class="eyebrow">V17 Research Snapshot</div>
+          <h2>V17 LP-FS Proximity Tightening</h2>
+        </div>
+        <span class="status-badge status-active">Proximity study</span>
+      </div>
+
+      <div class="decision-brief">
+        <h3>Decision Brief</h3>
+        <p class="brief-headline">V17 result: keep current V15 unchanged.</p>
+        <ul><li>Current V15: 13,012 trades, 1,512.3R, PF 1.265, efficient bucket return +383.2%, return/DD 48.56.</li><li>Strict touch: 12,358 trades, 1,471.3R, PF 1.272, efficient bucket return +364.3%, return/DD 46.64.</li><li>Near-touch filters at 0.25, 0.50, and 1.00 ATR all passed practical filters, but none beat current V15 on return/DD.</li><li>Farther-than-1.00 ATR trades were only 110 trades and were net positive in this run, so a hard proximity filter would remove some real edge.</li></ul>
+        <p class="brief-next"><strong>Next:</strong> Keep live rules unchanged. If desired, add a trader-facing setup quality label later instead of filtering orders.</p>
+      </div>
+
+      <div class="summary-grid">
+        <div><h3>What This Tests</h3><p>Do LP + Force Strike trades perform better when the Force Strike structure touches or forms close to the broken LP?</p></div>
+        <div><h3>Setup Tested</h3><p>Research-only filter study using the current V15 OHLC trade rows: LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, fixed 6-bar signal window, and fixed 6-bar pullback wait.</p></div>
+        <div><h3>How To Read This Page</h3><p>Start with Decision Read, then compare raw R, V15 bucket sensitivity, quality buckets, and strict-touch symbol/timeframe concentration before changing live behavior.</p></div>
+        <div><h3>Use / Do Not Use</h3><p>Keep live signal rules unchanged. Use proximity as a future setup-quality label if desired, but do not require Force Strike structure to touch the LP.</p></div>
+      </div>
+      <div class="conclusion-box"><strong>Conclusion:</strong> Current V15 remains better than the tested proximity filters. Strict touch improved average R and PF slightly, but it removed 654 trades, gave up about 41.0R, and did not beat V15 on bucket return/DD efficiency.</div>
+
+    </section>
+
+    <section id="decision">
+      <h2>Decision Read</h2>
+      <p class="callout"><strong>Keep current V15 unchanged.</strong> No LP-FS proximity filter beat the current V15 row on efficient return-to-reserved-drawdown.</p>
+      <div class="kpi-grid">
+        <div class="kpi"><span>Baseline trades</span><strong>13,012</strong><small>current V15 OHLC</small></div>
+        <div class="kpi"><span>Best efficient variant</span><strong>Current V15</strong><small>by return/reserved-DD</small></div>
+        <div class="kpi"><span>Best efficient return</span><strong class="positive">383.17%</strong><small>reserved DD 7.89%</small></div>
+        <div class="kpi"><span>Best trade count</span><strong>13,012</strong><small>after proximity filter</small></div>
+      </div>
+    </section>
+    <section id="variants">
+      <h2>Trade-Level Proximity Result</h2>
+      <p class="callout">These are raw closed-trade R results before account-risk sizing. Current V15 is included as the control row.</p>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Trades</th><th>Total R</th><th>Avg R</th><th>PF</th><th>TP</th><th>SL</th><th>Avg Gap ATR</th></tr></thead><tbody><tr><td>Current V15</td><td>13,012</td><td class="positive">1,512.3</td><td class="positive">0.116</td><td>1.265</td><td>7,541</td><td>5,469</td><td>0.03</td></tr><tr><td>Strict touch</td><td>12,358</td><td class="positive">1,471.3</td><td class="positive">0.119</td><td>1.272</td><td>7,173</td><td>5,183</td><td>0.00</td></tr><tr><td>Gap &lt;= 0.25 ATR</td><td>12,588</td><td class="positive">1,485.9</td><td class="positive">0.118</td><td>1.269</td><td>7,302</td><td>5,284</td><td>0.00</td></tr><tr><td>Gap &lt;= 0.50 ATR</td><td>12,750</td><td class="positive">1,495.7</td><td class="positive">0.117</td><td>1.267</td><td>7,393</td><td>5,355</td><td>0.01</td></tr><tr><td>Gap &lt;= 1.00 ATR</td><td>12,902</td><td class="positive">1,494.7</td><td class="positive">0.116</td><td>1.264</td><td>7,473</td><td>5,427</td><td>0.02</td></tr></tbody></table></div>
+      <h3>Old vs Filtered Delta</h3>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Trades Kept</th><th>Trade Cut</th><th>Total R Delta</th><th>Excluded R</th></tr></thead><tbody><tr><td>Current V15</td><td>13,012</td><td>0.00%</td><td class="neutral">0.0</td><td class="neutral">0.0</td></tr><tr><td>Strict touch</td><td>12,358</td><td>5.03%</td><td class="negative">-41.0</td><td class="positive">41.0</td></tr><tr><td>Gap &lt;= 0.25 ATR</td><td>12,588</td><td>3.26%</td><td class="negative">-26.4</td><td class="positive">26.4</td></tr><tr><td>Gap &lt;= 0.50 ATR</td><td>12,750</td><td>2.01%</td><td class="negative">-16.6</td><td class="positive">16.6</td></tr><tr><td>Gap &lt;= 1.00 ATR</td><td>12,902</td><td>0.85%</td><td class="negative">-17.6</td><td class="positive">17.6</td></tr></tbody></table></div>
+    </section>
+    <section id="buckets">
+      <h2>V15 Bucket Sensitivity Rerun</h2>
+      <p>Each proximity variant is passed through the same V15 practical filters: reserved DD <= 10%, max reserved open risk <= 6%, worst month >= -5%.</p>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Efficient Schedule</th><th>Return</th><th>Reserved DD</th><th>Max Open Risk</th><th>Worst Month</th><th>Return/DD</th><th>Practical</th></tr></thead><tbody><tr><td>Current V15</td><td>bucket_ltf0p20_h12_d10p30_w10p75</td><td class="positive">383.17%</td><td>7.89%</td><td>5.75%</td><td class="negative">-3.22%</td><td>48.56</td><td>yes</td></tr><tr><td>Strict touch</td><td>bucket_ltf0p20_h12_d10p30_w10p60</td><td class="positive">364.30%</td><td>7.81%</td><td>5.60%</td><td class="negative">-3.53%</td><td>46.64</td><td>yes</td></tr><tr><td>Gap &lt;= 0.25 ATR</td><td>bucket_ltf0p20_h12_d10p30_w10p75</td><td class="positive">375.53%</td><td>8.48%</td><td>5.75%</td><td class="negative">-3.33%</td><td>44.29</td><td>yes</td></tr><tr><td>Gap &lt;= 0.50 ATR</td><td>bucket_ltf0p20_h12_d10p30_w10p75</td><td class="positive">378.91%</td><td>8.62%</td><td>5.75%</td><td class="negative">-3.13%</td><td>43.95</td><td>yes</td></tr><tr><td>Gap &lt;= 1.00 ATR</td><td>bucket_ltf0p20_h12_d10p30_w10p60</td><td class="positive">371.97%</td><td>7.84%</td><td>5.60%</td><td class="negative">-3.13%</td><td>47.47</td><td>yes</td></tr></tbody></table></div>
+    </section>
+    <section id="quality">
+      <h2>Quality Buckets Without Filtering</h2>
+      <p>This reads the current V15 trades by proximity bucket so the far-away structures can be judged before making a hard rule.</p>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Quality Bucket</th><th>Trades</th><th>Total R</th><th>Avg R</th><th>PF</th><th>Avg Gap ATR</th></tr></thead><tbody><tr><td>touched</td><td>12,358</td><td class="positive">1,471.3</td><td class="positive">0.119</td><td>1.272</td><td>0.00</td></tr><tr><td>within_0p25_atr</td><td>230</td><td class="positive">14.6</td><td class="positive">0.063</td><td>1.136</td><td>0.13</td></tr><tr><td>within_0p50_atr</td><td>162</td><td class="positive">9.8</td><td class="positive">0.061</td><td>1.129</td><td>0.36</td></tr><tr><td>within_1p00_atr</td><td>152</td><td class="negative">-1.0</td><td class="negative">-0.006</td><td>0.987</td><td>0.70</td></tr><tr><td>farther_than_1p00_atr</td><td>110</td><td class="positive">17.6</td><td class="positive">0.160</td><td>1.391</td><td>1.59</td></tr></tbody></table></div>
+    </section>
+    <section id="symbols">
+      <h2>Strict-Touch Weakest Symbol/Timeframe Rows</h2>
+      <p>Strict-touch rows sorted by total R. Use this to spot concentration if the filter removes too much diversity.</p>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Symbol</th><th>TF</th><th>Trades</th><th>Total R</th><th>Avg R</th><th>PF</th><th>Avg Gap ATR</th></tr></thead><tbody><tr><td>USDCAD</td><td>H8</td><td>131</td><td class="negative">-11.1</td><td class="negative">-0.085</td><td>0.844</td><td>0.00</td></tr><tr><td>USDJPY</td><td>H8</td><td>83</td><td class="negative">-8.3</td><td class="negative">-0.099</td><td>0.819</td><td>0.00</td></tr><tr><td>NZDJPY</td><td>H8</td><td>87</td><td class="negative">-6.8</td><td class="negative">-0.079</td><td>0.854</td><td>0.00</td></tr><tr><td>EURNZD</td><td>H8</td><td>101</td><td class="negative">-6.5</td><td class="negative">-0.065</td><td>0.880</td><td>0.00</td></tr><tr><td>GBPCAD</td><td>H8</td><td>123</td><td class="negative">-5.2</td><td class="negative">-0.042</td><td>0.919</td><td>0.00</td></tr><tr><td>USDCAD</td><td>D1</td><td>27</td><td class="negative">-5.2</td><td class="negative">-0.192</td><td>0.679</td><td>0.00</td></tr><tr><td>EURUSD</td><td>H4</td><td>221</td><td class="negative">-5.1</td><td class="negative">-0.023</td><td>0.955</td><td>0.00</td></tr><tr><td>GBPJPY</td><td>H4</td><td>193</td><td class="negative">-4.0</td><td class="negative">-0.021</td><td>0.959</td><td>0.00</td></tr><tr><td>CHFJPY</td><td>H12</td><td>60</td><td class="negative">-3.3</td><td class="negative">-0.055</td><td>0.896</td><td>0.00</td></tr><tr><td>AUDNZD</td><td>H4</td><td>253</td><td class="negative">-3.1</td><td class="negative">-0.012</td><td>0.976</td><td>0.00</td></tr><tr><td>CADCHF</td><td>H12</td><td>83</td><td class="negative">-3.0</td><td class="negative">-0.036</td><td>0.930</td><td>0.00</td></tr><tr><td>GBPCAD</td><td>W1</td><td>6</td><td class="negative">-2.0</td><td class="negative">-0.338</td><td>0.496</td><td>0.00</td></tr><tr><td>USDCAD</td><td>W1</td><td>8</td><td class="negative">-2.0</td><td class="negative">-0.253</td><td>0.597</td><td>0.00</td></tr><tr><td>EURUSD</td><td>H12</td><td>69</td><td class="negative">-1.8</td><td class="negative">-0.026</td><td>0.950</td><td>0.00</td></tr><tr><td>AUDNZD</td><td>W1</td><td>5</td><td class="negative">-1.1</td><td class="negative">-0.214</td><td>0.646</td><td>0.00</td></tr><tr><td>GBPAUD</td><td>W1</td><td>7</td><td class="negative">-1.1</td><td class="negative">-0.151</td><td>0.739</td><td>0.00</td></tr><tr><td>AUDUSD</td><td>W1</td><td>5</td><td class="negative">-1.0</td><td class="negative">-0.203</td><td>0.662</td><td>0.00</td></tr><tr><td>NZDCHF</td><td>W1</td><td>8</td><td class="negative">-0.6</td><td class="negative">-0.080</td><td>0.844</td><td>0.00</td></tr><tr><td>EURCAD</td><td>W1</td><td>6</td><td class="negative">-0.0</td><td class="negative">-0.006</td><td>0.989</td><td>0.00</td></tr><tr><td>USDCHF</td><td>W1</td><td>8</td><td class="negative">-0.0</td><td class="negative">-0.004</td><td>0.992</td><td>0.00</td></tr><tr><td>GBPUSD</td><td>W1</td><td>6</td><td class="negative">-0.0</td><td class="negative">-0.003</td><td>0.994</td><td>0.00</td></tr><tr><td>EURAUD</td><td>W1</td><td>4</td><td class="negative">-0.0</td><td class="negative">-0.004</td><td>0.991</td><td>0.00</td></tr><tr><td>CHFJPY</td><td>D1</td><td>29</td><td class="positive">0.6</td><td class="positive">0.020</td><td>1.041</td><td>0.00</td></tr><tr><td>EURGBP</td><td>W1</td><td>9</td><td class="positive">0.9</td><td class="positive">0.105</td><td>1.234</td><td>0.00</td></tr><tr><td>EURUSD</td><td>W1</td><td>7</td><td class="positive">1.0</td><td class="positive">0.141</td><td>1.329</td><td>0.00</td></tr></tbody></table></div>
+    </section>
+    <section id="rules">
+      <h2>Rules Tested</h2>
+      <ul>
+        <li>Current V15 uses LP3, all H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, fixed 6-bar signal window, and fixed 6-bar pullback wait.</li>
+        <li>Strict touch for longs requires FS structure low <= LP support.</li>
+        <li>Strict touch for shorts requires FS structure high >= LP resistance.</li>
+        <li>Gap variants allow the structure to miss the LP by up to 0.25, 0.50, or 1.00 ATR.</li>
+        <li>Rows with missing or zero ATR are marked unknown and are not accepted by gap filters unless they strictly touch.</li>
+      </ul>
+    </section>
+
+    <section id="metric-glossary" class="metric-glossary" aria-labelledby="metric-glossary-title">
+      <h2 id="metric-glossary-title">Metric Glossary</h2>
+      <dl><div><dt>Realized DD</dt><dd>Closed-trade equity drawdown only. It ignores open trade risk until a position exits.</dd></div><div><dt>Risk-Reserved DD</dt><dd>Live-account stress drawdown that subtracts full open risk while positions are active.</dd></div><div><dt>Max Reserved Risk</dt><dd>Largest total open risk reserved at one time across accepted portfolio trades.</dd></div><div><dt>Worst Month</dt><dd>Largest calendar-month loss in account-percent terms for the tested schedule.</dd></div><div><dt>Return/DD</dt><dd>Total return divided by risk-reserved drawdown where available; higher is more efficient.</dd></div><div><dt>Avg R / PF</dt><dd>Average net R per trade and profit factor. Use both with trade count before trusting a row.</dd></div></dl>
+    </section>
+
+  </main>
+  <footer>Generated from <code>reports\strategies\lp_force_strike_experiment_v17_lp_fs_proximity\20260501_122711</code>. Research-only; no MT5 live calls.</footer>
+</body>
+</html>

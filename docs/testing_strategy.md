@@ -43,11 +43,12 @@ that behavior into a core package and cover it there.
   stop distance is not positive.
 - Bracket simulation is conservative on same-bar conflicts: if stop and target
   are both touched in the same candle, the stop is recorded first.
-- Current LPFS research includes candle-spread cost drag, but it does not yet
-  fully model bid/ask-side stop and target triggers. A future execution-realism
-  experiment should compare the current OHLC trigger baseline against
-  bid/ask-aware triggers and small Force Strike structure stop buffers before
-  changing live stop placement.
+- V16 bid/ask execution realism is completed. It did not materially weaken the
+  V15 baseline, and spread buffers remain research-only until a separate
+  stop-buffer decision is made.
+- V17 LP-FS proximity tightening is completed. The current strategy does not
+  require the Force Strike structure to touch the broken LP; strict-touch and
+  ATR-gap filters are rejected as live trade filters for now.
 - Realized drawdown measures closed-trade equity only. Risk-reserved drawdown
   subtracts open reserved risk while trades are active and is the safer account
   stress metric.

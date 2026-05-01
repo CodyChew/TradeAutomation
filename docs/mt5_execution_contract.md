@@ -176,13 +176,13 @@ It adds:
 - spread is a placement gate only. After a pending order is placed, spread
   widening does not auto-cancel it and does not currently emit a dedicated
   Telegram alert;
-- research gap: historical V9/V15 results include candle-spread cost drag, but
-  stop/target triggers are still based on OHLC reference highs/lows. Live MT5
-  uses bid/ask side triggers, so a short can be stopped by Ask even when the
-  Bid chart does not visibly touch the stop. Before changing live stop
-  placement, rerun the baseline with bid/ask-aware entry/TP/SL trigger
-  assumptions and test whether small Force Strike structure stop buffers help
-  or hurt net profitability;
+- V16 closed the first bid/ask execution-realism gap. The no-buffer bid/ask
+  model did not materially weaken the V15 baseline, so current live stop
+  placement remains unchanged. Spread buffers are still research-only until a
+  buffer-specific decision is made;
+- V17 tested whether the Force Strike structure must touch the broken LP.
+  Strict-touch and ATR-gap filters did not beat the current V15 row, so live
+  order intent does not require FS structure touch;
 - broker-side SL, TP, expiration, magic number, and compact comment on every
   pending order;
 - atomically written, restart-safe local state for processed signals, pending

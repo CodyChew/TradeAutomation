@@ -1,6 +1,6 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-01 local time after the V16 bid/ask execution-realism
+Last updated: 2026-05-01 local time after the V17 LP-FS proximity tightening
 study, live state OneDrive save hardening, and dashboard/handoff refresh.
 
 ## Purpose
@@ -24,7 +24,8 @@ patterns. It now has these layers:
 It still does not contain a combined TradingView indicator. V10-V13 add
 portfolio-style research analytics. V14 adds account-risk sizing and drawdown
 views. V15 adds 3-bucket risk-ladder sensitivity. V16 adds broker-side bid/ask
-trigger realism and spread-buffer research. The dry-run phase is
+trigger realism and spread-buffer research. V17 tests whether the Force Strike
+structure must be close to or touching the broken LP. The dry-run phase is
 explicitly broker-safe and does not send orders; the live-send phase can place
 real pending orders only when local live config is explicitly enabled.
 
@@ -58,6 +59,9 @@ consistent across strategy labs.
 - Bullish FS execution candle must close at or above the selected support LP.
 - Bearish FS execution candle must close at or below the selected resistance LP.
 - Equal-price LP selection ties use the latest valid break window.
+- Current V15 live/research logic does not require the Force Strike structure
+  itself to touch the selected LP. V17 tested strict-touch and ATR-gap filters
+  and rejected them as trade filters for now.
 
 On 2026-05-01, this selector was revalidated by regenerating V9 and rerunning
 V10-V15 from the new V9 trade source. Old/new V9 `signals.csv` and `trades.csv`
@@ -950,6 +954,12 @@ written.
   it changed `722` exit reasons and `493` win/loss signs. Keep live FS
   structure stops unchanged until a focused buffer-specific follow-up is
   reviewed.
+- V17 tested LP-FS proximity filters against the canonical V15 OHLC baseline.
+  Strict touch raised PF slightly (`1.272` versus `1.265`) but cut `654` trades,
+  gave up about `41R`, and did not beat current V15 on efficient
+  return-to-reserved-drawdown. Farther-than-1ATR setups were a small positive
+  bucket (`110` trades, `17.6R`, PF `1.391`). Keep current V15 unchanged and do
+  not require FS structure touch.
 - The live runner now sends best-effort Telegram process notifications on
   start and stop. The stop alert is emitted for completed cycle runs, Ctrl+C,
   and uncaught runtime errors after state save is attempted.
@@ -970,6 +980,8 @@ Expected next scope:
 5. If stop robustness becomes a priority, run a focused spread-buffer
    validation by timeframe and symbol group. Do not change the live stop
    placement from no-buffer based on V16 alone.
+6. If discretionary review needs more context, surface LP-FS proximity as a
+   setup-quality label in dashboards/Telegram, not as a live trade filter.
 
 ## Experiment V16 Bid/Ask Execution Realism
 
@@ -1013,6 +1025,49 @@ Decision:
 - Keep current live FS structure stops unchanged for now.
 - Treat spread buffers as promising follow-up research because buffer behavior
   is more invasive than bid/ask realism itself.
+
+## Experiment V17 LP-FS Proximity Tightening
+
+Experiment V17 is configured by:
+
+```text
+../../configs/strategies/lp_force_strike_experiment_v17_lp_fs_proximity.json
+```
+
+Run command:
+
+```powershell
+.\venv\Scripts\python scripts\run_lp_force_strike_v17_lp_fs_proximity.py --config configs\strategies\lp_force_strike_experiment_v17_lp_fs_proximity.json --docs-output docs\v17.html
+```
+
+Latest local run:
+
+- report folder:
+  `reports/strategies/lp_force_strike_experiment_v17_lp_fs_proximity/20260501_122711`
+- dashboard: `../../docs/v17.html`
+- scope: 28 major/cross pairs x H4/H8/H12/D1/W1
+- baseline: current canonical V15 OHLC trade model
+- variants: `current_v15`, `strict_touch`, `gap_0p25_atr`,
+  `gap_0p50_atr`, and `gap_1p00_atr`
+
+Key result:
+
+- Current V15: `13,012` trades, `1,512.3R`, PF `1.265`.
+- Strict touch: `12,358` trades, `1,471.3R`, PF `1.272`.
+- Gap up to 0.25 ATR: `12,588` trades, `1,485.9R`, PF `1.269`.
+- Gap up to 0.50 ATR: `12,750` trades, `1,495.7R`, PF `1.267`.
+- Gap up to 1.00 ATR: `12,902` trades, `1,494.7R`, PF `1.264`.
+- Farther-than-1ATR quality bucket: `110` trades, `17.6R`, PF `1.391`.
+
+Decision:
+
+- Keep current V15 unchanged.
+- Do not require the Force Strike structure to touch/cross the selected LP.
+- Strict touch and near-touch filters improve average quality slightly but do
+  not beat the current V15 row on efficient return-to-reserved-drawdown and
+  remove too much useful edge.
+- LP-FS proximity can become a future setup-quality label for trader context,
+  but it is not a live execution rule.
 
 ## Dashboard Interpretation UX
 

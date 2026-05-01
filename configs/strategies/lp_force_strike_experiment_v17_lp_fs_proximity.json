@@ -1,0 +1,20 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v17_lp_fs_proximity",
+  "input_trades_path": "reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260501_032404/trades.csv",
+  "v15_bucket_config": "configs/strategies/lp_force_strike_experiment_v15_bucket_sensitivity.json",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v17_lp_fs_proximity",
+  "proximity_variants": [
+    "current_v15",
+    "strict_touch",
+    "gap_0p25_atr",
+    "gap_0p50_atr",
+    "gap_1p00_atr"
+  ],
+  "decision_rules": {
+    "max_reserved_drawdown_pct": 10.0,
+    "max_reserved_open_risk_pct": 6.0,
+    "min_worst_month_pct": -5.0,
+    "max_total_return_drop_pct": 10.0,
+    "max_trade_count_cut_pct": 20.0
+  }
+}
