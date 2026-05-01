@@ -1,7 +1,12 @@
 # TradeAutomation Session Handoff
 
 Last updated: 2026-05-01 SGT after the LPFS active-window LP selector patch,
-V9-to-V15 revalidation, and live-send documentation cleanup.
+V9-to-V15 revalidation, live-send runner start/stop notifications, and
+handoff cleanup.
+
+This is the canonical context-transfer file for the next AI/Codex session.
+Use it as a map, then verify live MT5 state from MT5, the ignored live state
+file, and the JSONL journal before making operational decisions.
 
 ## Read First
 
@@ -27,6 +32,34 @@ V13 mechanics with V15 risk buckets:
 Live broker testing scales that ladder with `live_send.risk_bucket_scale=0.05`,
 so H4/H8 are `0.01%`, H12/D1 are `0.015%`, and W1 is `0.0375%`.
 
+## Architecture Map
+
+- Signal concepts:
+  `concepts/lp_levels_lab/src/lp_levels_lab/levels.py` and
+  `concepts/force_strike_pattern_lab/src/force_strike_pattern_lab/patterns.py`.
+- Strategy signal selector:
+  `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/signals.py`.
+- Research/backtest model:
+  `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/experiment.py`
+  plus `shared/backtest_engine_lab`.
+- Portfolio and sizing research:
+  `portfolio.py`, `stability.py`, V13-V15 scripts, and generated `docs/v13.html`
+  through `docs/v15.html`.
+- Broker boundary:
+  `execution_contract.py` is pure Python and must not import MetaTrader5.
+- Live MT5 behavior:
+  `live_executor.py` owns live-send checks, order_send, reconciliation, state,
+  fill/close handling, and lifecycle events.
+- Runner CLI:
+  `scripts/run_lp_force_strike_live_executor.py` owns cycle count, sleep,
+  process start/stop notifications, final state save, and MT5 shutdown.
+- Telegram UX:
+  `notifications.py`, `docs/telegram_notifications.md`, and
+  `scripts/summarize_lpfs_live_trades.py`.
+- Runtime files:
+  `data/live/lpfs_live_state.json` and `data/live/lpfs_live_journal.jsonl` are
+  ignored local truth for continuity and audit; do not commit them.
+
 ## Safety Status
 
 The user confirmed the connected MT5 account is real. Treat live-send as a
@@ -38,12 +71,22 @@ Do not run this casually:
 .\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 1
 ```
 
-Only run finite cycles. Do not clear `data/live/lpfs_live_state.json` unless the
-user explicitly wants to re-arm already processed latest-candle signals.
-Clearing live state can place duplicate pending orders if the same setup still
-passes all checks.
+The runner is a finite-cycle CLI, not an OS service. For a manual long run, use
+a very large cycle count and stop with Ctrl+C:
 
-## Current Live State
+```powershell
+.\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 100000000 --sleep-seconds 30
+```
+
+Do not clear `data/live/lpfs_live_state.json` unless the user explicitly wants
+to re-arm already processed latest-candle signals. Clearing live state can
+place duplicate pending orders if the same setup still passes all checks.
+
+## Last Verified Live-Test Snapshot
+
+This is a historical snapshot from the fresh 2026-05-01 live test, not a
+guarantee of the broker's current state. Always inspect MT5, state, and journal
+before acting.
 
 Before the fresh test cycle, old local live files were archived:
 
@@ -57,9 +100,9 @@ Fresh live-send cycle result:
 - Frames processed: `140`.
 - Orders sent: `2`.
 - Setups rejected: `2`.
-- Current tracked strategy positions: none.
+- Tracked strategy positions at that time: none.
 
-Current strategy pending orders in MT5 and local state:
+Last verified strategy pending orders in MT5 and local state:
 
 ```text
 EURNZD H8 SHORT | SELL_LIMIT #257048012
@@ -75,7 +118,7 @@ Size 0.02 | Expires 2026-05-03 17:00 SGT
 Telegram order card message_id 128
 ```
 
-Skipped in the fresh cycle:
+Skipped in that fresh cycle:
 
 - `AUDJPY D1 SHORT`: entry was already touched before placement.
 - `NZDCHF H4 LONG`: spread was too wide, about `11.5%` of risk versus the
@@ -109,10 +152,16 @@ Telegram now sends compact plain-text trader cards:
 - `LPFS LIVE | SKIPPED`
 - `LPFS LIVE | REJECTED`
 - `LPFS LIVE | CANCELLED`
+- `LPFS LIVE | RUNNER STARTED`
+- `LPFS LIVE | RUNNER STOPPED`
 
 Fill, close, expiry, and cancellation alerts reply to the original order-card
 message when Telegram returns a `message_id`. Raw broker comments, retcodes,
 exact floats, and diagnostics stay in JSONL.
+
+Runner start/stop alerts are process heartbeat cards. They show cadence,
+requested/completed cycles, runtime, state-save status, and SGT start/stop
+time. They are best-effort Telegram UX and are also journaled.
 
 Manual summary:
 
@@ -157,6 +206,12 @@ Targeted tests:
 .\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_notifications strategies.lp_force_strike_strategy_lab.tests.test_live_executor strategies.lp_force_strike_strategy_lab.tests.test_live_trade_summary -v
 ```
 
+Runner/process notification tests:
+
+```powershell
+.\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_live_runner -v
+```
+
 Full strict gate:
 
 ```powershell
@@ -165,7 +220,7 @@ Full strict gate:
 
 Latest full strict result on 2026-05-01:
 
-- `209` unittest cases across core labs.
+- `211` unittest cases across core labs.
 - `100.00%` line and branch coverage.
 
 Latest selector revalidation on 2026-05-01:
@@ -182,10 +237,14 @@ Latest selector revalidation on 2026-05-01:
 
 - `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py`
 - `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_trade_summary.py`
+- `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/notifications.py`
 - `scripts/run_lp_force_strike_live_executor.py`
 - `scripts/summarize_lpfs_live_trades.py`
+- `scripts/build_lp_force_strike_live_ops_page.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_live_executor.py`
+- `strategies/lp_force_strike_strategy_lab/tests/test_live_runner.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_live_trade_summary.py`
 
-The working tree also includes earlier execution-contract, dry-run, docs, and
-notification changes. Do not revert unrelated user/local changes.
+The tracked code also includes the execution contract, dry-run executor,
+dashboard docs, and notification UX changes. Do not revert unrelated user/local
+changes or ignored runtime files.

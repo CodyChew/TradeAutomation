@@ -101,6 +101,8 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("does not have a dedicated Telegram alert yet", html)
         self.assertIn("Order And Position Scenarios", html)
         self.assertIn("Operator Commands", html)
+        self.assertIn("RUNNER STARTED / STOPPED", html)
+        self.assertIn("Run until manually stopped", html)
         self.assertIn("href=\"strategy.html\"", html)
         self.assertIn("href=\"v15.html\"", html)
         self.assertNotIn("<script", lower_html)

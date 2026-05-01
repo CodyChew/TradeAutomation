@@ -1,7 +1,8 @@
 # LP Force Strike Strategy Lab Project State
 
 Last updated: 2026-05-01 local time after the active-window LP selector patch,
-V9-to-V15 revalidation, live Telegram UX refactor, and handoff cleanup.
+V9-to-V15 revalidation, live Telegram UX refactor, runner start/stop
+notifications, and handoff cleanup.
 
 ## Purpose
 
@@ -822,6 +823,7 @@ Supported event kinds include:
 - pending expired or cancelled;
 - position opened;
 - stop loss / take profit hit;
+- runner started / runner stopped;
 - executor error;
 - kill switch activated.
 
@@ -840,7 +842,8 @@ Live Telegram messages add real broker lifecycle alerts:
 - `TAKE PROFIT`;
 - `STOP LOSS`;
 - `WAITING` for retryable spread-only blocks;
-- `SKIPPED` / `REJECTED` / `CANCELLED`.
+- `SKIPPED` / `REJECTED` / `CANCELLED`;
+- `RUNNER STARTED` / `RUNNER STOPPED` for process lifecycle status.
 
 Fill, close, expiry, and cancellation alerts reply to the original
 `ORDER PLACED` Telegram message when Telegram returns a message ID. The live
@@ -848,7 +851,11 @@ state stores those IDs under `telegram_message_ids`. The manual summary script
 is `../../scripts/summarize_lpfs_live_trades.py --config config.local.json
 --limit 5`.
 
-## Current Live Execution State
+Runner start/stop cards are intentionally separate from trade lifecycle cards.
+They show cadence, requested/completed cycles, runtime, state-save status, and
+SGT start/stop time, and are also written to the live JSONL journal.
+
+## Live Execution State And Last Verified Snapshot
 
 The connected MT5 account is real. Treat `scripts/run_lp_force_strike_live_executor.py`
 as real-order capable whenever ignored local config enables live-send.
@@ -861,12 +868,18 @@ Latest corrected full-universe dry-run cycle found four current
 order-check-passing intents: `AUDJPY D1 short`, `EURNZD H8 short`,
 `GBPJPY H12 short`, and `NZDCHF H4 long`.
 
-Local broker testing now uses `risk_bucket_scale=0.1`, reducing V15 sizing to
+Dry-run broker testing used `risk_bucket_scale=0.1`, reducing V15 sizing to
 H4/H8 `0.02%`, H12/D1 `0.03%`, and W1 `0.075%` while preserving the relative
-timeframe weighting. Broker volume steps/minimums can make actual risk slightly
-lower or reject very wide setups.
+timeframe weighting. The current low-risk live-send test default is
+`risk_bucket_scale=0.05`, reducing V15 sizing to H4/H8 `0.01%`, H12/D1
+`0.015%`, and W1 `0.0375%`. Broker volume steps/minimums can make actual risk
+slightly lower or reject very wide setups.
 
 Live-send state as of 2026-05-01:
+
+This is a historical handoff snapshot. Before acting, verify MT5, ignored live
+state, and the JSONL journal because broker state can change after this file is
+written.
 
 - Module:
   `src/lp_force_strike_strategy_lab/live_executor.py`.
@@ -894,10 +907,10 @@ Live-send state as of 2026-05-01:
   `../../data/live/lpfs_live_state.json.bak_20260501_034805`.
 - Fresh live-send test cycle result:
   140 frames processed, 2 orders sent, 2 setups rejected.
-- Current tracked/MT5 strategy pending orders after that cycle:
+- Last verified tracked/MT5 strategy pending orders after that cycle:
   `EURNZD H8 SHORT SELL_LIMIT #257048012` and
   `GBPJPY H12 SHORT SELL_LIMIT #257048014`.
-- Current tracked strategy positions: none.
+- Tracked strategy positions at that time: none.
 - Skipped in the fresh cycle:
   `AUDJPY D1 SHORT` because entry was already touched before placement, and
   `NZDCHF H4 LONG` because live spread was about `11.5%` of risk versus the
@@ -915,17 +928,23 @@ Live-send state as of 2026-05-01:
   compatibility code.
 - After a pending order is placed, spread widening does not auto-cancel it and
   does not currently trigger a dedicated Telegram alert.
+- The live runner now sends best-effort Telegram process notifications on
+  start and stop. The stop alert is emitted for completed cycle runs, Ctrl+C,
+  and uncaught runtime errors after state save is attempted.
 
 Expected next scope:
 
 1. Inspect `../../data/live/lpfs_live_journal.jsonl`,
    `../../data/live/lpfs_live_state.json`, MT5 pending orders/positions, and
    Telegram lifecycle messages before running again.
-2. Run only finite live-send cycles until a kill switch exists.
+2. The live runner is a finite-cycle CLI. For a manual long run, use a very
+   large cycle count and Ctrl+C to stop it; do not present this as guaranteed
+   Windows service uptime.
 3. If a user manually deletes a pending order, let the next reconciliation
    record it as cancelled/missing; do not clear state unless intentionally
    re-arming the current latest-candle setups.
-4. Add retry policy and a real kill switch before unattended operation.
+4. Add retry policy and a real kill switch before unattended operation on a VPS
+   or scheduled startup.
 
 ## Dashboard Interpretation UX
 

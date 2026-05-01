@@ -270,6 +270,10 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             r".\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 12 --sleep-seconds 300",
         ),
         (
+            "Run until manually stopped",
+            r".\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 100000000 --sleep-seconds 30",
+        ),
+        (
             "Print recent trade summary",
             r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5",
         ),
@@ -414,6 +418,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             ("ENTERED", "Reply to order", "Fill time/price, position ID, volume, SL/TP, risk, ref."),
             ("TAKE PROFIT / STOP LOSS", "Reply to order", "Exit price/time, PnL, R, hold time, deal ticket, position ID, ref."),
             ("SKIPPED / REJECTED / CANCELLED", "Readable reason", "Human reason, action taken, key metric, and ref. Raw fields remain in JSONL."),
+            ("RUNNER STARTED / STOPPED", "Process heartbeat", "Cadence, cycle count, runtime, state-save status, and SGT start/stop time."),
         ])}
       </div>
       <p class="callout">Telegram delivery is best effort. A failed Telegram send must never validate or invalidate a trade. The journal remains the durable audit record.</p>

@@ -640,6 +640,13 @@
           <p>Human reason, action taken, key metric, and ref. Raw fields remain in JSONL.</p>
         </article>
 
+
+        <article class="ops-fact">
+          <span>RUNNER STARTED / STOPPED</span>
+          <strong>Process heartbeat</strong>
+          <p>Cadence, cycle count, runtime, state-save status, and SGT start/stop time.</p>
+        </article>
+
       </div>
       <p class="callout">Telegram delivery is best effort. A failed Telegram send must never validate or invalidate a trade. The journal remains the durable audit record.</p>
     </section>
@@ -658,6 +665,12 @@
         <div class="command-row">
           <strong>Run repeated cycles</strong>
           <code>.\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 12 --sleep-seconds 300</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Run until manually stopped</strong>
+          <code>.\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 100000000 --sleep-seconds 30</code>
         </div>
 
 

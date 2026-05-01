@@ -367,6 +367,65 @@ class NotificationTests(unittest.TestCase):
         self.assertEqual(empty_event.message, "manual reject")
 
     def test_live_trade_messages_are_trader_facing(self) -> None:
+        started = format_notification_message(
+            NotificationEvent(
+                kind="runner_started",
+                mode="LIVE",
+                title="Runner started",
+                status="running",
+                occurred_at_utc="2026-05-01T07:00:00+00:00",
+                fields={
+                    "requested_cycles": 100000000,
+                    "sleep_seconds": 30,
+                    "state_path": "data/live/lpfs_live_state.json",
+                    "journal_path": "data/live/lpfs_live_journal.jsonl",
+                },
+            )
+        )
+        self.assertIn("LPFS LIVE | RUNNER STARTED", started)
+        self.assertIn("Status: Running", started)
+        self.assertIn("Cadence: every 30s | Cycles 100000000", started)
+        self.assertIn("Started: 2026-05-01 15:00 SGT", started)
+
+        stopped = format_notification_message(
+            NotificationEvent(
+                kind="runner_stopped",
+                mode="LIVE",
+                title="Runner stopped",
+                status="stopped_by_user",
+                occurred_at_utc="2026-05-01T17:00:00+00:00",
+                fields={
+                    "requested_cycles": 100000000,
+                    "completed_cycles": 1200,
+                    "runtime_seconds": 36000,
+                    "state_saved": True,
+                },
+            )
+        )
+        self.assertIn("LPFS LIVE | RUNNER STOPPED", stopped)
+        self.assertIn("Reason: Stopped by user", stopped)
+        self.assertIn("Cycles: 1200 / 100000000", stopped)
+        self.assertIn("Runtime: 10h 0m", stopped)
+        self.assertIn("State saved: yes", stopped)
+
+        minimal_started = format_notification_message(
+            NotificationEvent(kind="runner_started", mode="LIVE", title="Runner started")
+        )
+        self.assertIn("LPFS LIVE | RUNNER STARTED", minimal_started)
+        self.assertNotIn("Cadence:", minimal_started)
+        self.assertNotIn("Started:", minimal_started)
+        self.assertNotIn("State:", minimal_started)
+        self.assertNotIn("Journal:", minimal_started)
+
+        minimal_stopped = format_notification_message(
+            NotificationEvent(kind="runner_stopped", mode="LIVE", title="Runner stopped")
+        )
+        self.assertIn("Reason: Completed requested cycles", minimal_stopped)
+        self.assertNotIn("Cycles:", minimal_stopped)
+        self.assertNotIn("Runtime:", minimal_stopped)
+        self.assertNotIn("Stopped:", minimal_stopped)
+        self.assertNotIn("State saved:", minimal_stopped)
+
         order = format_notification_message(
             NotificationEvent(
                 kind="order_sent",
@@ -544,6 +603,16 @@ class NotificationTests(unittest.TestCase):
         self.assertEqual(format_trader_signed_number(-12.3), "-12.30")
         self.assertEqual(format_trader_signed_number("bad"), "n/a")
         self.assertEqual(notification_module.format_trader_r("bad"), "n/a")
+        self.assertEqual(notification_module._format_seconds(None), "n/a")
+        self.assertEqual(notification_module._format_seconds(-1), "0s")
+        self.assertEqual(notification_module._format_seconds(90), "1m 30s")
+        self.assertEqual(notification_module._format_seconds(120), "2m")
+        self.assertEqual(notification_module._trim_path("C:/very/long/path/state.json", 20), ".../path/state.json")
+        self.assertEqual(notification_module._trim_path("C:/very/long/path/state.json", 10), "C:/very...")
+        self.assertEqual(notification_module._trim_path("averyverylongfilenamewithoutslashes", 16), "averyverylong...")
+        self.assertEqual(notification_module._yes_no(True), "yes")
+        self.assertEqual(notification_module._yes_no(False), "no")
+        self.assertEqual(notification_module._yes_no("maybe"), "maybe")
         self.assertEqual(format_trader_timestamp("2026-05-01T14:10:30.123456+00:00"), "2026-05-01 22:10 SGT")
         self.assertEqual(format_trader_timestamp("2026-05-01T14:10:30Z"), "2026-05-01 22:10 SGT")
         self.assertEqual(format_trader_timestamp("2026-05-01T14:10:30"), "2026-05-01 22:10 SGT")

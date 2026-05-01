@@ -173,7 +173,10 @@ It adds:
 - restart-safe local state for processed signals, pending orders, active
   positions, sent notification keys, and last seen close deal;
 - reconciliation through MT5 open orders, open positions, historical orders,
-  and deal history.
+  and deal history;
+- best-effort runner start/stop process notifications so the operator can see
+  when the program starts, exits by completed cycles or Ctrl+C, or stops after
+  an uncaught runtime error.
 
 Telegram is reporting only. It must not decide whether a trade is valid.
 

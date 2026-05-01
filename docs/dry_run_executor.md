@@ -171,6 +171,15 @@ enabled and reviewed:
 .\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 3 --sleep-seconds 30
 ```
 
+For a manual long run that you will stop with Ctrl+C:
+
+```powershell
+.\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 100000000 --sleep-seconds 30
+```
+
+This is still a finite-cycle CLI, not a Windows service. MT5 closure, network
+loss, machine sleep, terminal crash, or shutdown can still stop operation.
+
 ## Behavior
 
 The runner processes closed candles only. For every configured symbol/timeframe
@@ -210,6 +219,8 @@ Live-send Telegram cards are compact and trader-oriented:
   hold time, close time, deal ticket, and ref.
 - `SKIPPED` / `REJECTED` / `CANCELLED`: human reason, action taken, key metric,
   and ref.
+- `RUNNER STARTED` / `RUNNER STOPPED`: live process status, cadence, cycle
+  counts, runtime, state-save result, and SGT start/stop time.
 
 Fill, close, expiry, and cancellation cards reply to the original
 `ORDER PLACED` Telegram message when Telegram returns a message ID. Raw broker
@@ -284,5 +295,8 @@ Sensitive values must never appear in these files:
 - Live-send tracks order placement, fill, TP/SL close, cancellation, and expiry
   notifications in local state so restarts do not replay alerts. It also stores
   Telegram order-card message IDs for best-effort lifecycle replies.
+- The live runner sends and journals start/stop process notifications when
+  Telegram is configured. Stop cards are emitted for completed cycles, Ctrl+C,
+  and uncaught runtime errors after state save is attempted.
 - No MT5 retry policy yet.
 - No kill-switch implementation beyond notification event support.

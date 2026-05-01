@@ -27,6 +27,8 @@ NotificationKind = Literal[
     "position_opened",
     "stop_loss_hit",
     "take_profit_hit",
+    "runner_started",
+    "runner_stopped",
     "executor_error",
     "kill_switch_activated",
 ]
@@ -47,6 +49,8 @@ NOTIFICATION_KINDS: tuple[str, ...] = (
     "position_opened",
     "stop_loss_hit",
     "take_profit_hit",
+    "runner_started",
+    "runner_stopped",
     "executor_error",
     "kill_switch_activated",
 )
@@ -255,6 +259,8 @@ def format_notification_message(event: NotificationEvent, *, max_field_value_len
         "position_opened",
         "stop_loss_hit",
         "take_profit_hit",
+        "runner_started",
+        "runner_stopped",
     }:
         return _format_live_trade_message(event, max_field_value_length=max_field_value_length)
 
@@ -395,6 +401,8 @@ def _format_dry_run_message(event: NotificationEvent, *, max_field_value_length:
 
 
 def _format_live_trade_message(event: NotificationEvent, *, max_field_value_length: int) -> str:
+    if event.kind in {"runner_started", "runner_stopped"}:
+        return _format_runner_card(event, max_field_value_length=max_field_value_length)
     if event.kind == "order_sent":
         return _format_order_placed_card(event, max_field_value_length=max_field_value_length)
     if event.kind == "position_opened":
@@ -402,6 +410,50 @@ def _format_live_trade_message(event: NotificationEvent, *, max_field_value_leng
     if event.kind in {"stop_loss_hit", "take_profit_hit"}:
         return _format_position_closed_card(event, max_field_value_length=max_field_value_length)
     return _format_live_exception_card(event, max_field_value_length=max_field_value_length)
+
+
+def _format_runner_card(event: NotificationEvent, *, max_field_value_length: int) -> str:
+    if event.kind == "runner_started":
+        lines = [
+            "LPFS LIVE | RUNNER STARTED",
+            f"Status: {_runner_status_text(event.status or 'running')}",
+        ]
+        cycles = _field(event, "requested_cycles")
+        sleep_seconds = _field(event, "sleep_seconds")
+        if cycles or sleep_seconds:
+            lines.append(
+                f"Cadence: every {_format_seconds(sleep_seconds)} | Cycles {cycles or 'n/a'}"
+            )
+        if event.occurred_at_utc:
+            lines.append(f"Started: {format_trader_timestamp(event.occurred_at_utc)}")
+        state_path = _field(event, "state_path")
+        journal_path = _field(event, "journal_path")
+        if state_path:
+            lines.append(f"State: {_trim_path(state_path, max_field_value_length)}")
+        if journal_path:
+            lines.append(f"Journal: {_trim_path(journal_path, max_field_value_length)}")
+        return "\n".join(lines)
+
+    lines = [
+        "LPFS LIVE | RUNNER STOPPED",
+        f"Reason: {_runner_status_text(event.status or 'completed')}",
+    ]
+    completed = _field(event, "completed_cycles")
+    requested = _field(event, "requested_cycles")
+    if completed or requested:
+        lines.append(f"Cycles: {completed or '0'} / {requested or 'n/a'}")
+    runtime = _field(event, "runtime_seconds")
+    if runtime:
+        lines.append(f"Runtime: {_format_seconds(runtime)}")
+    if event.occurred_at_utc:
+        lines.append(f"Stopped: {format_trader_timestamp(event.occurred_at_utc)}")
+    state_saved = _field(event, "state_saved")
+    if state_saved:
+        lines.append(f"State saved: {_yes_no(state_saved)}")
+    detail = event.message.strip()
+    if detail:
+        lines.append(f"Detail: {_trim(detail, max_field_value_length)}")
+    return "\n".join(lines)
 
 
 def _format_order_placed_card(event: NotificationEvent, *, max_field_value_length: int) -> str:
@@ -704,6 +756,56 @@ def _human_key_metric(event: NotificationEvent) -> str:
     if order_ticket not in (None, ""):
         return f"Order: #{order_ticket}"
     return ""
+
+
+def _runner_status_text(value: str) -> str:
+    mapping = {
+        "running": "Running",
+        "completed": "Completed requested cycles",
+        "stopped_by_user": "Stopped by user",
+        "error": "Stopped after error",
+    }
+    return mapping.get(str(value or "").strip(), str(value).replace("_", " ").capitalize())
+
+
+def _format_seconds(value: Any) -> str:
+    seconds = _safe_float(value)
+    if seconds is None:
+        return "n/a"
+    seconds = max(0.0, seconds)
+    if seconds < 60:
+        text = f"{seconds:.1f}".rstrip("0").rstrip(".")
+        return f"{text}s"
+    minutes, remainder = divmod(int(seconds), 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}h {minutes}m"
+    if remainder:
+        return f"{minutes}m {remainder}s"
+    return f"{minutes}m"
+
+
+def _trim_path(value: str, max_field_value_length: int) -> str:
+    text = str(value).replace("\\", "/")
+    if len(text) <= max_field_value_length:
+        return text
+    parts = text.split("/")
+    if len(parts) >= 3:
+        compact = "/".join(("...", *parts[-2:]))
+        if len(compact) <= max_field_value_length:
+            return compact
+    return _trim(text, max_field_value_length)
+
+
+def _yes_no(value: Any) -> str:
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "y"}:
+        return "yes"
+    if text in {"0", "false", "no", "n"}:
+        return "no"
+    return str(value)
 
 
 def _sentence_case(value: str) -> str:

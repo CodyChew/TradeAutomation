@@ -87,7 +87,7 @@ Core logic regression gate:
 
 Current result on 2026-05-01:
 
-- 209 unittest cases across the five core labs.
+- 211 unittest cases across the five core labs.
 - `100.00%` line and branch coverage for the scoped core packages.
 - Scope and edge-case rules documented in `docs/testing_strategy.md`.
 
@@ -396,7 +396,8 @@ Telegram contract facts:
   tests.
 - Event types include signal detected, setup rejected, order intent created,
   order-check passed/failed, order sent/rejected, pending expired/cancelled,
-  position opened, SL/TP hit, executor error, and kill switch activated.
+  position opened, SL/TP hit, runner started/stopped, executor error, and kill
+  switch activated.
 
 Dry-run adapter facts:
 
@@ -455,9 +456,13 @@ Live-send adapter facts:
 - Every live pending order carries broker-side SL, TP, expiration, magic number,
   and compact comment; the full signal key stays in local state.
 - Telegram lifecycle alerts cover `ORDER PLACED`, `ENTERED`, `TAKE PROFIT`,
-  `STOP LOSS`, `WAITING`, `SKIPPED`, `REJECTED`, and `CANCELLED`. Spread-only
-  WAITING cards are retryable; fill, close, expiry, and cancellation cards
-  reply to the original order card when Telegram returns a message ID.
+  `STOP LOSS`, `WAITING`, `SKIPPED`, `REJECTED`, `CANCELLED`,
+  `RUNNER STARTED`, and `RUNNER STOPPED`. Spread-only WAITING cards are
+  retryable; fill, close, expiry, and cancellation cards reply to the original
+  order card when Telegram returns a message ID.
+- Runner start/stop cards are process heartbeat alerts. They show cadence,
+  requested/completed cycles, runtime, state-save status, and SGT start/stop
+  time. They are also written to the live JSONL journal.
 - Manual recent-trade summary:
   `scripts/summarize_lpfs_live_trades.py --config config.local.json --limit 5`
   with optional `--post-telegram`.
@@ -465,15 +470,19 @@ Live-send adapter facts:
 - The runner script is
   `scripts/run_lp_force_strike_live_executor.py --config config.local.json`.
 
-Current local live-send snapshot after the fresh 2026-05-01 test cycle:
+Last verified local live-send snapshot after the fresh 2026-05-01 test cycle:
+
+This is a historical handoff snapshot. Before acting, verify MT5, ignored live
+state, and the JSONL journal because broker state can change after this file is
+written.
 
 - Previous live journal/state were archived to:
   `data/live/lpfs_live_journal.jsonl.bak_20260501_034805` and
   `data/live/lpfs_live_state.json.bak_20260501_034805`.
-- Current MT5 strategy pending orders:
+- Last verified MT5 strategy pending orders:
   `EURNZD H8 SHORT SELL_LIMIT #257048012` and
   `GBPJPY H12 SHORT SELL_LIMIT #257048014`.
-- Current local active strategy positions: none.
+- Local active strategy positions at that time: none.
 - Telegram sent compact cards for those two orders and for skipped
   `AUDJPY D1 SHORT` (entry already touched) and `NZDCHF H4 LONG` (spread too
   wide).
@@ -487,8 +496,11 @@ Next execution phase:
 2. Before any new run, inspect
    `data/live/lpfs_live_journal.jsonl`, `data/live/lpfs_live_state.json`, MT5
    pending orders/positions, and Telegram messages.
-3. Run finite live-send cycles only. Add retry policy and a real kill switch
-   before leaving the runner unattended.
+3. The live runner is a finite-cycle CLI. For a manual long run, use a very
+   large cycle count and Ctrl+C to stop it; do not present this as guaranteed
+   Windows service uptime.
+4. Add retry policy and a real kill switch before leaving the runner
+   unattended on a VPS or scheduled startup.
 
 ## Force Strike Side-Lab Comparison Learnings
 
@@ -518,20 +530,17 @@ boundaries.
 
 ## Git State Notes
 
-Recent project commits:
+Use git for exact commit truth:
 
-- `a4dad1e Add Telegram notification contract` (local, not pushed at this
-  handoff)
-- `8f9c100 Add MT5 execution contract` (local, not pushed at this handoff)
-- `6c2e2f5 Add strategy guide dashboard page`
-- `0a1786 Add strict core coverage gate`
-- `Document local workspace layout`
-- `8d77960 Add V14 risk tolerance calibration`
-- `5f7acd7 Show V14 risk ladder composition`
-- `e73ce07 Add V14 risk sizing study`
-- `0e55f70 Add V13 relaxed portfolio study`
-- `2c8cf82 Improve dashboard decision briefs`
-- `f2e448c Add V11 timeframe mix study`
+```powershell
+git status --short --branch
+git log --oneline -12
+```
+
+At this handoff, all intended tracked changes should be committed and pushed to
+`origin/main` before work is considered transferred. Ignored local files such as
+`config.local.json`, `data/`, `reports/`, and `venv/` are intentionally not
+part of the pushed handoff.
 
 Local side labs formerly sitting untracked in this repo were moved to:
 

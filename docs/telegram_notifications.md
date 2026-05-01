@@ -43,6 +43,8 @@ The contract supports these event names:
 - `position_opened`
 - `stop_loss_hit`
 - `take_profit_hit`
+- `runner_started`
+- `runner_stopped`
 - `executor_error`
 - `kill_switch_activated`
 
@@ -71,6 +73,8 @@ Live order management adds:
 - `position_opened`
 - `stop_loss_hit`
 - `take_profit_hit`
+- `runner_started`
+- `runner_stopped`
 
 ## Message Content
 
@@ -118,6 +122,8 @@ comments, exact floats, and diagnostic fields stay in the JSONL journal.
   and signal ref.
 - `pending_expired` / `pending_cancelled`: `CANCELLED`, human reason, order
   ticket, action taken, and signal ref.
+- `runner_started` / `runner_stopped`: process heartbeat cards showing
+  cadence, cycle counts, runtime, state-save status, and SGT start/stop time.
 
 Live fill, close, expiry, and cancellation cards reply to the original
 `ORDER PLACED` Telegram message when Telegram returns a `message_id`. Missing
