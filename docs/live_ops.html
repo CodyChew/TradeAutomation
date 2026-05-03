@@ -84,6 +84,45 @@
       background: rgba(255, 255, 255, .03);
       color: #edf4f7;
     }
+    .archive-nav {
+      min-height: 34px;
+      position: relative;
+    }
+    .archive-nav summary {
+      cursor: pointer;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+      list-style: none;
+    }
+    .archive-nav summary::-webkit-details-marker {
+      display: none;
+    }
+    .archive-nav summary::after {
+      content: " +";
+      font-weight: 700;
+    }
+    .archive-nav[open] summary {
+      background: rgba(255, 255, 255, .16);
+    }
+    .archive-nav[open] summary::after {
+      content: " -";
+    }
+    .archive-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      max-width: min(680px, 100%);
+    }
+    .archive-links a {
+      font-size: 13px;
+      padding: 6px 9px;
+      min-height: 30px;
+    }
     main {
       padding: 24px max(18px, 5vw) 48px;
     }
@@ -244,6 +283,7 @@
     }
     .ops-grid,
     .scenario-grid,
+    .checklist-grid,
     .file-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
@@ -252,6 +292,7 @@
     }
     .ops-fact,
     .step-card,
+    .checklist-card,
     .file-card {
       background: var(--panel-soft);
       border: 1px solid var(--line);
@@ -282,9 +323,18 @@
       color: var(--muted);
     }
     .step-card h3,
+    .checklist-card h3,
     .file-card h3 {
       margin: 0 0 7px;
       color: var(--ink);
+    }
+    .checklist-card ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+    .checklist-card li + li {
+      margin-top: 6px;
     }
     .callout {
       background: #f6f8f2;
@@ -349,6 +399,16 @@
         flex: 1 1 auto;
         text-align: center;
       }
+      .archive-nav {
+        flex: 1 1 100%;
+      }
+      .archive-nav summary {
+        text-align: center;
+      }
+      .archive-links a {
+        flex: 1 1 calc(25% - 8px);
+        text-align: center;
+      }
       main {
         padding: 16px 12px 34px;
       }
@@ -392,131 +452,108 @@
 
   <header class="dashboard-header">
     <h1>LP + Force Strike Live Ops</h1>
-    <p>Operational guide for the guarded MT5 live-send runner: cycle cadence, order lifecycle, Telegram alerts, and restart behavior. This page is a static guide, not a live broker-state monitor.</p>
+    <p>Static verification guide for the guarded MT5 live-send runner. It explains what proves correctness, which gates allow sends, which gates reconcile existing orders, and how operators should inspect alerts without embedding stale broker snapshots.</p>
     <nav class="page-nav" aria-label="Dashboard pages">
       <a class="page-link" href="index.html">Home</a>
       <a class="page-link" href="strategy.html">Strategy</a>
       <a class="page-link active" href="live_ops.html">Live Ops</a>
-      <a class="page-link" href="v1.html">V1</a>
-      <a class="page-link" href="v2.html">V2</a>
-      <a class="page-link" href="v3.html">V3</a>
-      <a class="page-link" href="v4.html">V4</a>
-      <a class="page-link" href="v5.html">V5</a>
-      <a class="page-link" href="v6.html">V6</a>
-      <a class="page-link" href="v7.html">V7</a>
-      <a class="page-link" href="v8.html">V8</a>
-      <a class="page-link" href="v9.html">V9</a>
-      <a class="page-link" href="v10.html">V10</a>
-      <a class="page-link" href="v11.html">V11</a>
-      <a class="page-link" href="v12.html">V12</a>
       <a class="page-link" href="v13.html">V13</a>
       <a class="page-link" href="v14.html">V14</a>
       <a class="page-link" href="v15.html">V15</a>
       <a class="page-link" href="v16.html">V16</a>
       <a class="page-link" href="v17.html">V17</a>
+      <details class="archive-nav">
+        <summary>Archive V1-V12</summary>
+        <div class="archive-links">
+          <a class="page-link archive-link" href="v1.html">V1</a><a class="page-link archive-link" href="v2.html">V2</a><a class="page-link archive-link" href="v3.html">V3</a><a class="page-link archive-link" href="v4.html">V4</a><a class="page-link archive-link" href="v5.html">V5</a><a class="page-link archive-link" href="v6.html">V6</a><a class="page-link archive-link" href="v7.html">V7</a><a class="page-link archive-link" href="v8.html">V8</a><a class="page-link archive-link" href="v9.html">V9</a><a class="page-link archive-link" href="v10.html">V10</a><a class="page-link archive-link" href="v11.html">V11</a><a class="page-link archive-link" href="v12.html">V12</a>
+        </div>
+      </details>
     </nav>
 
     <nav class="report-nav" aria-label="Report sections">
-      <a href="#live-status">Status</a><a href="#cycle-model">Cycle Model</a><a href="#signal-send-path">Send Path</a><a href="#spread-policy">Spread Policy</a><a href="#lifecycle-scenarios">Scenarios</a><a href="#telegram">Telegram</a><a href="#commands">Commands</a><a href="#limits">Limits</a><a href="#files">Files</a>
+      <a href="#proof">Proof</a><a href="#operator-checklist">Checklist</a><a href="#send-gates">Send Gates</a><a href="#reconciliation-gates">Reconcile</a><a href="#pending-expiry">Expiry</a><a href="#telegram">Telegram</a><a href="#commands">Commands</a><a href="#limits">Limits</a><a href="#files">Files</a>
     </nav>
 
   </header>
 
   <main>
-    <section id="live-status" class="ops-hero" aria-labelledby="live-status-title">
-      <div class="eyebrow">Real Account Safety</div>
-      <h2 id="live-status-title">Guarded Live-Send Exists</h2>
-      <p class="callout warning"><strong>Real orders can be sent.</strong> The live runner must be treated as production-capable when <code>execution_mode</code>, <code>live_send_enabled</code>, account acknowledgement, and MT5 account/server checks pass. Do not run it casually.</p>
+    <section id="proof" class="ops-hero" aria-labelledby="proof-title">
+      <div class="eyebrow">Static Verification Guide</div>
+      <h2 id="proof-title">What Proves The Runner Is Correct</h2>
+      <p class="callout warning"><strong>Real orders can be sent.</strong> Correctness is proven from MT5 broker state, local state, and journal rows. Telegram is useful for operator awareness, but Telegram is reporting only and does not prove broker state.</p>
       <div class="ops-grid">
 
         <article class="ops-fact">
-          <span>Default risk scale</span>
-          <strong>0.05x V15</strong>
-          <p>H4/H8 0.01%, H12/D1 0.015%, W1 0.0375% before broker volume rounding.</p>
+          <span>Broker proof</span>
+          <strong>MT5 orders_get / positions_get</strong>
+          <p>Pending orders and open positions under the LPFS magic/comment prove what is currently live at the broker.</p>
         </article>
 
 
         <article class="ops-fact">
-          <span>Spread gate</span>
-          <strong>10% of risk</strong>
-          <p>Checked before order_check and again immediately before order_send.</p>
+          <span>Restart proof</span>
+          <strong>data/live/lpfs_live_state.json</strong>
+          <p>Processed signal keys, pending metadata, active positions, and Telegram message IDs prevent duplicate sends after restart.</p>
         </article>
 
 
         <article class="ops-fact">
-          <span>Max open risk</span>
-          <strong>0.65%</strong>
-          <p>Strategy exposure cap across active/pending LPFS live-send trades.</p>
+          <span>Audit proof</span>
+          <strong>data/live/lpfs_live_journal.jsonl</strong>
+          <p>Every placement, adoption, fill, cancellation, close, skip, and notification outcome is recorded as durable JSONL.</p>
         </article>
 
 
         <article class="ops-fact">
-          <span>Position caps</span>
-          <strong>4 same symbol / 17 strategy</strong>
-          <p>Full V15 stack and concurrent-trade caps remain active.</p>
+          <span>Runner proof</span>
+          <strong>process + latest cycle row</strong>
+          <p>The process command line and newest cycle summary show whether the intended runner is still checking the intended config.</p>
         </article>
 
 
         <article class="ops-fact">
-          <span>Source of truth</span>
-          <strong>MT5 broker state</strong>
-          <p>Local JSON state prevents duplicates and allows restart continuity; it does not decide fills or exits.</p>
+          <span>Telegram role</span>
+          <strong>reporting only</strong>
+          <p>Telegram confirms what the runner attempted to report. It is not broker truth and should be checked against MT5/state/journal.</p>
         </article>
 
 
         <article class="ops-fact">
           <span>Dashboard role</span>
-          <strong>Static ops guide</strong>
-          <p>Use state/journal files or the summary script for current account state.</p>
+          <strong>static guide</strong>
+          <p>This page intentionally avoids live broker snapshots so it cannot make stale status claims.</p>
         </article>
 
       </div>
     </section>
 
-    <section id="cycle-model" aria-labelledby="cycle-model-title">
-      <h2 id="cycle-model-title">How Often It Checks</h2>
-      <p>The live runner is cycle-based. One cycle reconciles MT5 first, scans all configured symbols/timeframes for new closed-candle signals, then stops unless the CLI was started with multiple cycles and a sleep interval.</p>
-      <div class="scenario-grid">
+    <section id="operator-checklist" aria-labelledby="operator-checklist-title">
+      <h2 id="operator-checklist-title">Operator Checklist</h2>
+      <p class="callout">Use this checklist to verify live correctness without relying on stale dashboard status. It separates setup checks, running checks, and alert follow-up.</p>
+      <div class="checklist-grid">
 
-        <article class="step-card">
-          <span>Startup</span>
-          <h3>Reconcile broker state first</h3>
-          <p>Every live-send cycle loads atomically persisted local state, pulls MT5 pending orders and positions by strategy magic, checks recent history, then only scans for fresh closed-candle signals.</p>
+        <article class="checklist-card">
+          <h3>Before starting</h3>
+          <ul><li>Confirm MT5 is logged into the intended demo/real account and server.</li><li>Confirm config.local.json intentionally enables or disables live_send_enabled for this account.</li><li>Check there is no second LPFS runner already active against the same state file.</li><li>Inspect open MT5 LPFS orders/positions and compare against lpfs_live_state.json if resuming.</li></ul>
         </article>
 
 
-        <article class="step-card">
-          <span>Signal</span>
-          <h3>Build a pending limit order</h3>
-          <p>A valid LPFS signal becomes a BUY LIMIT or SELL LIMIT at the 50% signal-candle pullback, with broker-side SL, TP, expiration, compact comment, and full signal key stored locally.</p>
+        <article class="checklist-card">
+          <h3>While running</h3>
+          <ul><li>Monitor RUNNER STARTED / STOPPED cards and the latest cycle summary.</li><li>Use MT5 orders_get / positions_get as the source of truth for open exposure.</li><li>Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled.</li><li>Treat spread waits as retryable until entry touch or bar-count expiry makes the setup invalid.</li></ul>
         </article>
 
 
-        <article class="step-card">
-          <span>Guard</span>
-          <h3>Check risk, spread, entry freshness</h3>
-          <p>Before order_check, the runner checks duplicate signal keys, entry already touched after the signal, dynamic spread versus setup risk, exposure caps, expiry, and broker-accurate risk sizing.</p>
-        </article>
-
-
-        <article class="step-card">
-          <span>Send</span>
-          <h3>Refresh quote before order_send</h3>
-          <p>Immediately before sending, the runner refreshes the quote, reruns the spread gate, and checks for an already matching broker order/position. A matching broker item is adopted; otherwise the order is sent only after broker order_check passes.</p>
-        </article>
-
-
-        <article class="step-card">
-          <span>Manage</span>
-          <h3>Let MT5 be the truth</h3>
-          <p>Open pending orders and positions are reconciled each cycle. Fills, cancellations, expiries, and closes come from MT5 orders, positions, and deal history. Broker-affecting state is saved immediately after each safety mutation.</p>
+        <article class="checklist-card">
+          <h3>After Telegram alert</h3>
+          <ul><li>For ORDER PLACED, verify the ticket exists in MT5 and the same ref exists in state and journal.</li><li>For ENTERED, verify the pending moved to a position and state moved from pending to active.</li><li>For CANCELLED or cancel_failed, verify MT5 broker state first; failed cancellation is retryable on later cycles.</li><li>For TAKE PROFIT / STOP LOSS / TRADE CLOSED, verify deal history and journal classification before acting on the label.</li></ul>
         </article>
 
       </div>
     </section>
 
-    <section id="signal-send-path" aria-labelledby="signal-send-path-title">
-      <h2 id="signal-send-path-title">When A New Limit Order Is Sent</h2>
+    <section id="send-gates" aria-labelledby="send-gates-title">
+      <h2 id="send-gates-title">Send Gates</h2>
       <p class="callout">The runner sends only after the signal is valid, the entry is still fresh, spread is acceptable, exposure and sizing pass, broker order_check passes, and the final refreshed quote still passes spread.</p>
 
     <div class="table-scroll">
@@ -525,10 +562,11 @@
         <tbody><tr><td>1</td><td>Closed-candle scan</td><td>Signals are based on completed candles, not the forming candle.</td></tr>
 <tr><td>2</td><td>Duplicate key check</td><td>Same symbol, timeframe, direction, LP setup, and signal close time is processed once.</td></tr>
 <tr><td>3</td><td>Missed-entry guard</td><td>If price already touched the planned entry after the signal, no late pending order is placed.</td></tr>
-<tr><td>4</td><td>Spread gate</td><td>Current spread must be no more than 10% of entry-to-stop risk distance.</td></tr>
-<tr><td>5</td><td>Risk sizing</td><td>MT5 order_calc_profit sizes the order, floors to volume_step, caps by broker/local max, and rejects below volume_min.</td></tr>
-<tr><td>6</td><td>Broker validation</td><td>order_check must pass before any live send.</td></tr>
-<tr><td>7</td><td>Final spread gate</td><td>Quote is refreshed and spread is checked again immediately before order_send.</td></tr></tbody>
+<tr><td>4</td><td>Actual-bar expiry</td><td>Strategy expiry is after 6 actual MT5 bars from the signal candle; weekend gaps pause the count.</td></tr>
+<tr><td>5</td><td>Spread gate</td><td>Current spread must be no more than 10% of entry-to-stop risk distance.</td></tr>
+<tr><td>6</td><td>Risk sizing</td><td>MT5 order_calc_profit sizes the order, floors to volume_step, caps by broker/local max, and rejects below volume_min.</td></tr>
+<tr><td>7</td><td>Broker validation</td><td>order_check must pass before any live send and the MT5 request carries a conservative broker backstop.</td></tr>
+<tr><td>8</td><td>Final spread gate</td><td>Quote is refreshed and spread is checked again immediately before order_send.</td></tr></tbody>
       </table>
     </div>
 
@@ -591,15 +629,15 @@
       </div>
     </section>
 
-    <section id="lifecycle-scenarios" aria-labelledby="lifecycle-scenarios-title">
-      <h2 id="lifecycle-scenarios-title">Order And Position Scenarios</h2>
-      <p>These checks happen during reconciliation at the start of every cycle.</p>
+    <section id="reconciliation-gates" aria-labelledby="reconciliation-gates-title">
+      <h2 id="reconciliation-gates-title">Reconciliation Gates</h2>
+      <p class="callout">Existing pending orders and positions are managed from broker evidence first. Reconciliation runs at the start of each cycle before new signals are scanned.</p>
 
     <div class="table-scroll">
       <table>
         <thead><tr><th>Scenario</th><th>When checked</th><th>Action</th></tr></thead>
-        <tbody><tr><td>Pending still open</td><td>Every cycle</td><td>Keep order unless expired. Spread widening after placement does not cancel the order and has no dedicated Telegram alert yet.</td></tr>
-<tr><td>Pending expired</td><td>Every cycle</td><td>Cancel the MT5 order when expiry is reached, remove it from active state, and send a cancelled/expired Telegram event.</td></tr>
+        <tbody><tr><td>Pending still open</td><td>Every cycle</td><td>Keep order unless the actual-bar window expired. Spread widening after placement does not cancel the order and has no dedicated Telegram alert yet.</td></tr>
+<tr><td>Pending expired</td><td>Every cycle</td><td>Cancel the MT5 order once the first bar after the allowed 6-bar window appears, remove it from active state, and send a cancelled/expired Telegram event. Weekend time does not count.</td></tr>
 <tr><td>Pending filled</td><td>Every cycle</td><td>Detect a matching MT5 position by comment or broker history linkage, move state from pending to active, and send ENTERED as a reply to the original order card when message_id exists.</td></tr>
 <tr><td>Existing broker item found</td><td>Before order_send</td><td>If an exact same pending order or already-open matching position exists under the strategy magic/comment, adopt it into local state and do not send a duplicate order.</td></tr>
 <tr><td>Pending missing</td><td>Every cycle</td><td>If no matching position exists, treat as broker/user removed or rejected, clear state, and alert once.</td></tr>
@@ -610,6 +648,41 @@
       </table>
     </div>
 
+    </section>
+
+    <section id="pending-expiry" aria-labelledby="pending-expiry-title">
+      <h2 id="pending-expiry-title">Bar-Counted Pending Expiry</h2>
+      <p class="callout warning"><strong>Strategy expiry is after 6 actual MT5 bars from the signal candle.</strong> Broker expiry is only a conservative emergency backstop for runner-down protection, not the strategy decision rule.</p>
+      <div class="ops-grid">
+
+        <article class="ops-fact">
+          <span>Signal early Friday</span>
+          <strong>Friday bars count</strong>
+          <p>Any real broker candles that close after the signal count normally before the weekend gap.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Final Friday candle</span>
+          <strong>Weekend pauses</strong>
+          <p>No Saturday/Sunday bars form, so the first post-open closed candle becomes the next counted bar.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Runner online</span>
+          <strong>Exact cancellation</strong>
+          <p>The runner cancels on reconciliation once more than the allowed actual bars have closed after the signal candle.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Runner offline</span>
+          <strong>Backstop only</strong>
+          <p>The broker-side ORDER_TIME_SPECIFIED expiration can protect only after its conservative calendar backstop.</p>
+        </article>
+
+      </div>
     </section>
 
     <section id="telegram" aria-labelledby="telegram-title">

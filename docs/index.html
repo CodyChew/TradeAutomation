@@ -133,6 +133,68 @@
       border-radius: 6px;
       font-weight: 700;
     }
+    .section-heading,
+    .archive-panel {
+      grid-column: 1 / -1;
+    }
+    .section-heading {
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      padding: 4px 0 0;
+      margin: 0;
+    }
+    .section-heading h2 {
+      margin: 0 0 4px;
+    }
+    .section-heading p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 900px;
+    }
+    .archive-panel details {
+      border-top: 4px solid #5c7f95;
+    }
+    .archive-panel summary {
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--ink);
+    }
+    .archive-panel p {
+      margin: 10px 0 14px;
+      color: var(--muted);
+    }
+    .archive-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .archive-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+      padding: 12px;
+    }
+    .archive-card span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .archive-card strong {
+      display: block;
+      margin: 3px 0 5px;
+    }
+    .archive-card p {
+      margin: 0 0 8px;
+      font-size: 13px;
+    }
+    .archive-card a {
+      color: var(--accent);
+      font-weight: 700;
+    }
 
     :root {
       --bg: #f3f6f8;
@@ -211,6 +273,45 @@
     .report-nav a {
       background: rgba(255, 255, 255, .03);
       color: #edf4f7;
+    }
+    .archive-nav {
+      min-height: 34px;
+      position: relative;
+    }
+    .archive-nav summary {
+      cursor: pointer;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+      list-style: none;
+    }
+    .archive-nav summary::-webkit-details-marker {
+      display: none;
+    }
+    .archive-nav summary::after {
+      content: " +";
+      font-weight: 700;
+    }
+    .archive-nav[open] summary {
+      background: rgba(255, 255, 255, .16);
+    }
+    .archive-nav[open] summary::after {
+      content: " -";
+    }
+    .archive-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      max-width: min(680px, 100%);
+    }
+    .archive-links a {
+      font-size: 13px;
+      padding: 6px 9px;
+      min-height: 30px;
     }
     main {
       padding: 24px max(18px, 5vw) 48px;
@@ -375,6 +476,16 @@
         flex: 1 1 auto;
         text-align: center;
       }
+      .archive-nav {
+        flex: 1 1 100%;
+      }
+      .archive-nav summary {
+        text-align: center;
+      }
+      .archive-links a {
+        flex: 1 1 calc(25% - 8px);
+        text-align: center;
+      }
       main {
         padding: 16px 12px 34px;
       }
@@ -423,6 +534,7 @@
       .card { padding: 16px; }
       .facts { grid-template-columns: 1fr; }
       a.button { display: block; text-align: center; }
+      .archive-card-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -435,27 +547,21 @@
       <a class="page-link active" href="index.html">Home</a>
       <a class="page-link" href="strategy.html">Strategy</a>
       <a class="page-link" href="live_ops.html">Live Ops</a>
-      <a class="page-link" href="v1.html">V1</a>
-      <a class="page-link" href="v2.html">V2</a>
-      <a class="page-link" href="v3.html">V3</a>
-      <a class="page-link" href="v4.html">V4</a>
-      <a class="page-link" href="v5.html">V5</a>
-      <a class="page-link" href="v6.html">V6</a>
-      <a class="page-link" href="v7.html">V7</a>
-      <a class="page-link" href="v8.html">V8</a>
-      <a class="page-link" href="v9.html">V9</a>
-      <a class="page-link" href="v10.html">V10</a>
-      <a class="page-link" href="v11.html">V11</a>
-      <a class="page-link" href="v12.html">V12</a>
       <a class="page-link" href="v13.html">V13</a>
       <a class="page-link" href="v14.html">V14</a>
       <a class="page-link" href="v15.html">V15</a>
       <a class="page-link" href="v16.html">V16</a>
       <a class="page-link" href="v17.html">V17</a>
+      <details class="archive-nav">
+        <summary>Archive V1-V12</summary>
+        <div class="archive-links">
+          <a class="page-link archive-link" href="v1.html">V1</a><a class="page-link archive-link" href="v2.html">V2</a><a class="page-link archive-link" href="v3.html">V3</a><a class="page-link archive-link" href="v4.html">V4</a><a class="page-link archive-link" href="v5.html">V5</a><a class="page-link archive-link" href="v6.html">V6</a><a class="page-link archive-link" href="v7.html">V7</a><a class="page-link archive-link" href="v8.html">V8</a><a class="page-link archive-link" href="v9.html">V9</a><a class="page-link archive-link" href="v10.html">V10</a><a class="page-link archive-link" href="v11.html">V11</a><a class="page-link archive-link" href="v12.html">V12</a>
+        </div>
+      </details>
     </nav>
 
     <nav class="report-nav" aria-label="Report sections">
-      <a href="#current-baseline">Current Baseline</a><a href="#strategy-guide">Strategy Guide</a><a href="#live-ops">Live Ops</a><a href="#metric-glossary">Glossary</a>
+      <a href="#current-baseline">Current Baseline</a><a href="#strategy-guide">Strategy Guide</a><a href="#live-ops">Live Ops</a><a href="#research-archive">Archive</a><a href="#metric-glossary">Glossary</a>
     </nav>
 
   </header>
@@ -486,12 +592,17 @@
     <section id="live-ops" class="card featured">
       <div class="status status-active">Live operations</div>
       <h2>Live Ops Guide</h2>
-      <p>Cycle cadence, live-send gates, spread behavior, pending-order lifecycle, Telegram alerts, restart state, and operator commands for the guarded MT5 path.</p>
+      <p>Static verification guide for proving the guarded MT5 runner is correct using broker state, local state, journal rows, send gates, reconciliation gates, and operator commands.</p>
       <div class="facts">
         <div class="fact"><span>Cycle</span><strong>Default 30s sleep</strong></div>
-        <div class="fact"><span>Spread skip</span><strong>Terminal for signal</strong></div>
+        <div class="fact"><span>Pending expiry</span><strong>6 actual MT5 bars</strong></div>
       </div>
       <a class="button" href="live_ops.html">Open Live Ops</a>
+    </section>
+
+    <section class="section-heading">
+      <h2>Current Research Pages</h2>
+      <p>These are the current research snapshots that still feed the active LPFS strategy contract.</p>
     </section>
 
     <section class="card">
@@ -544,124 +655,98 @@
       <a class="button" href="v13.html">Open V13 Dashboard</a>
     </section>
 
-    <section class="card">
-      <div class="status status-active">Pivot finalization</div>
-      <h2>V12 LP Pivot Finalization</h2>
-      <p>Keep LP3 as the practical default. LP4 and LP5 have attractive quality, but on the selected all-timeframe baseline they fail guardrails. The no-H4 contrast makes LP3/LP4/LP5 all pass, but LP3 still has the highest Total R.</p>
-      <div class="facts">
-        <div class="fact"><span>Winner</span><strong>LP3 all TF</strong></div><div class="fact"><span>Total R</span><strong>1,100.9R</strong></div><div class="fact"><span>Max DD</span><strong>26.7R</strong></div><div class="fact"><span>Underwater</span><strong>162D</strong></div>
-      </div>
-      <a class="button" href="v12.html">Open V12 Dashboard</a>
-    </section>
+    <section id="research-archive" class="archive-panel">
+      <details>
+        <summary>Research Archive V1-V12</summary>
+        <p>Older experiments stay available for audit history, but they no longer compete with the current strategy and live-ops contract on first read.</p>
+        <div class="archive-card-grid">
 
-    <section class="card">
-      <div class="status status-active">Timeframe mix study</div>
-      <h2>V11 Practical Timeframe Mix</h2>
-      <p>Keep all H4/H8/H12/D1/W1 timeframes for the current LP3 cap 4R baseline. The all-timeframe row still passed guardrails and produced the highest Total R. Removing H4 or H8 lowered drawdown, but the return sacrifice or underwater miss was not worth replacing the baseline.</p>
-      <div class="facts">
-        <div class="fact"><span>Winner</span><strong>All TF LP3</strong></div><div class="fact"><span>Total R</span><strong>1,100.9R</strong></div><div class="fact"><span>Max DD</span><strong>26.7R</strong></div><div class="fact"><span>Underwater</span><strong>162D</strong></div>
-      </div>
-      <a class="button" href="v11.html">Open V11 Dashboard</a>
-    </section>
+          <article class="archive-card">
+            <span>V12</span>
+            <strong>V12 LP Pivot Finalization</strong>
+            <p>Keep LP3 as the practical default. LP4 and LP5 have attractive quality, but on the selected all-timeframe baseline they fail guardrails. The no-H4 contrast makes LP3/LP4/LP5 all pass, but LP3 still has the highest Total R.</p>
+            <a href="v12.html">Open V12</a>
+          </article>
 
-    <section class="card">
-      <div class="status status-active">Portfolio study</div>
-      <h2>V10 Portfolio Baseline: Take-All vs Exposure Caps</h2>
-      <p>Only LP3 with the 4R exposure cap passed both V10 guardrails. Take-all had higher Total R, but breached the 30R max drawdown guardrail. LP4 and LP5 kept attractive quality metrics, but their underwater periods were too long under the 180D rule.</p>
-      <div class="facts">
-        <div class="fact"><span>Winner</span><strong>LP3 cap 4R</strong></div><div class="fact"><span>Total R</span><strong>1,100.9R</strong></div><div class="fact"><span>Max DD</span><strong>26.7R</strong></div><div class="fact"><span>Underwater</span><strong>162D</strong></div>
-      </div>
-      <a class="button" href="v10.html">Open V10 Dashboard</a>
-    </section>
+          <article class="archive-card">
+            <span>V11</span>
+            <strong>V11 Practical Timeframe Mix</strong>
+            <p>Keep all H4/H8/H12/D1/W1 timeframes for the current LP3 cap 4R baseline. The all-timeframe row still passed guardrails and produced the highest Total R. Removing H4 or H8 lowered drawdown, but the return sacrifice or underwater miss was not worth replacing the baseline.</p>
+            <a href="v11.html">Open V11</a>
+          </article>
 
-    <section class="card">
-      <div class="status status-rejected">Rejected</div>
-      <h2>V8 Entry Wait: Entry-Priority 1R Cancel</h2>
-      <p>Do not replace the fixed 6-bar pullback wait. V8 is positive but weaker than the baseline on trade count, win rate, average R, PF, and total R.</p>
-      <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>140</strong></div><div class="fact"><span>Signals</span><strong>16,061</strong></div><div class="fact"><span>Trades</span><strong>9,627</strong></div><div class="fact"><span>PF</span><strong>1.13</strong></div>
-      </div>
-      <a class="button" href="v8.html">Open V8 Dashboard</a>
-    </section>
+          <article class="archive-card">
+            <span>V10</span>
+            <strong>V10 Portfolio Baseline: Take-All vs Exposure Caps</strong>
+            <p>Only LP3 with the 4R exposure cap passed both V10 guardrails. Take-all had higher Total R, but breached the 30R max drawdown guardrail. LP4 and LP5 kept attractive quality metrics, but their underwater periods were too long under the 180D rule.</p>
+            <a href="v10.html">Open V10</a>
+          </article>
 
-    <section class="card">
-      <div class="status status-active">Latest sensitivity</div>
-      <h2>V9 LP Pivot Strength Sensitivity</h2>
-      <p>LP pivot 5 has the best overall Avg R and PF, while LP pivot 4 is the more balanced quality/count compromise. LP pivot 2 produces the most trades but weakest quality, and LP pivot 3 is no longer the best quality default for this trade model.</p>
-      <div class="facts">
-        <div class="fact"><span>Best Avg R</span><strong>LP5: 0.134R</strong></div><div class="fact"><span>Best PF</span><strong>LP5: 1.310</strong></div><div class="fact"><span>Balanced</span><strong>LP4: 9,512 trades</strong></div><div class="fact"><span>Baseline LP3</span><strong>0.116R / PF 1.265</strong></div>
-      </div>
-      <a class="button" href="v9.html">Open V9 Dashboard</a>
-    </section>
+          <article class="archive-card">
+            <span>V8</span>
+            <strong>V8 Entry Wait: Entry-Priority 1R Cancel</strong>
+            <p>Do not replace the fixed 6-bar pullback wait. V8 is positive but weaker than the baseline on trade count, win rate, average R, PF, and total R.</p>
+            <a href="v8.html">Open V8</a>
+          </article>
 
-    <section class="card">
-      <div class="status status-rejected">Rejected</div>
-      <h2>V7 Entry Wait: Cancel At Would-Be 1R</h2>
-      <p>Do not replace the fixed 6-bar pullback wait. V7 is unusable because the cancel-first same-bar rule removes too many valid trades.</p>
-      <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>140</strong></div><div class="fact"><span>Signals</span><strong>16,061</strong></div><div class="fact"><span>Trades</span><strong>4,885</strong></div><div class="fact"><span>PF</span><strong>0.52</strong></div>
-      </div>
-      <a class="button" href="v7.html">Open V7 Dashboard</a>
-    </section>
+          <article class="archive-card">
+            <span>V9</span>
+            <strong>V9 LP Pivot Strength Sensitivity</strong>
+            <p>LP pivot 5 has the best overall Avg R and PF, while LP pivot 4 is the more balanced quality/count compromise. LP pivot 2 produces the most trades but weakest quality, and LP pivot 3 is no longer the best quality default for this trade model.</p>
+            <a href="v9.html">Open V9</a>
+          </article>
 
-    <section class="card">
-      <div class="status status-active">Current timeframe snapshot</div>
-      <h2>V6 H12 Bridge: Native MT5 H12 Test</h2>
-      <p>H12 is a meaningful bridge. It is stronger than H8 and closer to D1 quality while keeping more trade count than D1.</p>
-      <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>120</strong></div><div class="fact"><span>Signals</span><strong>13,815</strong></div><div class="fact"><span>Trades</span><strong>11,185</strong></div><div class="fact"><span>H12 PF</span><strong>1.37</strong></div>
-      </div>
-      <a class="button" href="v6.html">Open V6 Dashboard</a>
-    </section>
+          <article class="archive-card">
+            <span>V7</span>
+            <strong>V7 Entry Wait: Cancel At Would-Be 1R</strong>
+            <p>Do not replace the fixed 6-bar pullback wait. V7 is unusable because the cancel-first same-bar rule removes too many valid trades.</p>
+            <a href="v7.html">Open V7</a>
+          </article>
 
-    <section class="card">
-      <div class="status status-neutral">Timeframe study</div>
-      <h2>V5 H8 Bridge: Native MT5 H8 Test</h2>
-      <p>H8 improved modestly over H4 but did not become a clean midpoint between H4 and D1.</p>
-      <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>96</strong></div><div class="fact"><span>Signals</span><strong>11,533</strong></div><div class="fact"><span>Trades</span><strong>9,341</strong></div><div class="fact"><span>H8 PF</span><strong>1.22</strong></div>
-      </div>
-      <a class="button" href="v5.html">Open V5 Dashboard</a>
-    </section>
+          <article class="archive-card">
+            <span>V6</span>
+            <strong>V6 H12 Bridge: Native MT5 H12 Test</strong>
+            <p>H12 is a meaningful bridge. It is stronger than H8 and closer to D1 quality while keeping more trade count than D1.</p>
+            <a href="v6.html">Open V6</a>
+          </article>
 
-    <section class="card">
-      <div class="status status-rejected">Rejected filter</div>
-      <h2>V4 Stability: Train/Test Symbol Filters</h2>
-      <p>The learned symbol/timeframe filters did not improve the test period. The unfiltered baseline remained better.</p>
-      <div class="facts">
-        <div class="fact"><span>Split</span><strong>2023</strong></div><div class="fact"><span>Candidates</span><strong>4</strong></div><div class="fact"><span>Filters</span><strong>6</strong></div><div class="fact"><span>Main lesson</span><strong>no filter</strong></div>
-      </div>
-      <a class="button" href="v4.html">Open V4 Dashboard</a>
-    </section>
+          <article class="archive-card">
+            <span>V5</span>
+            <strong>V5 H8 Bridge: Native MT5 H8 Test</strong>
+            <p>H8 improved modestly over H4 but did not become a clean midpoint between H4 and D1.</p>
+            <a href="v5.html">Open V5</a>
+          </article>
 
-    <section class="card">
-      <div class="status status-neutral">Model selection</div>
-      <h2>V3 Entry/Exit: Zones, ATRs, Partial Exits</h2>
-      <p>The 0.5 signal-candle pullback was strongest. Single-target 1R beat the tested partial-exit variants for the best individual candidate.</p>
-      <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>72</strong></div><div class="fact"><span>Signals</span><strong>8,203</strong></div><div class="fact"><span>Trades</span><strong>619,092</strong></div><div class="fact"><span>Main lesson</span><strong>0.5 zone</strong></div>
-      </div>
-      <a class="button" href="v3.html">Open V3 Dashboard</a>
-    </section>
+          <article class="archive-card">
+            <span>V4</span>
+            <strong>V4 Stability: Train/Test Symbol Filters</strong>
+            <p>The learned symbol/timeframe filters did not improve the test period. The unfiltered baseline remained better.</p>
+            <a href="v4.html">Open V4</a>
+          </article>
 
-    <section class="card">
-      <div class="status status-neutral">Historical focus</div>
-      <h2>V2 Focus: H4/D1/W1 Midpoint Entry</h2>
-      <p>The midpoint-pullback structure-stop family stayed positive across H4, D1, and W1. The 1ATR and 1.25ATR variants were close.</p>
-      <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>72</strong></div><div class="fact"><span>Signals</span><strong>8,203</strong></div><div class="fact"><span>Trades</span><strong>128,685</strong></div><div class="fact"><span>Best family</span><strong>1ATR / 1R</strong></div>
-      </div>
-      <a class="button" href="v2.html">Open V2 Dashboard</a>
-    </section>
+          <article class="archive-card">
+            <span>V3</span>
+            <strong>V3 Entry/Exit: Zones, ATRs, Partial Exits</strong>
+            <p>The 0.5 signal-candle pullback was strongest. Single-target 1R beat the tested partial-exit variants for the best individual candidate.</p>
+            <a href="v3.html">Open V3</a>
+          </article>
 
-    <section class="card">
-      <div class="status status-neutral">Historical baseline</div>
-      <h2>V1 Baseline: Broad Permutation Test</h2>
-      <p>Midpoint-pullback entries were materially better than next-open entries. M30 was weak, while H4, D1, and W1 justified a focused follow-up.</p>
-      <div class="facts">
-        <div class="fact"><span>Datasets</span><strong>96</strong></div><div class="fact"><span>Signals</span><strong>57,340</strong></div><div class="fact"><span>Trades</span><strong>864,520</strong></div><div class="fact"><span>Main lesson</span><strong>drop M30</strong></div>
-      </div>
-      <a class="button" href="v1.html">Open V1 Dashboard</a>
+          <article class="archive-card">
+            <span>V2</span>
+            <strong>V2 Focus: H4/D1/W1 Midpoint Entry</strong>
+            <p>The midpoint-pullback structure-stop family stayed positive across H4, D1, and W1. The 1ATR and 1.25ATR variants were close.</p>
+            <a href="v2.html">Open V2</a>
+          </article>
+
+          <article class="archive-card">
+            <span>V1</span>
+            <strong>V1 Baseline: Broad Permutation Test</strong>
+            <p>Midpoint-pullback entries were materially better than next-open entries. M30 was weak, while H4, D1, and W1 justified a focused follow-up.</p>
+            <a href="v1.html">Open V1</a>
+          </article>
+
+        </div>
+      </details>
     </section>
 
 

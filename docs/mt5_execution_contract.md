@@ -30,18 +30,27 @@ A valid setup becomes one pending order intent:
 - Entry: tested 0.5 signal-candle pullback price.
 - Stop loss: full Force Strike structure stop.
 - Take profit: 1R target from entry to stop distance.
-- Expiration: open of the first candle after the fixed pullback wait.
+- Strategy expiry: after the fixed pullback wait, counted from actual MT5 bar
+  opens after the signal candle.
+- Broker backstop: a conservative time-based emergency expiration used only if
+  the runner or MT5 terminal stops before it can enforce the bar-count rule.
 
-Because stored candle timestamps are bar opens, a signal at time `T` with
-timeframe duration `D` and a 6-bar pullback wait expires at:
+Backtests fill only during the next six actual candles after the signal candle.
+Live reconciliation now follows the same rule. If the signal is early Friday,
+later Friday bars count. If the signal is on the final candle before the
+weekend, no weekend time counts because no broker candles form. Monday continues
+the remaining bar count; it does not restart the count.
+
+The legacy continuous-calendar boundary for a signal at time `T` with timeframe
+duration `D` and a 6-bar pullback wait is still useful for backstop sizing:
 
 ```text
 T + D * (6 + 1)
 ```
 
-The signal is known after its candle closes. The next six candles can fill the
-pending pullback order. The order expires at the open of the seventh candle
-after the signal candle.
+The MT5 pending request uses `ORDER_TIME_SPECIFIED` with extra padding after
+that boundary: 10 calendar days for H4/H8/H12, 14 days for D1, and 21 days for
+W1. This broker timestamp is not the strategy expiry; it is a fail-safe.
 
 ## Risk Sizing
 
@@ -100,8 +109,8 @@ The executor must reject before sending if any of these are true:
 - volume metadata is invalid;
 - rounded volume is below broker minimum;
 - open risk plus new actual risk would exceed the configured max open risk.
-- the pending order expiration time is already at or before the current broker
-  market time.
+- the conservative broker backstop expiration is already at or before the
+  current broker market time.
 
 Equality at the max-open-risk boundary is allowed. Exceeding it is rejected.
 
@@ -169,6 +178,10 @@ It adds:
 - late-start missed-entry guard: after the signal candle, if the current or
   later MT5 bars already traded through the planned limit entry, the setup is
   rejected instead of placing a stale order;
+- actual-bar expiry guard: after the signal candle, only real MT5 bars count
+  toward `max_entry_wait_bars`. Weekend and holiday gaps do not consume the
+  window. Once the first bar after the allowed wait appears, a still-pending
+  order is cancelled on the next reconciliation cycle;
 - `order_check` before every live send;
 - a final quote refresh and second dynamic spread gate immediately before
   `order_send`;

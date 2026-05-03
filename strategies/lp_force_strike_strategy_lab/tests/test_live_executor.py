@@ -48,6 +48,7 @@ from lp_force_strike_strategy_lab import (  # noqa: E402
     load_live_send_settings,
     load_live_state,
     missed_entry_before_placement,
+    pending_order_bar_expiry_check,
     process_trade_setup_live_send,
     reconcile_live_state,
     run_live_send_cycle,
@@ -123,9 +124,28 @@ def _pending(**overrides) -> LiveTrackedOrder:
         "comment": "LPFS H4 L 10",
         "setup_id": "setup",
         "placed_time_utc": "2026-01-01T04:00:00+00:00",
+        "signal_time_utc": "2026-01-01T00:00:00+00:00",
+        "max_entry_wait_bars": 6,
+        "strategy_expiry_mode": "bar_count",
+        "broker_backstop_expiration_time_utc": "2099-01-01T00:00:00+00:00",
     }
     values.update(overrides)
     return LiveTrackedOrder(**values)
+
+
+def _rates_from_times(times: list[str]) -> list[dict]:
+    return [
+        {
+            "time": int(pd.Timestamp(raw_time).timestamp()),
+            "open": 1.1,
+            "high": 1.2,
+            "low": 1.0,
+            "close": 1.15,
+            "tick_volume": 10,
+            "spread": 2,
+        }
+        for raw_time in times
+    ]
 
 
 def _active(**overrides) -> LiveTrackedPosition:
@@ -172,7 +192,13 @@ class FakeMT5:
     ORDER_TYPE_SELL_LIMIT = 3
     TRADE_ACTION_PENDING = 5
     TRADE_ACTION_REMOVE = 8
+    ORDER_TIME_GTC = 0
     ORDER_TIME_SPECIFIED = 2
+    ORDER_TIME_SPECIFIED_DAY = 3
+    SYMBOL_EXPIRATION_GTC = 1
+    SYMBOL_EXPIRATION_DAY = 2
+    SYMBOL_EXPIRATION_SPECIFIED = 4
+    SYMBOL_EXPIRATION_SPECIFIED_DAY = 8
     ORDER_FILLING_RETURN = 2
     TRADE_RETCODE_DONE = 10009
     TRADE_RETCODE_PLACED = 10008
@@ -574,6 +600,186 @@ class LiveExecutorTests(unittest.TestCase):
         self.assertTrue(cancelled.sent)
         self.assertEqual(mt5.order_send_requests[-1]["action"], mt5.TRADE_ACTION_REMOVE)
 
+    def test_pending_expiry_counts_actual_bars_across_weekend_gaps_for_all_timeframes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            cases = {
+                "H4": (
+                    "2026-05-01T00:00:00Z",
+                    [
+                        "2026-05-01T00:00:00Z",
+                        "2026-05-01T04:00:00Z",
+                        "2026-05-01T08:00:00Z",
+                        "2026-05-01T12:00:00Z",
+                        "2026-05-01T16:00:00Z",
+                        "2026-05-01T20:00:00Z",
+                        "2026-05-04T00:00:00Z",
+                    ],
+                    "2026-05-04T04:00:00Z",
+                ),
+                "H8": (
+                    "2026-05-01T00:00:00Z",
+                    [
+                        "2026-05-01T00:00:00Z",
+                        "2026-05-01T08:00:00Z",
+                        "2026-05-01T16:00:00Z",
+                        "2026-05-04T00:00:00Z",
+                        "2026-05-04T08:00:00Z",
+                        "2026-05-04T16:00:00Z",
+                        "2026-05-05T00:00:00Z",
+                    ],
+                    "2026-05-05T08:00:00Z",
+                ),
+                "H12": (
+                    "2026-05-01T00:00:00Z",
+                    [
+                        "2026-05-01T00:00:00Z",
+                        "2026-05-01T12:00:00Z",
+                        "2026-05-04T00:00:00Z",
+                        "2026-05-04T12:00:00Z",
+                        "2026-05-05T00:00:00Z",
+                        "2026-05-05T12:00:00Z",
+                        "2026-05-06T00:00:00Z",
+                    ],
+                    "2026-05-06T12:00:00Z",
+                ),
+                "D1": (
+                    "2026-05-01T00:00:00Z",
+                    [
+                        "2026-05-01T00:00:00Z",
+                        "2026-05-04T00:00:00Z",
+                        "2026-05-05T00:00:00Z",
+                        "2026-05-06T00:00:00Z",
+                        "2026-05-07T00:00:00Z",
+                        "2026-05-08T00:00:00Z",
+                        "2026-05-11T00:00:00Z",
+                    ],
+                    "2026-05-12T00:00:00Z",
+                ),
+                "W1": (
+                    "2026-01-02T00:00:00Z",
+                    [
+                        "2026-01-02T00:00:00Z",
+                        "2026-01-09T00:00:00Z",
+                        "2026-01-16T00:00:00Z",
+                        "2026-01-23T00:00:00Z",
+                        "2026-01-30T00:00:00Z",
+                        "2026-02-06T00:00:00Z",
+                        "2026-02-13T00:00:00Z",
+                    ],
+                    "2026-02-20T00:00:00Z",
+                ),
+            }
+
+            for timeframe, (signal_time, valid_window_times, first_expired_time) in cases.items():
+                pending = _pending(
+                    timeframe=timeframe,
+                    signal_key=f"lpfs:EURUSD:{timeframe}:10:long:c:{signal_time}",
+                    signal_time_utc=signal_time,
+                )
+                mt5.rates = _rates_from_times(valid_window_times)
+                valid = pending_order_bar_expiry_check(mt5, pending, config)
+                self.assertTrue(valid.checked, timeframe)
+                self.assertFalse(valid.expired, timeframe)
+                self.assertEqual(valid.bars_after_signal, 6)
+
+                mt5.rates = _rates_from_times([*valid_window_times, first_expired_time])
+                expired = pending_order_bar_expiry_check(mt5, pending, config)
+                self.assertTrue(expired.checked, timeframe)
+                self.assertTrue(expired.expired, timeframe)
+                self.assertEqual(expired.bars_after_signal, 7)
+                self.assertEqual(expired.first_expired_bar_time_utc, pd.Timestamp(first_expired_time).isoformat())
+
+    def test_pending_bar_expiry_edge_paths_are_fail_closed_or_migrated(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+
+            missing_setup_time = live_module.setup_bar_expiry_check(
+                mt5,
+                _setup(metadata={"fs_signal_time_utc": None}),
+                config,
+            )
+            self.assertFalse(missing_setup_time.checked)
+            self.assertIn("fs_signal_time_utc", missing_setup_time.detail)
+
+            missing_pending_time = pending_order_bar_expiry_check(
+                mt5,
+                _pending(signal_key="manual", signal_time_utc=None, expiration_time_utc="bad"),
+                config,
+            )
+            self.assertFalse(missing_pending_time.checked)
+            self.assertEqual(missing_pending_time.detail, "missing signal_time_utc")
+
+            mt5.rates = None
+            fetch_failed = pending_order_bar_expiry_check(mt5, _pending(), config)
+            self.assertFalse(fetch_failed.checked)
+            self.assertIn("copy_rates_from_pos failed", fetch_failed.detail)
+
+            mt5.rates = []
+            empty = pending_order_bar_expiry_check(mt5, _pending(), config)
+            self.assertFalse(empty.checked)
+            self.assertIn("no rows", empty.detail)
+
+            zero_wait = live_module.setup_bar_expiry_check(mt5, _setup(), _config(tmpdir, max_entry_wait_bars=0))
+            self.assertFalse(zero_wait.checked)
+            self.assertIn("max_entry_wait_bars", zero_wait.detail)
+
+            legacy_key_pending = _pending(
+                signal_time_utc=None,
+                signal_key="lpfs:EURUSD:H4:10:long:c:2026-01-01T00:00:00Z",
+            )
+            mt5.rates = _rates_from_times(["2026-01-01T00:00:00Z", "2026-01-01T04:00:00Z"])
+            parsed = pending_order_bar_expiry_check(mt5, legacy_key_pending, config)
+            self.assertTrue(parsed.checked)
+            self.assertEqual(parsed.signal_time_utc, "2026-01-01T00:00:00+00:00")
+
+            legacy_expiry_pending = _pending(
+                signal_time_utc=None,
+                signal_key="manual",
+                expiration_time_utc="2026-01-02T04:00:00+00:00",
+                broker_backstop_expiration_time_utc=None,
+            )
+            inferred = pending_order_bar_expiry_check(mt5, legacy_expiry_pending, config)
+            self.assertTrue(inferred.checked)
+            self.assertEqual(inferred.signal_time_utc, "2026-01-01T00:00:00+00:00")
+            self.assertFalse(live_module._broker_backstop_elapsed(legacy_expiry_pending))
+            self.assertTrue(
+                live_module._broker_backstop_elapsed(
+                    _pending(broker_backstop_expiration_time_utc="2000-01-01T00:00:00+00:00")
+                )
+            )
+
+            event = live_module._pending_cancelled_event(
+                _pending(),
+                live_module.LiveOrderSendOutcome(sent=True, request={}, retcode=0, comment="removed"),
+                expired=False,
+            )
+            self.assertEqual(event.kind, "pending_cancelled")
+            self.assertNotIn("bars_after_signal", event.fields)
+
+    def test_process_live_setup_rejects_unavailable_or_expired_bar_window(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            unchecked = live_module.PendingBarExpiryCheck(checked=False, expired=False, detail="rates unavailable")
+            with mock.patch.object(live_module, "setup_bar_expiry_check", return_value=unchecked):
+                unavailable = process_trade_setup_live_send(mt5, _setup(), config=config, state=LiveExecutorState())
+            self.assertEqual(unavailable.status, "rejected")
+
+            expired_check = live_module.PendingBarExpiryCheck(
+                checked=True,
+                expired=True,
+                bars_after_signal=7,
+                max_entry_wait_bars=6,
+                signal_time_utc="2026-01-01T00:00:00+00:00",
+                first_expired_bar_time_utc="2026-01-02T04:00:00+00:00",
+            )
+            with mock.patch.object(live_module, "setup_bar_expiry_check", return_value=expired_check):
+                expired = process_trade_setup_live_send(mt5, _setup(), config=config, state=LiveExecutorState())
+            self.assertEqual(expired.status, "rejected")
+
     def test_process_live_setup_sends_and_handles_rejection_paths(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             config = _config(tmpdir)
@@ -848,7 +1054,19 @@ class LiveExecutorTests(unittest.TestCase):
             kept = reconcile_live_state(mt5, config=config, state=LiveExecutorState(pending_orders=(_pending(),)))
             self.assertEqual(len(kept.pending_orders), 1)
 
-            expired_order = _pending(expiration_time_utc="2000-01-01T00:00:00+00:00")
+            expired_order = _pending()
+            mt5.rates = _rates_from_times(
+                [
+                    "2026-01-01T00:00:00Z",
+                    "2026-01-01T04:00:00Z",
+                    "2026-01-01T08:00:00Z",
+                    "2026-01-01T12:00:00Z",
+                    "2026-01-01T16:00:00Z",
+                    "2026-01-01T20:00:00Z",
+                    "2026-01-02T00:00:00Z",
+                    "2026-01-02T04:00:00Z",
+                ]
+            )
             mt5.order_send_result = SimpleNamespace(retcode=mt5.TRADE_RETCODE_DONE, comment="removed", order=0, deal=0)
             expired = reconcile_live_state(mt5, config=config, state=LiveExecutorState(pending_orders=(expired_order,)))
             self.assertEqual(expired.pending_orders, ())

@@ -72,6 +72,7 @@ LIVE_OPS_EXTRA_CSS = """
     }
     .ops-grid,
     .scenario-grid,
+    .checklist-grid,
     .file-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
@@ -80,6 +81,7 @@ LIVE_OPS_EXTRA_CSS = """
     }
     .ops-fact,
     .step-card,
+    .checklist-card,
     .file-card {
       background: var(--panel-soft);
       border: 1px solid var(--line);
@@ -110,9 +112,18 @@ LIVE_OPS_EXTRA_CSS = """
       color: var(--muted);
     }
     .step-card h3,
+    .checklist-card h3,
     .file-card h3 {
       margin: 0 0 7px;
       color: var(--ink);
+    }
+    .checklist-card ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+    .checklist-card li + li {
+      margin-top: 6px;
     }
     .callout {
       background: #f6f8f2;
@@ -174,9 +185,82 @@ LIVE_OPS_EXTRA_CSS = """
 def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
     metadata = load_dashboard_metadata()
     subtitle = (
-        "Operational guide for the guarded MT5 live-send runner: cycle cadence, "
-        "order lifecycle, Telegram alerts, and restart behavior. This page is a "
-        "static guide, not a live broker-state monitor."
+        "Static verification guide for the guarded MT5 live-send runner. It explains "
+        "what proves correctness, which gates allow sends, which gates reconcile "
+        "existing orders, and how operators should inspect alerts without embedding "
+        "stale broker snapshots."
+    )
+
+    proof_facts = [
+        (
+            "Broker proof",
+            "MT5 orders_get / positions_get",
+            "Pending orders and open positions under the LPFS magic/comment prove what is currently live at the broker.",
+        ),
+        (
+            "Restart proof",
+            "data/live/lpfs_live_state.json",
+            "Processed signal keys, pending metadata, active positions, and Telegram message IDs prevent duplicate sends after restart.",
+        ),
+        (
+            "Audit proof",
+            "data/live/lpfs_live_journal.jsonl",
+            "Every placement, adoption, fill, cancellation, close, skip, and notification outcome is recorded as durable JSONL.",
+        ),
+        (
+            "Runner proof",
+            "process + latest cycle row",
+            "The process command line and newest cycle summary show whether the intended runner is still checking the intended config.",
+        ),
+        (
+            "Telegram role",
+            "reporting only",
+            "Telegram confirms what the runner attempted to report. It is not broker truth and should be checked against MT5/state/journal.",
+        ),
+        (
+            "Dashboard role",
+            "static guide",
+            "This page intentionally avoids live broker snapshots so it cannot make stale status claims.",
+        ),
+    ]
+
+    checklist_groups = [
+        (
+            "Before starting",
+            [
+                "Confirm MT5 is logged into the intended demo/real account and server.",
+                "Confirm config.local.json intentionally enables or disables live_send_enabled for this account.",
+                "Check there is no second LPFS runner already active against the same state file.",
+                "Inspect open MT5 LPFS orders/positions and compare against lpfs_live_state.json if resuming.",
+            ],
+        ),
+        (
+            "While running",
+            [
+                "Monitor RUNNER STARTED / STOPPED cards and the latest cycle summary.",
+                "Use MT5 orders_get / positions_get as the source of truth for open exposure.",
+                "Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled.",
+                "Treat spread waits as retryable until entry touch or bar-count expiry makes the setup invalid.",
+            ],
+        ),
+        (
+            "After Telegram alert",
+            [
+                "For ORDER PLACED, verify the ticket exists in MT5 and the same ref exists in state and journal.",
+                "For ENTERED, verify the pending moved to a position and state moved from pending to active.",
+                "For CANCELLED or cancel_failed, verify MT5 broker state first; failed cancellation is retryable on later cycles.",
+                "For TAKE PROFIT / STOP LOSS / TRADE CLOSED, verify deal history and journal classification before acting on the label.",
+            ],
+        ),
+    ]
+    checklist_html = "\n".join(
+        f"""
+        <article class="checklist-card">
+          <h3>{_escape(title)}</h3>
+          <ul>{"".join(f"<li>{_escape(item)}</li>" for item in items)}</ul>
+        </article>
+        """
+        for title, items in checklist_groups
     )
 
     lifecycle_steps = [
@@ -188,12 +272,12 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         (
             "Signal",
             "Build a pending limit order",
-            "A valid LPFS signal becomes a BUY LIMIT or SELL LIMIT at the 50% signal-candle pullback, with broker-side SL, TP, expiration, compact comment, and full signal key stored locally.",
+            "A valid LPFS signal becomes a BUY LIMIT or SELL LIMIT at the 50% signal-candle pullback, with broker-side SL, TP, a conservative expiration backstop, compact comment, and full signal key plus bar-count expiry metadata stored locally.",
         ),
         (
             "Guard",
             "Check risk, spread, entry freshness",
-            "Before order_check, the runner checks duplicate signal keys, entry already touched after the signal, dynamic spread versus setup risk, exposure caps, expiry, and broker-accurate risk sizing.",
+            "Before order_check, the runner checks duplicate signal keys, entry already touched after the signal, actual-bar expiry, dynamic spread versus setup risk, exposure caps, and broker-accurate risk sizing.",
         ),
         (
             "Send",
@@ -211,12 +295,12 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         [
             "Pending still open",
             "Every cycle",
-            "Keep order unless expired. Spread widening after placement does not cancel the order and has no dedicated Telegram alert yet.",
+            "Keep order unless the actual-bar window expired. Spread widening after placement does not cancel the order and has no dedicated Telegram alert yet.",
         ],
         [
             "Pending expired",
             "Every cycle",
-            "Cancel the MT5 order when expiry is reached, remove it from active state, and send a cancelled/expired Telegram event.",
+            "Cancel the MT5 order once the first bar after the allowed 6-bar window appears, remove it from active state, and send a cancelled/expired Telegram event. Weekend time does not count.",
         ],
         [
             "Pending filled",
@@ -259,10 +343,11 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         ["1", "Closed-candle scan", "Signals are based on completed candles, not the forming candle."],
         ["2", "Duplicate key check", "Same symbol, timeframe, direction, LP setup, and signal close time is processed once."],
         ["3", "Missed-entry guard", "If price already touched the planned entry after the signal, no late pending order is placed."],
-        ["4", "Spread gate", "Current spread must be no more than 10% of entry-to-stop risk distance."],
-        ["5", "Risk sizing", "MT5 order_calc_profit sizes the order, floors to volume_step, caps by broker/local max, and rejects below volume_min."],
-        ["6", "Broker validation", "order_check must pass before any live send."],
-        ["7", "Final spread gate", "Quote is refreshed and spread is checked again immediately before order_send."],
+        ["4", "Actual-bar expiry", "Strategy expiry is after 6 actual MT5 bars from the signal candle; weekend gaps pause the count."],
+        ["5", "Spread gate", "Current spread must be no more than 10% of entry-to-stop risk distance."],
+        ["6", "Risk sizing", "MT5 order_calc_profit sizes the order, floors to volume_step, caps by broker/local max, and rejects below volume_min."],
+        ["7", "Broker validation", "order_check must pass before any live send and the MT5 request carries a conservative broker backstop."],
+        ["8", "Final spread gate", "Quote is refreshed and spread is checked again immediately before order_send."],
     ]
 
     commands = [
@@ -355,11 +440,11 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
       subtitle_html=_escape(subtitle),
       current_page="live_ops.html",
       section_links=[
-          ("#live-status", "Status"),
-          ("#cycle-model", "Cycle Model"),
-          ("#signal-send-path", "Send Path"),
-          ("#spread-policy", "Spread Policy"),
-          ("#lifecycle-scenarios", "Scenarios"),
+          ("#proof", "Proof"),
+          ("#operator-checklist", "Checklist"),
+          ("#send-gates", "Send Gates"),
+          ("#reconciliation-gates", "Reconcile"),
+          ("#pending-expiry", "Expiry"),
           ("#telegram", "Telegram"),
           ("#commands", "Commands"),
           ("#limits", "Limits"),
@@ -368,32 +453,25 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
       metadata=metadata,
   )}
   <main>
-    <section id="live-status" class="ops-hero" aria-labelledby="live-status-title">
-      <div class="eyebrow">Real Account Safety</div>
-      <h2 id="live-status-title">Guarded Live-Send Exists</h2>
-      <p class="callout warning"><strong>Real orders can be sent.</strong> The live runner must be treated as production-capable when <code>execution_mode</code>, <code>live_send_enabled</code>, account acknowledgement, and MT5 account/server checks pass. Do not run it casually.</p>
+    <section id="proof" class="ops-hero" aria-labelledby="proof-title">
+      <div class="eyebrow">Static Verification Guide</div>
+      <h2 id="proof-title">What Proves The Runner Is Correct</h2>
+      <p class="callout warning"><strong>Real orders can be sent.</strong> Correctness is proven from MT5 broker state, local state, and journal rows. Telegram is useful for operator awareness, but Telegram is reporting only and does not prove broker state.</p>
       <div class="ops-grid">
-        {_fact_grid([
-            ("Default risk scale", "0.05x V15", "H4/H8 0.01%, H12/D1 0.015%, W1 0.0375% before broker volume rounding."),
-            ("Spread gate", "10% of risk", "Checked before order_check and again immediately before order_send."),
-            ("Max open risk", "0.65%", "Strategy exposure cap across active/pending LPFS live-send trades."),
-            ("Position caps", "4 same symbol / 17 strategy", "Full V15 stack and concurrent-trade caps remain active."),
-            ("Source of truth", "MT5 broker state", "Local JSON state prevents duplicates and allows restart continuity; it does not decide fills or exits."),
-            ("Dashboard role", "Static ops guide", "Use state/journal files or the summary script for current account state."),
-        ])}
+        {_fact_grid(proof_facts)}
       </div>
     </section>
 
-    <section id="cycle-model" aria-labelledby="cycle-model-title">
-      <h2 id="cycle-model-title">How Often It Checks</h2>
-      <p>The live runner is cycle-based. One cycle reconciles MT5 first, scans all configured symbols/timeframes for new closed-candle signals, then stops unless the CLI was started with multiple cycles and a sleep interval.</p>
-      <div class="scenario-grid">
-        {_step_cards(lifecycle_steps)}
+    <section id="operator-checklist" aria-labelledby="operator-checklist-title">
+      <h2 id="operator-checklist-title">Operator Checklist</h2>
+      <p class="callout">Use this checklist to verify live correctness without relying on stale dashboard status. It separates setup checks, running checks, and alert follow-up.</p>
+      <div class="checklist-grid">
+        {checklist_html}
       </div>
     </section>
 
-    <section id="signal-send-path" aria-labelledby="signal-send-path-title">
-      <h2 id="signal-send-path-title">When A New Limit Order Is Sent</h2>
+    <section id="send-gates" aria-labelledby="send-gates-title">
+      <h2 id="send-gates-title">Send Gates</h2>
       <p class="callout">The runner sends only after the signal is valid, the entry is still fresh, spread is acceptable, exposure and sizing pass, broker order_check passes, and the final refreshed quote still passes spread.</p>
       {_table(["Step", "Gate", "Meaning"], signal_rows)}
     </section>
@@ -415,10 +493,23 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
       </div>
     </section>
 
-    <section id="lifecycle-scenarios" aria-labelledby="lifecycle-scenarios-title">
-      <h2 id="lifecycle-scenarios-title">Order And Position Scenarios</h2>
-      <p>These checks happen during reconciliation at the start of every cycle.</p>
+    <section id="reconciliation-gates" aria-labelledby="reconciliation-gates-title">
+      <h2 id="reconciliation-gates-title">Reconciliation Gates</h2>
+      <p class="callout">Existing pending orders and positions are managed from broker evidence first. Reconciliation runs at the start of each cycle before new signals are scanned.</p>
       {_table(["Scenario", "When checked", "Action"], scenario_rows)}
+    </section>
+
+    <section id="pending-expiry" aria-labelledby="pending-expiry-title">
+      <h2 id="pending-expiry-title">Bar-Counted Pending Expiry</h2>
+      <p class="callout warning"><strong>Strategy expiry is after 6 actual MT5 bars from the signal candle.</strong> Broker expiry is only a conservative emergency backstop for runner-down protection, not the strategy decision rule.</p>
+      <div class="ops-grid">
+        {_fact_grid([
+            ("Signal early Friday", "Friday bars count", "Any real broker candles that close after the signal count normally before the weekend gap."),
+            ("Final Friday candle", "Weekend pauses", "No Saturday/Sunday bars form, so the first post-open closed candle becomes the next counted bar."),
+            ("Runner online", "Exact cancellation", "The runner cancels on reconciliation once more than the allowed actual bars have closed after the signal candle."),
+            ("Runner offline", "Backstop only", "The broker-side ORDER_TIME_SPECIFIED expiration can protect only after its conservative calendar backstop."),
+        ])}
+      </div>
     </section>
 
     <section id="telegram" aria-labelledby="telegram-title">

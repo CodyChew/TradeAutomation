@@ -30,6 +30,14 @@ TIMEFRAME_DELTAS: dict[str, pd.Timedelta] = {
     "W1": pd.Timedelta(days=7),
 }
 
+BROKER_BACKSTOP_PADDING: dict[str, pd.Timedelta] = {
+    "H4": pd.Timedelta(days=10),
+    "H8": pd.Timedelta(days=10),
+    "H12": pd.Timedelta(days=10),
+    "D1": pd.Timedelta(days=14),
+    "W1": pd.Timedelta(days=21),
+}
+
 
 @dataclass(frozen=True)
 class MT5SymbolExecutionSpec:
@@ -109,10 +117,22 @@ class MT5OrderIntent:
     magic: int
     comment: str
     setup_id: str
+    signal_time_utc: pd.Timestamp | None = None
+    max_entry_wait_bars: int = 6
+    strategy_expiry_mode: str = "bar_count"
+    broker_backstop_expiration_time_utc: pd.Timestamp | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
         payload["expiration_time_utc"] = self.expiration_time_utc.isoformat()
+        if self.signal_time_utc is not None:
+            payload["signal_time_utc"] = self.signal_time_utc.isoformat()
+        else:
+            payload.pop("signal_time_utc", None)
+        if self.broker_backstop_expiration_time_utc is not None:
+            payload["broker_backstop_expiration_time_utc"] = self.broker_backstop_expiration_time_utc.isoformat()
+        else:
+            payload.pop("broker_backstop_expiration_time_utc", None)
         return payload
 
 
@@ -162,25 +182,39 @@ def timeframe_delta(timeframe: str) -> pd.Timedelta:
     return TIMEFRAME_DELTAS[key]
 
 
-def pending_expiration_time_utc(setup: TradeSetup, *, max_entry_wait_bars: int = 6) -> pd.Timestamp:
-    """Return broker-side pending expiry for the fixed pullback wait.
+def setup_signal_time_utc(setup: TradeSetup) -> pd.Timestamp:
+    """Return the setup signal candle open time as a UTC timestamp."""
 
-    Candle timestamps are bar opens. The signal candle is known after it closes,
-    then the pullback can fill during the next ``max_entry_wait_bars`` candles.
-    Expiry is therefore the open of the first bar after that wait.
-    """
-
-    if max_entry_wait_bars < 1:
-        raise ValueError("max_entry_wait_bars must be >= 1.")
     signal_time = setup.metadata.get("fs_signal_time_utc")
     if signal_time is None:
         raise ValueError("TradeSetup metadata missing fs_signal_time_utc.")
     timestamp = pd.Timestamp(signal_time)
     if timestamp.tzinfo is None:
-        timestamp = timestamp.tz_localize("UTC")
-    else:
-        timestamp = timestamp.tz_convert("UTC")
-    return timestamp + timeframe_delta(setup.timeframe) * (max_entry_wait_bars + 1)
+        return timestamp.tz_localize("UTC")
+    return timestamp.tz_convert("UTC")
+
+
+def pending_expiration_time_utc(setup: TradeSetup, *, max_entry_wait_bars: int = 6) -> pd.Timestamp:
+    """Return the theoretical fixed-bar boundary for the pullback wait.
+
+    Candle timestamps are bar opens. The signal candle is known after it closes,
+    then the pullback can fill during the next ``max_entry_wait_bars`` candles.
+    This timestamp is only exact when bars are continuous. Live execution uses
+    actual MT5 bar counting for strategy expiry and a separate broker backstop.
+    """
+
+    if max_entry_wait_bars < 1:
+        raise ValueError("max_entry_wait_bars must be >= 1.")
+    return setup_signal_time_utc(setup) + timeframe_delta(setup.timeframe) * (max_entry_wait_bars + 1)
+
+
+def broker_backstop_expiration_time_utc(setup: TradeSetup, *, max_entry_wait_bars: int = 6) -> pd.Timestamp:
+    """Return the conservative broker-side emergency expiration timestamp."""
+
+    key = str(setup.timeframe).upper()
+    if key not in BROKER_BACKSTOP_PADDING:
+        raise ValueError(f"Unsupported execution timeframe {setup.timeframe!r}.")
+    return pending_expiration_time_utc(setup, max_entry_wait_bars=max_entry_wait_bars) + BROKER_BACKSTOP_PADDING[key]
 
 
 def signal_key_for_setup(setup: TradeSetup) -> str:
@@ -270,12 +304,13 @@ def build_mt5_order_intent(
         )
     checks.append("exposure_limits")
 
-    expiration = pending_expiration_time_utc(setup, max_entry_wait_bars=max_entry_wait_bars)
+    signal_time = setup_signal_time_utc(setup)
+    broker_backstop = broker_backstop_expiration_time_utc(setup, max_entry_wait_bars=max_entry_wait_bars)
     market_time = _market_time_utc(market)
-    if market_time is not None and expiration <= market_time:
+    if market_time is not None and broker_backstop <= market_time:
         return _reject(
             "pending_expired",
-            f"expiration_time_utc={expiration.isoformat()} market_time_utc={market_time.isoformat()}",
+            f"broker_backstop_expiration_time_utc={broker_backstop.isoformat()} market_time_utc={market_time.isoformat()}",
             checks + ["expiration"],
         )
     checks.append("expiration")
@@ -291,10 +326,14 @@ def build_mt5_order_intent(
         take_profit=_round_price(setup.target_price, symbol_spec.digits),
         target_risk_pct=target_risk_pct,
         actual_risk_pct=actual_risk_pct,
-        expiration_time_utc=expiration,
+        expiration_time_utc=broker_backstop,
         magic=limits.strategy_magic,
         comment=_order_comment(setup),
         setup_id=setup.setup_id,
+        signal_time_utc=signal_time,
+        max_entry_wait_bars=max_entry_wait_bars,
+        strategy_expiry_mode="bar_count",
+        broker_backstop_expiration_time_utc=broker_backstop,
     )
     return MT5ExecutionDecision(status="ready", intent=intent, checks=tuple(checks))
 

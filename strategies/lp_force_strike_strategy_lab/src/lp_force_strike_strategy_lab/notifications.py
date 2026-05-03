@@ -316,6 +316,12 @@ def notification_from_execution_decision(
                 "target_risk_pct": intent.target_risk_pct,
                 "actual_risk_pct": intent.actual_risk_pct,
                 "expiration_utc": intent.expiration_time_utc.isoformat(),
+                "signal_time_utc": None if intent.signal_time_utc is None else intent.signal_time_utc.isoformat(),
+                "max_entry_wait_bars": intent.max_entry_wait_bars,
+                "strategy_expiry_mode": intent.strategy_expiry_mode,
+                "broker_backstop_expiration_utc": (
+                    intent.broker_backstop_expiration_time_utc or intent.expiration_time_utc
+                ).isoformat(),
             },
         )
 
@@ -360,9 +366,12 @@ def _format_dry_run_message(event: NotificationEvent, *, max_field_value_length:
         ]
         _append_trade_levels(lines, event, max_field_value_length=max_field_value_length)
         _append_risk_and_size(lines, event, max_field_value_length=max_field_value_length)
-        expiration = _field(event, "expiration_utc")
-        if expiration:
-            lines.append(f"Expires: {expiration}")
+        wait_bars = _field(event, "max_entry_wait_bars")
+        backstop = _field(event, "broker_backstop_expiration_utc") or _field(event, "expiration_utc")
+        if wait_bars:
+            lines.append(f"Strategy expiry: after {wait_bars} actual bars")
+        if backstop:
+            lines.append(f"Broker backstop: {backstop}")
         _append_signal_id(lines, event, max_field_value_length=max_field_value_length)
         return "\n".join(lines)
 
@@ -479,11 +488,13 @@ def _format_order_placed_card(event: NotificationEvent, *, max_field_value_lengt
         ),
     ]
     spread = _field(event, "spread_risk_pct")
-    expiry = _field(event, "expiration_utc")
-    if spread or expiry:
+    wait_bars = _field(event, "max_entry_wait_bars")
+    backstop = _field(event, "broker_backstop_expiration_utc") or _field(event, "expiration_utc")
+    if spread or wait_bars or backstop:
         spread_text = "n/a" if not spread else format_trader_percent(spread, decimals=1)
-        expiry_text = "n/a" if not expiry else format_trader_timestamp(expiry)
-        lines.append(f"Spread: {spread_text} of risk | Expires {expiry_text}")
+        strategy_text = "n/a" if not wait_bars else f"{wait_bars} bars"
+        backstop_text = "n/a" if not backstop else format_trader_timestamp(backstop)
+        lines.append(f"Spread: {spread_text} of risk | Strategy {strategy_text} | Backstop {backstop_text}")
     reason = _sentence_case(event.message)
     if reason:
         label = "Recovery" if event.kind == "order_adopted" else "Why"
@@ -725,6 +736,8 @@ def _human_reason(event: NotificationEvent) -> str:
     if event.kind == "order_rejected":
         return "Broker rejected the pending order"
     if event.kind == "pending_expired":
+        if event.status == "cancel_failed":
+            return "Pending order reached strategy expiry, but broker cancellation was not confirmed"
         return "Pending order expired"
     if event.kind == "pending_cancelled":
         if event.status == "history":
@@ -753,6 +766,8 @@ def _human_action(event: NotificationEvent) -> str:
     if event.kind in {"setup_rejected", "order_check_failed", "order_rejected"}:
         return "No order placed"
     if event.kind == "pending_expired":
+        if event.status == "cancel_failed":
+            return "Order kept in local state for retry on next reconciliation"
         return "Expired pending order cancelled"
     if event.kind == "pending_cancelled":
         if event.status == "cancel_failed":

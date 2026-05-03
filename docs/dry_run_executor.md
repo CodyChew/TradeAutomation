@@ -77,8 +77,8 @@ For the current FTMO-style MT5 terminal, use:
 ```
 
 This converts the broker's EET/EEST candle and tick times back to canonical
-UTC. If this is set incorrectly, signal timestamps and pending expirations will
-be shifted.
+UTC. If this is set incorrectly, signal timestamps, bar-count expiry checks,
+and broker backstop timestamps will be shifted.
 
 For low-risk broker testing, use:
 
@@ -126,6 +126,19 @@ time. If the 50% pullback entry was already touched before the bot could place
 the pending order, the setup is rejected as a stale late-start signal. This
 keeps live behavior aligned with the V15 assumption that the pending order was
 available immediately after the signal candle closed.
+
+Pending order expiry is hybrid:
+
+- Strategy expiry is after `max_entry_wait_bars` actual MT5 bars from the signal
+  candle. For the current config this is 6 bars.
+- Friday bars after the signal count normally. Weekend time does not count
+  because no broker candles form. Monday continues the remaining count.
+- The MT5 order also carries a conservative `ORDER_TIME_SPECIFIED` broker
+  backstop. This protects against a stopped runner but is not the strategy
+  expiry rule.
+- If the runner is offline after the 6-bar window but before the broker
+  backstop, exact strategy cancellation cannot be guaranteed until the runner is
+  online again.
 
 Environment fallback is supported for:
 

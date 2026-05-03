@@ -50,6 +50,22 @@ def _event_cards(items: list[tuple[str, str, str]]) -> str:
     )
 
 
+def _table(headers: list[str], rows: list[list[str]], *, class_name: str = "data-table") -> str:
+    head = "".join(f"<th>{_escape(header)}</th>" for header in headers)
+    body = "\n".join(
+        "<tr>" + "".join(f"<td>{_escape(cell)}</td>" for cell in row) + "</tr>"
+        for row in rows
+    )
+    return f"""
+      <div class="table-scroll">
+        <table class="{_escape(class_name)}">
+          <thead><tr>{head}</tr></thead>
+          <tbody>{body}</tbody>
+        </table>
+      </div>
+    """
+
+
 def _research_link(href: str, title: str, body: str) -> str:
     return f"""
     <article class="trail-card">
@@ -229,6 +245,66 @@ STRATEGY_EXTRA_CSS = """
       border-color: #ead4a8;
       border-left-color: var(--warn);
       color: #4d3b13;
+    }
+    .contract-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .contract-strip .fact {
+      padding: 11px;
+    }
+    .contract-strip .fact strong {
+      font-size: 17px;
+      line-height: 1.25;
+    }
+    .mechanics-flow {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+      gap: 12px;
+      counter-reset: mechanic-step;
+      margin-top: 14px;
+    }
+    .mechanic-card {
+      position: relative;
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 14px 14px 48px;
+    }
+    .mechanic-card::before {
+      counter-increment: mechanic-step;
+      content: counter(mechanic-step);
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .mechanic-card h3 {
+      margin: 0 0 6px;
+    }
+    .mechanic-card p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .contract-table th:first-child,
+    .contract-table td:first-child {
+      min-width: 180px;
     }
     .rule-grid,
     .event-grid,
@@ -422,6 +498,56 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
         ("Risk", "Risk-reserved DD can exceed realized DD", "Risk-reserved DD subtracts open reserved risk, so it can be larger than closed-trade realized DD."),
         ("Risk", "High return can fail practical filters", "A high-return row can still be rejected if risk-reserved DD, max reserved open risk, or monthly losses breach practical limits."),
     ]
+    contract_facts = [
+        ("LP pivot", "LP3 take-all"),
+        ("Timeframes", "H4/H8/H12/D1/W1"),
+        ("Setup", "LP break + raw Force Strike"),
+        ("Entry", "0.5 signal-candle pullback"),
+        ("Stop", "FS structure stop"),
+        ("Target", "1R target"),
+        ("Signal window", "6 bars from LP break"),
+        ("Pending wait", "6 actual closed bars"),
+        ("Risk buckets", "V15 0.20 / 0.30 / 0.75"),
+        ("Live expiry", "Broker backstop only"),
+    ]
+    mechanic_steps = [
+        (
+            "Signal formation",
+            "A wick break through the selected LP3 support or resistance opens a trap window. Raw Force Strike must close back on the correct side of that LP by bar 6.",
+        ),
+        (
+            "Pending entry",
+            "After confirmation, the trade waits at the 0.5 signal-candle pullback. The backtest and live contract both treat the wait as bars, not weekend wall-clock time.",
+        ),
+        (
+            "Stop and target",
+            "Stop is the full Force Strike structure stop. Target is fixed at 1R from entry-to-stop distance so every result is measured on the same R basis.",
+        ),
+        (
+            "Expiry / cancel",
+            "Strategy expiry is after 6 actual closed bars from the signal candle. Broker expiry is only a conservative emergency backstop in MT5 live execution.",
+        ),
+        (
+            "Sizing",
+            "V15 risk buckets are H4/H8 0.20%, H12/D1 0.30%, and W1 0.75% for the research row; live default scale can be smaller in local config.",
+        ),
+    ]
+    correctness_rows = [
+        ["Wrong-side close", "A bullish setup must close at or above selected support; a bearish setup must close at or below selected resistance."],
+        ["Expired signal", "The LP break candle is bar 1. A first Force Strike confirmation on bar 7 is ignored."],
+        ["Expired pending", "The pending entry is cancelled only after the configured number of actual closed bars has passed after the signal candle."],
+        ["Missed entry", "If price already touched the planned entry before live placement, no late pending order is sent."],
+        ["Invalid geometry", "Stop equals entry, stop on the wrong side, and invalid pullback ranges are rejected before result measurement."],
+        ["Conservative OHLC", "Same-bar entry/target/stop ambiguity is stop-first. Gap-through stop or target is OHLC simulation, not tick reconstruction."],
+        ["Risk practicality", "A high-return row can still fail if risk-reserved DD, max reserved open risk, or monthly loss is too high."],
+    ]
+    research_live_rows = [
+        ["Research reports", "Historical candles, deterministic LPFS signals, simulated pending fills, OHLC stop/target resolution, portfolio risk accounting."],
+        ["MT5 live runner", "Closed-candle scan, spread and exposure gates, order_check, real MT5 pending orders, broker reconciliation, Telegram and JSONL audit."],
+        ["Fill truth", "Backtest uses OHLC assumptions; live truth comes from MT5 orders, positions, and deal history."],
+        ["Pending expiry", "Research is bar-counted; live cancellation is also bar-counted while the runner is online, with a broker time backstop only for runner-down protection."],
+        ["Telegram", "Telegram is reporting only. It does not prove a broker order exists or that an exit reason is final."],
+    ]
 
     html_text = f"""<!doctype html>
 <html lang="en">
@@ -439,64 +565,44 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
       subtitle_html=_escape(subtitle),
       current_page="strategy.html",
       section_links=[
-          ("#version-basis", "Basis"),
-          ("#signal-logic", "Signal Logic"),
-          ("#backtest-trade-model", "Backtest Model"),
-          ("#mt5-execution-status", "MT5 Status"),
+          ("#strategy-contract", "Contract"),
+          ("#trade-mechanics", "Mechanics"),
+          ("#correctness", "Correctness"),
           ("#risk-model", "Risk Model"),
-          ("#negative-events", "Negative Events"),
+          ("#visual-reference", "Visuals"),
           ("#research-trail", "Research Trail"),
       ],
       metadata=metadata,
   )}
   <main>
-    <section id="version-basis" class="guide-hero" aria-labelledby="version-basis-title">
-      <div class="eyebrow">Current Research Baseline</div>
-      <h2 id="version-basis-title">V13 Mechanics + V15 Risk Buckets</h2>
-      <p>Use this page as the plain-English contract for the current research baseline. It describes the tested LP + Force Strike signal, the backtest trade simulation model, and the current V15 risk bucket read. It does not define final broker execution.</p>
-      <div class="guide-kpis">
-        <div class="fact"><span>Mechanics</span><strong>V13 LP3 take-all</strong></div>
-        <div class="fact"><span>Risk buckets</span><strong>V15 0.20 / 0.30 / 0.75</strong></div>
-        <div class="fact"><span>Entry model</span><strong>0.5 signal-candle pullback</strong></div>
-        <div class="fact"><span>Execution status</span><strong>Guarded live-send path exists</strong></div>
+    <section id="strategy-contract" class="guide-hero" aria-labelledby="strategy-contract-title">
+      <div class="eyebrow">Current Baseline In One Screen</div>
+      <h2 id="strategy-contract-title">Trade Mechanics Contract</h2>
+      <p>Use this as the current LPFS decision contract: LP3 on H4/H8/H12/D1/W1, LP break, raw Force Strike confirmation, 0.5 signal-candle pullback, FS structure stop, 1R target, 6-bar waits, and V15 risk buckets.</p>
+      <div class="contract-strip">
+        {"".join(f'<div class="fact"><span>{_escape(label)}</span><strong>{_escape(value)}</strong></div>' for label, value in contract_facts)}
       </div>
     </section>
 
-    <section id="signal-logic" aria-labelledby="signal-logic-title">
-      <h2 id="signal-logic-title">Signal Logic</h2>
-      <p class="callout">A trade idea starts with an LP3 wick break, then requires raw Force Strike confirmation against the selected LP level within the fixed 6-bar signal window.</p>
-      <div class="rule-grid">
-        {_cards(signal_rules)}
-      </div>
-      <div class="diagram-grid">
-        {_diagram_card("Bullish Setup", _bullish_svg(), "Wick breaks selected support, then raw Force Strike must close back at or above that LP by bar 6.")}
-        {_diagram_card("Bearish Setup", _bearish_svg(), "Wick breaks selected resistance, then raw Force Strike must close back at or below that LP by bar 6.")}
+    <section id="trade-mechanics" aria-labelledby="trade-mechanics-title">
+      <h2 id="trade-mechanics-title">Trade Mechanics</h2>
+      <p class="callout">The mechanics are ordered as signal formation, pending entry, stop/target, expiry/cancel conditions, then sizing. The pending wait is counted by actual closed bars, so weekend time does not consume the setup window.</p>
+      <div class="mechanics-flow">
+        {"".join(f'<article class="mechanic-card"><h3>{_escape(title)}</h3><p>{_escape(body)}</p></article>' for title, body in mechanic_steps)}
       </div>
     </section>
 
-    <section id="backtest-trade-model" aria-labelledby="backtest-trade-model-title">
-      <h2 id="backtest-trade-model-title">Backtest Trade Simulation Model</h2>
-      <p class="callout">Execution in the research reports means simulated OHLC trade handling after a valid signal. Broker behavior for the guarded live-send runner is documented in <a href="live_ops.html">Live Ops</a>.</p>
-      <div class="rule-grid">
-        {_cards(trade_rules)}
-      </div>
-      <div class="diagram-grid">
-        {_diagram_card("Entry And Risk Model", _entry_risk_svg(), "The pending entry sits at the 0.5 signal-candle pullback, uses the FS structure stop, and targets 1R.")}
-        {_diagram_card("Same-Bar Stop-First Conflict", _same_bar_svg(), "When a candle can be interpreted as touching both target and stop after entry, the backtest records the stop first.")}
-      </div>
-    </section>
-
-    <section id="mt5-execution-status" aria-labelledby="mt5-execution-status-title">
-      <h2 id="mt5-execution-status-title">MT5 Execution Status</h2>
-      <p class="callout warning"><strong>Guarded live-send exists.</strong> The research dashboards still show historical signal and OHLC trade-simulation behavior. The live runner can send real MT5 pending orders only after explicit live config, account acknowledgement, spread/risk gates, order_check, and a final quote refresh.</p>
-      <div class="rule-grid">
+    <section id="correctness" aria-labelledby="correctness-title">
+      <h2 id="correctness-title">Correctness And Verification</h2>
+      <p class="callout warning">This section is the guardrail for implementation work: invalidation rules stay explicit, backtests stay conservative where OHLC data is ambiguous, and research output is not treated as proof of live broker behavior.</p>
+      <div class="split-grid">
         <article class="rule-card">
-          <h3>Research dashboards test</h3>
-          <p>Historical candles, raw LP + Force Strike signal rules, simulated pending entry, simulated stop/target resolution, and portfolio risk accounting.</p>
+          <h3>What Invalidates A Setup</h3>
+          {_table(["Rule", "Contract"], correctness_rows, class_name="data-table contract-table")}
         </article>
         <article class="rule-card">
-          <h3>Live Ops documents</h3>
-          <p>Real pending-order send gates, lifecycle reconciliation, Telegram order/fill/close cards, restart continuity, spread policy, and operator commands.</p>
+          <h3>Research vs Live Execution</h3>
+          {_table(["Area", "Distinction"], research_live_rows, class_name="data-table contract-table")}
           <a class="button" href="live_ops.html">Open Live Ops</a>
         </article>
       </div>
@@ -548,15 +654,24 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
       </div>
     </section>
 
+    <section id="visual-reference" aria-labelledby="visual-reference-title">
+      <h2 id="visual-reference-title">Visual Reference</h2>
+      <p class="callout">Diagrams are reference material after the contract, not the primary source of truth. They show the same rules in chart form for faster review.</p>
+      <div class="diagram-grid">
+        {_diagram_card("Bullish Setup", _bullish_svg(), "Wick breaks selected support, then raw Force Strike must close back at or above that LP by bar 6.")}
+        {_diagram_card("Bearish Setup", _bearish_svg(), "Wick breaks selected resistance, then raw Force Strike must close back at or below that LP by bar 6.")}
+        {_diagram_card("Entry And Risk Model", _entry_risk_svg(), "The pending entry sits at the 0.5 signal-candle pullback, uses the FS structure stop, and targets 1R.")}
+        {_diagram_card("Same-Bar Stop-First Conflict", _same_bar_svg(), "When a candle can be interpreted as touching both target and stop after entry, the backtest records the stop first.")}
+        {_diagram_card("Expired Window", _expired_window_svg(), "The break candle is bar 1. A first confirmation on bar 7 is expired.")}
+        {_diagram_card("Wrong-Side Close Invalidation", _wrong_side_svg(), "A bullish setup must close back at or above support. Closing below the LP is not a confirmation.")}
+      </div>
+    </section>
+
     <section id="negative-events" aria-labelledby="negative-events-title">
       <h2 id="negative-events-title">Invalid / Negative Events</h2>
       <p class="callout warning">These cases are intentionally explicit so a future implementation does not silently convert ambiguous market behavior into favorable results.</p>
       <div class="event-grid">
         {_event_cards(negative_events)}
-      </div>
-      <div class="diagram-grid">
-        {_diagram_card("Expired Window", _expired_window_svg(), "The break candle is bar 1. A first confirmation on bar 7 is expired.")}
-        {_diagram_card("Wrong-Side Close Invalidation", _wrong_side_svg(), "A bullish setup must close back at or above support. Closing below the LP is not a confirmation.")}
       </div>
     </section>
 

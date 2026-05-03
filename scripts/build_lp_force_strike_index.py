@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import Any
 
 from lp_force_strike_dashboard_metadata import (
+    archived_dashboard_pages,
+    current_dashboard_pages,
     dashboard_base_css,
     dashboard_header_html,
-    dashboard_pages,
     load_dashboard_metadata,
     metric_glossary_html,
 )
@@ -81,12 +82,46 @@ def _live_ops_card() -> str:
     <section id="live-ops" class="card featured">
       <div class="status status-active">Live operations</div>
       <h2>Live Ops Guide</h2>
-      <p>Cycle cadence, live-send gates, spread behavior, pending-order lifecycle, Telegram alerts, restart state, and operator commands for the guarded MT5 path.</p>
+      <p>Static verification guide for proving the guarded MT5 runner is correct using broker state, local state, journal rows, send gates, reconciliation gates, and operator commands.</p>
       <div class="facts">
         <div class="fact"><span>Cycle</span><strong>Default 30s sleep</strong></div>
-        <div class="fact"><span>Spread skip</span><strong>Terminal for signal</strong></div>
+        <div class="fact"><span>Pending expiry</span><strong>6 actual MT5 bars</strong></div>
       </div>
       <a class="button" href="live_ops.html">Open Live Ops</a>
+    </section>
+    """
+
+
+def _section_heading(title: str, body: str) -> str:
+    return f"""
+    <section class="section-heading">
+      <h2>{_escape(title)}</h2>
+      <p>{_escape(body)}</p>
+    </section>
+    """
+
+
+def _archive_card(page: dict[str, Any]) -> str:
+    return f"""
+          <article class="archive-card">
+            <span>{_escape(page['nav_label'])}</span>
+            <strong>{_escape(page['title'])}</strong>
+            <p>{_escape(page['conclusion'])}</p>
+            <a href="{_escape(page['page'])}">Open {_escape(page['nav_label'])}</a>
+          </article>
+    """
+
+
+def _archive_panel(pages: list[dict[str, Any]]) -> str:
+    return f"""
+    <section id="research-archive" class="archive-panel">
+      <details>
+        <summary>Research Archive V1-V12</summary>
+        <p>Older experiments stay available for audit history, but they no longer compete with the current strategy and live-ops contract on first read.</p>
+        <div class="archive-card-grid">
+          {"".join(_archive_card(page) for page in pages)}
+        </div>
+      </details>
     </section>
     """
 
@@ -94,8 +129,17 @@ def _live_ops_card() -> str:
 def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
     metadata = load_dashboard_metadata()
     home = metadata["home"]
-    pages = sorted(dashboard_pages(metadata), key=lambda page: int(page["index_order"]))
-    cards = [_baseline_card(home), _strategy_card(), _live_ops_card()] + [_card(page) for page in pages]
+    current_pages = sorted(current_dashboard_pages(metadata), key=lambda page: int(page["index_order"]))
+    archive_pages = sorted(archived_dashboard_pages(metadata), key=lambda page: int(page["index_order"]))
+    cards = [
+        _baseline_card(home),
+        _strategy_card(),
+        _live_ops_card(),
+        _section_heading(
+            "Current Research Pages",
+            "These are the current research snapshots that still feed the active LPFS strategy contract.",
+        ),
+    ] + [_card(page) for page in current_pages] + [_archive_panel(archive_pages)]
     html_text = f"""<!doctype html>
 <html lang="en">
 <head>
@@ -231,6 +275,68 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
       border-radius: 6px;
       font-weight: 700;
     }}
+    .section-heading,
+    .archive-panel {{
+      grid-column: 1 / -1;
+    }}
+    .section-heading {{
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      padding: 4px 0 0;
+      margin: 0;
+    }}
+    .section-heading h2 {{
+      margin: 0 0 4px;
+    }}
+    .section-heading p {{
+      margin: 0;
+      color: var(--muted);
+      max-width: 900px;
+    }}
+    .archive-panel details {{
+      border-top: 4px solid #5c7f95;
+    }}
+    .archive-panel summary {{
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--ink);
+    }}
+    .archive-panel p {{
+      margin: 10px 0 14px;
+      color: var(--muted);
+    }}
+    .archive-card-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }}
+    .archive-card {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+      padding: 12px;
+    }}
+    .archive-card span {{
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }}
+    .archive-card strong {{
+      display: block;
+      margin: 3px 0 5px;
+    }}
+    .archive-card p {{
+      margin: 0 0 8px;
+      font-size: 13px;
+    }}
+    .archive-card a {{
+      color: var(--accent);
+      font-weight: 700;
+    }}
     {dashboard_base_css(table_min_width="720px", extra_css=".metric-glossary { grid-column: 1 / -1; }")}
     footer {{
       padding: 0 max(18px, 6vw) 32px;
@@ -243,6 +349,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
       .card {{ padding: 16px; }}
       .facts {{ grid-template-columns: 1fr; }}
       a.button {{ display: block; text-align: center; }}
+      .archive-card-grid {{ grid-template-columns: 1fr; }}
     }}
   </style>
 </head>
@@ -255,6 +362,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
           ("#current-baseline", "Current Baseline"),
           ("#strategy-guide", "Strategy Guide"),
           ("#live-ops", "Live Ops"),
+          ("#research-archive", "Archive"),
           ("#metric-glossary", "Glossary"),
       ],
       metadata=metadata,

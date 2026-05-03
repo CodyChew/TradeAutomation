@@ -34,7 +34,7 @@ class DashboardPagesTests(unittest.TestCase):
             f'href="v{version}.html"' for version in range(1, 18)
         ]
 
-        for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html"] + [
+        for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html"] + [
             DOCS_ROOT / f"v{version}.html" for version in range(1, 18)
         ]:
             html = path.read_text(encoding="utf-8")
@@ -42,7 +42,7 @@ class DashboardPagesTests(unittest.TestCase):
                 self.assertIn(link, html, f"{path.name} missing {link}")
 
     def test_generated_dashboards_use_shared_static_chrome(self) -> None:
-        paths = [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html"] + [
+        paths = [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html"] + [
             DOCS_ROOT / f"v{version}.html" for version in range(1, 18)
         ]
 
@@ -50,30 +50,57 @@ class DashboardPagesTests(unittest.TestCase):
             html = path.read_text(encoding="utf-8")
             self.assertIn('class="dashboard-header"', html, f"{path.name} missing shared header")
             self.assertIn('class="report-nav"', html, f"{path.name} missing section navigation")
+            self.assertNotIn("<script", html.lower(), f"{path.name} should remain CSS-only")
+
+        for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html"] + [
+            DOCS_ROOT / f"v{version}.html" for version in range(1, 18)
+        ]:
+            html = path.read_text(encoding="utf-8")
             self.assertIn('id="metric-glossary"', html, f"{path.name} missing metric glossary")
             self.assertIn("Risk-Reserved DD", html, f"{path.name} missing risk-reserved DD definition")
-            self.assertNotIn("<script", html.lower(), f"{path.name} should remain CSS-only")
 
         for version in range(1, 18):
             html = (DOCS_ROOT / f"v{version}.html").read_text(encoding="utf-8")
             self.assertIn('class="table-scroll"', html, f"v{version}.html missing table scroll wrapper")
             self.assertIn('class="data-table', html, f"v{version}.html missing data-table class")
 
+    def test_current_dashboards_archive_v1_to_v12_navigation(self) -> None:
+        for path in (DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html"):
+            html = path.read_text(encoding="utf-8")
+            self.assertIn("Archive V1-V12", html)
+            self.assertIn('class="archive-nav"', html)
+            self.assertIn('href="v1.html"', html)
+            self.assertIn('href="v12.html"', html)
+            self.assertIn('href="v13.html"', html)
+            self.assertIn('href="v17.html"', html)
+            self.assertNotIn("<script", html.lower())
+
     def test_strategy_page_explains_current_strategy_and_limits(self) -> None:
         html = (DOCS_ROOT / "strategy.html").read_text(encoding="utf-8")
         lower_html = html.lower()
 
         self.assertIn("Current Strategy Guide: V13 Mechanics + V15 Risk Buckets", html)
-        self.assertIn("V13 Mechanics + V15 Risk Buckets", html)
-        self.assertIn("Signal Logic", html)
-        self.assertIn("Backtest Trade Simulation Model", html)
-        self.assertIn("MT5 Execution Status", html)
-        self.assertIn("Guarded live-send exists", html)
+        self.assertIn("Trade Mechanics Contract", html)
+        self.assertIn("Current Baseline In One Screen", html)
+        self.assertIn("LP3 take-all", html)
+        self.assertIn("H4/H8/H12/D1/W1", html)
+        self.assertIn("LP break + raw Force Strike", html)
+        self.assertIn("Signal formation", html)
+        self.assertIn("Pending entry", html)
+        self.assertIn("Stop and target", html)
+        self.assertIn("Expiry / cancel", html)
+        self.assertIn("Correctness And Verification", html)
+        self.assertIn("Research vs Live Execution", html)
+        self.assertIn("MT5 live runner", html)
+        self.assertIn("Broker expiry is only a conservative emergency backstop", html)
         self.assertIn("Risk Model", html)
         self.assertIn("Invalid / Negative Events", html)
+        self.assertIn("Visual Reference", html)
         self.assertIn("LP3", html)
-        self.assertIn("fixed 6-bar signal window", html)
+        self.assertIn("6 actual closed bars", html)
         self.assertIn("0.5 signal-candle pullback", html)
+        self.assertIn("FS structure stop", html)
+        self.assertIn("1R target", html)
         self.assertIn("same-bar stop-first", lower_html)
         self.assertIn("bar 7", html)
         self.assertIn("wrong-side close", lower_html)
@@ -94,12 +121,25 @@ class DashboardPagesTests(unittest.TestCase):
         lower_html = html.lower()
 
         self.assertIn("LP + Force Strike Live Ops", html)
+        self.assertIn("Static Verification Guide", html)
+        self.assertIn("What Proves The Runner Is Correct", html)
+        self.assertIn("MT5 orders_get / positions_get", html)
+        self.assertIn("data/live/lpfs_live_state.json", html)
+        self.assertIn("data/live/lpfs_live_journal.jsonl", html)
+        self.assertIn("Telegram is reporting only", html)
+        self.assertIn("Operator Checklist", html)
+        self.assertIn("Before starting", html)
+        self.assertIn("While running", html)
+        self.assertIn("After Telegram alert", html)
+        self.assertIn("Send Gates", html)
+        self.assertIn("Reconciliation Gates", html)
+        self.assertIn("Strategy expiry is after 6 actual MT5 bars from the signal candle", html)
+        self.assertIn("Broker expiry is only a conservative emergency backstop", html)
         self.assertIn("Spread Policy", html)
         self.assertIn("Retryable WAITING", html)
         self.assertIn("setups_blocked", html)
         self.assertIn("No spread auto-cancel", html)
         self.assertIn("does not have a dedicated Telegram alert yet", html)
-        self.assertIn("Order And Position Scenarios", html)
         self.assertIn("Operator Commands", html)
         self.assertIn("RUNNER STARTED / STOPPED", html)
         self.assertIn("Run until manually stopped", html)
@@ -123,6 +163,8 @@ class DashboardPagesTests(unittest.TestCase):
         html = (DOCS_ROOT / "index.html").read_text(encoding="utf-8")
 
         self.assertIn("Current Baseline", html)
+        self.assertIn("Current Research Pages", html)
+        self.assertIn("Research Archive V1-V12", html)
         self.assertNotIn("Current focus", html)
         self.assertIn("V8 is positive but weaker", html)
 

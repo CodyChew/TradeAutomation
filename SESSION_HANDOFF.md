@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-01 SGT after the LPFS V17 LP-FS proximity tightening
-study, controlled live validation, and Phase 2 production-hardening planning.
+Last updated: 2026-05-03 SGT after implementing LPFS bar-counted pending
+expiry with a conservative broker backstop.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -28,6 +28,10 @@ V13 mechanics with V15 risk buckets:
 - Force Strike structure stop.
 - 1R target.
 - Fixed 6-bar pullback wait.
+- Live pending expiry is bar-counted from actual MT5 candles after the signal
+  candle. Weekend time does not count; Friday bars after the signal do count.
+  The MT5 order also carries a conservative broker backstop in case the runner
+  stops.
 - V15 unscaled risk buckets: H4/H8 `0.20%`, H12/D1 `0.30%`, W1 `0.75%`.
 
 Live broker testing scales that ladder with `live_send.risk_bucket_scale=0.05`,

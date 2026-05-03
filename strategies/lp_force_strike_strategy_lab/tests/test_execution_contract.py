@@ -25,6 +25,7 @@ from lp_force_strike_strategy_lab import (  # noqa: E402
     MT5AccountSnapshot,
     MT5MarketSnapshot,
     MT5SymbolExecutionSpec,
+    broker_backstop_expiration_time_utc,
     build_mt5_order_intent,
     money_risk_per_lot,
     pending_expiration_time_utc,
@@ -121,6 +122,10 @@ class ExecutionContractTests(unittest.TestCase):
             pending_expiration_time_utc(_setup(), max_entry_wait_bars=6),
             pd.Timestamp("2026-01-02T04:00:00Z"),
         )
+        self.assertEqual(
+            broker_backstop_expiration_time_utc(_setup(), max_entry_wait_bars=6),
+            pd.Timestamp("2026-01-12T04:00:00Z"),
+        )
         naive = _setup(metadata={"fs_signal_time_utc": "2026-01-01 00:00:00"})
         self.assertEqual(
             pending_expiration_time_utc(naive, max_entry_wait_bars=1),
@@ -130,6 +135,8 @@ class ExecutionContractTests(unittest.TestCase):
             pending_expiration_time_utc(_setup(), max_entry_wait_bars=0)
         with self.assertRaisesRegex(ValueError, "missing fs_signal_time_utc"):
             pending_expiration_time_utc(_setup(metadata={"fs_signal_time_utc": None}))
+        with self.assertRaisesRegex(ValueError, "Unsupported execution timeframe"):
+            broker_backstop_expiration_time_utc(_setup(timeframe="M30"))
 
     def test_ready_long_order_intent_uses_limit_order_and_v15_risk(self) -> None:
         decision = build_mt5_order_intent(
@@ -153,21 +160,46 @@ class ExecutionContractTests(unittest.TestCase):
         self.assertEqual(decision.intent.magic, 131500)
         self.assertEqual(decision.intent.comment, "LPFS H4 L 10")
         self.assertIn("lpfs:EURUSD:H4:10:long", decision.intent.signal_key)
-        self.assertEqual(decision.intent.to_dict()["expiration_time_utc"], "2026-01-02T04:00:00+00:00")
+        self.assertEqual(decision.intent.to_dict()["expiration_time_utc"], "2026-01-12T04:00:00+00:00")
+        self.assertEqual(decision.intent.to_dict()["signal_time_utc"], "2026-01-01T00:00:00+00:00")
+        self.assertEqual(decision.intent.to_dict()["max_entry_wait_bars"], 6)
+        self.assertEqual(decision.intent.to_dict()["strategy_expiry_mode"], "bar_count")
+        self.assertEqual(decision.intent.to_dict()["broker_backstop_expiration_time_utc"], "2026-01-12T04:00:00+00:00")
         self.assertEqual(decision.to_dict()["status"], "ready")
+
+        legacy_intent = decision.intent.__class__(
+            signal_key="manual",
+            symbol="EURUSD",
+            timeframe="H4",
+            side="long",
+            order_type="BUY_LIMIT",
+            volume=0.01,
+            entry_price=1.1,
+            stop_loss=1.095,
+            take_profit=1.105,
+            target_risk_pct=0.01,
+            actual_risk_pct=0.01,
+            expiration_time_utc=pd.Timestamp("2026-01-02T04:00:00Z"),
+            magic=131500,
+            comment="LPFS H4 L 10",
+            setup_id="setup",
+        )
+        self.assertNotIn("signal_time_utc", legacy_intent.to_dict())
+        self.assertNotIn("broker_backstop_expiration_time_utc", legacy_intent.to_dict())
 
     def test_rejects_pending_orders_after_expiration_time(self) -> None:
         expired = build_mt5_order_intent(
             _setup(),
             account=_account(),
             symbol_spec=_spec(),
-            market=MT5MarketSnapshot(bid=1.1018, ask=1.1020, time_utc="2026-01-02 04:00:00"),
+            market=MT5MarketSnapshot(bid=1.1018, ask=1.1020, time_utc="2026-01-12 04:00:00"),
         )
 
         self.assertFalse(expired.ready)
         self.assertEqual(expired.rejection_reason, "pending_expired")
         self.assertIn("expiration", expired.checks)
-        self.assertIn("market_time_utc=2026-01-02T04:00:00+00:00", expired.detail)
+        self.assertIn("broker_backstop_expiration_time_utc=2026-01-12T04:00:00+00:00", expired.detail)
+        self.assertIn("market_time_utc=2026-01-12T04:00:00+00:00", expired.detail)
 
     def test_short_order_caps_volume_and_allows_open_risk_equality(self) -> None:
         decision = build_mt5_order_intent(
@@ -185,7 +217,7 @@ class ExecutionContractTests(unittest.TestCase):
         self.assertAlmostEqual(decision.intent.volume, 0.10)
         self.assertAlmostEqual(decision.intent.actual_risk_pct, 0.10)
         self.assertEqual(decision.intent.target_risk_pct, 0.75)
-        self.assertEqual(decision.intent.expiration_time_utc, pd.Timestamp("2026-02-19T00:00:00Z"))
+        self.assertEqual(decision.intent.expiration_time_utc, pd.Timestamp("2026-03-12T00:00:00Z"))
 
     def test_signal_keys_and_money_risk_are_deterministic(self) -> None:
         setup = _setup(signal_index=None, metadata={"candidate_id": "c1", "fs_signal_time_utc": "2026-01-01T00:00:00Z"})

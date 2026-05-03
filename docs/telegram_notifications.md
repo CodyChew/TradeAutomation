@@ -100,7 +100,8 @@ The local journal keeps fuller order-intent detail:
 - take profit;
 - volume;
 - target and actual risk percentage;
-- pending expiration time.
+- strategy expiry mode and bar count;
+- broker backstop expiration time.
 
 Rejection messages should show:
 
@@ -113,7 +114,7 @@ comments, exact floats, and diagnostic fields stay in the JSONL journal.
 
 - `order_sent`: `LPFS LIVE | ORDER PLACED`, market, order type/ticket,
   entry/SL/TP, actual/target risk, lot size, spread as percent of risk, SGT
-  expiry, setup reason, and signal ref.
+  strategy bar window, broker backstop, setup reason, and signal ref.
 - `order_adopted`: `LPFS LIVE | ORDER ADOPTED`, matching broker order/position
   details, recovery note, and signal ref. It means no duplicate `order_send`
   was made.
@@ -130,7 +131,8 @@ comments, exact floats, and diagnostic fields stay in the JSONL journal.
   or `REJECTED`, human reason, key metric such as touched time, action taken,
   and signal ref.
 - `pending_expired` / `pending_cancelled`: `CANCELLED`, human reason, order
-  ticket, action taken, and signal ref.
+  ticket, action taken, and signal ref. If MT5 rejects the cancellation, the
+  card says cancellation failed and the local pending item is kept for retry.
 - `runner_started` / `runner_stopped`: process heartbeat cards showing
   cadence, cycle counts, runtime, state-save status, and SGT start/stop time.
 

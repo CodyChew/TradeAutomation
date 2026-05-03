@@ -774,7 +774,9 @@ Ready order intent behavior:
 
 - long setup -> `BUY_LIMIT` only if entry is below current ask;
 - short setup -> `SELL_LIMIT` only if entry is above current bid;
-- expiry -> `fs_signal_time + timeframe_delta * 7`;
+- strategy expiry -> after 6 actual MT5 bars from the signal candle;
+- broker backstop -> `fs_signal_time + timeframe_delta * 7` plus conservative
+  padding: 10 calendar days for H4/H8/H12, 14 days for D1, and 21 days for W1;
 - dry-run lot size -> account equity risk divided by tick-value/tick-size risk
   per lot, capped by broker max volume and optional `max_lots_per_order`,
   rounded down to broker volume step;
@@ -794,11 +796,14 @@ Pre-send rejection coverage:
 - invalid tick or volume metadata;
 - volume below broker minimum;
 - same-symbol stack, concurrent trade, or max-open-risk breach.
-- pending expiration already at or before current broker market time.
+- broker backstop expiration already at or before current broker market time.
 
 Current test coverage includes ready long/short intents, volume capping,
 max-open-risk equality, idempotency, broker-distance checks, bad geometry,
 spread, symbol/account errors, broker risk override, and sizing failures.
+Live lifecycle tests now cover H4/H8/H12/D1/W1 actual-bar expiry across weekend
+gaps: Friday bars after the signal count, weekend time does not, and Monday
+continues the remaining count rather than restarting it.
 
 ## Telegram Notification Contract
 
@@ -898,6 +903,9 @@ written.
 - Low-risk defaults: `risk_bucket_scale=0.05`, `max_open_risk_pct=0.65`,
   full V15 stack caps, and `max_spread_risk_fraction=0.1`.
 - Scaled risk ladder: H4/H8 `0.01%`, H12/D1 `0.015%`, W1 `0.0375%`.
+- Pending-order strategy expiry is now enforced from actual MT5 bar opens after
+  the signal candle. The broker-side expiration is a conservative emergency
+  backstop only.
 - MT5 is the source of truth. The executor reconciles open orders, historical
   orders, open positions, and close deals before scanning new signals.
 - Live state writes are atomic, and broker-affecting state is persisted

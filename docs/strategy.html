@@ -84,6 +84,45 @@
       background: rgba(255, 255, 255, .03);
       color: #edf4f7;
     }
+    .archive-nav {
+      min-height: 34px;
+      position: relative;
+    }
+    .archive-nav summary {
+      cursor: pointer;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+      list-style: none;
+    }
+    .archive-nav summary::-webkit-details-marker {
+      display: none;
+    }
+    .archive-nav summary::after {
+      content: " +";
+      font-weight: 700;
+    }
+    .archive-nav[open] summary {
+      background: rgba(255, 255, 255, .16);
+    }
+    .archive-nav[open] summary::after {
+      content: " -";
+    }
+    .archive-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      max-width: min(680px, 100%);
+    }
+    .archive-links a {
+      font-size: 13px;
+      padding: 6px 9px;
+      min-height: 30px;
+    }
     main {
       padding: 24px max(18px, 5vw) 48px;
     }
@@ -267,6 +306,66 @@
       border-left-color: var(--warn);
       color: #4d3b13;
     }
+    .contract-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .contract-strip .fact {
+      padding: 11px;
+    }
+    .contract-strip .fact strong {
+      font-size: 17px;
+      line-height: 1.25;
+    }
+    .mechanics-flow {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+      gap: 12px;
+      counter-reset: mechanic-step;
+      margin-top: 14px;
+    }
+    .mechanic-card {
+      position: relative;
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 14px 14px 48px;
+    }
+    .mechanic-card::before {
+      counter-increment: mechanic-step;
+      content: counter(mechanic-step);
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .mechanic-card h3 {
+      margin: 0 0 6px;
+    }
+    .mechanic-card p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .contract-table th:first-child,
+    .contract-table td:first-child {
+      min-width: 180px;
+    }
     .rule-grid,
     .event-grid,
     .trail-grid {
@@ -403,6 +502,16 @@
         flex: 1 1 auto;
         text-align: center;
       }
+      .archive-nav {
+        flex: 1 1 100%;
+      }
+      .archive-nav summary {
+        text-align: center;
+      }
+      .archive-links a {
+        flex: 1 1 calc(25% - 8px);
+        text-align: center;
+      }
       main {
         padding: 16px 12px 34px;
       }
@@ -451,79 +560,132 @@
       <a class="page-link" href="index.html">Home</a>
       <a class="page-link active" href="strategy.html">Strategy</a>
       <a class="page-link" href="live_ops.html">Live Ops</a>
-      <a class="page-link" href="v1.html">V1</a>
-      <a class="page-link" href="v2.html">V2</a>
-      <a class="page-link" href="v3.html">V3</a>
-      <a class="page-link" href="v4.html">V4</a>
-      <a class="page-link" href="v5.html">V5</a>
-      <a class="page-link" href="v6.html">V6</a>
-      <a class="page-link" href="v7.html">V7</a>
-      <a class="page-link" href="v8.html">V8</a>
-      <a class="page-link" href="v9.html">V9</a>
-      <a class="page-link" href="v10.html">V10</a>
-      <a class="page-link" href="v11.html">V11</a>
-      <a class="page-link" href="v12.html">V12</a>
       <a class="page-link" href="v13.html">V13</a>
       <a class="page-link" href="v14.html">V14</a>
       <a class="page-link" href="v15.html">V15</a>
       <a class="page-link" href="v16.html">V16</a>
       <a class="page-link" href="v17.html">V17</a>
+      <details class="archive-nav">
+        <summary>Archive V1-V12</summary>
+        <div class="archive-links">
+          <a class="page-link archive-link" href="v1.html">V1</a><a class="page-link archive-link" href="v2.html">V2</a><a class="page-link archive-link" href="v3.html">V3</a><a class="page-link archive-link" href="v4.html">V4</a><a class="page-link archive-link" href="v5.html">V5</a><a class="page-link archive-link" href="v6.html">V6</a><a class="page-link archive-link" href="v7.html">V7</a><a class="page-link archive-link" href="v8.html">V8</a><a class="page-link archive-link" href="v9.html">V9</a><a class="page-link archive-link" href="v10.html">V10</a><a class="page-link archive-link" href="v11.html">V11</a><a class="page-link archive-link" href="v12.html">V12</a>
+        </div>
+      </details>
     </nav>
 
     <nav class="report-nav" aria-label="Report sections">
-      <a href="#version-basis">Basis</a><a href="#signal-logic">Signal Logic</a><a href="#backtest-trade-model">Backtest Model</a><a href="#mt5-execution-status">MT5 Status</a><a href="#risk-model">Risk Model</a><a href="#negative-events">Negative Events</a><a href="#research-trail">Research Trail</a>
+      <a href="#strategy-contract">Contract</a><a href="#trade-mechanics">Mechanics</a><a href="#correctness">Correctness</a><a href="#risk-model">Risk Model</a><a href="#visual-reference">Visuals</a><a href="#research-trail">Research Trail</a>
     </nav>
 
   </header>
 
   <main>
-    <section id="version-basis" class="guide-hero" aria-labelledby="version-basis-title">
-      <div class="eyebrow">Current Research Baseline</div>
-      <h2 id="version-basis-title">V13 Mechanics + V15 Risk Buckets</h2>
-      <p>Use this page as the plain-English contract for the current research baseline. It describes the tested LP + Force Strike signal, the backtest trade simulation model, and the current V15 risk bucket read. It does not define final broker execution.</p>
-      <div class="guide-kpis">
-        <div class="fact"><span>Mechanics</span><strong>V13 LP3 take-all</strong></div>
-        <div class="fact"><span>Risk buckets</span><strong>V15 0.20 / 0.30 / 0.75</strong></div>
-        <div class="fact"><span>Entry model</span><strong>0.5 signal-candle pullback</strong></div>
-        <div class="fact"><span>Execution status</span><strong>Guarded live-send path exists</strong></div>
+    <section id="strategy-contract" class="guide-hero" aria-labelledby="strategy-contract-title">
+      <div class="eyebrow">Current Baseline In One Screen</div>
+      <h2 id="strategy-contract-title">Trade Mechanics Contract</h2>
+      <p>Use this as the current LPFS decision contract: LP3 on H4/H8/H12/D1/W1, LP break, raw Force Strike confirmation, 0.5 signal-candle pullback, FS structure stop, 1R target, 6-bar waits, and V15 risk buckets.</p>
+      <div class="contract-strip">
+        <div class="fact"><span>LP pivot</span><strong>LP3 take-all</strong></div><div class="fact"><span>Timeframes</span><strong>H4/H8/H12/D1/W1</strong></div><div class="fact"><span>Setup</span><strong>LP break + raw Force Strike</strong></div><div class="fact"><span>Entry</span><strong>0.5 signal-candle pullback</strong></div><div class="fact"><span>Stop</span><strong>FS structure stop</strong></div><div class="fact"><span>Target</span><strong>1R target</strong></div><div class="fact"><span>Signal window</span><strong>6 bars from LP break</strong></div><div class="fact"><span>Pending wait</span><strong>6 actual closed bars</strong></div><div class="fact"><span>Risk buckets</span><strong>V15 0.20 / 0.30 / 0.75</strong></div><div class="fact"><span>Live expiry</span><strong>Broker backstop only</strong></div>
       </div>
     </section>
 
-    <section id="signal-logic" aria-labelledby="signal-logic-title">
-      <h2 id="signal-logic-title">Signal Logic</h2>
-      <p class="callout">A trade idea starts with an LP3 wick break, then requires raw Force Strike confirmation against the selected LP level within the fixed 6-bar signal window.</p>
-      <div class="rule-grid">
-
-        <article class="rule-card">
-          <h3>LP3 break opens the setup</h3>
-          <p>The current mechanics use LP3 across H4, H8, H12, D1, and W1. A wick through an active LP support or resistance starts the trap window.</p>
-        </article>
-
-
-        <article class="rule-card">
-          <h3>Selected LP level is deterministic</h3>
-          <p>If multiple LP break windows are still valid, bullish chooses the lowest support and bearish chooses the highest resistance. Equal-price ties use the latest break.</p>
-        </article>
-
-
-        <article class="rule-card">
-          <h3>Raw Force Strike confirms the setup</h3>
-          <p>A bullish confirmation must close at or above the selected support. A bearish confirmation must close at or below the selected resistance.</p>
-        </article>
-
-
-        <article class="rule-card">
-          <h3>Fixed 6-bar signal window</h3>
-          <p>The LP break candle is bar 1. Raw Force Strike must confirm by bar 6; a confirmation first appearing on bar 7 is expired.</p>
-        </article>
-
-
-        <article class="rule-card">
-          <h3>Trap windows stay explicit</h3>
-          <p>Overlapping bullish and bearish trap windows are handled independently, so a later opposite-side setup does not silently rewrite the earlier one.</p>
-        </article>
-
+    <section id="trade-mechanics" aria-labelledby="trade-mechanics-title">
+      <h2 id="trade-mechanics-title">Trade Mechanics</h2>
+      <p class="callout">The mechanics are ordered as signal formation, pending entry, stop/target, expiry/cancel conditions, then sizing. The pending wait is counted by actual closed bars, so weekend time does not consume the setup window.</p>
+      <div class="mechanics-flow">
+        <article class="mechanic-card"><h3>Signal formation</h3><p>A wick break through the selected LP3 support or resistance opens a trap window. Raw Force Strike must close back on the correct side of that LP by bar 6.</p></article><article class="mechanic-card"><h3>Pending entry</h3><p>After confirmation, the trade waits at the 0.5 signal-candle pullback. The backtest and live contract both treat the wait as bars, not weekend wall-clock time.</p></article><article class="mechanic-card"><h3>Stop and target</h3><p>Stop is the full Force Strike structure stop. Target is fixed at 1R from entry-to-stop distance so every result is measured on the same R basis.</p></article><article class="mechanic-card"><h3>Expiry / cancel</h3><p>Strategy expiry is after 6 actual closed bars from the signal candle. Broker expiry is only a conservative emergency backstop in MT5 live execution.</p></article><article class="mechanic-card"><h3>Sizing</h3><p>V15 risk buckets are H4/H8 0.20%, H12/D1 0.30%, and W1 0.75% for the research row; live default scale can be smaller in local config.</p></article>
       </div>
+    </section>
+
+    <section id="correctness" aria-labelledby="correctness-title">
+      <h2 id="correctness-title">Correctness And Verification</h2>
+      <p class="callout warning">This section is the guardrail for implementation work: invalidation rules stay explicit, backtests stay conservative where OHLC data is ambiguous, and research output is not treated as proof of live broker behavior.</p>
+      <div class="split-grid">
+        <article class="rule-card">
+          <h3>What Invalidates A Setup</h3>
+
+      <div class="table-scroll">
+        <table class="data-table contract-table">
+          <thead><tr><th>Rule</th><th>Contract</th></tr></thead>
+          <tbody><tr><td>Wrong-side close</td><td>A bullish setup must close at or above selected support; a bearish setup must close at or below selected resistance.</td></tr>
+<tr><td>Expired signal</td><td>The LP break candle is bar 1. A first Force Strike confirmation on bar 7 is ignored.</td></tr>
+<tr><td>Expired pending</td><td>The pending entry is cancelled only after the configured number of actual closed bars has passed after the signal candle.</td></tr>
+<tr><td>Missed entry</td><td>If price already touched the planned entry before live placement, no late pending order is sent.</td></tr>
+<tr><td>Invalid geometry</td><td>Stop equals entry, stop on the wrong side, and invalid pullback ranges are rejected before result measurement.</td></tr>
+<tr><td>Conservative OHLC</td><td>Same-bar entry/target/stop ambiguity is stop-first. Gap-through stop or target is OHLC simulation, not tick reconstruction.</td></tr>
+<tr><td>Risk practicality</td><td>A high-return row can still fail if risk-reserved DD, max reserved open risk, or monthly loss is too high.</td></tr></tbody>
+        </table>
+      </div>
+
+        </article>
+        <article class="rule-card">
+          <h3>Research vs Live Execution</h3>
+
+      <div class="table-scroll">
+        <table class="data-table contract-table">
+          <thead><tr><th>Area</th><th>Distinction</th></tr></thead>
+          <tbody><tr><td>Research reports</td><td>Historical candles, deterministic LPFS signals, simulated pending fills, OHLC stop/target resolution, portfolio risk accounting.</td></tr>
+<tr><td>MT5 live runner</td><td>Closed-candle scan, spread and exposure gates, order_check, real MT5 pending orders, broker reconciliation, Telegram and JSONL audit.</td></tr>
+<tr><td>Fill truth</td><td>Backtest uses OHLC assumptions; live truth comes from MT5 orders, positions, and deal history.</td></tr>
+<tr><td>Pending expiry</td><td>Research is bar-counted; live cancellation is also bar-counted while the runner is online, with a broker time backstop only for runner-down protection.</td></tr>
+<tr><td>Telegram</td><td>Telegram is reporting only. It does not prove a broker order exists or that an exit reason is final.</td></tr></tbody>
+        </table>
+      </div>
+
+          <a class="button" href="live_ops.html">Open Live Ops</a>
+        </article>
+      </div>
+    </section>
+
+    <section id="risk-model" aria-labelledby="risk-model-title">
+      <h2 id="risk-model-title">Risk Model</h2>
+      <p class="callout">V15 did not rerun signals. It re-used the V13/V14 baseline trade rows to compare three risk buckets: H4/H8, H12/D1, and W1.</p>
+      <div class="table-scroll">
+        <table class="data-table risk-table">
+          <thead>
+            <tr>
+              <th>Risk Row</th>
+              <th>H4/H8</th>
+              <th>H12/D1</th>
+              <th>W1</th>
+              <th>Return</th>
+              <th>Realized DD</th>
+              <th>Risk-Reserved DD</th>
+              <th>Max Reserved Risk</th>
+              <th>Worst Month</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>First account-constraint candidate</td>
+              <td>0.20%</td>
+              <td>0.30%</td>
+              <td>0.75%</td>
+              <td>383.17%</td>
+              <td>6.57%</td>
+              <td>7.89%</td>
+              <td>5.75%</td>
+              <td>-3.22%</td>
+            </tr>
+            <tr>
+              <td>Higher-return growth contrast</td>
+              <td>0.25%</td>
+              <td>0.30%</td>
+              <td>0.60%</td>
+              <td>421.82%</td>
+              <td>8.22%</td>
+              <td>9.72%</td>
+              <td>5.95%</td>
+              <td>-4.05%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="visual-reference" aria-labelledby="visual-reference-title">
+      <h2 id="visual-reference-title">Visual Reference</h2>
+      <p class="callout">Diagrams are reference material after the contract, not the primary source of truth. They show the same rules in chart form for faster review.</p>
       <div class="diagram-grid">
 
     <figure class="diagram-card">
@@ -575,39 +737,6 @@
       <p>Wick breaks selected resistance, then raw Force Strike must close back at or below that LP by bar 6.</p>
     </figure>
 
-      </div>
-    </section>
-
-    <section id="backtest-trade-model" aria-labelledby="backtest-trade-model-title">
-      <h2 id="backtest-trade-model-title">Backtest Trade Simulation Model</h2>
-      <p class="callout">Execution in the research reports means simulated OHLC trade handling after a valid signal. Broker behavior for the guarded live-send runner is documented in <a href="live_ops.html">Live Ops</a>.</p>
-      <div class="rule-grid">
-
-        <article class="rule-card">
-          <h3>Entry</h3>
-          <p>After a valid signal, the simulated entry is a 0.5 signal-candle pullback. The model waits a fixed 6 bars for that pullback.</p>
-        </article>
-
-
-        <article class="rule-card">
-          <h3>Stop and target</h3>
-          <p>The stop uses the full Force Strike structure stop. The target is fixed at 1R from entry to stop distance.</p>
-        </article>
-
-
-        <article class="rule-card">
-          <h3>Invalid trade geometry</h3>
-          <p>The simulator rejects stop equals entry, stop on the wrong side of entry, and any invalid pullback range before measuring results.</p>
-        </article>
-
-
-        <article class="rule-card">
-          <h3>Conservative OHLC conflicts</h3>
-          <p>If entry, stop, and target ambiguity happens inside one candle, same-bar stop-first handling is used. Gap-through outcomes remain OHLC simulation, not tick reconstruction.</p>
-        </article>
-
-      </div>
-      <div class="diagram-grid">
 
     <figure class="diagram-card">
       <figcaption>Entry And Risk Model</figcaption>
@@ -656,68 +785,57 @@
       <p>When a candle can be interpreted as touching both target and stop after entry, the backtest records the stop first.</p>
     </figure>
 
-      </div>
-    </section>
 
-    <section id="mt5-execution-status" aria-labelledby="mt5-execution-status-title">
-      <h2 id="mt5-execution-status-title">MT5 Execution Status</h2>
-      <p class="callout warning"><strong>Guarded live-send exists.</strong> The research dashboards still show historical signal and OHLC trade-simulation behavior. The live runner can send real MT5 pending orders only after explicit live config, account acknowledgement, spread/risk gates, order_check, and a final quote refresh.</p>
-      <div class="rule-grid">
-        <article class="rule-card">
-          <h3>Research dashboards test</h3>
-          <p>Historical candles, raw LP + Force Strike signal rules, simulated pending entry, simulated stop/target resolution, and portfolio risk accounting.</p>
-        </article>
-        <article class="rule-card">
-          <h3>Live Ops documents</h3>
-          <p>Real pending-order send gates, lifecycle reconciliation, Telegram order/fill/close cards, restart continuity, spread policy, and operator commands.</p>
-          <a class="button" href="live_ops.html">Open Live Ops</a>
-        </article>
-      </div>
-    </section>
+    <figure class="diagram-card">
+      <figcaption>Expired Window</figcaption>
 
-    <section id="risk-model" aria-labelledby="risk-model-title">
-      <h2 id="risk-model-title">Risk Model</h2>
-      <p class="callout">V15 did not rerun signals. It re-used the V13/V14 baseline trade rows to compare three risk buckets: H4/H8, H12/D1, and W1.</p>
-      <div class="table-scroll">
-        <table class="data-table risk-table">
-          <thead>
-            <tr>
-              <th>Risk Row</th>
-              <th>H4/H8</th>
-              <th>H12/D1</th>
-              <th>W1</th>
-              <th>Return</th>
-              <th>Realized DD</th>
-              <th>Risk-Reserved DD</th>
-              <th>Max Reserved Risk</th>
-              <th>Worst Month</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>First account-constraint candidate</td>
-              <td>0.20%</td>
-              <td>0.30%</td>
-              <td>0.75%</td>
-              <td>383.17%</td>
-              <td>6.57%</td>
-              <td>7.89%</td>
-              <td>5.75%</td>
-              <td>-3.22%</td>
-            </tr>
-            <tr>
-              <td>Higher-return growth contrast</td>
-              <td>0.25%</td>
-              <td>0.30%</td>
-              <td>0.60%</td>
-              <td>421.82%</td>
-              <td>8.22%</td>
-              <td>9.72%</td>
-              <td>5.95%</td>
-              <td>-4.05%</td>
-            </tr>
-          </tbody>
-        </table>
+      <svg class="strategy-diagram" viewBox="0 0 420 220" role="img" aria-labelledby="expired-title">
+        <title id="expired-title">Expired Force Strike window at bar seven</title>
+        <rect x="0" y="0" width="420" height="220" rx="8" class="svg-bg"/>
+        <line x1="38" y1="126" x2="382" y2="126" class="svg-support"/>
+        <text x="42" y="118" class="svg-label">LP support</text>
+        <g class="timeline">
+          <circle cx="70" cy="162" r="10" class="svg-dot-good"/><text x="65" y="166">1</text>
+          <circle cx="116" cy="162" r="10" class="svg-dot-good"/><text x="111" y="166">2</text>
+          <circle cx="162" cy="162" r="10" class="svg-dot-good"/><text x="157" y="166">3</text>
+          <circle cx="208" cy="162" r="10" class="svg-dot-good"/><text x="203" y="166">4</text>
+          <circle cx="254" cy="162" r="10" class="svg-dot-good"/><text x="249" y="166">5</text>
+          <circle cx="300" cy="162" r="10" class="svg-dot-good"/><text x="295" y="166">6</text>
+          <circle cx="346" cy="162" r="12" class="svg-dot-bad"/><text x="341" y="166">7</text>
+        </g>
+        <text x="58" y="64" class="svg-label">break candle counts as bar 1</text>
+        <text x="272" y="64" class="svg-bad">FS after bar 6 is expired</text>
+        <line x1="346" y1="76" x2="346" y2="126" class="svg-wick"/>
+        <rect x="330" y="96" width="32" height="34" class="svg-candle-up"/>
+        <path d="M328 78 L364 114 M364 78 L328 114" class="svg-x"/>
+      </svg>
+
+      <p>The break candle is bar 1. A first confirmation on bar 7 is expired.</p>
+    </figure>
+
+
+    <figure class="diagram-card">
+      <figcaption>Wrong-Side Close Invalidation</figcaption>
+
+      <svg class="strategy-diagram" viewBox="0 0 420 220" role="img" aria-labelledby="wrong-side-title">
+        <title id="wrong-side-title">Wrong side close invalidation</title>
+        <rect x="0" y="0" width="420" height="220" rx="8" class="svg-bg"/>
+        <line x1="38" y1="112" x2="382" y2="112" class="svg-support"/>
+        <text x="42" y="104" class="svg-label">Selected LP support</text>
+        <line x1="92" y1="78" x2="92" y2="158" class="svg-wick"/>
+        <rect x="76" y="100" width="32" height="40" class="svg-candle-down"/>
+        <text x="58" y="178" class="svg-label">wick break starts setup</text>
+        <line x1="248" y1="86" x2="248" y2="156" class="svg-wick"/>
+        <rect x="232" y="118" width="32" height="30" class="svg-candle-down"/>
+        <line x1="232" y1="142" x2="264" y2="142" class="svg-close-bad"/>
+        <text x="214" y="74" class="svg-bad">close remains below LP</text>
+        <path d="M274 92 L310 128 M310 92 L274 128" class="svg-x"/>
+        <text x="214" y="180" class="svg-bad">wrong-side close invalidates</text>
+      </svg>
+
+      <p>A bullish setup must close back at or above support. Closing below the LP is not a confirmation.</p>
+    </figure>
+
       </div>
     </section>
 
@@ -808,59 +926,6 @@
           <h3>High return can fail practical filters</h3>
           <p>A high-return row can still be rejected if risk-reserved DD, max reserved open risk, or monthly losses breach practical limits.</p>
         </article>
-
-      </div>
-      <div class="diagram-grid">
-
-    <figure class="diagram-card">
-      <figcaption>Expired Window</figcaption>
-
-      <svg class="strategy-diagram" viewBox="0 0 420 220" role="img" aria-labelledby="expired-title">
-        <title id="expired-title">Expired Force Strike window at bar seven</title>
-        <rect x="0" y="0" width="420" height="220" rx="8" class="svg-bg"/>
-        <line x1="38" y1="126" x2="382" y2="126" class="svg-support"/>
-        <text x="42" y="118" class="svg-label">LP support</text>
-        <g class="timeline">
-          <circle cx="70" cy="162" r="10" class="svg-dot-good"/><text x="65" y="166">1</text>
-          <circle cx="116" cy="162" r="10" class="svg-dot-good"/><text x="111" y="166">2</text>
-          <circle cx="162" cy="162" r="10" class="svg-dot-good"/><text x="157" y="166">3</text>
-          <circle cx="208" cy="162" r="10" class="svg-dot-good"/><text x="203" y="166">4</text>
-          <circle cx="254" cy="162" r="10" class="svg-dot-good"/><text x="249" y="166">5</text>
-          <circle cx="300" cy="162" r="10" class="svg-dot-good"/><text x="295" y="166">6</text>
-          <circle cx="346" cy="162" r="12" class="svg-dot-bad"/><text x="341" y="166">7</text>
-        </g>
-        <text x="58" y="64" class="svg-label">break candle counts as bar 1</text>
-        <text x="272" y="64" class="svg-bad">FS after bar 6 is expired</text>
-        <line x1="346" y1="76" x2="346" y2="126" class="svg-wick"/>
-        <rect x="330" y="96" width="32" height="34" class="svg-candle-up"/>
-        <path d="M328 78 L364 114 M364 78 L328 114" class="svg-x"/>
-      </svg>
-
-      <p>The break candle is bar 1. A first confirmation on bar 7 is expired.</p>
-    </figure>
-
-
-    <figure class="diagram-card">
-      <figcaption>Wrong-Side Close Invalidation</figcaption>
-
-      <svg class="strategy-diagram" viewBox="0 0 420 220" role="img" aria-labelledby="wrong-side-title">
-        <title id="wrong-side-title">Wrong side close invalidation</title>
-        <rect x="0" y="0" width="420" height="220" rx="8" class="svg-bg"/>
-        <line x1="38" y1="112" x2="382" y2="112" class="svg-support"/>
-        <text x="42" y="104" class="svg-label">Selected LP support</text>
-        <line x1="92" y1="78" x2="92" y2="158" class="svg-wick"/>
-        <rect x="76" y="100" width="32" height="40" class="svg-candle-down"/>
-        <text x="58" y="178" class="svg-label">wick break starts setup</text>
-        <line x1="248" y1="86" x2="248" y2="156" class="svg-wick"/>
-        <rect x="232" y="118" width="32" height="30" class="svg-candle-down"/>
-        <line x1="232" y1="142" x2="264" y2="142" class="svg-close-bad"/>
-        <text x="214" y="74" class="svg-bad">close remains below LP</text>
-        <path d="M274 92 L310 128 M310 92 L274 128" class="svg-x"/>
-        <text x="214" y="180" class="svg-bad">wrong-side close invalidates</text>
-      </svg>
-
-      <p>A bullish setup must close back at or above support. Closing below the LP is not a confirmation.</p>
-    </figure>
 
       </div>
     </section>

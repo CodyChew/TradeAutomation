@@ -134,7 +134,13 @@ class FakeMT5:
     TRADE_ACTION_PENDING = 5
     ORDER_TYPE_BUY_LIMIT = 2
     ORDER_TYPE_SELL_LIMIT = 3
+    ORDER_TIME_GTC = 0
     ORDER_TIME_SPECIFIED = 2
+    ORDER_TIME_SPECIFIED_DAY = 3
+    SYMBOL_EXPIRATION_GTC = 1
+    SYMBOL_EXPIRATION_DAY = 2
+    SYMBOL_EXPIRATION_SPECIFIED = 4
+    SYMBOL_EXPIRATION_SPECIFIED_DAY = 8
     ORDER_FILLING_RETURN = 2
     TRADE_RETCODE_DONE = 10009
 
@@ -607,9 +613,33 @@ class DryRunExecutorTests(unittest.TestCase):
         )
         self.assertEqual(long_request["type"], mt5.ORDER_TYPE_BUY_LIMIT)
         self.assertEqual(long_request["action"], mt5.TRADE_ACTION_PENDING)
+        self.assertEqual(long_request["type_time"], mt5.ORDER_TIME_SPECIFIED)
+        self.assertEqual(long_request["expiration"], int(pd.Timestamp("2026-01-12T04:00:00Z").timestamp()))
 
         short_request = build_order_check_request(mt5, _intent_for_request("SELL_LIMIT"))
         self.assertEqual(short_request["type"], mt5.ORDER_TYPE_SELL_LIMIT)
+
+        mt5.info.expiration_mode = mt5.SYMBOL_EXPIRATION_SPECIFIED_DAY
+        specified_day = build_order_check_request(mt5, _intent_for_request("BUY_LIMIT"))
+        self.assertEqual(specified_day["type_time"], mt5.ORDER_TIME_SPECIFIED_DAY)
+        self.assertEqual(specified_day["expiration"], int(pd.Timestamp("2026-01-12T04:00:00Z").timestamp()))
+
+        mt5.info.expiration_mode = mt5.SYMBOL_EXPIRATION_DAY
+        gtc_backstop = build_order_check_request(mt5, _intent_for_request("BUY_LIMIT"))
+        self.assertEqual(gtc_backstop["type_time"], mt5.ORDER_TIME_GTC)
+        self.assertEqual(gtc_backstop["expiration"], 0)
+
+        no_fallback_mt5 = SimpleNamespace(
+            TRADE_ACTION_PENDING=5,
+            ORDER_TYPE_BUY_LIMIT=2,
+            ORDER_TYPE_SELL_LIMIT=3,
+            ORDER_TIME_SPECIFIED=2,
+            ORDER_FILLING_RETURN=2,
+            SYMBOL_EXPIRATION_DAY=2,
+            symbol_info=lambda symbol: SimpleNamespace(expiration_mode=2),
+        )
+        specified_fallback = build_order_check_request(no_fallback_mt5, _intent_for_request("BUY_LIMIT"))
+        self.assertEqual(specified_fallback["type_time"], no_fallback_mt5.ORDER_TIME_SPECIFIED)
 
         passed = run_order_check(mt5, _intent_for_request("BUY_LIMIT"))
         self.assertTrue(passed.passed)
@@ -966,6 +996,10 @@ def _intent_for_request(order_type: str):
         magic=131500,
         comment="LPFS H4 L 10",
         setup_id="setup",
+        signal_time_utc=pd.Timestamp("2026-01-01T00:00:00Z"),
+        max_entry_wait_bars=6,
+        strategy_expiry_mode="bar_count",
+        broker_backstop_expiration_time_utc=pd.Timestamp("2026-01-12T04:00:00Z"),
     )
 
 

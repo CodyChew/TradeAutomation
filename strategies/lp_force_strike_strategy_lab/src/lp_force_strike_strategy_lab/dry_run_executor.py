@@ -547,7 +547,7 @@ def build_order_check_request(mt5_module: Any, intent: MT5OrderIntent) -> dict[s
         if intent.order_type == "BUY_LIMIT"
         else mt5_module.ORDER_TYPE_SELL_LIMIT
     )
-    return {
+    request = {
         "action": mt5_module.TRADE_ACTION_PENDING,
         "symbol": intent.symbol,
         "volume": intent.volume,
@@ -558,10 +558,58 @@ def build_order_check_request(mt5_module: Any, intent: MT5OrderIntent) -> dict[s
         "deviation": 0,
         "magic": intent.magic,
         "comment": intent.comment,
-        "type_time": mt5_module.ORDER_TIME_SPECIFIED,
-        "expiration": int(intent.expiration_time_utc.timestamp()),
         "type_filling": mt5_module.ORDER_FILLING_RETURN,
     }
+    request.update(_pending_order_time_fields(mt5_module, intent))
+    return request
+
+
+def _pending_order_time_fields(mt5_module: Any, intent: MT5OrderIntent) -> dict[str, Any]:
+    mode = _select_pending_order_time_mode(mt5_module, intent.symbol)
+    expiration = intent.broker_backstop_expiration_time_utc or intent.expiration_time_utc
+    fields = {"type_time": mode}
+    if mode in {
+        getattr(mt5_module, "ORDER_TIME_SPECIFIED", object()),
+        getattr(mt5_module, "ORDER_TIME_SPECIFIED_DAY", object()),
+    }:
+        fields["expiration"] = int(pd.Timestamp(expiration).timestamp())
+    else:
+        fields["expiration"] = 0
+    return fields
+
+
+def _select_pending_order_time_mode(mt5_module: Any, symbol: str) -> Any:
+    if _symbol_allows_expiration_mode(mt5_module, symbol, "ORDER_TIME_SPECIFIED"):
+        return getattr(mt5_module, "ORDER_TIME_SPECIFIED")
+    if _symbol_allows_expiration_mode(mt5_module, symbol, "ORDER_TIME_SPECIFIED_DAY"):
+        return getattr(mt5_module, "ORDER_TIME_SPECIFIED_DAY")
+    if hasattr(mt5_module, "ORDER_TIME_GTC"):
+        return getattr(mt5_module, "ORDER_TIME_GTC")
+    return getattr(mt5_module, "ORDER_TIME_SPECIFIED")
+
+
+def _symbol_allows_expiration_mode(mt5_module: Any, symbol: str, order_time_name: str) -> bool:
+    if not hasattr(mt5_module, order_time_name):
+        return False
+    symbol_info = getattr(mt5_module, "symbol_info", lambda _symbol: None)(symbol)
+    expiration_mode = getattr(symbol_info, "expiration_mode", None)
+    if expiration_mode is None:
+        return True
+    flag_name_by_order_time = {
+        "ORDER_TIME_GTC": "SYMBOL_EXPIRATION_GTC",
+        "ORDER_TIME_DAY": "SYMBOL_EXPIRATION_DAY",
+        "ORDER_TIME_SPECIFIED": "SYMBOL_EXPIRATION_SPECIFIED",
+        "ORDER_TIME_SPECIFIED_DAY": "SYMBOL_EXPIRATION_SPECIFIED_DAY",
+    }
+    default_flag_by_order_time = {
+        "ORDER_TIME_GTC": 1,
+        "ORDER_TIME_DAY": 2,
+        "ORDER_TIME_SPECIFIED": 4,
+        "ORDER_TIME_SPECIFIED_DAY": 8,
+    }
+    flag_name = flag_name_by_order_time[order_time_name]
+    flag = getattr(mt5_module, flag_name, default_flag_by_order_time[order_time_name])
+    return bool(int(expiration_mode) & int(flag))
 
 
 def run_order_check(mt5_module: Any, intent: MT5OrderIntent) -> OrderCheckOutcome:

@@ -265,6 +265,8 @@ class NotificationTests(unittest.TestCase):
                     "target_risk_pct": 0.2,
                     "volume": 1.62,
                     "expiration_utc": "2026-05-01T17:00:00+00:00",
+                    "max_entry_wait_bars": 6,
+                    "broker_backstop_expiration_utc": "2026-05-11T17:00:00+00:00",
                 },
             )
         )
@@ -272,7 +274,8 @@ class NotificationTests(unittest.TestCase):
         self.assertIn("Action: BUY_LIMIT", intent)
         self.assertIn("Status: pending order idea only - no order sent, not filled.", intent)
         self.assertIn("Risk: 0.1992% actual / 0.2% target", intent)
-        self.assertIn("Expires: 2026-05-01T17:00:00+00:00", intent)
+        self.assertIn("Strategy expiry: after 6 actual bars", intent)
+        self.assertIn("Broker backstop: 2026-05-11T17:00:00+00:00", intent)
 
         empty_intent = format_notification_message(
             NotificationEvent(kind="order_intent_created", mode="DRY_RUN", title="Intent")
@@ -280,7 +283,8 @@ class NotificationTests(unittest.TestCase):
         self.assertIn("Action: pending order", empty_intent)
         self.assertNotIn("Risk:", empty_intent)
         self.assertNotIn("Volume:", empty_intent)
-        self.assertNotIn("Expires:", empty_intent)
+        self.assertNotIn("Strategy expiry:", empty_intent)
+        self.assertNotIn("Broker backstop:", empty_intent)
 
         passed = format_notification_message(
             NotificationEvent(
@@ -446,7 +450,8 @@ class NotificationTests(unittest.TestCase):
                     "target_risk_pct": 0.01,
                     "volume": 0.02,
                     "spread_risk_pct": 4.0,
-                    "expiration_utc": "2026-01-02T04:00:00+00:00",
+                    "max_entry_wait_bars": 6,
+                    "broker_backstop_expiration_utc": "2026-01-12T04:00:00+00:00",
                     "comment": "placed",
                 },
                 message="closed-candle LPFS setup",
@@ -456,7 +461,7 @@ class NotificationTests(unittest.TestCase):
         self.assertIn("EURUSD H4 LONG | BUY LIMIT #9001", order)
         self.assertIn("Plan: Entry 1.10000 | SL 1.09500 | TP 1.10500", order)
         self.assertIn("Risk: 0.0100% actual / 0.0100% target | Size 0.02 lots", order)
-        self.assertIn("Spread: 4.0% of risk | Expires 2026-01-02 12:00 SGT", order)
+        self.assertIn("Spread: 4.0% of risk | Strategy 6 bars | Backstop 2026-01-12 12:00 SGT", order)
         self.assertIn("Why: Closed-candle LPFS setup", order)
         self.assertIn("Ref: EURUSD-H4-10-long", order)
         self.assertNotIn("Retcode:", order)
@@ -712,6 +717,18 @@ class NotificationTests(unittest.TestCase):
         )
         self.assertIn("Reason: Broker did not confirm pending-order cancellation", cancel_failed)
         self.assertIn("Action: Order kept in local state for next reconciliation", cancel_failed)
+
+        expiry_cancel_failed = format_notification_message(
+            NotificationEvent(
+                kind="pending_expired",
+                mode="LIVE",
+                title="Expiry cancel failed",
+                status="cancel_failed",
+                fields={"order_ticket": 9001},
+            )
+        )
+        self.assertIn("Reason: Pending order reached strategy expiry, but broker cancellation was not confirmed", expiry_cancel_failed)
+        self.assertIn("Action: Order kept in local state for retry on next reconciliation", expiry_cancel_failed)
 
         no_limit_spread = format_notification_message(
             NotificationEvent(

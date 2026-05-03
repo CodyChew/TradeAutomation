@@ -494,8 +494,12 @@ Live-send adapter facts:
 - Late-start missed-entry guard: if MT5 bars after the signal candle already
   touched the planned pullback entry before the live order could be placed, the
   setup is rejected instead of placing a stale pending order.
-- Every live pending order carries broker-side SL, TP, expiration, magic number,
-  and compact comment; the full signal key stays in local state.
+- Pending expiry is enforced by actual MT5 bar count: the live runner cancels
+  after the configured 6 real bars from the signal candle. Friday bars after the
+  signal count, weekend time does not, and Monday continues the remaining count.
+- Every live pending order carries broker-side SL, TP, a conservative
+  `ORDER_TIME_SPECIFIED` emergency backstop, magic number, and compact comment;
+  the full signal key plus bar-count expiry metadata stay in local state.
 - Pending-to-position reconciliation requires broker comment or historical
   order/deal linkage; same symbol/magic/volume alone is not enough.
 - Telegram lifecycle alerts cover `ORDER PLACED`, `ORDER ADOPTED`, `ENTERED`,

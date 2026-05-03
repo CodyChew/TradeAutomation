@@ -8,6 +8,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_METADATA_PATH = REPO_ROOT / "configs" / "dashboards" / "lp_force_strike_pages.json"
+CURRENT_RESEARCH_VERSION_MIN = 13
 
 
 def _escape(value: Any) -> str:
@@ -29,6 +30,34 @@ def dashboard_pages(metadata: dict[str, Any] | None = None) -> list[dict[str, An
     return sorted(payload["pages"], key=lambda row: int(str(row["nav_label"]).lstrip("V")))
 
 
+def _version_number(page: dict[str, Any]) -> int:
+    label = str(page.get("nav_label", "")).lstrip("V")
+    try:
+        return int(label)
+    except ValueError:
+        return 0
+
+
+def current_dashboard_pages(metadata: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Return the current research dashboards that stay visible in primary navigation."""
+
+    return [
+        page
+        for page in dashboard_pages(metadata)
+        if _version_number(page) >= CURRENT_RESEARCH_VERSION_MIN
+    ]
+
+
+def archived_dashboard_pages(metadata: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Return older research dashboards that stay reachable through archive navigation."""
+
+    return [
+        page
+        for page in dashboard_pages(metadata)
+        if 0 < _version_number(page) < CURRENT_RESEARCH_VERSION_MIN
+    ]
+
+
 def dashboard_page(page_name: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return metadata for one dashboard page."""
 
@@ -39,7 +68,7 @@ def dashboard_page(page_name: str, metadata: dict[str, Any] | None = None) -> di
 
 
 def dashboard_page_links(current_page: str, metadata: dict[str, Any] | None = None) -> str:
-    """Render Home and version links from the central metadata file."""
+    """Render current dashboard links plus a CSS-only archive for older research."""
 
     links = []
     home_active = " active" if current_page == "index.html" else ""
@@ -48,11 +77,31 @@ def dashboard_page_links(current_page: str, metadata: dict[str, Any] | None = No
     links.append(f'<a class="page-link{strategy_active}" href="strategy.html">Strategy</a>')
     live_ops_active = " active" if current_page == "live_ops.html" else ""
     links.append(f'<a class="page-link{live_ops_active}" href="live_ops.html">Live Ops</a>')
-    for page in dashboard_pages(metadata):
+    for page in current_dashboard_pages(metadata):
         active = " active" if current_page == page["page"] else ""
         href = _escape(page["page"])
         label = _escape(page["nav_label"])
         links.append(f'<a class="page-link{active}" href="{href}">{label}</a>')
+    archive_links = []
+    archive_open = ""
+    for page in archived_dashboard_pages(metadata):
+        active = " active" if current_page == page["page"] else ""
+        if active:
+            archive_open = " open"
+        href = _escape(page["page"])
+        label = _escape(page["nav_label"])
+        archive_links.append(f'<a class="page-link archive-link{active}" href="{href}">{label}</a>')
+    if archive_links:
+        links.append(
+            f"""
+      <details class="archive-nav"{archive_open}>
+        <summary>Archive V1-V12</summary>
+        <div class="archive-links">
+          {"".join(archive_links)}
+        </div>
+      </details>
+            """.strip()
+        )
     return "\n      ".join(links)
 
 
@@ -393,6 +442,45 @@ def dashboard_base_css(*, table_min_width: str = "900px", extra_css: str = "") -
       background: rgba(255, 255, 255, .03);
       color: #edf4f7;
     }}
+    .archive-nav {{
+      min-height: 34px;
+      position: relative;
+    }}
+    .archive-nav summary {{
+      cursor: pointer;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+      list-style: none;
+    }}
+    .archive-nav summary::-webkit-details-marker {{
+      display: none;
+    }}
+    .archive-nav summary::after {{
+      content: " +";
+      font-weight: 700;
+    }}
+    .archive-nav[open] summary {{
+      background: rgba(255, 255, 255, .16);
+    }}
+    .archive-nav[open] summary::after {{
+      content: " -";
+    }}
+    .archive-links {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      max-width: min(680px, 100%);
+    }}
+    .archive-links a {{
+      font-size: 13px;
+      padding: 6px 9px;
+      min-height: 30px;
+    }}
     main {{
       padding: 24px max(18px, 5vw) 48px;
     }}
@@ -554,6 +642,16 @@ def dashboard_base_css(*, table_min_width: str = "900px", extra_css: str = "") -
       }}
       nav a {{
         flex: 1 1 auto;
+        text-align: center;
+      }}
+      .archive-nav {{
+        flex: 1 1 100%;
+      }}
+      .archive-nav summary {{
+        text-align: center;
+      }}
+      .archive-links a {{
+        flex: 1 1 calc(25% - 8px);
         text-align: center;
       }}
       main {{

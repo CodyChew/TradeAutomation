@@ -42,6 +42,8 @@ from .execution_contract import (
     MT5SymbolExecutionSpec,
     build_mt5_order_intent,
     signal_key_for_setup,
+    setup_signal_time_utc,
+    timeframe_delta,
 )
 from .experiment import SkippedTrade
 from .notifications import (
@@ -118,6 +120,10 @@ class LiveTrackedOrder:
     setup_id: str
     placed_time_utc: str
     price_digits: int | None = None
+    signal_time_utc: str | None = None
+    max_entry_wait_bars: int = 6
+    strategy_expiry_mode: str = "bar_count"
+    broker_backstop_expiration_time_utc: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -126,6 +132,10 @@ class LiveTrackedOrder:
     def from_dict(cls, payload: dict[str, Any]) -> "LiveTrackedOrder":
         values = {key: payload[key] for key in cls.__dataclass_fields__ if key in payload}
         values.setdefault("price_digits", None)
+        values.setdefault("signal_time_utc", _signal_time_from_signal_key(str(payload.get("signal_key", ""))))
+        values.setdefault("max_entry_wait_bars", 6)
+        values.setdefault("strategy_expiry_mode", "bar_count")
+        values.setdefault("broker_backstop_expiration_time_utc", None)
         return cls(**values)
 
 
@@ -212,6 +222,22 @@ class MissedEntryCheck:
     first_touch_time_utc: str | None = None
     first_touch_high: float | None = None
     first_touch_low: float | None = None
+    detail: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class PendingBarExpiryCheck:
+    """Actual-bar expiry state for a live pending order."""
+
+    checked: bool
+    expired: bool
+    bars_after_signal: int = 0
+    max_entry_wait_bars: int = 6
+    signal_time_utc: str | None = None
+    first_expired_bar_time_utc: str | None = None
     detail: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -483,6 +509,133 @@ def missed_entry_before_placement(
     )
 
 
+def setup_bar_expiry_check(mt5_module: Any, setup: TradeSetup, config: LiveSendExecutorConfig) -> PendingBarExpiryCheck:
+    """Return whether a setup is already outside its actual MT5-bar entry window."""
+
+    try:
+        signal_time = setup_signal_time_utc(setup)
+    except ValueError as exc:
+        return PendingBarExpiryCheck(checked=False, expired=False, detail=str(exc))
+    return _bar_expiry_check(
+        mt5_module,
+        symbol=str(setup.symbol).upper(),
+        timeframe=str(setup.timeframe).upper(),
+        signal_time=signal_time,
+        max_entry_wait_bars=config.max_entry_wait_bars,
+        config=config,
+    )
+
+
+def pending_order_bar_expiry_check(
+    mt5_module: Any,
+    pending: LiveTrackedOrder,
+    config: LiveSendExecutorConfig,
+) -> PendingBarExpiryCheck:
+    """Return whether a tracked pending order reached the first bar after its wait window."""
+
+    signal_time = _pending_signal_time_utc(pending)
+    if signal_time is None:
+        return PendingBarExpiryCheck(checked=False, expired=False, detail="missing signal_time_utc")
+    return _bar_expiry_check(
+        mt5_module,
+        symbol=pending.symbol,
+        timeframe=pending.timeframe,
+        signal_time=signal_time,
+        max_entry_wait_bars=int(pending.max_entry_wait_bars or config.max_entry_wait_bars),
+        config=config,
+    )
+
+
+def _bar_expiry_check(
+    mt5_module: Any,
+    *,
+    symbol: str,
+    timeframe: str,
+    signal_time: pd.Timestamp,
+    max_entry_wait_bars: int,
+    config: LiveSendExecutorConfig,
+) -> PendingBarExpiryCheck:
+    if max_entry_wait_bars < 1:
+        return PendingBarExpiryCheck(checked=False, expired=False, detail="max_entry_wait_bars must be >= 1")
+    try:
+        data = _fetch_candles_including_current(
+            mt5_module,
+            symbol=symbol,
+            timeframe=timeframe,
+            bars=config.history_bars,
+            broker_timezone=config.broker_timezone,
+        )
+    except Exception as exc:
+        return PendingBarExpiryCheck(checked=False, expired=False, detail=str(exc))
+    if data.empty:
+        return PendingBarExpiryCheck(checked=False, expired=False, detail="copy_rates_from_pos returned no rows")
+
+    signal_time = _as_utc_timestamp(signal_time)
+    times = pd.to_datetime(data["time_utc"], utc=True)
+    after_signal = data.loc[times > signal_time].copy()
+    bars_after_signal = int(len(after_signal))
+    expired = bars_after_signal > int(max_entry_wait_bars)
+    first_expired_bar_time = None
+    if expired:
+        first_expired_bar_time = pd.Timestamp(after_signal.iloc[int(max_entry_wait_bars)]["time_utc"]).isoformat()
+    return PendingBarExpiryCheck(
+        checked=True,
+        expired=expired,
+        bars_after_signal=bars_after_signal,
+        max_entry_wait_bars=int(max_entry_wait_bars),
+        signal_time_utc=signal_time.isoformat(),
+        first_expired_bar_time_utc=first_expired_bar_time,
+    )
+
+
+def _fetch_candles_including_current(
+    mt5_module: Any,
+    *,
+    symbol: str,
+    timeframe: str,
+    bars: int,
+    broker_timezone: str,
+) -> pd.DataFrame:
+    timeframe_constant = mt5_timeframe_constant(mt5_module, timeframe)
+    raw_rates = mt5_module.copy_rates_from_pos(symbol, timeframe_constant, 0, int(bars) + 1)
+    if raw_rates is None:
+        raise RuntimeError(f"copy_rates_from_pos failed for {symbol} {timeframe}.")
+    frame = pd.DataFrame(raw_rates)
+    if frame.empty:
+        return pd.DataFrame(columns=("time_utc",))
+    data = frame.copy()
+    data["time_utc"] = [broker_time_epoch_to_utc(raw_time, broker_timezone) for raw_time in data["time"].tolist()]
+    data = data.dropna(subset=["time_utc"]).sort_values("time_utc").reset_index(drop=True)
+    return data
+
+
+def _pending_signal_time_utc(pending: LiveTrackedOrder) -> pd.Timestamp | None:
+    if pending.signal_time_utc:
+        return _as_utc_timestamp(pending.signal_time_utc)
+    parsed = _signal_time_from_signal_key(pending.signal_key)
+    if parsed:
+        return _as_utc_timestamp(parsed)
+    try:
+        return _as_utc_timestamp(pending.expiration_time_utc) - timeframe_delta(pending.timeframe) * (
+            int(pending.max_entry_wait_bars or 6) + 1
+        )
+    except Exception:
+        return None
+
+
+def _signal_time_from_signal_key(signal_key: str) -> str | None:
+    parts = str(signal_key).split(":", 6)
+    if len(parts) == 7 and parts[0] == "lpfs":
+        return parts[6]
+    return None
+
+
+def _broker_backstop_elapsed(pending: LiveTrackedOrder) -> bool:
+    if not pending.broker_backstop_expiration_time_utc:
+        return False
+    return _as_utc_timestamp(pending.broker_backstop_expiration_time_utc) <= pd.Timestamp.now(tz="UTC")
+
+
 def send_pending_order(mt5_module: Any, intent: MT5OrderIntent) -> LiveOrderSendOutcome:
     """Send a validated MT5 pending order request."""
 
@@ -571,6 +724,28 @@ def process_trade_setup_live_send(
         )
         next_state = _with_processed_key(state, signal_key)
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:missed_entry", event)
+        return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
+
+    bar_expiry = setup_bar_expiry_check(mt5_module, setup, config)
+    if not bar_expiry.checked:
+        event = _rejection_event(
+            "bar_expiry_check_unavailable",
+            "Could not confirm the live pending order is still inside the actual-bar pullback window.",
+            signal_key,
+            bar_expiry.to_dict(),
+        )
+        next_state = _with_processed_key(state, signal_key)
+        next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:bar_expiry_unavailable", event)
+        return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
+    if bar_expiry.expired:
+        event = _rejection_event(
+            "pending_expired",
+            "The pullback window expired by actual MT5 bar count before live placement.",
+            signal_key,
+            bar_expiry.to_dict(),
+        )
+        next_state = _with_processed_key(state, signal_key)
+        next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:bar_expired", event)
         return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
 
     risk_per_lot = broker_money_risk_per_lot(mt5_module, setup)
@@ -680,19 +855,20 @@ def reconcile_live_state(
     next_state = state
     kept_pending: list[LiveTrackedOrder] = []
     new_active: list[LiveTrackedPosition] = list(state.active_positions)
-    market_time = pd.Timestamp.now(tz="UTC")
 
     for pending in state.pending_orders:
         order = orders.get(pending.order_ticket)
         if order is not None:
-            if pd.Timestamp(pending.expiration_time_utc) <= market_time:
+            expiry_check = pending_order_bar_expiry_check(mt5_module, pending, config)
+            if expiry_check.expired or _broker_backstop_elapsed(pending):
                 cancel = cancel_pending_order(mt5_module, pending)
-                event = _pending_cancelled_event(pending, cancel, expired=True)
+                event = _pending_cancelled_event(pending, cancel, expired=True, expiry_check=expiry_check)
+                event_key_suffix = "cancelled" if cancel.sent else "cancel_failed"
                 next_state = _record_event_once(
                     config,
                     next_state,
                     notifier,
-                    f"pending_expired:{pending.order_ticket}",
+                    f"pending_expired:{pending.order_ticket}:{event_key_suffix}",
                     event,
                     reply_thread_key=f"order:{pending.order_ticket}",
                 )
@@ -888,6 +1064,8 @@ def _record_event_once(
 
 
 def _tracked_order_from_intent(intent: MT5OrderIntent, order_ticket: int, *, price_digits: int | None = None) -> LiveTrackedOrder:
+    broker_backstop = intent.broker_backstop_expiration_time_utc or intent.expiration_time_utc
+    signal_time = intent.signal_time_utc
     return LiveTrackedOrder(
         signal_key=intent.signal_key,
         order_ticket=order_ticket,
@@ -907,6 +1085,10 @@ def _tracked_order_from_intent(intent: MT5OrderIntent, order_ticket: int, *, pri
         setup_id=intent.setup_id,
         placed_time_utc=pd.Timestamp.now(tz="UTC").isoformat(),
         price_digits=price_digits,
+        signal_time_utc=None if signal_time is None else signal_time.isoformat(),
+        max_entry_wait_bars=intent.max_entry_wait_bars,
+        strategy_expiry_mode=intent.strategy_expiry_mode,
+        broker_backstop_expiration_time_utc=broker_backstop.isoformat(),
     )
 
 
@@ -1048,6 +1230,10 @@ def _order_sent_event(order: LiveTrackedOrder, outcome: LiveOrderSendOutcome, sp
             "actual_risk_pct": order.actual_risk_pct,
             "target_risk_pct": order.target_risk_pct,
             "expiration_utc": order.expiration_time_utc,
+            "signal_time_utc": order.signal_time_utc,
+            "max_entry_wait_bars": order.max_entry_wait_bars,
+            "strategy_expiry_mode": order.strategy_expiry_mode,
+            "broker_backstop_expiration_utc": order.broker_backstop_expiration_time_utc,
             "spread_risk_pct": spread.spread_risk_fraction * 100,
             "price_digits": order.price_digits,
             "retcode": outcome.retcode,
@@ -1157,7 +1343,21 @@ def _close_event(active: LiveTrackedPosition, close: LiveCloseEvent) -> Notifica
     )
 
 
-def _pending_cancelled_event(order: LiveTrackedOrder, outcome: LiveOrderSendOutcome, *, expired: bool) -> NotificationEvent:
+def _pending_cancelled_event(
+    order: LiveTrackedOrder,
+    outcome: LiveOrderSendOutcome,
+    *,
+    expired: bool,
+    expiry_check: PendingBarExpiryCheck | None = None,
+) -> NotificationEvent:
+    fields: dict[str, Any] = {
+        "order_ticket": order.order_ticket,
+        "price_digits": order.price_digits,
+        "retcode": outcome.retcode,
+        "comment": outcome.comment,
+    }
+    if expiry_check is not None:
+        fields.update(expiry_check.to_dict())
     return NotificationEvent(
         kind="pending_expired" if expired else "pending_cancelled",
         mode="LIVE",
@@ -1168,12 +1368,7 @@ def _pending_cancelled_event(order: LiveTrackedOrder, outcome: LiveOrderSendOutc
         side=order.side,
         status="cancelled" if outcome.sent else "cancel_failed",
         signal_key=order.signal_key,
-        fields={
-            "order_ticket": order.order_ticket,
-            "price_digits": order.price_digits,
-            "retcode": outcome.retcode,
-            "comment": outcome.comment,
-        },
+        fields=fields,
     )
 
 
