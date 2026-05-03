@@ -47,6 +47,7 @@ The contract supports these event names:
 - `position_closed`
 - `runner_started`
 - `runner_stopped`
+- `kill_switch_activated`
 - `executor_error`
 - `kill_switch_activated`
 
@@ -135,6 +136,8 @@ comments, exact floats, and diagnostic fields stay in the JSONL journal.
   card says cancellation failed and the local pending item is kept for retry.
 - `runner_started` / `runner_stopped`: process heartbeat cards showing
   cadence, cycle counts, runtime, state-save status, and SGT start/stop time.
+- `kill_switch_activated`: `LPFS LIVE | KILL SWITCH`, human reason, stage, and
+  action stating that no new live cycles will run.
 
 Live fill, close, expiry, and cancellation cards reply to the original
 `ORDER PLACED` or `ORDER ADOPTED` Telegram message when Telegram returns a

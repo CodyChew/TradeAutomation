@@ -512,6 +512,13 @@
 
 
         <article class="ops-fact">
+          <span>Production proof</span>
+          <strong>heartbeat + logs + status command</strong>
+          <p>The Phase 2 wrapper writes a heartbeat JSON file, timestamped logs, and a status packet that can be pasted for review.</p>
+        </article>
+
+
+        <article class="ops-fact">
           <span>Telegram role</span>
           <strong>reporting only</strong>
           <p>Telegram confirms what the runner attempted to report. It is not broker truth and should be checked against MT5/state/journal.</p>
@@ -534,13 +541,13 @@
 
         <article class="checklist-card">
           <h3>Before starting</h3>
-          <ul><li>Confirm MT5 is logged into the intended demo/real account and server.</li><li>Confirm config.local.json intentionally enables or disables live_send_enabled for this account.</li><li>Check there is no second LPFS runner already active against the same state file.</li><li>Inspect open MT5 LPFS orders/positions and compare against lpfs_live_state.json if resuming.</li></ul>
+          <ul><li>Confirm MT5 is logged into the intended demo/real account and server.</li><li>Confirm config.local.json intentionally enables or disables live_send_enabled for this account.</li><li>Confirm the production runtime root is correct if using C:\TradeAutomationRuntime.</li><li>Copy existing live state/journal before switching runtime roots, or explicitly choose a clean state after broker verification.</li><li>Confirm KILL_SWITCH exists while staging and is cleared only when new cycles should run.</li><li>Check there is no second LPFS runner already active against the same state file.</li><li>Inspect open MT5 LPFS orders/positions and compare against lpfs_live_state.json if resuming.</li></ul>
         </article>
 
 
         <article class="checklist-card">
           <h3>While running</h3>
-          <ul><li>Monitor RUNNER STARTED / STOPPED cards and the latest cycle summary.</li><li>Use MT5 orders_get / positions_get as the source of truth for open exposure.</li><li>Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled.</li><li>Treat spread waits as retryable until entry touch or bar-count expiry makes the setup invalid.</li></ul>
+          <ul><li>Monitor RUNNER STARTED / STOPPED cards and the latest cycle summary.</li><li>Monitor lpfs_live_heartbeat.json and the latest timestamped log when using the Phase 2 wrapper.</li><li>Use MT5 orders_get / positions_get as the source of truth for open exposure.</li><li>Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled.</li><li>Treat spread waits as retryable until entry touch or bar-count expiry makes the setup invalid.</li></ul>
         </article>
 
 
@@ -758,6 +765,30 @@
 
 
         <div class="command-row">
+          <strong>Set production kill switch</strong>
+          <code>.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason &quot;operator stop&quot;</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Clear production kill switch</strong>
+          <code>.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Clear</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Start production watchdog</strong>
+          <code>.\scripts\run_lpfs_live_forever.ps1 -ConfigPath config.local.json -RuntimeRoot C:\TradeAutomationRuntime -Cycles 100000000 -SleepSeconds 30</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Pasteable production status</strong>
+          <code>.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 20 -LogLines 40</code>
+        </div>
+
+
+        <div class="command-row">
           <strong>Print recent trade summary</strong>
           <code>.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5</code>
         </div>
@@ -796,9 +827,16 @@
 
 
         <article class="step-card">
-          <span>Next phase</span>
+          <span>Phase 2</span>
           <h3>Production wrapper</h3>
-          <p>Phase 2 should add a launcher, kill switch, watchdog, logs, heartbeat, Task Scheduler rehearsal, and then VPS hosting.</p>
+          <p>The wrapper adds a launcher, kill switch, watchdog, logs, heartbeat, runtime-root override, Task Scheduler rehearsal path, and Lightsail runbook.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Protection</span>
+          <h3>Kill switch</h3>
+          <p>KILL_SWITCH stops new live cycles before MT5 initialization, before each live cycle, and during sleeps. It does not close positions or delete pending orders by itself.</p>
         </article>
 
 
@@ -828,7 +866,7 @@
     <section id="files" aria-labelledby="files-title">
       <h2 id="files-title">Where To Inspect The Implementation</h2>
       <div class="file-grid">
-        <article class="file-card"><h3>Live runner</h3><p><code>scripts/run_lp_force_strike_live_executor.py</code></p><p>CLI wrapper for cycle count and sleep interval. It does not run as a service by itself.</p></article><article class="file-card"><h3>Live engine</h3><p><code>strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py</code></p><p>Live-send guards, MT5 request construction, reconciliation, and lifecycle notifications.</p></article><article class="file-card"><h3>Execution contract</h3><p><code>docs/mt5_execution_contract.md</code></p><p>Operational contract for order keys, duplicate prevention, and MT5 source-of-truth behavior.</p></article><article class="file-card"><h3>Phase 2 plan</h3><p><code>docs/phase2_production_hardening.md</code></p><p>Production-hardening plan for launcher, kill switch, watchdog, runtime folder, Task Scheduler, and VPS.</p></article><article class="file-card"><h3>State file</h3><p><code>data/live/lpfs_live_state.json</code></p><p>Restart continuity, processed signal keys, pending orders, active positions, Telegram message IDs.</p></article><article class="file-card"><h3>Journal</h3><p><code>data/live/lpfs_live_journal.jsonl</code></p><p>Durable audit log with raw technical fields and notification payloads.</p></article><article class="file-card"><h3>Handoff</h3><p><code>SESSION_HANDOFF.md</code></p><p>Current project snapshot for the next Codex run.</p></article>
+        <article class="file-card"><h3>Live runner</h3><p><code>scripts/run_lp_force_strike_live_executor.py</code></p><p>CLI wrapper for cycle count, sleep interval, runtime-root override, kill switch, heartbeat, lock, and lifecycle notifications.</p></article><article class="file-card"><h3>Watchdog launcher</h3><p><code>scripts/run_lpfs_live_forever.ps1</code></p><p>Production PowerShell wrapper that logs stdout/stderr and restarts after unexpected crashes while respecting KILL_SWITCH.</p></article><article class="file-card"><h3>Status command</h3><p><code>scripts/Get-LpfsLiveStatus.ps1</code></p><p>Pasteable operator snapshot for process, heartbeat, state, journal, and latest log.</p></article><article class="file-card"><h3>Kill switch helper</h3><p><code>scripts/Set-LpfsKillSwitch.ps1</code></p><p>Creates or clears the runtime KILL_SWITCH file used to stop new live cycles.</p></article><article class="file-card"><h3>Live engine</h3><p><code>strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py</code></p><p>Live-send guards, MT5 request construction, reconciliation, and lifecycle notifications.</p></article><article class="file-card"><h3>Execution contract</h3><p><code>docs/mt5_execution_contract.md</code></p><p>Operational contract for order keys, duplicate prevention, and MT5 source-of-truth behavior.</p></article><article class="file-card"><h3>Phase 2 plan</h3><p><code>docs/phase2_production_hardening.md</code></p><p>Implemented local production-hardening runbook for launcher, kill switch, watchdog, runtime folder, Task Scheduler, and VPS readiness.</p></article><article class="file-card"><h3>Lightsail runbook</h3><p><code>docs/lpfs_lightsail_vps_runbook.md</code></p><p>Amazon Lightsail Windows VPS setup, security, cost sizing, Task Scheduler, and liaison packet.</p></article><article class="file-card"><h3>State file</h3><p><code>data/live/lpfs_live_state.json</code></p><p>Restart continuity, processed signal keys, pending orders, active positions, Telegram message IDs.</p></article><article class="file-card"><h3>Journal</h3><p><code>data/live/lpfs_live_journal.jsonl</code></p><p>Durable audit log with raw technical fields and notification payloads.</p></article><article class="file-card"><h3>Handoff</h3><p><code>SESSION_HANDOFF.md</code></p><p>Current project snapshot for the next Codex run.</p></article>
       </div>
     </section>
   </main>

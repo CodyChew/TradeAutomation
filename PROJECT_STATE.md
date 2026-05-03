@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-01 local time after LPFS V17 proximity research,
-controlled live validation, and Phase 2 production-hardening planning.
+Last updated: 2026-05-03 local time after LPFS Phase 2 local production
+wrapper implementation and Amazon Lightsail VPS runbook.
 
 ## Purpose
 
@@ -18,10 +18,12 @@ source of truth for strategy research and future live execution work.
 4. `docs/strategy.html` for the current V13 mechanics + V15 risk-bucket guide.
 5. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before continuing execution work.
-6. `docs/phase2_production_hardening.md` before adding watchdogs, scheduled
-   startup, VPS deployment, or other production operations.
-7. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
-8. `concepts/lp_levels_lab/PROJECT_STATE.md` and
+6. `docs/phase2_production_hardening.md` before operating watchdogs,
+   kill-switch controls, heartbeat, status checks, or Task Scheduler setup.
+7. `docs/lpfs_lightsail_vps_runbook.md` before moving LPFS to Amazon
+   Lightsail.
+8. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
+9. `concepts/lp_levels_lab/PROJECT_STATE.md` and
    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
    concept behavior.
 
@@ -210,8 +212,11 @@ Static dashboards exist at:
   edge cases, and deterministic inline SVG diagrams.
 - `docs/live_ops.html`: live-run behavior, lifecycle scenarios, and operator
   commands.
-- `docs/phase2_production_hardening.md`: next production-hardening plan for
-  launcher, watchdog, kill switch, runtime folder, Task Scheduler, and VPS.
+- `docs/phase2_production_hardening.md`: implemented local
+  production-hardening runbook for launcher, watchdog, kill switch, runtime
+  folder, heartbeat, status command, Task Scheduler, and VPS readiness.
+- `docs/lpfs_lightsail_vps_runbook.md`: Amazon Lightsail Windows VPS setup,
+  security, sizing, Task Scheduler, and liaison packet.
 
 The dashboard generator is:
 
@@ -393,7 +398,12 @@ account checks pass:
   atomically persisted restart-safe state for pending orders, active positions,
   sent notification keys, and last seen close deal.
 - `scripts/run_lp_force_strike_live_executor.py` is the finite-cycle live-send
-  runner and holds a single-runner lock beside the live state file.
+  runner and holds a single-runner lock beside the live state file. It now also
+  supports `--runtime-root`, `--kill-switch-path`, and `--heartbeat-path` for
+  Phase 2 production operation.
+- `scripts/run_lpfs_live_forever.ps1`, `scripts/Set-LpfsKillSwitch.ps1`, and
+  `scripts/Get-LpfsLiveStatus.ps1` provide the local/VPS watchdog, emergency
+  stop file, timestamped logs, heartbeat, and pasteable status snapshot.
 - `config.local.example.json` documents the ignored local config shape.
 - `docs/dry_run_executor.md` documents setup, credentials, journal/state files,
   and the dry-run operating limits.
@@ -513,6 +523,18 @@ Live-send adapter facts:
 - Runner start/stop cards are process heartbeat alerts. They show cadence,
   requested/completed cycles, runtime, state-save status, and SGT start/stop
   time. They are also written to the live JSONL journal.
+- Phase 2 process controls are implemented outside the trade engine:
+  production runtime root defaults to `C:\TradeAutomationRuntime`, kill switch
+  file defaults to `KILL_SWITCH` beside the live state, heartbeat defaults to
+  `lpfs_live_heartbeat.json`, and watchdog logs go under
+  `C:\TradeAutomationRuntime\data\live\logs`.
+- The kill switch stops new live cycles before MT5 initialization, before each
+  cycle, and during sleeps. It does not close open positions or delete broker
+  pending orders by itself.
+- Runtime-root migration is fail-closed by default: if the old configured live
+  state exists and the new runtime-root state is missing, the runner exits until
+  state is copied or `--allow-empty-runtime-state` is intentionally used after
+  broker-state verification.
 - Manual recent-trade summary:
   `scripts/summarize_lpfs_live_trades.py --config config.local.json --limit 5`
   with optional `--post-telegram`.
@@ -551,10 +573,11 @@ Next execution phase:
    Windows service uptime.
 4. Keep collecting low-risk forward evidence from MT5, Telegram, live state,
    and the JSONL journal before changing strategy rules or scaling risk.
-5. Phase 2 should harden operations without changing strategy behavior. The
-   recommended path is documented in `docs/phase2_production_hardening.md`:
-   production launcher, kill switch, watchdog, non-OneDrive runtime folder,
-   heartbeat, Task Scheduler rehearsal, then Windows VPS.
+5. Phase 2 now has a local production wrapper without changing strategy
+   behavior. Rehearse `scripts/run_lpfs_live_forever.ps1`,
+   `scripts/Set-LpfsKillSwitch.ps1`, and `scripts/Get-LpfsLiveStatus.ps1`
+   locally with runtime root `C:\TradeAutomationRuntime`, then move to Amazon
+   Lightsail using `docs/lpfs_lightsail_vps_runbook.md`.
 
 ## Force Strike Side-Lab Comparison Learnings
 
@@ -622,7 +645,7 @@ scripts/run_lp_force_strike_live_executor.py with risk_bucket_scale=0.05,
 max_open_risk_pct=0.65, dynamic spread gating, restart-safe state, MT5
 order/position/deal reconciliation, and compact Telegram lifecycle cards.
 Connected MT5 is a real account; do not run live-send or clear state casually.
-The next phase is production hardening: launcher, kill switch, watchdog,
-non-OneDrive runtime folder, heartbeat, Task Scheduler rehearsal, then Windows
-VPS.
+The next phase is local rehearsal of the implemented Phase 2 wrapper, then
+Amazon Lightsail deployment using docs/lpfs_lightsail_vps_runbook.md. Do not
+change strategy behavior while doing the operations move.
 ```

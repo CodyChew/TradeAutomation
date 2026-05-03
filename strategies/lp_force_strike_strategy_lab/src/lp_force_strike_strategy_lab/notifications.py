@@ -267,6 +267,7 @@ def format_notification_message(event: NotificationEvent, *, max_field_value_len
         "position_closed",
         "runner_started",
         "runner_stopped",
+        "kill_switch_activated",
     }:
         return _format_live_trade_message(event, max_field_value_length=max_field_value_length)
 
@@ -572,6 +573,7 @@ def _format_live_exception_card(event: NotificationEvent, *, max_field_value_len
         "order_rejected": "REJECTED",
         "pending_expired": "CANCELLED",
         "pending_cancelled": "CANCELLED",
+        "kill_switch_activated": "KILL SWITCH",
     }
     title = title_by_kind.get(event.kind, "NOTICE")
     if event.kind == "setup_rejected" and event.status in {"spread_too_wide", "spread_too_wide_before_send"}:
@@ -747,6 +749,8 @@ def _human_reason(event: NotificationEvent) -> str:
         if event.status == "cancel_failed":
             return "Broker did not confirm pending-order cancellation"
         return "Pending order was cancelled"
+    if event.kind == "kill_switch_activated":
+        return "Kill switch active"
     status = event.status or event.message or "setup_rejected"
     mapping = {
         "spread_too_wide": "Spread is too wide",
@@ -773,6 +777,8 @@ def _human_action(event: NotificationEvent) -> str:
         if event.status == "cancel_failed":
             return "Order kept in local state for next reconciliation"
         return "Removed from local pending tracking"
+    if event.kind == "kill_switch_activated":
+        return "No new live cycles will run"
     return "Review journal for details"
 
 
@@ -798,6 +804,7 @@ def _runner_status_text(value: str) -> str:
         "completed": "Completed requested cycles",
         "stopped_by_user": "Stopped by user",
         "error": "Stopped after error",
+        "kill_switch": "Kill switch active",
     }
     return mapping.get(str(value or "").strip(), str(value).replace("_", " ").capitalize())
 

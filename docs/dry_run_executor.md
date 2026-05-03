@@ -193,6 +193,65 @@ For a manual long run that you will stop with Ctrl+C:
 This is still a finite-cycle CLI, not a Windows service. MT5 closure, network
 loss, machine sleep, terminal crash, or shutdown can still stop operation.
 
+## Phase 2 Production Wrapper
+
+The production wrapper keeps runtime files away from OneDrive and adds a kill
+switch, heartbeat, logs, and watchdog restart behavior. It does not change
+strategy mechanics or live order logic.
+
+Default production runtime root:
+
+```text
+C:\TradeAutomationRuntime
+```
+
+Set the kill switch before staging:
+
+```powershell
+.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason "staging"
+```
+
+Check process, heartbeat, state, journal, and latest log:
+
+```powershell
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 20 -LogLines 40
+```
+
+Start the watchdog only after the config and MT5 account are reviewed:
+
+```powershell
+.\scripts\run_lpfs_live_forever.ps1 -ConfigPath config.local.json -RuntimeRoot C:\TradeAutomationRuntime -Cycles 100000000 -SleepSeconds 30
+```
+
+The live runner also accepts operational path overrides directly:
+
+```powershell
+.\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 1 --runtime-root C:\TradeAutomationRuntime
+```
+
+With `--runtime-root C:\TradeAutomationRuntime`, live state and journal resolve
+to `C:\TradeAutomationRuntime\data\live`. The default kill switch is
+`KILL_SWITCH` beside the live state file, and the default heartbeat is
+`lpfs_live_heartbeat.json` beside the live state file.
+
+Before switching runtime roots, copy existing live state and journal if they
+exist:
+
+```powershell
+New-Item -ItemType Directory -Force -Path C:\TradeAutomationRuntime\data\live
+Copy-Item data\live\lpfs_live_state.json C:\TradeAutomationRuntime\data\live\lpfs_live_state.json
+Copy-Item data\live\lpfs_live_journal.jsonl C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl
+```
+
+If the old configured live state exists and the new runtime-root state is
+missing, the runner refuses to start unless
+`--allow-empty-runtime-state` is passed. Use that bypass only after confirming
+MT5 broker state and intentionally choosing a clean production state.
+
+The kill switch is checked before MT5 initialization, before each live cycle,
+and during sleeps between cycles. It stops new cycles; it does not close open
+positions or delete broker pending orders by itself.
+
 ## Behavior
 
 The runner processes closed candles only. For every configured symbol/timeframe

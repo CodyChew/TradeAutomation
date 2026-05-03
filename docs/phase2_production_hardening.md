@@ -1,141 +1,228 @@
-# LPFS Phase 2 Production Hardening Plan
+# LPFS Phase 2 Production Hardening
 
-Last updated: 2026-05-01.
+Last updated: 2026-05-03.
 
-This document captures the next operational phase for LP + Force Strike after
-V15/V16/V17 research and the first real-account live-send tests. It is a
-production-readiness plan, not a strategy-rule change.
+This is the operations layer for LP + Force Strike live execution. It does not
+change signal rules, risk buckets, spread gates, stop/target geometry, order
+lifecycle logic, or pending-order expiry.
 
 ## Current Stage
 
-LPFS is in controlled live validation.
+LPFS is in controlled live validation on a real MT5 account with low-risk
+scaled V15 sizing.
 
-The current strategy remains:
+The live strategy remains:
 
-- V13 mechanics with V15 risk buckets.
+- V13 mechanics with V15 efficient risk buckets.
 - LP3, `take_all`, H4/H8/H12/D1/W1.
 - 0.5 signal-candle pullback entry.
 - Force Strike structure stop.
 - 1R target.
 - Fixed 6-bar pullback wait.
+- Strategy expiry after 6 actual MT5 bars from the signal candle.
+- Conservative broker expiration only as an emergency backstop.
 - Live test scale: `live_send.risk_bucket_scale=0.05`.
 
-Recent research did not justify changing live rules:
+## What Phase 2 Adds
 
-- V16 bid/ask realism did not materially weaken V15.
-- V16 spread-buffer variants are promising but too invasive to adopt directly.
-- V17 LP-FS proximity filters did not beat current V15; do not require FS
-  structure touch.
+Implemented operational controls:
 
-The live executor is real-order capable only when ignored local config enables
-`LIVE_SEND` with the real-money acknowledgement and account/server match.
+- `scripts/run_lpfs_live_forever.ps1`: production watchdog launcher.
+- `scripts/Get-LpfsLiveStatus.ps1`: local/VPS status snapshot for operator and
+  Codex review.
+- `scripts/Set-LpfsKillSwitch.ps1`: file-based emergency stop helper.
+- `scripts/run_lp_force_strike_live_executor.py --runtime-root`: runtime path
+  override so state, journal, logs, heartbeat, and kill switch can live outside
+  OneDrive.
+- `scripts/run_lp_force_strike_live_executor.py --kill-switch-path`: kill
+  switch checked before MT5 initialization, before each live cycle, and during
+  sleeps between cycles.
+- `scripts/run_lp_force_strike_live_executor.py --heartbeat-path`: JSON
+  heartbeat updated at start, every completed cycle, and shutdown.
 
-## Current Operational Safeguards
+Default production runtime root:
 
-Already implemented:
+```text
+C:\TradeAutomationRuntime
+```
 
-- MT5 account login/server validation before live cycles.
-- Single-runner lock beside the live state file.
-- Immediate state persistence after broker-affecting safety mutations.
-- OneDrive-safe fallback when atomic state replacement is denied by Windows.
-- Broker duplicate/adoption guard before `order_send`.
-- MT5 reconciliation for pending orders, positions, historical orders, and
-  deals.
-- Stricter pending-to-position matching by broker comment or history linkage.
-- Manual or unknown exits rendered as `TRADE CLOSED`, not forced stop losses.
-- Telegram lifecycle cards for order placed, adopted, entered, closed,
-  cancelled, waiting, skipped, rejected, runner started, and runner stopped.
-- JSONL journal as durable audit record.
+Runtime files under that root:
 
-## Phase 2 Goal
+```text
+C:\TradeAutomationRuntime\data\live\lpfs_live_state.json
+C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl
+C:\TradeAutomationRuntime\data\live\lpfs_live_heartbeat.json
+C:\TradeAutomationRuntime\data\live\KILL_SWITCH
+C:\TradeAutomationRuntime\data\live\logs\lpfs_live_YYYYMMDD_HHMMSS.log
+```
 
-Make live operation resilient to normal production failures:
+## Runtime State Migration
 
-- local terminal closes;
-- Python runner crashes;
-- Windows restarts;
-- MT5 disconnects;
-- Telegram delivery fails;
-- live state or journal files are locked;
-- operator needs to stop the system quickly.
+Before switching from the repo default `data/live` path to
+`C:\TradeAutomationRuntime`, copy the current live state and journal if they
+exist:
 
-The goal is not perfect unattended autonomy. The goal is a fail-closed,
-observable process that can be restarted safely.
+```powershell
+New-Item -ItemType Directory -Force -Path C:\TradeAutomationRuntime\data\live
+Copy-Item data\live\lpfs_live_state.json C:\TradeAutomationRuntime\data\live\lpfs_live_state.json
+Copy-Item data\live\lpfs_live_journal.jsonl C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl
+```
 
-## Recommended Path
+The runner fails closed when `--runtime-root` is used, the old configured state
+file exists, and the new runtime state is missing. This prevents accidentally
+starting with an empty state and re-arming already processed latest-candle
+signals. Use `--allow-empty-runtime-state` only when a clean production state is
+intentional and broker state has been checked first.
 
-Use a Windows VPS plus Task Scheduler and a watchdog launcher.
+## Local Rehearsal Commands
 
-This keeps the current Python and MT5 architecture intact. The MT5 Python API
-connects to a local terminal, so a Windows environment with the terminal
-installed is the cleanest production host. MetaTrader built-in virtual hosting
-is aimed at platform EAs/signals and is not a good fit for this external
-Python runner unless the system is rewritten as MQL5.
+Run these from the repository root. Do not start the live runner unless
+`config.local.json`, MT5 account/server, and risk settings have been reviewed.
 
-## Options And Tradeoffs
+Set the kill switch before staging:
 
-| Option | Strength | Weakness | Recommendation |
-|---|---|---|---|
-| Local PC manual terminal | Fastest for current testing | Stops on sleep, reboot, terminal close | Keep for low-risk observation only |
-| Local PC Task Scheduler | Auto-start after login/startup | Still depends on local PC power/sleep/network | Useful rehearsal step |
-| Windows VPS Task Scheduler | Always-on MT5 + Python with minimal changes | Monthly cost and server maintenance | Best Phase 2 target |
-| Windows service wrapper | Better process management | MT5 GUI/Python can be awkward in service sessions | Consider later |
-| MetaTrader built-in VPS | Broker-near EA/signals hosting | Not designed for this external Python process | Do not use for current architecture |
-| MQL5 rewrite | Native MT5 deployment | Large rewrite and weaker Python research loop | Long-term only |
+```powershell
+.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason "staging"
+```
 
-## Implementation Checklist
+Check status:
 
-Phase 2 should be implemented in this order:
+```powershell
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime
+```
 
-1. Add a production PowerShell launcher, for example
-   `scripts/run_lpfs_live_forever.ps1`.
-2. Add a kill switch checked before MT5 initialization and before live cycles,
-   for example `data/live/KILL_SWITCH`.
-3. Add a watchdog wrapper that restarts the runner after unexpected crashes but
-   does not restart when the kill switch is active.
-4. Redirect stdout/stderr to timestamped files under `data/live/logs`.
-5. Move production runtime state away from OneDrive, for example
-   `C:\TradeAutomationRuntime\data\live`, while keeping code in Git.
-6. Add a heartbeat file updated each cycle with latest cycle time, process ID,
-   MT5 account/server, and last cycle result.
-7. Add Task Scheduler setup for startup or logon.
-8. Rehearse local restart behavior with live-send disabled or tiny risk:
-   normal start, Ctrl+C, crash restart, reboot, kill-switch stop, stale lock,
-   MT5 closed, and Telegram failure.
-9. Move the same setup to a Windows VPS after local rehearsal passes.
+Clear the kill switch only when ready to allow new cycles:
+
+```powershell
+.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Clear
+```
+
+Start the watchdog launcher:
+
+```powershell
+.\scripts\run_lpfs_live_forever.ps1 -ConfigPath config.local.json -RuntimeRoot C:\TradeAutomationRuntime -Cycles 100000000 -SleepSeconds 30
+```
+
+Use the status command as the copy/paste packet for review:
+
+```powershell
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 20 -LogLines 40
+```
+
+Emergency stop:
+
+```powershell
+.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason "operator emergency stop"
+```
+
+The kill switch prevents new live cycles. It does not forcibly close MT5
+positions and it does not delete existing broker pending orders by itself.
+Existing broker state remains managed by MT5 and the next online reconciliation
+cycle.
+
+## Watchdog Behavior
+
+`run_lpfs_live_forever.ps1`:
+
+- creates the runtime and log folders;
+- refuses to start when `KILL_SWITCH` exists;
+- starts `scripts/run_lp_force_strike_live_executor.py`;
+- redirects stdout/stderr to timestamped log files;
+- passes `--runtime-root`, `--kill-switch-path`, and `--heartbeat-path`;
+- restarts after unexpected non-zero crashes;
+- does not restart after normal completion, Ctrl+C, or kill-switch exit.
+
+Expected exit codes:
+
+| Code | Meaning | Watchdog action |
+|---:|---|---|
+| 0 | requested cycles completed | stop |
+| 2 | another runner already holds the state lock | stop |
+| 3 | kill switch active | stop |
+| 4 | runtime state migration required | stop |
+| 130 | Ctrl+C / user stop | stop |
+| other | unexpected crash | restart unless `-MaxRestarts` is exceeded |
+
+The live runner still keeps the existing single-runner lock beside the resolved
+state file. A watchdog restart should not duplicate orders because the live
+cycle reconciles MT5 before scanning new signals and persists broker-affecting
+state immediately.
+
+## Heartbeat Contract
+
+The heartbeat is local JSON intended for operator review:
+
+- `status`: `starting`, `running`, `completed`, `stopped_by_user`, `error`, or
+  `kill_switch`.
+- `pid`: current Python process ID.
+- `requested_cycles` and `completed_cycles`.
+- `state_path`, `journal_path`, `kill_switch_path`.
+- `account_login`, `account_server`, and `account_currency` when MT5 account
+  info is available.
+- `last_cycle` with cycle index, frames processed, orders sent, rejected
+  setups, and blocked setups.
+- `runtime_seconds`, `state_saved`, and stop detail on shutdown.
+
+The heartbeat is not a trading source of truth. Broker truth is still MT5
+orders, positions, and deal history. Restart continuity is still the state file.
+Audit truth is still the JSONL journal.
+
+## Task Scheduler Rehearsal
+
+Create a Windows Task Scheduler task after local manual rehearsal passes.
+
+Recommended task settings:
+
+- Trigger: at user logon, or on startup after automatic login is deliberately
+  configured.
+- Run only when the user is logged on, because MT5 is a GUI terminal and the
+  Python API attaches to that user session.
+- Program:
+
+```text
+powershell.exe
+```
+
+- Arguments:
+
+```text
+-NoProfile -ExecutionPolicy Bypass -File "C:\Users\chewc\OneDrive\Desktop\TradeAutomation\scripts\run_lpfs_live_forever.ps1" -RepoRoot "C:\Users\chewc\OneDrive\Desktop\TradeAutomation" -ConfigPath "C:\Users\chewc\OneDrive\Desktop\TradeAutomation\config.local.json" -RuntimeRoot "C:\TradeAutomationRuntime" -Cycles 100000000 -SleepSeconds 30
+```
+
+- Start in:
+
+```text
+C:\Users\chewc\OneDrive\Desktop\TradeAutomation
+```
+
+For VPS use, disconnect the RDP session instead of signing out, so MT5 remains
+open in the user session.
 
 ## Acceptance Criteria
 
-Phase 2 is ready when these are verified:
+Phase 2 is ready for VPS migration when these pass locally:
 
-- The runner starts from Task Scheduler without manual terminal setup.
-- Only one runner can run against the configured state path.
-- The kill switch stops new cycles before any order send.
-- A crash produces a Telegram/process alert and a log file.
-- A watchdog restart does not duplicate orders.
-- MT5 restart or disconnect fails closed or recovers without duplicate sends.
-- State, journal, logs, and heartbeat survive reboot.
-- Telegram is helpful but not required for state correctness.
-- A restart reconciles existing MT5 pending orders and positions before
-  scanning for new signals.
+- The status command reports no unexpected second runner.
+- The watchdog refuses to start while `KILL_SWITCH` exists.
+- The runner exits before MT5 initialization when `KILL_SWITCH` exists.
+- A kill switch created during sleep stops before the next live cycle.
+- Heartbeat updates after every completed cycle.
+- Logs are written under `C:\TradeAutomationRuntime\data\live\logs`.
+- Existing live state and journal are copied before switching runtime roots, or
+  a clean state is explicitly allowed after broker-state verification.
+- A crash produces a timestamped log and the watchdog restarts.
+- A watchdog restart reconciles MT5 before scanning new signals.
+- State and journal are written under `C:\TradeAutomationRuntime`, not
+  OneDrive.
+- Telegram failure does not change trade validity.
+- Existing MT5 pending orders and positions are reconciled before any new
+  signal send.
 
-## Non-Goals For Phase 2
+## Amazon Lightsail Next Step
 
-Do not change these as part of production hardening:
+Use `docs/lpfs_lightsail_vps_runbook.md` after local rehearsal passes. The
+recommended VPS target is a Windows Lightsail instance running MT5, Python, and
+the same Phase 2 wrapper.
 
-- signal rules;
-- risk buckets;
-- spread gate threshold;
-- stop/target geometry;
-- pending order expiration model;
-- V15 baseline recommendation.
-
-Research changes should remain separate V18+ studies.
-
-## Immediate Next Work Item
-
-Build and test the launcher/watchdog/kill-switch layer locally while keeping
-the current low-risk live runner available for manual operation.
-
-Do not migrate to VPS or increase risk until the local production wrapper has
-passed the acceptance criteria above.
+Do not migrate to VPS or increase risk until the local wrapper has passed the
+acceptance criteria above.

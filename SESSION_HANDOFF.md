@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-03 SGT after implementing LPFS bar-counted pending
-expiry with a conservative broker backstop.
+Last updated: 2026-05-03 SGT after adding the LPFS Phase 2 local production
+wrapper and Amazon Lightsail VPS runbook.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -15,8 +15,10 @@ file, and the JSONL journal before making operational decisions.
 4. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before touching execution code.
 5. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
-6. `docs/phase2_production_hardening.md` before adding watchdogs, scheduled
-   startup, VPS deployment, or other production operations.
+6. `docs/phase2_production_hardening.md` before operating the watchdog, kill
+   switch, heartbeat, status command, or Task Scheduler setup.
+7. `docs/lpfs_lightsail_vps_runbook.md` before moving the runner to Amazon
+   Lightsail.
 
 ## Current Project Focus
 
@@ -63,8 +65,8 @@ so H4/H8 are `0.01%`, H12/D1 are `0.015%`, and W1 is `0.0375%`.
   duplicate/adoption recovery, fill/close handling, and lifecycle events.
 - Runner CLI:
   `scripts/run_lp_force_strike_live_executor.py` owns cycle count, sleep,
-  single-runner locking, process start/stop notifications, final state save,
-  and MT5 shutdown.
+  single-runner locking, runtime-root override, kill-switch checks, heartbeat,
+  process start/stop notifications, final state save, and MT5 shutdown.
 - Telegram UX:
   `notifications.py`, `docs/telegram_notifications.md`, and
   `scripts/summarize_lpfs_live_trades.py`.
@@ -72,8 +74,10 @@ so H4/H8 are `0.01%`, H12/D1 are `0.015%`, and W1 is `0.0375%`.
   `data/live/lpfs_live_state.json` and `data/live/lpfs_live_journal.jsonl` are
   ignored local truth for continuity and audit; do not commit them.
 - Phase 2 operations plan:
-  `docs/phase2_production_hardening.md` captures the recommended launcher,
-  kill switch, watchdog, runtime-folder, Task Scheduler, and VPS path.
+  `docs/phase2_production_hardening.md` captures the local launcher, kill
+  switch, watchdog, runtime-folder, heartbeat, Task Scheduler path, and VPS
+  readiness checks. `docs/lpfs_lightsail_vps_runbook.md` captures the Amazon
+  Lightsail setup.
 
 ## Safety Status
 
@@ -100,6 +104,23 @@ place duplicate pending orders if the same setup still passes all checks.
 The runner now holds `data/live/lpfs_live_state.json.lock` while active. A
 second runner against the same state exits fail-closed before MT5
 initialization.
+
+Phase 2 production wrapper commands:
+
+```powershell
+.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason "staging"
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 20 -LogLines 40
+.\scripts\run_lpfs_live_forever.ps1 -ConfigPath config.local.json -RuntimeRoot C:\TradeAutomationRuntime -Cycles 100000000 -SleepSeconds 30
+```
+
+With `--runtime-root C:\TradeAutomationRuntime`, live state, journal,
+heartbeat, kill switch, and logs live outside OneDrive. The kill switch stops
+new live cycles before MT5 initialization, before each cycle, and during sleeps;
+it does not close open positions or delete pending broker orders by itself.
+Before switching runtime roots, copy existing live state/journal when they
+exist. The runner now fails closed if the old configured state exists but the
+new runtime-root state is missing, unless `--allow-empty-runtime-state` is
+passed intentionally after broker-state verification.
 
 `save_live_state()` normally uses atomic temp-file replace. On Windows/OneDrive,
 the state file can be a reparse-point placeholder and deny `os.replace()`.
@@ -271,18 +292,25 @@ Current stage: controlled live validation on a real MT5 account with low-risk
 scaled V15 sizing. The live executor is mature enough to observe real broker
 lifecycle events, but it is still a finite CLI loop, not a production daemon.
 
-Next phase: production hardening without changing strategy rules. The plan is
-in `docs/phase2_production_hardening.md` and should be implemented in this
-order:
+Phase 2 local production hardening is now implemented without changing strategy
+rules:
 
-1. Add a production PowerShell launcher.
-2. Add a kill switch checked before MT5 initialization and live cycles.
-3. Add a watchdog wrapper for unexpected crashes.
-4. Redirect stdout/stderr to timestamped logs.
-5. Move production runtime files away from OneDrive.
-6. Add a heartbeat file updated every cycle.
-7. Rehearse Task Scheduler startup locally.
-8. Move to a Windows VPS only after local rehearsal passes.
+- `scripts/run_lpfs_live_forever.ps1`: watchdog launcher and timestamped logs.
+- `scripts/Set-LpfsKillSwitch.ps1`: creates/clears the emergency stop file.
+- `scripts/Get-LpfsLiveStatus.ps1`: pasteable status packet for operator/Codex
+  review.
+- `scripts/run_lp_force_strike_live_executor.py --runtime-root`: moves
+  production state/journal away from OneDrive.
+- Runtime-root migration guard: refuses to start from an empty production state
+  when the old configured live state exists, unless explicitly bypassed.
+- `scripts/run_lp_force_strike_live_executor.py --heartbeat-path`: writes
+  process/cycle heartbeat JSON.
+- `scripts/run_lp_force_strike_live_executor.py --kill-switch-path`: stops
+  before MT5 init, before live cycles, and during sleeps when `KILL_SWITCH`
+  exists.
+
+Next phase: rehearse these locally, then move the same wrapper to Amazon
+Lightsail using `docs/lpfs_lightsail_vps_runbook.md`.
 
 Do not change signal rules, stops, targets, spread threshold, risk buckets, or
 pending expiration as part of Phase 2. V16 and V17 both support keeping current
@@ -300,6 +328,12 @@ Runner/process notification tests:
 
 ```powershell
 .\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_live_runner -v
+```
+
+PowerShell syntax check:
+
+```powershell
+powershell -NoProfile -Command "$files = 'scripts\run_lpfs_live_forever.ps1','scripts\Get-LpfsLiveStatus.ps1','scripts\Set-LpfsKillSwitch.ps1'; foreach ($file in $files) { [scriptblock]::Create((Get-Content -Raw $file)) | Out-Null; Write-Host ""syntax ok $file"" }"
 ```
 
 Full strict gate:
@@ -329,10 +363,14 @@ Latest selector revalidation on 2026-05-01:
 - `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_trade_summary.py`
 - `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/notifications.py`
 - `scripts/run_lp_force_strike_live_executor.py`
+- `scripts/run_lpfs_live_forever.ps1`
+- `scripts/Get-LpfsLiveStatus.ps1`
+- `scripts/Set-LpfsKillSwitch.ps1`
 - `scripts/summarize_lpfs_live_trades.py`
 - `scripts/build_lp_force_strike_live_ops_page.py`
 - `scripts/run_lp_force_strike_v17_lp_fs_proximity.py`
 - `docs/phase2_production_hardening.md`
+- `docs/lpfs_lightsail_vps_runbook.md`
 - `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/proximity.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_live_executor.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_live_runner.py`

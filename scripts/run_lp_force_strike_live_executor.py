@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
+import json
 import os
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +42,12 @@ from lp_force_strike_strategy_lab.dry_run_executor import DryRunSettings  # noqa
 
 class RunnerLockActive(RuntimeError):
     """Raised when another live runner already holds the state lock."""
+
+
+KILL_SWITCH_EXIT_CODE = 3
+RUNTIME_STATE_MIGRATION_EXIT_CODE = 4
+DEFAULT_RUNTIME_LIVE_DIR = Path("data/live")
+DEFAULT_HEARTBEAT_NAME = "lpfs_live_heartbeat.json"
 
 
 class LiveRunnerLock:
@@ -130,15 +139,219 @@ def _runner_lock_path(state_path: str | Path) -> Path:
     return path.with_name(f"{path.name}.lock")
 
 
+def _default_kill_switch_path(state_path: str | Path) -> Path:
+    return Path(state_path).parent / "KILL_SWITCH"
+
+
+def _default_heartbeat_path(state_path: str | Path) -> Path:
+    return Path(state_path).parent / DEFAULT_HEARTBEAT_NAME
+
+
+def _settings_with_runtime_root(settings, runtime_root: str | Path | None):
+    if runtime_root in (None, ""):
+        return settings
+    live_dir = Path(runtime_root) / DEFAULT_RUNTIME_LIVE_DIR
+    return replace(
+        settings,
+        executor=replace(
+            settings.executor,
+            journal_path=str(live_dir / "lpfs_live_journal.jsonl"),
+            state_path=str(live_dir / "lpfs_live_state.json"),
+        ),
+    )
+
+
+def _runtime_state_requires_migration(original_state_path: str | Path, runtime_state_path: str | Path) -> bool:
+    original = Path(original_state_path)
+    runtime = Path(runtime_state_path)
+    if _same_path(original, runtime):
+        return False
+    return original.exists() and not runtime.exists()
+
+
+def _same_path(left: Path, right: Path) -> bool:
+    try:
+        return left.resolve() == right.resolve()
+    except OSError:
+        return left.absolute() == right.absolute()
+
+
+def _kill_switch_active(path: str | Path) -> bool:
+    return Path(path).exists()
+
+
+def _kill_switch_detail(path: str | Path) -> str:
+    kill_path = Path(path)
+    try:
+        text = kill_path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return f"Kill switch active at {kill_path}"
+    first_line = text.splitlines()[0].strip() if text else ""
+    if first_line:
+        return f"Kill switch active at {kill_path}: {first_line}"
+    return f"Kill switch active at {kill_path}"
+
+
+def _write_heartbeat(path: str | Path, **payload: Any) -> None:
+    heartbeat_path = Path(path)
+    heartbeat_path.parent.mkdir(parents=True, exist_ok=True)
+    body = {
+        "updated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "pid": os.getpid(),
+        **payload,
+    }
+    text = json.dumps(body, indent=2, sort_keys=True, default=str) + "\n"
+    temp_path = heartbeat_path.with_name(f".{heartbeat_path.name}.{os.getpid()}.tmp")
+    try:
+        temp_path.write_text(text, encoding="utf-8")
+        os.replace(temp_path, heartbeat_path)
+    except OSError:
+        heartbeat_path.write_text(text, encoding="utf-8")
+    finally:
+        try:
+            temp_path.unlink()
+        except OSError:
+            pass
+
+
+def _sleep_with_kill_switch(seconds: float, kill_switch_path: str | Path, *, check_interval_seconds: float = 5.0) -> bool:
+    deadline = time.monotonic() + max(0.0, float(seconds))
+    while True:
+        if _kill_switch_active(kill_switch_path):
+            return True
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        time.sleep(min(max(0.1, float(check_interval_seconds)), remaining))
+
+
+def _mt5_account_fields(mt5_module: Any) -> dict[str, Any]:
+    account = mt5_module.account_info()
+    if account is None:
+        return {}
+    return {
+        "account_login": getattr(account, "login", None),
+        "account_server": getattr(account, "server", None),
+        "account_currency": getattr(account, "currency", None),
+    }
+
+
+def _send_kill_switch_event(
+    audit_journal_path: str | Path,
+    notifier,
+    *,
+    kill_switch_path: str | Path,
+    stage: str,
+) -> None:
+    detail = _kill_switch_detail(kill_switch_path)
+    event = NotificationEvent(
+        kind="kill_switch_activated",
+        mode="LIVE",
+        title="Kill switch active",
+        severity="warning",
+        status="kill_switch",
+        occurred_at_utc=datetime.now(timezone.utc).isoformat(),
+        fields={"kill_switch_path": str(kill_switch_path), "stage": stage},
+        message=detail,
+    )
+    delivery = deliver_notification_best_effort(notifier, event)
+    append_audit_event(
+        audit_journal_path,
+        "kill_switch_activated",
+        kill_switch_path=str(kill_switch_path),
+        stage=stage,
+        message=detail,
+        notification=format_notification_message(event),
+        notification_event=event.to_dict(),
+        notification_delivery=None if delivery is None else delivery.to_dict(),
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="config.local.json", help="Ignored local config JSON path.")
     parser.add_argument("--cycles", type=int, default=1, help="Finite live-send cycles to execute.")
     parser.add_argument("--sleep-seconds", type=float, default=30.0, help="Delay between cycles when cycles > 1.")
+    parser.add_argument(
+        "--runtime-root",
+        default="",
+        help="Optional production runtime root. Overrides live state/journal to <root>/data/live.",
+    )
+    parser.add_argument(
+        "--kill-switch-path",
+        default="",
+        help="Optional kill switch path. Defaults to KILL_SWITCH beside the live state file.",
+    )
+    parser.add_argument(
+        "--heartbeat-path",
+        default="",
+        help=f"Optional heartbeat JSON path. Defaults to {DEFAULT_HEARTBEAT_NAME} beside the live state file.",
+    )
+    parser.add_argument(
+        "--allow-empty-runtime-state",
+        action="store_true",
+        help="Allow --runtime-root to start with an empty live state even when the config state file exists.",
+    )
     args = parser.parse_args()
 
-    settings = load_live_send_settings(args.config)
+    original_settings = load_live_send_settings(args.config)
+    settings = _settings_with_runtime_root(original_settings, args.runtime_root)
     validate_live_send_settings(settings)
+    if (
+        str(args.runtime_root).strip()
+        and not args.allow_empty_runtime_state
+        and _runtime_state_requires_migration(original_settings.executor.state_path, settings.executor.state_path)
+    ):
+        message = (
+            "Refusing to start with an empty runtime-root live state while the configured live state exists. "
+            f"Copy {original_settings.executor.state_path} to {settings.executor.state_path}, "
+            "or rerun with --allow-empty-runtime-state only if you intentionally want a clean production state."
+        )
+        print(message, file=sys.stderr)
+        append_audit_event(
+            settings.executor.journal_path,
+            "runtime_state_migration_required",
+            original_state_path=original_settings.executor.state_path,
+            runtime_state_path=settings.executor.state_path,
+            message=message,
+        )
+        return RUNTIME_STATE_MIGRATION_EXIT_CODE
+    kill_switch_path = (
+        Path(args.kill_switch_path)
+        if str(args.kill_switch_path).strip()
+        else _default_kill_switch_path(settings.executor.state_path)
+    )
+    heartbeat_path = (
+        Path(args.heartbeat_path)
+        if str(args.heartbeat_path).strip()
+        else _default_heartbeat_path(settings.executor.state_path)
+    )
+    notifier, telegram_warning = telegram_notifier_from_settings(DryRunSettings(local=settings.local, executor=settings.executor))
+    if telegram_warning:
+        append_audit_event(settings.executor.journal_path, telegram_warning)
+
+    requested_cycles = max(1, int(args.cycles))
+    sleep_seconds = float(args.sleep_seconds)
+    if _kill_switch_active(kill_switch_path):
+        _send_kill_switch_event(
+            settings.executor.journal_path,
+            notifier,
+            kill_switch_path=kill_switch_path,
+            stage="before_mt5_initialization",
+        )
+        _write_heartbeat(
+            heartbeat_path,
+            status="kill_switch",
+            requested_cycles=requested_cycles,
+            completed_cycles=0,
+            config_path=args.config,
+            state_path=settings.executor.state_path,
+            journal_path=settings.executor.journal_path,
+            kill_switch_path=str(kill_switch_path),
+            detail=_kill_switch_detail(kill_switch_path),
+        )
+        return KILL_SWITCH_EXIT_CODE
+
     runner_lock = LiveRunnerLock(_runner_lock_path(settings.executor.state_path))
     try:
         runner_lock.acquire()
@@ -154,16 +367,22 @@ def main() -> int:
         return 2
 
     try:
+        _write_heartbeat(
+            heartbeat_path,
+            status="starting",
+            requested_cycles=requested_cycles,
+            completed_cycles=0,
+            config_path=args.config,
+            state_path=settings.executor.state_path,
+            journal_path=settings.executor.journal_path,
+            kill_switch_path=str(kill_switch_path),
+        )
         import MetaTrader5 as mt5
 
         initialize_mt5_session(mt5, settings.local)
-        notifier, telegram_warning = telegram_notifier_from_settings(DryRunSettings(local=settings.local, executor=settings.executor))
-        if telegram_warning:
-            append_audit_event(settings.executor.journal_path, telegram_warning)
+        account_fields = _mt5_account_fields(mt5)
 
         state = load_live_state(settings.executor.state_path)
-        requested_cycles = max(1, int(args.cycles))
-        sleep_seconds = float(args.sleep_seconds)
         started_at = datetime.now(timezone.utc)
         completed_cycles = 0
         return_code = 0
@@ -180,8 +399,32 @@ def main() -> int:
             state_path=settings.executor.state_path,
             journal_path=settings.executor.journal_path,
         )
+        _write_heartbeat(
+            heartbeat_path,
+            status="running",
+            requested_cycles=requested_cycles,
+            completed_cycles=completed_cycles,
+            started_at_utc=started_at.isoformat(),
+            sleep_seconds=sleep_seconds,
+            config_path=args.config,
+            state_path=settings.executor.state_path,
+            journal_path=settings.executor.journal_path,
+            kill_switch_path=str(kill_switch_path),
+            **account_fields,
+        )
         try:
             for cycle_index in range(requested_cycles):
+                if _kill_switch_active(kill_switch_path):
+                    stop_status = "kill_switch"
+                    stop_detail = _kill_switch_detail(kill_switch_path)
+                    return_code = KILL_SWITCH_EXIT_CODE
+                    _send_kill_switch_event(
+                        settings.executor.journal_path,
+                        notifier,
+                        kill_switch_path=kill_switch_path,
+                        stage="before_live_cycle",
+                    )
+                    break
                 result = run_live_send_cycle(mt5, config=settings.executor, state=state, notifier=notifier)
                 state = result.state
                 completed_cycles = cycle_index + 1
@@ -194,8 +437,39 @@ def main() -> int:
                     setups_rejected=result.setups_rejected,
                     setups_blocked=result.setups_blocked,
                 )
+                _write_heartbeat(
+                    heartbeat_path,
+                    status="running",
+                    requested_cycles=requested_cycles,
+                    completed_cycles=completed_cycles,
+                    started_at_utc=started_at.isoformat(),
+                    last_cycle={
+                        "cycle_index": cycle_index,
+                        "completed_at_utc": datetime.now(timezone.utc).isoformat(),
+                        "frames_processed": result.frames_processed,
+                        "orders_sent": result.orders_sent,
+                        "setups_rejected": result.setups_rejected,
+                        "setups_blocked": result.setups_blocked,
+                    },
+                    sleep_seconds=sleep_seconds,
+                    config_path=args.config,
+                    state_path=settings.executor.state_path,
+                    journal_path=settings.executor.journal_path,
+                    kill_switch_path=str(kill_switch_path),
+                    **account_fields,
+                )
                 if cycle_index + 1 < requested_cycles:
-                    time.sleep(sleep_seconds)
+                    if _sleep_with_kill_switch(sleep_seconds, kill_switch_path):
+                        stop_status = "kill_switch"
+                        stop_detail = _kill_switch_detail(kill_switch_path)
+                        return_code = KILL_SWITCH_EXIT_CODE
+                        _send_kill_switch_event(
+                            settings.executor.journal_path,
+                            notifier,
+                            kill_switch_path=kill_switch_path,
+                            stage="between_live_cycles",
+                        )
+                        break
         except KeyboardInterrupt:
             stop_status = "stopped_by_user"
             return_code = 130
@@ -216,6 +490,22 @@ def main() -> int:
             finally:
                 stopped_at = datetime.now(timezone.utc)
                 runtime_seconds = max(0.0, (stopped_at - started_at).total_seconds())
+                _write_heartbeat(
+                    heartbeat_path,
+                    status=stop_status,
+                    requested_cycles=requested_cycles,
+                    completed_cycles=completed_cycles,
+                    started_at_utc=started_at.isoformat(),
+                    stopped_at_utc=stopped_at.isoformat(),
+                    runtime_seconds=runtime_seconds,
+                    state_saved=state_saved,
+                    config_path=args.config,
+                    state_path=settings.executor.state_path,
+                    journal_path=settings.executor.journal_path,
+                    kill_switch_path=str(kill_switch_path),
+                    detail=stop_detail,
+                    **account_fields,
+                )
                 _send_runner_lifecycle_event(
                     settings.executor.journal_path,
                     notifier,

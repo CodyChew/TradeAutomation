@@ -213,6 +213,11 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             "The process command line and newest cycle summary show whether the intended runner is still checking the intended config.",
         ),
         (
+            "Production proof",
+            "heartbeat + logs + status command",
+            "The Phase 2 wrapper writes a heartbeat JSON file, timestamped logs, and a status packet that can be pasted for review.",
+        ),
+        (
             "Telegram role",
             "reporting only",
             "Telegram confirms what the runner attempted to report. It is not broker truth and should be checked against MT5/state/journal.",
@@ -230,6 +235,9 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             [
                 "Confirm MT5 is logged into the intended demo/real account and server.",
                 "Confirm config.local.json intentionally enables or disables live_send_enabled for this account.",
+                "Confirm the production runtime root is correct if using C:\\TradeAutomationRuntime.",
+                "Copy existing live state/journal before switching runtime roots, or explicitly choose a clean state after broker verification.",
+                "Confirm KILL_SWITCH exists while staging and is cleared only when new cycles should run.",
                 "Check there is no second LPFS runner already active against the same state file.",
                 "Inspect open MT5 LPFS orders/positions and compare against lpfs_live_state.json if resuming.",
             ],
@@ -238,6 +246,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             "While running",
             [
                 "Monitor RUNNER STARTED / STOPPED cards and the latest cycle summary.",
+                "Monitor lpfs_live_heartbeat.json and the latest timestamped log when using the Phase 2 wrapper.",
                 "Use MT5 orders_get / positions_get as the source of truth for open exposure.",
                 "Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled.",
                 "Treat spread waits as retryable until entry touch or bar-count expiry makes the setup invalid.",
@@ -364,6 +373,22 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             r".\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py --config config.local.json --cycles 100000000 --sleep-seconds 30",
         ),
         (
+            "Set production kill switch",
+            r'.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason "operator stop"',
+        ),
+        (
+            "Clear production kill switch",
+            r".\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Clear",
+        ),
+        (
+            "Start production watchdog",
+            r".\scripts\run_lpfs_live_forever.ps1 -ConfigPath config.local.json -RuntimeRoot C:\TradeAutomationRuntime -Cycles 100000000 -SleepSeconds 30",
+        ),
+        (
+            "Pasteable production status",
+            r".\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 20 -LogLines 40",
+        ),
+        (
             "Print recent trade summary",
             r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5",
         ),
@@ -390,7 +415,22 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         (
             "Live runner",
             "scripts/run_lp_force_strike_live_executor.py",
-            "CLI wrapper for cycle count and sleep interval. It does not run as a service by itself.",
+            "CLI wrapper for cycle count, sleep interval, runtime-root override, kill switch, heartbeat, lock, and lifecycle notifications.",
+        ),
+        (
+            "Watchdog launcher",
+            "scripts/run_lpfs_live_forever.ps1",
+            "Production PowerShell wrapper that logs stdout/stderr and restarts after unexpected crashes while respecting KILL_SWITCH.",
+        ),
+        (
+            "Status command",
+            "scripts/Get-LpfsLiveStatus.ps1",
+            "Pasteable operator snapshot for process, heartbeat, state, journal, and latest log.",
+        ),
+        (
+            "Kill switch helper",
+            "scripts/Set-LpfsKillSwitch.ps1",
+            "Creates or clears the runtime KILL_SWITCH file used to stop new live cycles.",
         ),
         (
             "Live engine",
@@ -405,7 +445,12 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         (
             "Phase 2 plan",
             "docs/phase2_production_hardening.md",
-            "Production-hardening plan for launcher, kill switch, watchdog, runtime folder, Task Scheduler, and VPS.",
+            "Implemented local production-hardening runbook for launcher, kill switch, watchdog, runtime folder, Task Scheduler, and VPS readiness.",
+        ),
+        (
+            "Lightsail runbook",
+            "docs/lpfs_lightsail_vps_runbook.md",
+            "Amazon Lightsail Windows VPS setup, security, cost sizing, Task Scheduler, and liaison packet.",
         ),
         (
             "State file",
@@ -541,7 +586,8 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         {_step_cards([
             ("Limit", "Not a daemon", "The runner only keeps checking when started with multiple cycles or wrapped by an external scheduler/process manager."),
             ("Protection", "Single-runner lock", "A lock file beside the live state blocks a second live runner from starting against the same state."),
-            ("Next phase", "Production wrapper", "Phase 2 should add a launcher, kill switch, watchdog, logs, heartbeat, Task Scheduler rehearsal, and then VPS hosting."),
+            ("Phase 2", "Production wrapper", "The wrapper adds a launcher, kill switch, watchdog, logs, heartbeat, runtime-root override, Task Scheduler rehearsal path, and Lightsail runbook."),
+            ("Protection", "Kill switch", "KILL_SWITCH stops new live cycles before MT5 initialization, before each live cycle, and during sleeps. It does not close positions or delete pending orders by itself."),
             ("Limit", "No spread auto-cancel", "Spread is a send gate. Once an order is pending, spread widening does not cancel it and does not have a dedicated Telegram alert yet."),
             ("Limit", "Manual deletion is respected", "Deleting a pending order manually does not automatically re-arm that same signal because the signal key stays processed."),
             ("Limit", "Close reason depends on broker history", "TP/SL classification uses MT5 deal/order history. Ambiguous broker comments may fall back to a less specific close alert."),

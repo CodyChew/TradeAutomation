@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-01 local time after the V17 LP-FS proximity tightening
-study, live state OneDrive save hardening, and dashboard/handoff refresh.
+Last updated: 2026-05-03 local time after adding the Phase 2 local production
+wrapper and Amazon Lightsail VPS runbook.
 
 ## Purpose
 
@@ -896,6 +896,8 @@ written.
   `src/lp_force_strike_strategy_lab/live_executor.py`.
 - Runner:
   `../../scripts/run_lp_force_strike_live_executor.py --config config.local.json`.
+  For Phase 2 production operation it also supports `--runtime-root`,
+  `--kill-switch-path`, and `--heartbeat-path`.
 - Required config:
   `live_send.execution_mode="LIVE_SEND"`,
   `live_send.live_send_enabled=true`, and
@@ -971,6 +973,20 @@ written.
 - The live runner now sends best-effort Telegram process notifications on
   start and stop. The stop alert is emitted for completed cycle runs, Ctrl+C,
   and uncaught runtime errors after state save is attempted.
+- Phase 2 local production controls are implemented:
+  `../../scripts/run_lpfs_live_forever.ps1`,
+  `../../scripts/Set-LpfsKillSwitch.ps1`, and
+  `../../scripts/Get-LpfsLiveStatus.ps1`.
+- The default production runtime root is `C:\TradeAutomationRuntime`, with
+  state, journal, heartbeat, kill switch, and logs under
+  `C:\TradeAutomationRuntime\data\live`.
+- The kill switch is checked before MT5 initialization, before each live cycle,
+  and during sleeps between cycles. It stops new cycles but does not close open
+  positions or delete broker pending orders by itself.
+- Runtime-root migration is fail-closed by default: when the old configured
+  live state exists and the new runtime-root state is missing, the runner exits
+  until state is copied or a clean state is explicitly allowed after
+  broker-state verification.
 
 Expected next scope:
 
@@ -985,10 +1001,9 @@ Expected next scope:
    re-arming the current latest-candle setups.
 4. Keep low-risk live validation running long enough to collect real broker
    lifecycle evidence before scaling risk or changing strategy rules.
-5. Implement Phase 2 production hardening from
-   `../../docs/phase2_production_hardening.md`: launcher, kill switch,
-   watchdog, non-OneDrive runtime folder, heartbeat, Task Scheduler rehearsal,
-   then Windows VPS.
+5. Rehearse the implemented Phase 2 production wrapper locally from
+   `../../docs/phase2_production_hardening.md`, then move the same setup to
+   Amazon Lightsail using `../../docs/lpfs_lightsail_vps_runbook.md`.
 6. If stop robustness becomes a priority, run a focused spread-buffer
    validation by timeframe and symbol group. Do not change the live stop
    placement from no-buffer based on V16 alone.
@@ -1008,17 +1023,26 @@ Canonical plan:
 ../../docs/phase2_production_hardening.md
 ```
 
-Recommended path:
+Implemented controls:
 
-1. Build and test a local PowerShell production launcher.
-2. Add a file-based kill switch.
-3. Add a watchdog wrapper that restarts after unexpected crashes but respects
-   the kill switch.
-4. Write stdout/stderr to timestamped logs.
-5. Move production runtime state and journal away from OneDrive.
-6. Add a heartbeat file updated every cycle.
-7. Rehearse Task Scheduler startup locally.
-8. Move to a Windows VPS after local rehearsal passes.
+1. `../../scripts/run_lpfs_live_forever.ps1`: PowerShell watchdog launcher.
+2. `../../scripts/Set-LpfsKillSwitch.ps1`: file-based kill switch helper.
+3. `../../scripts/Get-LpfsLiveStatus.ps1`: pasteable status packet.
+4. Timestamped stdout/stderr logs under the production runtime root.
+5. `--runtime-root` support so production state and journal can live outside
+   OneDrive.
+6. Heartbeat JSON updated at start, every completed cycle, and shutdown.
+7. Kill-switch checks before MT5 initialization, before live cycles, and during
+   sleeps.
+8. Amazon Lightsail runbook at `../../docs/lpfs_lightsail_vps_runbook.md`.
+
+Recommended next path:
+
+1. Rehearse the wrapper locally with `C:\TradeAutomationRuntime`.
+2. Verify kill-switch stop, heartbeat, logs, status output, and restart
+   behavior.
+3. Rehearse Task Scheduler startup locally.
+4. Move to Amazon Lightsail after local rehearsal passes.
 
 Acceptance criteria include single-runner protection, no duplicate orders after
 restart, kill-switch stop before order send, state/journal/log survival across

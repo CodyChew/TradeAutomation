@@ -168,6 +168,14 @@ It adds:
 - MT5 account login/server validation before any cycle;
 - a single-runner lock beside the live state file. A second runner exits
   fail-closed before MT5 initialization;
+- operational path overrides for Phase 2 production use:
+  `--runtime-root`, `--kill-switch-path`, and `--heartbeat-path`;
+- a file-based kill switch that is checked before MT5 initialization, before
+  each live cycle, and during sleeps between cycles. It stops new live cycles
+  but does not close positions or delete pending broker orders by itself;
+- heartbeat JSON updates at startup, every completed cycle, and shutdown, so
+  operators can inspect process status without treating Telegram as broker
+  truth;
 - dynamic spread gate: current spread must be no more than
   `live_send.max_spread_risk_fraction` of entry-to-stop distance, default
   `0.10`;
@@ -210,6 +218,8 @@ It adds:
   when the program starts, exits by completed cycles or Ctrl+C, or stops after
   an uncaught runtime error.
 
-Telegram is reporting only. It must not decide whether a trade is valid.
+Telegram, heartbeat, logs, and the status command are reporting only. They must
+not decide whether a trade is valid. MT5 broker state, local state, and journal
+rows remain the operational truth.
 
 Operational setup for the adapter is documented in `docs/dry_run_executor.md`.
