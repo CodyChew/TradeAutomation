@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Signal study combining LP level traps with raw Force Strike patterns."
 requires-python = ">=3.11"
 dependencies = [
+  "certifi",
   "pandas"
 ]
 

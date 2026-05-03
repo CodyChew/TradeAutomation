@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 import json
 import os
+import ssl
 from typing import Any, Literal, Protocol
 import urllib.error
 import urllib.request
@@ -156,8 +157,9 @@ class TelegramHttpClient(Protocol):
 class UrllibTelegramHttpClient:
     """Small stdlib HTTP client for Telegram Bot API calls."""
 
-    def __init__(self, opener: Any | None = None) -> None:
-        self._opener = urllib.request.urlopen if opener is None else opener
+    def __init__(self, opener: Any | None = None, ssl_context: ssl.SSLContext | None = None) -> None:
+        self._opener = opener
+        self._ssl_context = ssl_context if ssl_context is not None else _telegram_ssl_context()
 
     def post_json(self, url: str, payload: dict[str, Any], *, timeout_seconds: float) -> dict[str, Any]:
         data = json.dumps(payload).encode("utf-8")
@@ -168,7 +170,15 @@ class UrllibTelegramHttpClient:
             method="POST",
         )
         try:
-            with self._opener(request, timeout=timeout_seconds) as response:
+            if self._opener is None:
+                response_handle = urllib.request.urlopen(
+                    request,
+                    timeout=timeout_seconds,
+                    context=self._ssl_context,
+                )
+            else:
+                response_handle = self._opener(request, timeout=timeout_seconds)
+            with response_handle as response:
                 raw = response.read().decode("utf-8")
                 decoded = json.loads(raw or "{}")
         except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
@@ -176,6 +186,16 @@ class UrllibTelegramHttpClient:
         if not isinstance(decoded, dict):
             raise TelegramApiError("Telegram response must be a JSON object.")
         return decoded
+
+
+def _telegram_ssl_context() -> ssl.SSLContext:
+    """Build a deterministic CA context for Telegram HTTPS calls."""
+
+    try:
+        import certifi  # type: ignore[import-not-found]
+    except ImportError:
+        return ssl.create_default_context()
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 class TelegramNotifier:

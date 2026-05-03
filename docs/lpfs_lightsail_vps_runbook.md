@@ -125,11 +125,12 @@ On the Lightsail instance:
    ```powershell
    py -3.12 -m venv venv
    .\venv\Scripts\python -m pip install --upgrade pip
-   .\venv\Scripts\python -m pip install pandas MetaTrader5 coverage[toml]
+   .\venv\Scripts\python -m pip install pandas MetaTrader5 certifi coverage[toml]
    ```
 
-   `coverage[toml]` is needed for verification. For pure live runtime, pandas
-   and MetaTrader5 are the key external packages.
+   `coverage[toml]` is needed for verification. `certifi` provides a stable CA
+   bundle for Telegram HTTPS delivery from Windows Server. For pure live
+   runtime, pandas, MetaTrader5, and certifi are the key external packages.
 
 8. Create local config.
 

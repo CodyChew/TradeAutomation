@@ -5,6 +5,7 @@ import sys
 import unittest
 import urllib.error
 from pathlib import Path
+from unittest import mock
 
 import pandas as pd
 
@@ -887,6 +888,25 @@ class NotificationTests(unittest.TestCase):
                 {},
                 timeout_seconds=5,
             )
+
+    def test_urllib_telegram_client_uses_ssl_context_for_default_opener(self) -> None:
+        calls = []
+
+        def fake_urlopen(request, *, timeout, context):
+            calls.append((request, timeout, context))
+            return FakeResponse(b'{"ok": true}')
+
+        ssl_context = object()
+        with mock.patch.object(notification_module.urllib.request, "urlopen", fake_urlopen):
+            response = UrllibTelegramHttpClient(ssl_context=ssl_context).post_json(
+                "https://example.test/send",
+                {"text": "hello"},
+                timeout_seconds=7,
+            )
+
+        self.assertEqual(response, {"ok": True})
+        self.assertEqual(calls[0][1], 7)
+        self.assertIs(calls[0][2], ssl_context)
 
 
 if __name__ == "__main__":
