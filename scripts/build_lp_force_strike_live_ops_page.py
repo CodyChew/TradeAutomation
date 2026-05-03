@@ -600,6 +600,7 @@ Get-CimInstance Win32_Process |
       <h2 id="spread-policy-title">Spread Policy</h2>
       <p class="callout"><strong>Current behavior:</strong> a setup blocked because spread is too wide stays retryable. The runner records one WAITING alert, does not mark the signal processed, and can place the pending order on a future cycle if spread improves while the setup is still valid.</p>
       <p class="callout"><strong>Baseline alignment:</strong> this keeps the live path closer to V15 because V15 assumes the 50% pullback pending idea can live through the fixed 6-bar entry window. The setup is still rejected permanently if entry already touched or the pending window expired.</p>
+      <p class="callout warning"><strong>Weekly-open observation:</strong> first live VPS market-open monitoring showed multiple WAITING cards where spread was far above the 10% risk-distance limit, followed by at least one SKIPPED card after entry was already touched. This is expected conservative live behavior, but it can make forward execution differ from the historical V15 baseline if it persists outside poor-liquidity windows.</p>
       <div class="ops-grid">
         {_fact_grid([
             ("Check cadence", "Once per live cycle", "Default sleep is 30 seconds only when the runner is started with cycles greater than one."),
@@ -609,6 +610,7 @@ Get-CimInstance Win32_Process |
             ("Order removal", "Expiry / fill / broker removal", "The pending order is kept until it fills, reaches expiry and is cancelled, or MT5 shows it was removed/rejected."),
             ("NZDCHF example", "11.5% vs 10.0%", "With the patched policy, this means wait. A future cycle can place the order if spread improves before entry touch or expiry."),
             ("Cycle summary", "setups_blocked", "Spread-only waits are counted separately from real rejected setups in the live cycle audit row."),
+            ("Evidence task", "Live gate attribution", "Before tuning the 10% gate, measure detected setups, placed orders, spread waits, later placements, entry-touch skips, expiries, and whether blocks cluster around weekly open."),
         ])}
       </div>
     </section>
@@ -684,6 +686,7 @@ Get-CimInstance Win32_Process |
             ("Phase 2", "Production wrapper", "The wrapper adds a launcher, kill switch, watchdog, logs, heartbeat, runtime-root override, Task Scheduler rehearsal path, and Lightsail runbook."),
             ("Protection", "Kill switch", "KILL_SWITCH stops new live cycles before MT5 initialization, before each live cycle, and during sleeps. It does not close positions or delete pending orders by itself."),
             ("Limit", "No spread auto-cancel", "Spread is a send gate. Once an order is pending, spread widening does not cancel it and does not have a dedicated Telegram alert yet."),
+            ("Limit", "Forward/backtest drift", "Live spread gates can skip setups that historical V15 would count. Treat this as an evidence question first, not an automatic reason to loosen execution rules."),
             ("Limit", "Manual deletion is respected", "Deleting a pending order manually does not automatically re-arm that same signal because the signal key stays processed."),
             ("Limit", "Close reason depends on broker history", "TP/SL classification uses MT5 deal/order history. Ambiguous broker comments may fall back to a less specific close alert."),
         ])}

@@ -494,6 +494,17 @@ Live-send adapter facts:
   processed, and can place later if spread improves before entry touch or
   expiry. The one old NZDCHF spread skip was cleaned from local live state
   explicitly instead of keeping compatibility code.
+- First Lightsail weekly-open observation: after market open, the runner
+  correctly reconciled the two old broker-missing pending orders out of local
+  state, then emitted multiple spread-too-wide WAITING cards and one
+  entry-already-touched SKIPPED card. This is expected conservative live
+  behavior around poor liquidity, but it can make forward execution differ from
+  V15 if it persists during normal liquid hours.
+- Next evidence task before any spread-rule change: build a live gate
+  attribution report from `lpfs_live_journal.jsonl` showing detected setups,
+  placed orders, spread waits, later placements after spread improved,
+  entry-touch skips, expiries, symbols/timeframes affected, and whether blocks
+  cluster around weekly open.
 - Once a pending order is placed, spread widening does not auto-cancel it and
   does not currently trigger a dedicated Telegram alert.
 - Research gap: the historical baseline includes candle-spread cost drag, but

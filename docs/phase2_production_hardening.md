@@ -219,6 +219,8 @@ Phase 2 is ready for VPS migration when these pass locally:
 - Telegram failure does not change trade validity.
 - Existing MT5 pending orders and positions are reconciled before any new
   signal send.
+- Weekly-open spread WAITING and entry-touch SKIPPED behavior is reviewed with
+  live gate attribution before changing the `0.10` spread/risk gate.
 
 ## Amazon Lightsail Next Step
 

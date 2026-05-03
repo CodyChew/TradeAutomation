@@ -197,6 +197,11 @@ It adds:
 - spread is a placement gate only. After a pending order is placed, spread
   widening does not auto-cancel it and does not currently emit a dedicated
   Telegram alert;
+- weekly-open spread behavior is expected to be more conservative than the
+  historical V15 baseline. If spread WAITING cards or entry-touch SKIPPED cards
+  cluster only around poor-liquidity windows, keep the current `0.10` gate. If
+  they persist during normal liquid hours, measure the divergence with a live
+  gate attribution report before changing the live rule;
 - V16 closed the first bid/ask execution-realism gap. The no-buffer bid/ask
   model did not materially weaken the V15 baseline, so current live stop
   placement remains unchanged. Spread buffers are still research-only until a

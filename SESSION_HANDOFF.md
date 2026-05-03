@@ -247,6 +247,19 @@ After an order is pending, spread widening does not auto-cancel it and does not
 currently trigger a dedicated Telegram alert. Reconciliation keeps the order
 until fill, expiry, or broker/user removal.
 
+First Lightsail weekly-open observation: the runner reconciled the two old
+LPFS pending orders out of local state because MT5 no longer showed them, then
+sent multiple spread-too-wide WAITING cards and one entry-already-touched
+SKIPPED card. Treat this as expected conservative live behavior at poor
+liquidity, but measure it before tuning because persistent spread blocks during
+normal hours would make forward execution diverge from V15.
+
+Next evidence task before changing the spread rule: build a live gate
+attribution report from `lpfs_live_journal.jsonl` showing detected setups,
+placed orders, spread waits, later placements after spread improves,
+entry-touch skips, expiries, affected symbols/timeframes, and whether blocks
+cluster around weekly open.
+
 V16 execution-realism result:
 
 - Report: `docs/v16.html`.
