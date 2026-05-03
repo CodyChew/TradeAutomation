@@ -411,6 +411,58 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         for label, command in commands
     )
 
+    vps_operator_commands = [
+        (
+            "Primary VPS status packet",
+            r"""cd C:\TradeAutomation
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60""",
+        ),
+        (
+            "Check the installed production task",
+            r"""Get-ScheduledTask -TaskName "LPFS_Live"
+Get-ScheduledTaskInfo -TaskName "LPFS_Live" """.strip(),
+        ),
+        (
+            "Check for live runner processes",
+            r"""Get-CimInstance Win32_Process |
+    Where-Object { $_.CommandLine -match "run_lp_force_strike_live_executor|run_lpfs_live_forever" } |
+    Select-Object ProcessId,CommandLine""",
+        ),
+        (
+            "Read heartbeat JSON",
+            r"""Get-Content C:\TradeAutomationRuntime\data\live\lpfs_live_heartbeat.json -Raw |
+    ConvertFrom-Json |
+    ConvertTo-Json -Depth 20""",
+        ),
+        (
+            "Read latest wrapper log",
+            r"""$LatestLog = Get-ChildItem C:\TradeAutomationRuntime\data\live\logs -Filter "lpfs_live_*.log" |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+Get-Content $LatestLog.FullName -Tail 80""",
+        ),
+        (
+            "Pause new live cycles",
+            r'.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason "operator stop"',
+        ),
+        (
+            "Resume intentionally from paused VPS state",
+            r"""Remove-Item "C:\TradeAutomationRuntime\data\live\KILL_SWITCH" -ErrorAction SilentlyContinue
+Start-ScheduledTask -TaskName "LPFS_Live"
+Start-Sleep -Seconds 60
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60""",
+        ),
+    ]
+    vps_operator_command_html = "\n".join(
+        f"""
+        <div class="command-row">
+          <strong>{_escape(label)}</strong>
+          <code>{_escape(command)}</code>
+        </div>
+        """
+        for label, command in vps_operator_commands
+    )
+
     file_cards = [
         (
             "Live runner",
@@ -491,6 +543,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
           ("#reconciliation-gates", "Reconcile"),
           ("#pending-expiry", "Expiry"),
           ("#telegram", "Telegram"),
+          ("#vps-operator", "VPS"),
           ("#commands", "Commands"),
           ("#limits", "Limits"),
           ("#files", "Files"),
@@ -570,6 +623,25 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         ])}
       </div>
       <p class="callout">Telegram delivery is best effort. A failed Telegram send must never validate or invalidate a trade. The journal remains the durable audit record.</p>
+    </section>
+
+    <section id="vps-operator" aria-labelledby="vps-operator-title">
+      <h2 id="vps-operator-title">VPS Operator Quick Reference</h2>
+      <p class="callout warning"><strong>Current installed VPS state:</strong> final task <code>LPFS_Live</code> is installed and ready, the kill switch is active, no runner process should be active, and the VPS should show two tracked LPFS pending orders with zero LPFS active positions until go-live is deliberately started.</p>
+      <div class="ops-grid">
+        {_fact_grid([
+            ("Code path", "C:\\TradeAutomation", "Repository clone used by the Lightsail production task."),
+            ("Runtime root", "C:\\TradeAutomationRuntime", "State, journal, heartbeat, kill switch, and logs live outside OneDrive."),
+            ("Scheduled task", "LPFS_Live", "At-logon task that starts the production wrapper with 100000000 cycles and 30-second cadence."),
+            ("Safe paused state", "KILL_SWITCH exists", "Task can be installed and ready while live cycles are blocked."),
+            ("Broker truth", "MT5 orders/positions", "Use MT5 as the source of truth for open exposure; Telegram is an alert channel."),
+            ("Codex packet", "Get-LpfsLiveStatus", "Paste status, MT5 screenshots, and Telegram alert context when asking for inspection."),
+        ])}
+      </div>
+      <p class="callout">Do not run the local PC runner and the VPS runner at the same time. After RDP review, disconnect instead of signing out so the interactive MT5 session stays open.</p>
+      <div class="command-list">
+        {vps_operator_command_html}
+      </div>
     </section>
 
     <section id="commands" aria-labelledby="commands-title">

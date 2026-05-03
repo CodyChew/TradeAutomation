@@ -471,7 +471,7 @@
     </nav>
 
     <nav class="report-nav" aria-label="Report sections">
-      <a href="#proof">Proof</a><a href="#operator-checklist">Checklist</a><a href="#send-gates">Send Gates</a><a href="#reconciliation-gates">Reconcile</a><a href="#pending-expiry">Expiry</a><a href="#telegram">Telegram</a><a href="#commands">Commands</a><a href="#limits">Limits</a><a href="#files">Files</a>
+      <a href="#proof">Proof</a><a href="#operator-checklist">Checklist</a><a href="#send-gates">Send Gates</a><a href="#reconciliation-gates">Reconcile</a><a href="#pending-expiry">Expiry</a><a href="#telegram">Telegram</a><a href="#vps-operator">VPS</a><a href="#commands">Commands</a><a href="#limits">Limits</a><a href="#files">Files</a>
     </nav>
 
   </header>
@@ -739,6 +739,112 @@
 
       </div>
       <p class="callout">Telegram delivery is best effort. A failed Telegram send must never validate or invalidate a trade. The journal remains the durable audit record.</p>
+    </section>
+
+    <section id="vps-operator" aria-labelledby="vps-operator-title">
+      <h2 id="vps-operator-title">VPS Operator Quick Reference</h2>
+      <p class="callout warning"><strong>Current installed VPS state:</strong> final task <code>LPFS_Live</code> is installed and ready, the kill switch is active, no runner process should be active, and the VPS should show two tracked LPFS pending orders with zero LPFS active positions until go-live is deliberately started.</p>
+      <div class="ops-grid">
+
+        <article class="ops-fact">
+          <span>Code path</span>
+          <strong>C:\TradeAutomation</strong>
+          <p>Repository clone used by the Lightsail production task.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Runtime root</span>
+          <strong>C:\TradeAutomationRuntime</strong>
+          <p>State, journal, heartbeat, kill switch, and logs live outside OneDrive.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Scheduled task</span>
+          <strong>LPFS_Live</strong>
+          <p>At-logon task that starts the production wrapper with 100000000 cycles and 30-second cadence.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Safe paused state</span>
+          <strong>KILL_SWITCH exists</strong>
+          <p>Task can be installed and ready while live cycles are blocked.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Broker truth</span>
+          <strong>MT5 orders/positions</strong>
+          <p>Use MT5 as the source of truth for open exposure; Telegram is an alert channel.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Codex packet</span>
+          <strong>Get-LpfsLiveStatus</strong>
+          <p>Paste status, MT5 screenshots, and Telegram alert context when asking for inspection.</p>
+        </article>
+
+      </div>
+      <p class="callout">Do not run the local PC runner and the VPS runner at the same time. After RDP review, disconnect instead of signing out so the interactive MT5 session stays open.</p>
+      <div class="command-list">
+
+        <div class="command-row">
+          <strong>Primary VPS status packet</strong>
+          <code>cd C:\TradeAutomation
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Check the installed production task</strong>
+          <code>Get-ScheduledTask -TaskName &quot;LPFS_Live&quot;
+Get-ScheduledTaskInfo -TaskName &quot;LPFS_Live&quot;</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Check for live runner processes</strong>
+          <code>Get-CimInstance Win32_Process |
+    Where-Object { $_.CommandLine -match &quot;run_lp_force_strike_live_executor|run_lpfs_live_forever&quot; } |
+    Select-Object ProcessId,CommandLine</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Read heartbeat JSON</strong>
+          <code>Get-Content C:\TradeAutomationRuntime\data\live\lpfs_live_heartbeat.json -Raw |
+    ConvertFrom-Json |
+    ConvertTo-Json -Depth 20</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Read latest wrapper log</strong>
+          <code>$LatestLog = Get-ChildItem C:\TradeAutomationRuntime\data\live\logs -Filter &quot;lpfs_live_*.log&quot; |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+Get-Content $LatestLog.FullName -Tail 80</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Pause new live cycles</strong>
+          <code>.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason &quot;operator stop&quot;</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Resume intentionally from paused VPS state</strong>
+          <code>Remove-Item &quot;C:\TradeAutomationRuntime\data\live\KILL_SWITCH&quot; -ErrorAction SilentlyContinue
+Start-ScheduledTask -TaskName &quot;LPFS_Live&quot;
+Start-Sleep -Seconds 60
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60</code>
+        </div>
+
+      </div>
     </section>
 
     <section id="commands" aria-labelledby="commands-title">
