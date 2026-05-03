@@ -52,6 +52,39 @@ The MT5 pending request uses `ORDER_TIME_SPECIFIED` with extra padding after
 that boundary: 10 calendar days for H4/H8/H12, 14 days for D1, and 21 days for
 W1. This broker timestamp is not the strategy expiry; it is a fail-safe.
 
+## Default Live Market Recovery
+
+The historical baseline assumes the pending pullback order exists after the
+signal candle and can fill during the next six actual bars. Live trading can be
+more conservative when spread is too wide at first check: the runner may wait,
+then later discover the entry traded before the pending order could be placed.
+
+Current live default:
+
+- `live_send.market_recovery_mode="better_than_entry_only"`;
+- rollback flag: `live_send.market_recovery_mode="disabled"`;
+- `live_send.market_recovery_deviation_points=0` by default, so market recovery
+  does not silently accept worse slippage.
+
+If the planned entry was touched before placement, the live executor now
+attempts market recovery before final skip. It sends `TRADE_ACTION_DEAL` only
+when all of these are true:
+
+- long recovery uses current broker `ask` and requires `ask <= original_entry`;
+- short recovery uses current broker `bid` and requires `bid >= original_entry`;
+- the executable price is still on the valid side of the original Force Strike
+  structure stop;
+- the setup is still inside the 6 actual MT5-bar entry window;
+- the original structure stop has not traded after the signal;
+- the original 1R target has not traded after the signal;
+- spread is no more than `10%` of actual fill-to-stop risk.
+
+Market recovery keeps the original structure stop, recalculates TP to 1R from
+the actual market fill, and sizes volume from the actual fill-to-stop risk so
+the configured account-risk bucket remains aligned. This is a live execution
+enhancement only; it does not change signal generation or historical baseline
+reports.
+
 ## Risk Sizing
 
 The contract can size lots from account equity and symbol tick metadata:
@@ -99,9 +132,11 @@ The executor must reject before sending if any of these are true:
 - signal key already exists in the local/MT5 reconciliation state;
 - same-symbol stack is at or above the configured limit;
 - total strategy positions are at or above the configured limit;
-- entry is already marketable instead of a pending pullback;
+- entry is already marketable instead of a pending pullback for the normal
+  pending-order path;
 - live-send is starting late and MT5 bars since the signal candle show the
-  planned pullback entry was already touched before the order could be placed;
+  planned pullback entry was already touched before the order could be placed,
+  unless default market recovery passes every better-than-entry recovery gate;
 - pending price, stop, or target is inside broker stop/freeze distance;
 - timeframe has no configured risk bucket;
 - target risk is zero, negative, or above the configured per-trade cap;
@@ -183,9 +218,14 @@ It adds:
   block. It sends/logs a WAITING event once, does not mark the signal processed,
   and can place the order on a later cycle if spread improves before entry
   touch or expiry;
-- late-start missed-entry guard: after the signal candle, if the current or
-  later MT5 bars already traded through the planned limit entry, the setup is
-  rejected instead of placing a stale order;
+- late-start missed-entry recovery: after the signal candle, if the current or
+  later MT5 bars already traded through the planned limit entry, the runner
+  attempts default-on better-than-entry market recovery. It skips only when
+  recovery is disabled or ineligible;
+- market recovery uses `TRADE_ACTION_DEAL`, current ask for longs or current
+  bid for shorts, the original structure stop, a recalculated 1R TP from the
+  actual fill, actual fill-to-stop risk sizing, and
+  `live_send.market_recovery_deviation_points` for slippage control;
 - actual-bar expiry guard: after the signal candle, only real MT5 bars count
   toward `max_entry_wait_bars`. Weekend and holiday gaps do not consume the
   window. Once the first bar after the allowed wait appears, a still-pending

@@ -1,11 +1,27 @@
 # LPFS Amazon Lightsail VPS Runbook
 
-Last updated: 2026-05-03.
+Last updated: 2026-05-04.
 
 This runbook moves the existing Python + MT5 live runner to Amazon Lightsail
 without rewriting strategy logic. The exact strategy behavior remains owned by
 the Python runner and MT5 terminal; Lightsail only supplies an always-on
 Windows host.
+
+## Current Live Environment
+
+The live production environment is the Amazon Lightsail Windows VPS, not the
+local OneDrive workspace.
+
+- VPS repo path: `C:\TradeAutomation`.
+- VPS runtime root: `C:\TradeAutomationRuntime`.
+- VPS scheduled task: `LPFS_Live`.
+- VPS MT5 terminal: FTMO Global Markets MT5 terminal attached through the local
+  MetaTrader5 Python package.
+
+Future live-operation checks, deployment verification, and incident debugging
+should be performed from the VPS first. The local repo remains the development
+workspace unless changes are explicitly pushed/pulled to the VPS and
+`LPFS_Live` is intentionally restarted.
 
 Official references:
 
@@ -317,6 +333,29 @@ After any resume, verify with the status packet, MT5 open orders/positions, and
 Telegram runner lifecycle cards. Telegram confirms notifications only; MT5 is
 the broker source of truth for orders and positions.
 
+Market-recovery operator note:
+
+- default live config is `live_send.market_recovery_mode="better_than_entry_only"`;
+- if a pending entry was touched before placement, the runner may send a
+  `MARKET RECOVERY` market order instead of a late pending order;
+- long recovery requires current ask at or below the original entry; short
+  recovery requires current bid at or above the original entry;
+- the original structure stop is kept, TP is recalculated to 1R from the actual
+  fill, and spread must still be no more than 10% of actual fill-to-stop risk;
+- `WAITING` can mean pending spread wait or market-recovery spread wait. Check
+  the Telegram reason and JSONL `notification_event.fields`;
+- `SKIPPED` after a missed entry means recovery was disabled or one of the
+  recovery gates failed, such as worse current price, stop/target already
+  traded, expired 6-bar window, or broker rejection;
+- rollback is local config only: set `live_send.market_recovery_mode` to
+  `"disabled"` and restart the runner intentionally.
+
+Deployment note: market recovery was verified locally on 2026-05-04 with the
+focused live executor/notification tests, full LPFS discovery, and core
+coverage at 100.00%. The VPS must pull/update the repo and restart `LPFS_Live`
+before this behavior is active on the VPS; an already running process keeps the
+old code.
+
 If status shows suspicious duplicate runner entries, pause first and
 investigate afterward:
 
@@ -407,5 +446,7 @@ Do not use this migration to change:
 - spread threshold;
 - stop or target placement;
 - pending expiry behavior;
+- market-recovery rollback/default behavior without a documented operator
+  reason;
 - manual deletion semantics;
 - Telegram wording except for operational clarity.

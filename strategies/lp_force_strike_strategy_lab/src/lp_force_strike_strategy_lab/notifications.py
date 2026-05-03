@@ -22,6 +22,7 @@ NotificationKind = Literal[
     "order_check_passed",
     "order_check_failed",
     "order_sent",
+    "market_recovery_sent",
     "order_adopted",
     "order_rejected",
     "pending_expired",
@@ -46,6 +47,7 @@ NOTIFICATION_KINDS: tuple[str, ...] = (
     "order_check_passed",
     "order_check_failed",
     "order_sent",
+    "market_recovery_sent",
     "order_adopted",
     "order_rejected",
     "pending_expired",
@@ -277,6 +279,7 @@ def format_notification_message(event: NotificationEvent, *, max_field_value_len
         "setup_rejected",
         "order_check_failed",
         "order_sent",
+        "market_recovery_sent",
         "order_adopted",
         "order_rejected",
         "pending_expired",
@@ -439,7 +442,7 @@ def _format_dry_run_message(event: NotificationEvent, *, max_field_value_length:
 def _format_live_trade_message(event: NotificationEvent, *, max_field_value_length: int) -> str:
     if event.kind in {"runner_started", "runner_stopped"}:
         return _format_runner_card(event, max_field_value_length=max_field_value_length)
-    if event.kind in {"order_sent", "order_adopted"}:
+    if event.kind in {"order_sent", "market_recovery_sent", "order_adopted"}:
         return _format_order_placed_card(event, max_field_value_length=max_field_value_length)
     if event.kind == "position_opened":
         return _format_position_opened_card(event, max_field_value_length=max_field_value_length)
@@ -493,6 +496,43 @@ def _format_runner_card(event: NotificationEvent, *, max_field_value_length: int
 
 
 def _format_order_placed_card(event: NotificationEvent, *, max_field_value_length: int) -> str:
+    if event.kind == "market_recovery_sent":
+        title = "MARKET RECOVERY"
+        order_type = _format_order_type(_field(event, "order_type", "MARKET"))
+        ticket = _field(event, "position_id") or _field(event, "order_ticket", "n/a")
+        lines = [
+            f"LPFS LIVE | {title}",
+            f"{_market_context(event)} | {order_type} #{ticket}",
+            (
+                f"Recovery: Original {_format_event_price(event, 'original_entry')} | "
+                f"Fill {_format_event_price(event, 'fill_price')}"
+            ),
+            (
+                f"Protection: SL {_format_event_price(event, 'stop_loss')} | "
+                f"TP {_format_event_price(event, 'take_profit')}"
+            ),
+            (
+                f"Risk: {format_trader_percent(_field(event, 'actual_risk_pct'), decimals=4)} actual / "
+                f"{format_trader_percent(_field(event, 'target_risk_pct'), decimals=4)} target | "
+                f"Size {format_trader_volume(_field(event, 'volume'))} lots"
+            ),
+        ]
+        spread = _field(event, "spread_risk_pct")
+        limit = _safe_float(_field(event, "max_spread_risk_fraction"))
+        if spread:
+            limit_text = "n/a" if limit is None else format_trader_percent(limit * 100.0, decimals=1)
+            lines.append(f"Spread: {format_trader_percent(spread, decimals=1)} of risk | Limit {limit_text}")
+        touch = _field(event, "first_touch_time_utc")
+        if touch:
+            high = _format_event_price(event, "first_touch_high")
+            low = _format_event_price(event, "first_touch_low")
+            lines.append(f"Touched: {format_trader_timestamp(touch)} | H/L {high}/{low}")
+        deal = _field(event, "deal_ticket")
+        if deal:
+            lines.append(f"Deal: #{deal}")
+        _append_signal_id(lines, event, max_field_value_length=max_field_value_length)
+        return "\n".join(lines)
+
     title = "ORDER ADOPTED" if event.kind == "order_adopted" else "ORDER PLACED"
     lines = [
         f"LPFS LIVE | {title}",
@@ -596,7 +636,12 @@ def _format_live_exception_card(event: NotificationEvent, *, max_field_value_len
         "kill_switch_activated": "KILL SWITCH",
     }
     title = title_by_kind.get(event.kind, "NOTICE")
-    if event.kind == "setup_rejected" and event.status in {"spread_too_wide", "spread_too_wide_before_send"}:
+    if event.kind == "setup_rejected" and event.status in {
+        "spread_too_wide",
+        "spread_too_wide_before_send",
+        "market_recovery_spread_too_wide",
+        "autotrading_disabled",
+    }:
         title = "WAITING"
     lines = [
         f"LPFS LIVE | {title}",
@@ -754,8 +799,12 @@ def _format_order_type(value: str) -> str:
 
 def _human_reason(event: NotificationEvent) -> str:
     if event.kind == "order_check_failed":
+        if event.fields.get("execution_type") == "market_recovery":
+            return "MT5 market recovery check failed"
         return "MT5 order check failed"
     if event.kind == "order_rejected":
+        if event.fields.get("execution_type") == "market_recovery":
+            return "Broker rejected the market recovery order"
         return "Broker rejected the pending order"
     if event.kind == "pending_expired":
         if event.status == "cancel_failed":
@@ -775,6 +824,13 @@ def _human_reason(event: NotificationEvent) -> str:
     mapping = {
         "spread_too_wide": "Spread is too wide",
         "spread_too_wide_before_send": "Spread widened before send",
+        "market_recovery_spread_too_wide": "Market recovery spread is too wide",
+        "market_recovery_not_better": "Current price is no longer better than the original entry",
+        "market_recovery_stop_touched": "Stop traded before market recovery",
+        "market_recovery_target_touched": "Target traded before market recovery",
+        "market_recovery_invalid_stop_distance": "Current price is not valid versus the stop",
+        "market_recovery_path_unavailable": "Could not verify recovery path",
+        "autotrading_disabled": "MT5 AutoTrading is disabled",
         "entry_already_touched_before_placement": "Entry was already touched before placement",
         "missed_entry_check_unavailable": "Could not verify whether entry was already touched",
         "entry_not_pending_pullback": "Entry is no longer a valid pending pullback",
@@ -787,6 +843,10 @@ def _human_reason(event: NotificationEvent) -> str:
 def _human_action(event: NotificationEvent) -> str:
     if event.kind == "setup_rejected" and event.status in {"spread_too_wide", "spread_too_wide_before_send"}:
         return "Will retry on future cycles until entry touch or expiry"
+    if event.kind == "setup_rejected" and event.status == "market_recovery_spread_too_wide":
+        return "Will retry market recovery while price remains better and inside the 6-bar window"
+    if event.kind == "setup_rejected" and event.status == "autotrading_disabled":
+        return "Enable Algo Trading in MT5; will retry until entry touch or expiry"
     if event.kind in {"setup_rejected", "order_check_failed", "order_rejected"}:
         return "No order placed"
     if event.kind == "pending_expired":
@@ -804,7 +864,20 @@ def _human_action(event: NotificationEvent) -> str:
 
 def _human_key_metric(event: NotificationEvent) -> str:
     if event.fields.get("first_touch_time_utc"):
-        return f"Touched: {format_trader_timestamp(event.fields.get('first_touch_time_utc'))}"
+        parts = [f"Touched: {format_trader_timestamp(event.fields.get('first_touch_time_utc'))}"]
+        entry = event.fields.get("original_entry", event.fields.get("entry"))
+        high = event.fields.get("first_touch_high")
+        low = event.fields.get("first_touch_low")
+        if entry not in (None, ""):
+            parts.append(f"Entry {_trim(format_trader_price(_market_symbol(event), entry, price_digits=event.fields.get('price_digits')), 32)}")
+        if high not in (None, "") or low not in (None, ""):
+            parts.append(
+                "H/L "
+                + _trim(format_trader_price(_market_symbol(event), high, price_digits=event.fields.get("price_digits")), 32)
+                + "/"
+                + _trim(format_trader_price(_market_symbol(event), low, price_digits=event.fields.get("price_digits")), 32)
+            )
+        return " | ".join(parts)
     spread = _safe_float(event.fields.get("spread_risk_fraction"))
     limit = _safe_float(event.fields.get("max_spread_risk_fraction"))
     if spread is not None:

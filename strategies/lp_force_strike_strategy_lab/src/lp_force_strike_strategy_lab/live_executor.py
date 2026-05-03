@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
 import json
+import math
 import os
 from pathlib import Path
 import time
+from types import SimpleNamespace
 from typing import Any, Iterable, Sequence
 
 import pandas as pd
@@ -40,6 +42,7 @@ from .execution_contract import (
     MT5MarketSnapshot,
     MT5OrderIntent,
     MT5SymbolExecutionSpec,
+    broker_backstop_expiration_time_utc,
     build_mt5_order_intent,
     signal_key_for_setup,
     setup_signal_time_utc,
@@ -56,6 +59,7 @@ from .notifications import (
 
 LIVE_SEND_ACK = "I_UNDERSTAND_THIS_SENDS_REAL_ORDERS"
 LIVE_SEND_MODE = "LIVE_SEND"
+TRADE_RETCODE_CLIENT_DISABLES_AT = 10027
 
 
 @dataclass(frozen=True)
@@ -81,6 +85,8 @@ class LiveSendExecutorConfig:
     max_bars_from_lp_break: int = 6
     max_entry_wait_bars: int = 6
     max_spread_risk_fraction: float = 0.10
+    market_recovery_mode: str = "better_than_entry_only"
+    market_recovery_deviation_points: int = 0
     history_lookback_days: int = 30
 
     def safe_dict(self) -> dict[str, Any]:
@@ -229,6 +235,35 @@ class MissedEntryCheck:
 
 
 @dataclass(frozen=True)
+class MarketRecoveryCheck:
+    """Whether a missed pending entry can be recovered with a live market order."""
+
+    checked: bool
+    recoverable: bool
+    status: str
+    original_entry: float
+    fill_price: float | None = None
+    stop_loss: float | None = None
+    original_take_profit: float | None = None
+    recalculated_take_profit: float | None = None
+    spread_risk_fraction: float | None = None
+    max_spread_risk_fraction: float | None = None
+    first_touch_time_utc: str | None = None
+    first_touch_high: float | None = None
+    first_touch_low: float | None = None
+    stop_touched_time_utc: str | None = None
+    stop_touched_high: float | None = None
+    stop_touched_low: float | None = None
+    target_touched_time_utc: str | None = None
+    target_touched_high: float | None = None
+    target_touched_low: float | None = None
+    detail: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class PendingBarExpiryCheck:
     """Actual-bar expiry state for a live pending order."""
 
@@ -331,6 +366,8 @@ def load_live_send_settings(path: str | Path = "config.local.json", *, env: dict
         max_bars_from_lp_break=int(live_payload.get("max_bars_from_lp_break", dry_executor.max_bars_from_lp_break)),
         max_entry_wait_bars=int(live_payload.get("max_entry_wait_bars", dry_executor.max_entry_wait_bars)),
         max_spread_risk_fraction=float(live_payload.get("max_spread_risk_fraction", 0.10)),
+        market_recovery_mode=str(live_payload.get("market_recovery_mode", "better_than_entry_only")),
+        market_recovery_deviation_points=int(live_payload.get("market_recovery_deviation_points", 0)),
         history_lookback_days=int(live_payload.get("history_lookback_days", 30)),
     )
     return LiveSendSettings(local=dry_settings.local, executor=executor)
@@ -353,6 +390,10 @@ def validate_live_send_settings(settings: LiveSendSettings) -> None:
         raise LocalConfigError("live_send.max_open_risk_pct must be positive.")
     if not (0 < config.max_spread_risk_fraction <= 1):
         raise LocalConfigError("live_send.max_spread_risk_fraction must be between 0 and 1.")
+    if config.market_recovery_mode not in {"better_than_entry_only", "disabled"}:
+        raise LocalConfigError("live_send.market_recovery_mode must be 'better_than_entry_only' or 'disabled'.")
+    if config.market_recovery_deviation_points < 0:
+        raise LocalConfigError("live_send.market_recovery_deviation_points must be zero or positive.")
 
 
 def load_live_state(path: str | Path) -> LiveExecutorState:
@@ -441,6 +482,126 @@ def dynamic_spread_gate(
         risk_price=risk_price,
         spread_risk_fraction=fraction,
         max_spread_risk_fraction=max_spread_risk_fraction,
+    )
+
+
+def market_recovery_check(
+    mt5_module: Any,
+    setup: TradeSetup,
+    *,
+    config: LiveSendExecutorConfig,
+    market: MT5MarketSnapshot,
+    missed_entry: MissedEntryCheck,
+    symbol_spec: MT5SymbolExecutionSpec,
+) -> MarketRecoveryCheck:
+    """Return whether a missed pending entry is recoverable at the current quote."""
+
+    signal_key = signal_key_for_setup(setup)
+    original_entry = float(setup.entry_price)
+    stop = float(setup.stop_price)
+    original_target = float(setup.target_price)
+    fill = float(market.ask) if setup.side == "long" else float(market.bid)
+    base_fields = {
+        "original_entry": original_entry,
+        "fill_price": fill,
+        "stop_loss": stop,
+        "original_take_profit": original_target,
+        "first_touch_time_utc": missed_entry.first_touch_time_utc,
+        "first_touch_high": missed_entry.first_touch_high,
+        "first_touch_low": missed_entry.first_touch_low,
+    }
+    if not all(math.isfinite(value) for value in (original_entry, fill, stop, original_target)):
+        return MarketRecoveryCheck(
+            checked=True,
+            recoverable=False,
+            status="market_recovery_invalid_price",
+            detail=f"non-finite recovery price for {signal_key}",
+            **base_fields,
+        )
+
+    tolerance = max(abs(float(symbol_spec.point)) / 2.0, 1e-12)
+    if setup.side == "long":
+        better_or_equal = fill <= original_entry + tolerance
+        stop_valid = fill > stop + tolerance
+    else:
+        better_or_equal = fill >= original_entry - tolerance
+        stop_valid = fill < stop - tolerance
+    if not better_or_equal:
+        return MarketRecoveryCheck(
+            checked=True,
+            recoverable=False,
+            status="market_recovery_not_better",
+            detail="current executable price is worse than the original pending entry",
+            **base_fields,
+        )
+    if not stop_valid:
+        return MarketRecoveryCheck(
+            checked=True,
+            recoverable=False,
+            status="market_recovery_invalid_stop_distance",
+            detail="current executable price is not on the valid side of the structural stop",
+            **base_fields,
+        )
+
+    path_block = _market_recovery_path_block(mt5_module, setup, config=config, until_time_utc=market.time_utc)
+    if path_block["status"] == "path_unavailable":
+        return MarketRecoveryCheck(
+            checked=False,
+            recoverable=False,
+            status="market_recovery_path_unavailable",
+            detail=str(path_block.get("detail", "")),
+            **base_fields,
+        )
+    if path_block["status"] == "stop_touched":
+        return MarketRecoveryCheck(
+            checked=True,
+            recoverable=False,
+            status="market_recovery_stop_touched",
+            stop_touched_time_utc=path_block.get("time_utc"),
+            stop_touched_high=path_block.get("high"),
+            stop_touched_low=path_block.get("low"),
+            detail="structural stop traded before market recovery",
+            **base_fields,
+        )
+    if path_block["status"] == "target_touched":
+        return MarketRecoveryCheck(
+            checked=True,
+            recoverable=False,
+            status="market_recovery_target_touched",
+            target_touched_time_utc=path_block.get("time_utc"),
+            target_touched_high=path_block.get("high"),
+            target_touched_low=path_block.get("low"),
+            detail="original 1R target traded before market recovery",
+            **base_fields,
+        )
+
+    recalculated_take_profit = _market_recovery_take_profit(setup.side, fill_price=fill, stop_loss=stop)
+    recovery_setup = replace(setup, entry_price=fill, target_price=recalculated_take_profit)
+    spread_gate = dynamic_spread_gate(
+        recovery_setup,
+        symbol_spec,
+        market,
+        max_spread_risk_fraction=config.max_spread_risk_fraction,
+    )
+    if not spread_gate.passed:
+        return MarketRecoveryCheck(
+            checked=True,
+            recoverable=False,
+            status="market_recovery_spread_too_wide",
+            recalculated_take_profit=recalculated_take_profit,
+            spread_risk_fraction=spread_gate.spread_risk_fraction,
+            max_spread_risk_fraction=spread_gate.max_spread_risk_fraction,
+            detail="spread is too large versus actual market fill-to-stop risk",
+            **base_fields,
+        )
+    return MarketRecoveryCheck(
+        checked=True,
+        recoverable=True,
+        status="market_recovery_ready",
+        recalculated_take_profit=recalculated_take_profit,
+        spread_risk_fraction=spread_gate.spread_risk_fraction,
+        max_spread_risk_fraction=spread_gate.max_spread_risk_fraction,
+        **base_fields,
     )
 
 
@@ -609,6 +770,70 @@ def _fetch_candles_including_current(
     return data
 
 
+def _market_recovery_path_block(
+    mt5_module: Any,
+    setup: TradeSetup,
+    *,
+    config: LiveSendExecutorConfig,
+    until_time_utc: pd.Timestamp | str | None,
+) -> dict[str, Any]:
+    try:
+        signal_time = setup_signal_time_utc(setup)
+        data = _fetch_candles_including_current(
+            mt5_module,
+            symbol=str(setup.symbol).upper(),
+            timeframe=str(setup.timeframe).upper(),
+            bars=config.history_bars,
+            broker_timezone=config.broker_timezone,
+        )
+    except Exception as exc:
+        return {"status": "path_unavailable", "detail": str(exc)}
+    if data.empty:
+        return {"status": "path_unavailable", "detail": "copy_rates_from_pos returned no rows"}
+
+    until_time = pd.Timestamp.now(tz="UTC") if until_time_utc is None else _as_utc_timestamp(until_time_utc)
+    times = pd.to_datetime(data["time_utc"], utc=True)
+    after_signal = data.loc[(times > signal_time) & (times <= until_time)].copy()
+    if after_signal.empty:
+        return {"status": "clear"}
+
+    high = after_signal["high"].astype(float)
+    low = after_signal["low"].astype(float)
+    stop = float(setup.stop_price)
+    target = float(setup.target_price)
+    if setup.side == "long":
+        stop_hits = after_signal.loc[low <= stop]
+        target_hits = after_signal.loc[high >= target]
+    else:
+        stop_hits = after_signal.loc[high >= stop]
+        target_hits = after_signal.loc[low <= target]
+    first_stop = _first_touch_row(stop_hits)
+    first_target = _first_touch_row(target_hits)
+    if first_stop is not None and (first_target is None or pd.Timestamp(first_stop["time_utc"]) <= pd.Timestamp(first_target["time_utc"])):
+        return {"status": "stop_touched", **first_stop}
+    if first_target is not None:
+        return {"status": "target_touched", **first_target}
+    return {"status": "clear"}
+
+
+def _first_touch_row(frame: pd.DataFrame) -> dict[str, Any] | None:
+    if frame.empty:
+        return None
+    first = frame.iloc[0]
+    return {
+        "time_utc": pd.Timestamp(first["time_utc"]).isoformat(),
+        "high": float(first["high"]),
+        "low": float(first["low"]),
+    }
+
+
+def _market_recovery_take_profit(side: str, *, fill_price: float, stop_loss: float) -> float:
+    risk = abs(float(fill_price) - float(stop_loss))
+    if side == "short":
+        return float(fill_price) - risk
+    return float(fill_price) + risk
+
+
 def _pending_signal_time_utc(pending: LiveTrackedOrder) -> pd.Timestamp | None:
     if pending.signal_time_utc:
         return _as_utc_timestamp(pending.signal_time_utc)
@@ -657,6 +882,65 @@ def send_pending_order(mt5_module: Any, intent: MT5OrderIntent) -> LiveOrderSend
     )
 
 
+def build_market_order_request(mt5_module: Any, intent: MT5OrderIntent, *, deviation_points: int = 0) -> dict[str, Any]:
+    """Translate a market-recovery intent to an MT5 TRADE_ACTION_DEAL request."""
+
+    order_type = getattr(mt5_module, "ORDER_TYPE_BUY") if intent.side == "long" else getattr(mt5_module, "ORDER_TYPE_SELL")
+    request = {
+        "action": mt5_module.TRADE_ACTION_DEAL,
+        "symbol": intent.symbol,
+        "volume": intent.volume,
+        "type": order_type,
+        "price": intent.entry_price,
+        "sl": intent.stop_loss,
+        "tp": intent.take_profit,
+        "deviation": int(deviation_points),
+        "magic": intent.magic,
+        "comment": intent.comment,
+    }
+    if hasattr(mt5_module, "ORDER_FILLING_RETURN"):
+        request["type_filling"] = mt5_module.ORDER_FILLING_RETURN
+    return request
+
+
+def run_market_order_check(mt5_module: Any, intent: MT5OrderIntent, *, deviation_points: int = 0) -> OrderCheckOutcome:
+    """Run MT5 order_check for a market-recovery DEAL request."""
+
+    request = build_market_order_request(mt5_module, intent, deviation_points=deviation_points)
+    result = mt5_module.order_check(request)
+    retcode = None if result is None else getattr(result, "retcode", None)
+    comment = "order_check returned None" if result is None else str(getattr(result, "comment", "") or "")
+    passed = result is not None and retcode is not None and int(retcode) in _accepted_done_retcodes(mt5_module)
+    return OrderCheckOutcome(passed=passed, request=request, retcode=retcode, comment=comment)
+
+
+def send_market_recovery_order(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    *,
+    deviation_points: int = 0,
+) -> LiveOrderSendOutcome:
+    """Send a validated MT5 market-recovery order request."""
+
+    request = build_market_order_request(mt5_module, intent, deviation_points=deviation_points)
+    result = mt5_module.order_send(request)
+    retcode = None if result is None else getattr(result, "retcode", None)
+    comment = "order_send returned None" if result is None else str(getattr(result, "comment", "") or "")
+    order_ticket = None if result is None else _optional_int(getattr(result, "order", None))
+    deal_ticket = None if result is None else _optional_int(getattr(result, "deal", None))
+    sent = result is not None and retcode is not None and int(retcode) in _accepted_done_retcodes(mt5_module) and (
+        order_ticket is not None or deal_ticket is not None
+    )
+    return LiveOrderSendOutcome(
+        sent=sent,
+        request=request,
+        retcode=retcode,
+        comment=comment,
+        order_ticket=order_ticket,
+        deal_ticket=deal_ticket,
+    )
+
+
 def cancel_pending_order(mt5_module: Any, order: LiveTrackedOrder) -> LiveOrderSendOutcome:
     """Remove one stale pending order from MT5."""
 
@@ -674,6 +958,197 @@ def cancel_pending_order(mt5_module: Any, order: LiveTrackedOrder) -> LiveOrderS
     return LiveOrderSendOutcome(sent=sent, request=request, retcode=retcode, comment=comment)
 
 
+def _process_market_recovery_live_send(
+    mt5_module: Any,
+    setup: TradeSetup,
+    *,
+    config: LiveSendExecutorConfig,
+    state: LiveExecutorState,
+    account: Any,
+    symbol_spec: MT5SymbolExecutionSpec,
+    missed_entry: MissedEntryCheck,
+    bar_expiry: PendingBarExpiryCheck,
+    notifier: TelegramNotifier | None,
+) -> LiveSetupResult:
+    signal_key = signal_key_for_setup(setup)
+    base_fields = {
+        **missed_entry.to_dict(),
+        "original_entry": float(setup.entry_price),
+        "stop_loss": float(setup.stop_price),
+        "original_take_profit": float(setup.target_price),
+        "market_recovery_mode": config.market_recovery_mode,
+    }
+    if config.market_recovery_mode == "disabled":
+        event = _rejection_event(
+            "entry_already_touched_before_placement",
+            "The pullback entry traded before the live pending order could be placed.",
+            signal_key,
+            base_fields,
+        )
+        next_state = _with_processed_key(state, signal_key)
+        next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:missed_entry", event)
+        return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
+
+    if bar_expiry.expired:
+        event = _rejection_event(
+            "pending_expired",
+            "The pullback window expired by actual MT5 bar count before market recovery.",
+            signal_key,
+            {**base_fields, **bar_expiry.to_dict()},
+        )
+        next_state = _with_processed_key(state, signal_key)
+        next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:bar_expired", event)
+        return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
+
+    recovery_market = market_snapshot_from_mt5(mt5_module, setup.symbol, broker_timezone=config.broker_timezone)
+    recovery_check = market_recovery_check(
+        mt5_module,
+        setup,
+        config=config,
+        market=recovery_market,
+        missed_entry=missed_entry,
+        symbol_spec=symbol_spec,
+    )
+    if not recovery_check.checked:
+        event = _rejection_event(
+            recovery_check.status,
+            recovery_check.detail or "Could not verify market recovery path.",
+            signal_key,
+            recovery_check.to_dict(),
+        )
+        next_state = _with_processed_key(state, signal_key)
+        next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:market_recovery_unavailable", event)
+        return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
+    if not recovery_check.recoverable:
+        event = _rejection_event(
+            recovery_check.status,
+            recovery_check.detail or "Missed pending entry is not eligible for market recovery.",
+            signal_key,
+            recovery_check.to_dict(),
+        )
+        if recovery_check.status == "market_recovery_spread_too_wide":
+            next_state = _record_event_once(config, state, notifier, f"setup_blocked:{signal_key}:market_recovery_spread", event)
+            return LiveSetupResult(state=next_state, signal_key=signal_key, status="blocked")
+        next_state = _with_processed_key(state, signal_key)
+        next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:{recovery_check.status}", event)
+        return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
+
+    intent, risk_per_lot, rejection = _build_market_recovery_intent(
+        mt5_module,
+        setup,
+        config=config,
+        state=state,
+        account=account,
+        symbol_spec=symbol_spec,
+        recovery_check=recovery_check,
+    )
+    if rejection is not None or intent is None:
+        event = rejection or _rejection_event(
+            "market_recovery_intent_failed",
+            "Market recovery intent could not be built.",
+            signal_key,
+            recovery_check.to_dict(),
+        )
+        next_state = _with_processed_key(state, signal_key)
+        next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:market_recovery_intent", event)
+        return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
+
+    append_audit_event(
+        config.journal_path,
+        "market_recovery_intent_created",
+        signal_key=signal_key,
+        recovery_check=recovery_check.to_dict(),
+        intent=intent.to_dict(),
+        broker_money_risk_per_lot=risk_per_lot,
+    )
+    processed_state = _with_processed_key(state, signal_key)
+    order_check = run_market_order_check(
+        mt5_module,
+        intent,
+        deviation_points=config.market_recovery_deviation_points,
+    )
+    checked_state = _with_checked_key(processed_state, signal_key)
+    if not order_check.passed:
+        event = NotificationEvent(
+            kind="order_check_failed",
+            mode="LIVE",
+            title="MT5 rejected live market recovery check",
+            severity="warning",
+            symbol=intent.symbol,
+            timeframe=intent.timeframe,
+            side=intent.side,
+            status="failed",
+            signal_key=signal_key,
+            fields={
+                "retcode": order_check.retcode,
+                "comment": order_check.comment,
+                "execution_type": "market_recovery",
+                **recovery_check.to_dict(),
+            },
+        )
+        checked_state = _record_event_once(config, checked_state, notifier, f"market_recovery_check_failed:{signal_key}", event)
+        return LiveSetupResult(state=checked_state, signal_key=signal_key, status="order_check_failed", order_check=order_check)
+
+    outcome = send_market_recovery_order(
+        mt5_module,
+        intent,
+        deviation_points=config.market_recovery_deviation_points,
+    )
+    if not outcome.sent:
+        if _is_retryable_order_send_block(outcome):
+            event = _rejection_event(
+                "autotrading_disabled",
+                "MT5 AutoTrading is disabled by the client terminal.",
+                signal_key,
+                {
+                    "retcode": outcome.retcode,
+                    "comment": outcome.comment,
+                    "execution_type": "market_recovery",
+                    **recovery_check.to_dict(),
+                },
+            )
+            retry_state = _without_processed_key(checked_state, signal_key)
+            retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:autotrading_disabled", event)
+            return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check, order_send=outcome)
+        event = NotificationEvent(
+            kind="order_rejected",
+            mode="LIVE",
+            title="Live market recovery order rejected",
+            severity="warning",
+            symbol=intent.symbol,
+            timeframe=intent.timeframe,
+            side=intent.side,
+            status="rejected",
+            signal_key=signal_key,
+            fields={
+                "retcode": outcome.retcode,
+                "comment": outcome.comment,
+                "execution_type": "market_recovery",
+                **recovery_check.to_dict(),
+            },
+        )
+        checked_state = _record_event_once(config, checked_state, notifier, f"market_recovery_rejected:{signal_key}", event)
+        return LiveSetupResult(state=checked_state, signal_key=signal_key, status="order_rejected", order_check=order_check, order_send=outcome)
+
+    position = _matching_broker_position_for_intent(mt5_module, intent, config, symbol_spec)
+    if position is None:
+        position = _fallback_market_recovery_position(mt5_module, intent, outcome, config)
+    tracked_position = _tracked_position_from_intent(intent, position, config, price_digits=symbol_spec.digits)
+    next_state = replace(checked_state, active_positions=(*checked_state.active_positions, tracked_position))
+    save_live_state(config.state_path, next_state)
+    event = _market_recovery_sent_event(tracked_position, outcome, recovery_check)
+    thread_key = f"order:{tracked_position.order_ticket}"
+    next_state = _record_event_once(
+        config,
+        next_state,
+        notifier,
+        f"market_recovery_sent:{tracked_position.position_id}:{outcome.deal_ticket or outcome.order_ticket or 0}",
+        event,
+        store_thread_key=thread_key,
+    )
+    return LiveSetupResult(state=next_state, signal_key=signal_key, status="market_recovery_sent", order_check=order_check, order_send=outcome)
+
+
 def process_trade_setup_live_send(
     mt5_module: Any,
     setup: TradeSetup,
@@ -683,7 +1158,7 @@ def process_trade_setup_live_send(
     market: MT5MarketSnapshot | None = None,
     notifier: TelegramNotifier | None = None,
 ) -> LiveSetupResult:
-    """Validate, broker-check, and send one real pending order."""
+    """Validate, broker-check, and send one real live setup order."""
 
     signal_key = signal_key_for_setup(setup)
     if signal_key in state.processed_signal_keys:
@@ -693,17 +1168,6 @@ def process_trade_setup_live_send(
     account = account_snapshot_from_mt5(mt5_module)
     symbol_spec = symbol_spec_from_mt5(mt5_module, setup.symbol)
     first_market = market or market_snapshot_from_mt5(mt5_module, setup.symbol, broker_timezone=config.broker_timezone)
-    pre_spread = dynamic_spread_gate(
-        setup,
-        symbol_spec,
-        first_market,
-        max_spread_risk_fraction=config.max_spread_risk_fraction,
-    )
-    if not pre_spread.passed:
-        event = _rejection_event("spread_too_wide", "Spread is too large versus setup risk.", signal_key, pre_spread.to_dict())
-        next_state = _record_event_once(config, state, notifier, f"setup_blocked:{signal_key}:spread", event)
-        return LiveSetupResult(state=next_state, signal_key=signal_key, status="blocked")
-
     missed_entry = missed_entry_before_placement(mt5_module, setup, config=config)
     if not missed_entry.checked:
         event = _rejection_event(
@@ -714,16 +1178,6 @@ def process_trade_setup_live_send(
         )
         next_state = _with_processed_key(state, signal_key)
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:missed_entry_unavailable", event)
-        return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
-    if missed_entry.missed:
-        event = _rejection_event(
-            "entry_already_touched_before_placement",
-            "The pullback entry traded before the live pending order could be placed.",
-            signal_key,
-            missed_entry.to_dict(),
-        )
-        next_state = _with_processed_key(state, signal_key)
-        next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:missed_entry", event)
         return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
 
     bar_expiry = setup_bar_expiry_check(mt5_module, setup, config)
@@ -737,6 +1191,19 @@ def process_trade_setup_live_send(
         next_state = _with_processed_key(state, signal_key)
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:bar_expiry_unavailable", event)
         return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
+    if missed_entry.missed:
+        return _process_market_recovery_live_send(
+            mt5_module,
+            setup,
+            config=config,
+            state=state,
+            account=account,
+            symbol_spec=symbol_spec,
+            missed_entry=missed_entry,
+            bar_expiry=bar_expiry,
+            notifier=notifier,
+        )
+
     if bar_expiry.expired:
         event = _rejection_event(
             "pending_expired",
@@ -747,6 +1214,17 @@ def process_trade_setup_live_send(
         next_state = _with_processed_key(state, signal_key)
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:bar_expired", event)
         return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
+
+    pre_spread = dynamic_spread_gate(
+        setup,
+        symbol_spec,
+        first_market,
+        max_spread_risk_fraction=config.max_spread_risk_fraction,
+    )
+    if not pre_spread.passed:
+        event = _rejection_event("spread_too_wide", "Spread is too large versus setup risk.", signal_key, pre_spread.to_dict())
+        next_state = _record_event_once(config, state, notifier, f"setup_blocked:{signal_key}:spread", event)
+        return LiveSetupResult(state=next_state, signal_key=signal_key, status="blocked")
 
     risk_per_lot = broker_money_risk_per_lot(mt5_module, setup)
     decision = build_mt5_order_intent(
@@ -811,6 +1289,16 @@ def process_trade_setup_live_send(
 
     outcome = send_pending_order(mt5_module, decision.intent)
     if not outcome.sent or outcome.order_ticket is None:
+        if _is_retryable_order_send_block(outcome):
+            event = _rejection_event(
+                "autotrading_disabled",
+                "MT5 AutoTrading is disabled by the client terminal.",
+                signal_key,
+                {"retcode": outcome.retcode, "comment": outcome.comment},
+            )
+            retry_state = _without_processed_key(checked_state, signal_key)
+            retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:autotrading_disabled", event)
+            return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check, order_send=outcome)
         event = NotificationEvent(
             kind="order_rejected",
             mode="LIVE",
@@ -973,7 +1461,7 @@ def run_live_send_cycle(
                 )
                 current_state = result.state
                 save_live_state(config.state_path, current_state)
-                orders_sent += 1 if result.status == "order_sent" else 0
+                orders_sent += 1 if result.status in {"order_sent", "market_recovery_sent"} else 0
                 setups_rejected += 1 if result.status == "rejected" else 0
                 setups_blocked += 1 if result.status == "blocked" else 0
     save_live_state(config.state_path, current_state)
@@ -1143,6 +1631,220 @@ def _tracked_position_from_intent(
     )
 
 
+def _build_market_recovery_intent(
+    mt5_module: Any,
+    setup: TradeSetup,
+    *,
+    config: LiveSendExecutorConfig,
+    state: LiveExecutorState,
+    account: Any,
+    symbol_spec: MT5SymbolExecutionSpec,
+    recovery_check: MarketRecoveryCheck,
+) -> tuple[MT5OrderIntent | None, float | None, NotificationEvent | None]:
+    signal_key = signal_key_for_setup(setup)
+    fill = recovery_check.fill_price
+    take_profit = recovery_check.recalculated_take_profit
+    if fill is None or take_profit is None:
+        return (
+            None,
+            None,
+            _rejection_event(
+                "market_recovery_missing_price",
+                "Market recovery fill or recalculated target is missing.",
+                signal_key,
+                recovery_check.to_dict(),
+            ),
+        )
+
+    stop = float(setup.stop_price)
+    rounded_fill = _round_price_for_spec(fill, symbol_spec)
+    rounded_stop = _round_price_for_spec(stop, symbol_spec)
+    rounded_take_profit = _round_price_for_spec(take_profit, symbol_spec)
+    recovery_setup = replace(setup, entry_price=rounded_fill, stop_price=rounded_stop, target_price=rounded_take_profit)
+    try:
+        risk_per_lot = broker_money_risk_per_lot(mt5_module, recovery_setup)
+    except RuntimeError as exc:
+        return (
+            None,
+            None,
+            _rejection_event(
+                "market_recovery_invalid_symbol_value",
+                str(exc),
+                signal_key,
+                recovery_check.to_dict(),
+            ),
+        )
+    try:
+        target_risk_pct = live_risk_buckets_from_config(config)[str(setup.timeframe).upper()]
+    except KeyError:
+        return (
+            None,
+            risk_per_lot,
+            _rejection_event(
+                "missing_risk_bucket",
+                f"No execution risk bucket for timeframe {setup.timeframe!r}.",
+                signal_key,
+                recovery_check.to_dict(),
+            ),
+        )
+    limits = live_execution_safety_from_config(config)
+    if target_risk_pct <= 0 or target_risk_pct > limits.max_risk_pct_per_trade:
+        return (
+            None,
+            risk_per_lot,
+            _rejection_event(
+                "market_recovery_risk_pct_limit",
+                f"target_risk_pct={target_risk_pct:g}",
+                signal_key,
+                {**recovery_check.to_dict(), "target_risk_pct": target_risk_pct},
+            ),
+        )
+    volume_decision = _market_recovery_sized_volume(
+        account=account,
+        symbol_spec=symbol_spec,
+        limits=limits,
+        target_risk_pct=target_risk_pct,
+        risk_per_lot=risk_per_lot,
+    )
+    if "error" in volume_decision:
+        return (
+            None,
+            risk_per_lot,
+            _rejection_event(
+                str(volume_decision["error"]),
+                str(volume_decision["detail"]),
+                signal_key,
+                {**recovery_check.to_dict(), **volume_decision},
+            ),
+        )
+    exposure = _exposure_from_state(state, setup.symbol)
+    actual_risk_pct = float(volume_decision["actual_risk_pct"])
+    if exposure.open_risk_pct + actual_risk_pct > limits.max_open_risk_pct + 1e-12:
+        return (
+            None,
+            risk_per_lot,
+            _rejection_event(
+                "market_recovery_max_open_risk",
+                f"open={exposure.open_risk_pct:g} new={actual_risk_pct:g} max={limits.max_open_risk_pct:g}",
+                signal_key,
+                {**recovery_check.to_dict(), **volume_decision},
+            ),
+        )
+    try:
+        signal_time = setup_signal_time_utc(setup)
+        broker_backstop = broker_backstop_expiration_time_utc(setup, max_entry_wait_bars=config.max_entry_wait_bars)
+    except Exception as exc:
+        return (
+            None,
+            risk_per_lot,
+            _rejection_event(
+                "market_recovery_expiration_failed",
+                str(exc),
+                signal_key,
+                recovery_check.to_dict(),
+            ),
+        )
+    intent = MT5OrderIntent(
+        signal_key=signal_key,
+        symbol=str(setup.symbol).upper(),
+        timeframe=str(setup.timeframe).upper(),
+        side=setup.side,
+        order_type="BUY" if setup.side == "long" else "SELL",  # type: ignore[arg-type]
+        volume=float(volume_decision["volume"]),
+        entry_price=rounded_fill,
+        stop_loss=rounded_stop,
+        take_profit=rounded_take_profit,
+        target_risk_pct=target_risk_pct,
+        actual_risk_pct=actual_risk_pct,
+        expiration_time_utc=broker_backstop,
+        magic=limits.strategy_magic,
+        comment=_live_order_comment(setup),
+        setup_id=setup.setup_id,
+        signal_time_utc=signal_time,
+        max_entry_wait_bars=config.max_entry_wait_bars,
+        strategy_expiry_mode="bar_count",
+        broker_backstop_expiration_time_utc=broker_backstop,
+    )
+    return intent, risk_per_lot, None
+
+
+def _market_recovery_sized_volume(
+    *,
+    account: Any,
+    symbol_spec: MT5SymbolExecutionSpec,
+    limits: ExecutionSafetyLimits,
+    target_risk_pct: float,
+    risk_per_lot: float,
+) -> dict[str, Any]:
+    if symbol_spec.volume_step <= 0 or symbol_spec.volume_min <= 0 or symbol_spec.volume_max <= 0:
+        return {"error": "market_recovery_invalid_volume_spec", "detail": "volume_min, volume_max, and volume_step must be positive"}
+    if risk_per_lot <= 0 or not math.isfinite(float(risk_per_lot)):
+        return {"error": "market_recovery_invalid_symbol_value", "detail": f"risk_per_lot={risk_per_lot:g}"}
+    equity = float(getattr(account, "equity", 0.0) if not isinstance(account, dict) else account.get("equity", 0.0))
+    if equity <= 0:
+        return {"error": "market_recovery_invalid_account_equity", "detail": f"equity={equity:g}"}
+    raw_volume = equity * float(target_risk_pct) / 100.0 / float(risk_per_lot)
+    cap = float(symbol_spec.volume_max)
+    if limits.max_lots_per_order is not None:
+        cap = min(cap, float(limits.max_lots_per_order))
+    rounded_volume = _round_volume_down(raw_volume if raw_volume < cap else cap, symbol_spec.volume_step)
+    if rounded_volume < float(symbol_spec.volume_min):
+        return {
+            "error": "market_recovery_volume_below_min",
+            "detail": f"raw_volume={raw_volume:g} rounded_volume={rounded_volume:g} min={symbol_spec.volume_min:g}",
+            "raw_volume": raw_volume,
+            "rounded_volume": rounded_volume,
+            "target_risk_pct": target_risk_pct,
+        }
+    actual_risk_pct = rounded_volume * float(risk_per_lot) / equity * 100.0
+    return {
+        "volume": rounded_volume,
+        "actual_risk_pct": actual_risk_pct,
+        "target_risk_pct": target_risk_pct,
+        "raw_volume": raw_volume,
+        "risk_per_lot": risk_per_lot,
+    }
+
+
+def _fallback_market_recovery_position(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    outcome: LiveOrderSendOutcome,
+    config: LiveSendExecutorConfig,
+) -> Any:
+    ticket = outcome.order_ticket or outcome.deal_ticket or int(pd.Timestamp.now(tz="UTC").timestamp())
+    position_type = getattr(mt5_module, "ORDER_TYPE_BUY", 0) if intent.side == "long" else getattr(mt5_module, "ORDER_TYPE_SELL", 1)
+    now_msc = int(pd.Timestamp.now(tz="UTC").timestamp() * 1000)
+    return SimpleNamespace(
+        identifier=ticket,
+        ticket=ticket,
+        symbol=intent.symbol,
+        magic=intent.magic,
+        type=position_type,
+        comment=intent.comment,
+        volume=intent.volume,
+        price_open=intent.entry_price,
+        sl=intent.stop_loss,
+        tp=intent.take_profit,
+        time_msc=now_msc,
+        time=0,
+    )
+
+
+def _round_price_for_spec(value: float, spec: MT5SymbolExecutionSpec) -> float:
+    return round(float(value), int(spec.digits))
+
+
+def _round_volume_down(volume: float, step: float) -> float:
+    units = math.floor(float(volume) / float(step) + 1e-12)
+    return units * float(step)
+
+
+def _live_order_comment(setup: TradeSetup) -> str:
+    signal_index = "na" if setup.signal_index is None else str(setup.signal_index)
+    return f"LPFS {str(setup.timeframe).upper()} {str(setup.side)[0].upper()} {signal_index}"[:31]
+
+
 def _adopt_existing_broker_item(
     mt5_module: Any,
     intent: MT5OrderIntent,
@@ -1240,6 +1942,50 @@ def _order_sent_event(order: LiveTrackedOrder, outcome: LiveOrderSendOutcome, sp
             "comment": outcome.comment,
         },
         message="closed-candle LP + Force Strike setup, 50% pullback entry, FS structure stop, 1R target.",
+    )
+
+
+def _market_recovery_sent_event(
+    active: LiveTrackedPosition,
+    outcome: LiveOrderSendOutcome,
+    recovery_check: MarketRecoveryCheck,
+) -> NotificationEvent:
+    return NotificationEvent(
+        kind="market_recovery_sent",
+        mode="LIVE",
+        title="Live market recovery order placed",
+        severity="info",
+        symbol=active.symbol,
+        timeframe=active.timeframe,
+        side=active.side,
+        status="open",
+        signal_key=active.signal_key,
+        fields={
+            "position_id": active.position_id,
+            "order_ticket": active.order_ticket,
+            "deal_ticket": outcome.deal_ticket,
+            "order_type": "BUY" if active.side == "long" else "SELL",
+            "original_entry": recovery_check.original_entry,
+            "fill_price": active.entry_price,
+            "stop_loss": active.stop_loss,
+            "take_profit": active.take_profit,
+            "original_take_profit": recovery_check.original_take_profit,
+            "volume": active.volume,
+            "actual_risk_pct": active.actual_risk_pct,
+            "target_risk_pct": active.target_risk_pct,
+            "spread_risk_pct": None
+            if recovery_check.spread_risk_fraction is None
+            else recovery_check.spread_risk_fraction * 100.0,
+            "max_spread_risk_fraction": recovery_check.max_spread_risk_fraction,
+            "first_touch_time_utc": recovery_check.first_touch_time_utc,
+            "first_touch_high": recovery_check.first_touch_high,
+            "first_touch_low": recovery_check.first_touch_low,
+            "opened_utc": active.opened_time_utc,
+            "price_digits": active.price_digits,
+            "retcode": outcome.retcode,
+            "comment": outcome.comment,
+        },
+        message="Missed pending touch recovered with better-than-entry executable price, original structure stop, and recalculated 1R target.",
     )
 
 
@@ -1613,7 +2359,15 @@ def _accepted_send_retcodes(mt5_module: Any) -> set[int]:
     return accepted
 
 
+def _is_retryable_order_send_block(outcome: LiveOrderSendOutcome) -> bool:
+    """Return true for operator/environment send blocks that can clear later."""
+
+    return outcome.retcode == TRADE_RETCODE_CLIENT_DISABLES_AT
+
+
 def _mt5_pending_order_type(mt5_module: Any, intent: MT5OrderIntent) -> int:
+    if intent.order_type not in {"BUY_LIMIT", "SELL_LIMIT"}:
+        raise ValueError("Pending order type expected for broker pending-order matching.")
     return int(
         getattr(mt5_module, "ORDER_TYPE_BUY_LIMIT")
         if intent.order_type == "BUY_LIMIT"

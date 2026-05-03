@@ -542,6 +542,8 @@ def risk_buckets_from_config(config: DryRunExecutorConfig) -> dict[str, float]:
 def build_order_check_request(mt5_module: Any, intent: MT5OrderIntent) -> dict[str, Any]:
     """Translate a validated intent to an MT5 order_check request."""
 
+    if intent.order_type not in {"BUY_LIMIT", "SELL_LIMIT"}:
+        raise ValueError("build_order_check_request only supports pending order intents.")
     order_type = (
         mt5_module.ORDER_TYPE_BUY_LIMIT
         if intent.order_type == "BUY_LIMIT"

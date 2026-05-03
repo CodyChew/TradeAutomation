@@ -11,7 +11,7 @@ import pandas as pd
 from backtest_engine_lab import TradeSetup
 
 
-OrderType = Literal["BUY_LIMIT", "SELL_LIMIT"]
+OrderType = Literal["BUY_LIMIT", "SELL_LIMIT", "BUY", "SELL"]
 ExecutionDecisionStatus = Literal["ready", "rejected"]
 
 V15_EFFICIENT_RISK_BUCKET_PCT: dict[str, float] = {

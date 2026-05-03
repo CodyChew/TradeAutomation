@@ -243,6 +243,30 @@ blocks, so a future cycle can place the order if spread improves before the
 entry touches or the pending window expires. The one old NZDCHF spread skip was
 cleaned from local live state explicitly instead of keeping compatibility code.
 
+Default-on market recovery is now the live path after a missed pending touch.
+If spread was too wide first and the original entry later traded before the
+pending order existed, the runner attempts `MARKET RECOVERY` before final skip.
+It sends a `TRADE_ACTION_DEAL` only when current executable price is at least as
+good as the original entry (`ask <= entry` for longs, `bid >= entry` for
+shorts), spread is still no more than `10%` of actual fill-to-stop risk, the
+setup is still inside the 6 actual-bar window, and the original stop/target
+path is clean. It keeps the original structure stop, recalculates TP to 1R from
+actual fill, and sizes volume from actual fill-to-stop risk. Rollback is
+`live_send.market_recovery_mode="disabled"`.
+
+Implementation verification on 2026-05-04:
+
+- `.\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_live_executor strategies.lp_force_strike_strategy_lab.tests.test_notifications -v`
+  passed: 38 tests.
+- `.\venv\Scripts\python -m unittest discover -s strategies\lp_force_strike_strategy_lab\tests`
+  passed: 186 tests.
+- `.\venv\Scripts\python scripts\run_core_coverage.py` passed with 100.00%
+  total coverage.
+
+Deployment note: the VPS live runner will not use this recovery behavior until
+the VPS repo is updated and `LPFS_Live` is intentionally restarted after config
+review. Existing running processes keep the code they started with.
+
 After an order is pending, spread widening does not auto-cancel it and does not
 currently trigger a dedicated Telegram alert. Reconciliation keeps the order
 until fill, expiry, or broker/user removal.
@@ -346,6 +370,10 @@ Local rehearsal passed on 2026-05-03:
 The same wrapper has now been moved to Amazon Lightsail using
 `docs/lpfs_lightsail_vps_runbook.md`. Keep risk unchanged; the VPS runner was
 started only after explicit operator go-live checks.
+Treat the Lightsail VPS as the production environment for future live
+iteration: repo `C:\TradeAutomation`, runtime `C:\TradeAutomationRuntime`, task
+`LPFS_Live`. Local OneDrive remains the development workspace until changes are
+explicitly pushed/pulled to the VPS and the task is intentionally restarted.
 
 Lightsail VPS deployment checkpoint passed on 2026-05-04 SGT:
 

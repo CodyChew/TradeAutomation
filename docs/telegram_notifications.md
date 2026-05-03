@@ -37,6 +37,7 @@ The contract supports these event names:
 - `order_check_passed`
 - `order_check_failed`
 - `order_sent`
+- `market_recovery_sent`
 - `order_adopted`
 - `order_rejected`
 - `pending_expired`
@@ -70,6 +71,7 @@ details remain in the local journal.
 Live order management adds:
 
 - `order_sent`
+- `market_recovery_sent`
 - `order_adopted`
 - `order_rejected`
 - `pending_expired`
@@ -116,6 +118,10 @@ comments, exact floats, and diagnostic fields stay in the JSONL journal.
 - `order_sent`: `LPFS LIVE | ORDER PLACED`, market, order type/ticket,
   entry/SL/TP, actual/target risk, lot size, spread as percent of risk, SGT
   strategy bar window, broker backstop, setup reason, and signal ref.
+- `market_recovery_sent`: `LPFS LIVE | MARKET RECOVERY`, market, position/deal
+  ID, original pending entry, actual executable fill, original structure SL,
+  recalculated 1R TP, actual/target risk, lot size, spread as percent of
+  actual fill-to-stop risk, first-touch high/low/time, and signal ref.
 - `order_adopted`: `LPFS LIVE | ORDER ADOPTED`, matching broker order/position
   details, recovery note, and signal ref. It means no duplicate `order_send`
   was made.
@@ -127,7 +133,8 @@ comments, exact floats, and diagnostic fields stay in the JSONL journal.
 - `position_closed`: `LPFS LIVE | TRADE CLOSED` for manual or unknown broker
   close reasons, still using MT5 PnL/R and deal details.
 - spread-only `setup_rejected`: `WAITING`, human reason, spread ratio, retry
-  action, and signal ref.
+  action, and signal ref. This includes pending-order spread waits and
+  market-recovery spread waits.
 - other `setup_rejected` / `order_check_failed` / `order_rejected`: `SKIPPED`
   or `REJECTED`, human reason, key metric such as touched time, action taken,
   and signal ref.

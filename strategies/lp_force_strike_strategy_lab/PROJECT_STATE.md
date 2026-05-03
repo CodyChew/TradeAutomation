@@ -902,6 +902,11 @@ written.
   `live_send.execution_mode="LIVE_SEND"`,
   `live_send.live_send_enabled=true`, and
   `live_send.real_money_ack="I_UNDERSTAND_THIS_SENDS_REAL_ORDERS"`.
+- Current production environment is the Amazon Lightsail Windows VPS. Future
+  live-operation iteration should start from VPS repo `C:\TradeAutomation`,
+  runtime `C:\TradeAutomationRuntime`, scheduled task `LPFS_Live`, and the VPS
+  MT5 terminal. Local OneDrive is development only until changes are explicitly
+  pushed/pulled to the VPS and the task is intentionally restarted.
 - Low-risk defaults: `risk_bucket_scale=0.05`, `max_open_risk_pct=0.65`,
   full V15 stack caps, and `max_spread_risk_fraction=0.1`.
 - Scaled risk ladder: H4/H8 `0.01%`, H12/D1 `0.015%`, W1 `0.0375%`.
@@ -922,9 +927,19 @@ written.
   order/deal linkage; same symbol/magic/volume alone is not considered enough.
 - Manual or unknown close reasons are reported as `TRADE CLOSED` with MT5 PnL/R,
   not mislabeled as stop losses.
-- Late-start missed-entry guard is active: if MT5 bars after the signal candle
-  already touched the planned pullback entry before the live order could be
-  placed, the setup is rejected instead of placing a stale pending order.
+- Late-start missed-entry recovery is active by default: if MT5 bars after the
+  signal candle already touched the planned pullback entry before the live order
+  could be placed, the runner attempts better-than-entry market recovery before
+  skipping. Recovery sends `TRADE_ACTION_DEAL`, keeps the original structure
+  stop, recalculates TP to 1R from actual fill, sizes from actual fill-to-stop
+  risk, and requires spread <= 10% plus a clean original stop/target path.
+  Rollback is `live_send.market_recovery_mode="disabled"`.
+- Market-recovery implementation verification on 2026-05-04:
+  focused live/notification tests passed (`38` tests), full LPFS discovery
+  passed (`186` tests), and `scripts/run_core_coverage.py` passed at
+  `100.00%` total coverage. Deployment requires updating the VPS repo and
+  intentionally restarting `LPFS_Live`; an already running VPS process will not
+  pick up this code automatically.
 - Signal idempotency is based on:
   `lpfs:{SYMBOL}:{TIMEFRAME}:{SIGNAL_INDEX}:{SIDE}:{CANDIDATE_ID}:{FS_SIGNAL_TIME}`.
   A next-candle signal gets a new key; manually deleting a pending order does

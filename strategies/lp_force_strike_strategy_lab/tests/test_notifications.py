@@ -469,6 +469,68 @@ class NotificationTests(unittest.TestCase):
         self.assertNotIn("Retcode:", order)
         self.assertNotIn("Broker:", order)
 
+        recovery = format_notification_message(
+            NotificationEvent(
+                kind="market_recovery_sent",
+                mode="LIVE",
+                title="Market recovery",
+                symbol="EURUSD",
+                timeframe="H4",
+                side="long",
+                signal_key="lpfs:EURUSD:H4:10:long:c:2026-01-01T00:00:00Z",
+                fields={
+                    "position_id": 9201,
+                    "deal_ticket": 9201,
+                    "order_type": "BUY",
+                    "original_entry": 1.1,
+                    "fill_price": 1.0998,
+                    "stop_loss": 1.095,
+                    "take_profit": 1.1046,
+                    "actual_risk_pct": 0.01,
+                    "target_risk_pct": 0.01,
+                    "volume": 0.02,
+                    "spread_risk_pct": 2.1,
+                    "max_spread_risk_fraction": 0.1,
+                    "first_touch_time_utc": "2026-01-01T04:00:00+00:00",
+                    "first_touch_high": 1.1004,
+                    "first_touch_low": 1.0996,
+                },
+            )
+        )
+        self.assertIn("LPFS LIVE | MARKET RECOVERY", recovery)
+        self.assertIn("EURUSD H4 LONG | BUY #9201", recovery)
+        self.assertIn("Recovery: Original 1.10000 | Fill 1.09980", recovery)
+        self.assertIn("Protection: SL 1.09500 | TP 1.10460", recovery)
+        self.assertIn("Spread: 2.1% of risk | Limit 10.0%", recovery)
+        self.assertIn("Touched: 2026-01-01 12:00 SGT | H/L 1.10040/1.09960", recovery)
+        self.assertIn("Deal: #9201", recovery)
+
+        minimal_recovery = format_notification_message(
+            NotificationEvent(
+                kind="market_recovery_sent",
+                mode="LIVE",
+                title="Market recovery",
+                symbol="EURUSD",
+                timeframe="H4",
+                side="long",
+                fields={
+                    "position_id": 9202,
+                    "order_type": "BUY",
+                    "original_entry": 1.1,
+                    "fill_price": 1.0999,
+                    "stop_loss": 1.095,
+                    "take_profit": 1.1048,
+                    "actual_risk_pct": 0.01,
+                    "target_risk_pct": 0.01,
+                    "volume": 0.02,
+                },
+            )
+        )
+        self.assertIn("LPFS LIVE | MARKET RECOVERY", minimal_recovery)
+        self.assertNotIn("Spread:", minimal_recovery)
+        self.assertNotIn("Touched:", minimal_recovery)
+        self.assertNotIn("Deal:", minimal_recovery)
+
         adopted = format_notification_message(
             NotificationEvent(
                 kind="order_adopted",
@@ -619,6 +681,16 @@ class NotificationTests(unittest.TestCase):
         self.assertIn("LPFS LIVE | REJECTED", rejected)
         self.assertIn("Reason: Broker rejected the pending order", rejected)
         self.assertNotIn("Retcode:", rejected)
+        market_rejected = format_notification_message(
+            NotificationEvent(
+                kind="order_rejected",
+                mode="LIVE",
+                title="Rejected",
+                fields={"execution_type": "market_recovery", "retcode": 123},
+            )
+        )
+        self.assertIn("Reason: Broker rejected the market recovery order", market_rejected)
+        self.assertNotIn("Retcode:", market_rejected)
 
         expired = format_notification_message(
             NotificationEvent(kind="pending_expired", mode="LIVE", title="Expired", fields={"broker_comment": "expired"})
@@ -634,14 +706,33 @@ class NotificationTests(unittest.TestCase):
                 title="Skipped",
                 status="entry_already_touched_before_placement",
                 signal_key="lpfs:AUDJPY:D1:299:short:c:2026-04-30T00:00:00Z",
-                fields={"first_touch_time_utc": "2026-04-29T21:00:00+00:00"},
+                fields={
+                    "original_entry": 114.3,
+                    "first_touch_time_utc": "2026-04-29T21:00:00+00:00",
+                    "first_touch_high": 114.321,
+                    "first_touch_low": 114.111,
+                },
             )
         )
         self.assertIn("LPFS LIVE | SKIPPED", skipped)
         self.assertIn("AUDJPY D1 SHORT", skipped)
         self.assertIn("Reason: Entry was already touched before placement", skipped)
-        self.assertIn("Touched: 2026-04-30 05:00 SGT", skipped)
+        self.assertIn("Touched: 2026-04-30 05:00 SGT | Entry 114.300 | H/L 114.321/114.111", skipped)
         self.assertIn("Action: No order placed", skipped)
+
+        touch_only = format_notification_message(
+            NotificationEvent(
+                kind="setup_rejected",
+                mode="LIVE",
+                title="Skipped",
+                status="entry_already_touched_before_placement",
+                signal_key="lpfs:AUDJPY:D1:299:short:c:2026-04-30T00:00:00Z",
+                fields={"first_touch_time_utc": "2026-04-29T21:00:00+00:00"},
+            )
+        )
+        self.assertIn("Touched: 2026-04-30 05:00 SGT", touch_only)
+        self.assertNotIn(" | Entry ", touch_only)
+        self.assertNotIn(" | H/L ", touch_only)
 
         spread_skip = format_notification_message(
             NotificationEvent(
@@ -656,6 +747,20 @@ class NotificationTests(unittest.TestCase):
         self.assertIn("LPFS LIVE | WAITING", spread_skip)
         self.assertIn("Spread: 10.3% of risk | Limit 10.0%", spread_skip)
         self.assertIn("Action: Will retry on future cycles until entry touch or expiry", spread_skip)
+
+        recovery_spread_wait = format_notification_message(
+            NotificationEvent(
+                kind="setup_rejected",
+                mode="LIVE",
+                title="Recovery spread",
+                status="market_recovery_spread_too_wide",
+                signal_key="lpfs:NZDUSD:H8:299:short:c:2026-05-01T13:00:00Z",
+                fields={"spread_risk_fraction": 0.125, "max_spread_risk_fraction": 0.1},
+            )
+        )
+        self.assertIn("LPFS LIVE | WAITING", recovery_spread_wait)
+        self.assertIn("Reason: Market recovery spread is too wide", recovery_spread_wait)
+        self.assertIn("Action: Will retry market recovery while price remains better and inside the 6-bar window", recovery_spread_wait)
 
     def test_trader_formatting_helpers_are_compact_and_sgt_based(self) -> None:
         self.assertEqual(format_trader_price("AUDJPY", 114.31234), "114.312")

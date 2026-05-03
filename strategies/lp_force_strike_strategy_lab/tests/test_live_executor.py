@@ -29,6 +29,7 @@ from lp_force_strike_strategy_lab import (  # noqa: E402
     DynamicSpreadGate,
     LiveCloseEvent,
     LiveExecutorState,
+    MarketRecoveryCheck,
     MissedEntryCheck,
     LiveSendExecutorConfig,
     LiveTrackedOrder,
@@ -38,10 +39,12 @@ from lp_force_strike_strategy_lab import (  # noqa: E402
     TelegramConfig,
     TelegramNotifier,
     broker_money_risk_per_lot,
+    build_order_check_request,
     cancel_pending_order,
     current_strategy_orders,
     current_strategy_positions,
     dynamic_spread_gate,
+    market_recovery_check,
     latest_close_for_position,
     live_execution_safety_from_config,
     live_risk_buckets_from_config,
@@ -53,16 +56,19 @@ from lp_force_strike_strategy_lab import (  # noqa: E402
     reconcile_live_state,
     run_live_send_cycle,
     save_live_state,
+    run_market_order_check,
     send_pending_order,
+    send_market_recovery_order,
     validate_live_send_settings,
 )
-from lp_force_strike_strategy_lab.execution_contract import MT5MarketSnapshot, MT5OrderIntent, MT5SymbolExecutionSpec  # noqa: E402
+from lp_force_strike_strategy_lab.execution_contract import ExecutionSafetyLimits, MT5MarketSnapshot, MT5OrderIntent, MT5SymbolExecutionSpec  # noqa: E402
 import lp_force_strike_strategy_lab.live_executor as live_module  # noqa: E402
 
 
 def _setup(
     *,
     side: str = "long",
+    timeframe: str = "H4",
     entry: float = 1.1000,
     stop: float = 1.0950,
     target: float = 1.1050,
@@ -76,7 +82,7 @@ def _setup(
         stop_price=stop,
         target_price=target,
         symbol="EURUSD",
-        timeframe="H4",
+        timeframe=timeframe,
         signal_index=10,
         metadata={
             "candidate_id": "signal_zone_0p5_pullback__fs_structure__1r",
@@ -190,6 +196,7 @@ class FakeMT5:
     ORDER_TYPE_SELL = 1
     ORDER_TYPE_BUY_LIMIT = 2
     ORDER_TYPE_SELL_LIMIT = 3
+    TRADE_ACTION_DEAL = 1
     TRADE_ACTION_PENDING = 5
     TRADE_ACTION_REMOVE = 8
     ORDER_TIME_GTC = 0
@@ -202,6 +209,7 @@ class FakeMT5:
     ORDER_FILLING_RETURN = 2
     TRADE_RETCODE_DONE = 10009
     TRADE_RETCODE_PLACED = 10008
+    TRADE_RETCODE_CLIENT_DISABLES_AT = 10027
     DEAL_ENTRY_OUT = 1
     DEAL_ENTRY_INOUT = 2
     DEAL_REASON_SL = 4
@@ -259,6 +267,7 @@ class FakeMT5:
         self.direct_deals: list[SimpleNamespace] | None = None
         self.direct_deals_type_error = False
         self.calc_profit_result: float | None = -500.0
+        self.auto_create_market_position = True
 
     def account_info(self):
         return self.account
@@ -285,6 +294,30 @@ class FakeMT5:
 
     def order_send(self, request: dict):
         self.order_send_requests.append(request)
+        if (
+            self.auto_create_market_position
+            and request.get("action") == self.TRADE_ACTION_DEAL
+            and self.order_send_result is not None
+            and int(getattr(self.order_send_result, "retcode", 0) or 0) == self.TRADE_RETCODE_DONE
+        ):
+            order_ticket = int(getattr(self.order_send_result, "order", 0) or 0) or 9101
+            deal_ticket = int(getattr(self.order_send_result, "deal", 0) or 0) or order_ticket
+            self.positions = [
+                SimpleNamespace(
+                    identifier=deal_ticket,
+                    ticket=order_ticket,
+                    symbol=request["symbol"],
+                    magic=request["magic"],
+                    type=request["type"],
+                    comment=request["comment"],
+                    volume=request["volume"],
+                    price_open=request["price"],
+                    sl=request["sl"],
+                    tp=request["tp"],
+                    time_msc=int(pd.Timestamp("2026-01-01T04:02:00Z").timestamp() * 1000),
+                    time=0,
+                )
+            ]
         return self.order_send_result
 
     def orders_get(self, *, symbol: str):
@@ -336,6 +369,8 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(settings.executor.timeframes, ("H4",))
             self.assertTrue(Path(settings.executor.journal_path).is_absolute())
             self.assertEqual(settings.executor.max_lots_per_order, 0.5)
+            self.assertEqual(settings.executor.market_recovery_mode, "better_than_entry_only")
+            self.assertEqual(settings.executor.market_recovery_deviation_points, 0)
             self.assertNotIn("'token'", str(settings.safe_dict()))
             validate_live_send_settings(settings)
 
@@ -347,6 +382,8 @@ class LiveExecutorTests(unittest.TestCase):
                 {"max_open_risk_pct": 0},
                 {"max_spread_risk_fraction": 0},
                 {"max_spread_risk_fraction": 1.5},
+                {"market_recovery_mode": "always"},
+                {"market_recovery_deviation_points": -1},
             ]
             for overrides in bad_values:
                 with self.subTest(overrides=overrides), self.assertRaises(LocalConfigError):
@@ -583,6 +620,313 @@ class LiveExecutorTests(unittest.TestCase):
             )
             self.assertFalse(empty_rates.checked)
 
+    def test_market_recovery_check_requires_better_price_clear_path_and_tight_spread(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            spec = MT5SymbolExecutionSpec("EURUSD", 5, 0.0001, 10.0, 0.0001, 0.01, 100.0, 0.01)
+            missed = MissedEntryCheck(
+                checked=True,
+                missed=True,
+                bars_checked=1,
+                first_touch_time_utc="2026-01-01T04:00:00+00:00",
+                first_touch_high=1.1004,
+                first_touch_low=1.0996,
+            )
+            mt5.rates = [
+                {**mt5.rates[0], "high": 1.1000, "low": 1.0990},
+                {**mt5.rates[1], "high": 1.1004, "low": 1.0996},
+            ]
+            market = MT5MarketSnapshot(bid=1.0997, ask=1.0998, time_utc="2026-01-01T04:01:00Z")
+            check = market_recovery_check(mt5, _setup(), config=config, market=market, missed_entry=missed, symbol_spec=spec)
+            self.assertIsInstance(check, MarketRecoveryCheck)
+            self.assertTrue(check.recoverable)
+            self.assertEqual(check.status, "market_recovery_ready")
+            self.assertAlmostEqual(check.recalculated_take_profit or 0.0, 1.1046)
+            self.assertLess(check.spread_risk_fraction or 1.0, 0.10)
+
+            worse_long = market_recovery_check(
+                mt5,
+                _setup(),
+                config=config,
+                market=MT5MarketSnapshot(bid=1.1001, ask=1.1002, time_utc="2026-01-01T04:01:00Z"),
+                missed_entry=missed,
+                symbol_spec=spec,
+            )
+            self.assertFalse(worse_long.recoverable)
+            self.assertEqual(worse_long.status, "market_recovery_not_better")
+
+            mt5.rates[-1]["low"] = 1.0949
+            stop_touched = market_recovery_check(mt5, _setup(), config=config, market=market, missed_entry=missed, symbol_spec=spec)
+            self.assertFalse(stop_touched.recoverable)
+            self.assertEqual(stop_touched.status, "market_recovery_stop_touched")
+            mt5.rates[-1]["low"] = 1.0996
+            mt5.rates[-1]["high"] = 1.1051
+            target_touched = market_recovery_check(mt5, _setup(), config=config, market=market, missed_entry=missed, symbol_spec=spec)
+            self.assertFalse(target_touched.recoverable)
+            self.assertEqual(target_touched.status, "market_recovery_target_touched")
+
+            mt5.rates[-1]["high"] = 1.1004
+            wide = market_recovery_check(
+                mt5,
+                _setup(),
+                config=config,
+                market=MT5MarketSnapshot(bid=1.0988, ask=1.0998, time_utc="2026-01-01T04:01:00Z"),
+                missed_entry=missed,
+                symbol_spec=spec,
+            )
+            self.assertFalse(wide.recoverable)
+            self.assertEqual(wide.status, "market_recovery_spread_too_wide")
+            self.assertGreater(wide.spread_risk_fraction or 0.0, 0.10)
+
+            short_missed = MissedEntryCheck(
+                checked=True,
+                missed=True,
+                bars_checked=1,
+                first_touch_time_utc="2026-01-01T04:00:00+00:00",
+                first_touch_high=1.2005,
+                first_touch_low=1.1990,
+            )
+            mt5.rates = [
+                {**mt5.rates[0], "high": 1.1990, "low": 1.1980},
+                {**mt5.rates[1], "high": 1.2005, "low": 1.1990},
+            ]
+            short_check = market_recovery_check(
+                mt5,
+                _short_setup(),
+                config=config,
+                market=MT5MarketSnapshot(bid=1.2002, ask=1.2003, time_utc="2026-01-01T04:01:00Z"),
+                missed_entry=short_missed,
+                symbol_spec=spec,
+            )
+            self.assertTrue(short_check.recoverable)
+            self.assertAlmostEqual(short_check.recalculated_take_profit or 0.0, 1.1904)
+            short_worse = market_recovery_check(
+                mt5,
+                _short_setup(),
+                config=config,
+                market=MT5MarketSnapshot(bid=1.1998, ask=1.1999, time_utc="2026-01-01T04:01:00Z"),
+                missed_entry=short_missed,
+                symbol_spec=spec,
+            )
+            self.assertFalse(short_worse.recoverable)
+            self.assertEqual(short_worse.status, "market_recovery_not_better")
+
+    def test_market_recovery_check_rejects_invalid_stop_and_unavailable_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            spec = MT5SymbolExecutionSpec("EURUSD", 5, 0.0001, 10.0, 0.0001, 0.01, 100.0, 0.01)
+            missed = MissedEntryCheck(checked=True, missed=True, first_touch_time_utc="2026-01-01T04:00:00+00:00")
+
+            invalid_price = market_recovery_check(
+                mt5,
+                _setup(),
+                config=config,
+                market=MT5MarketSnapshot(bid=1.0997, ask=float("nan"), time_utc="2026-01-01T04:01:00Z"),
+                missed_entry=missed,
+                symbol_spec=spec,
+            )
+            self.assertEqual(invalid_price.status, "market_recovery_invalid_price")
+
+            invalid_stop = market_recovery_check(
+                mt5,
+                _setup(),
+                config=config,
+                market=MT5MarketSnapshot(bid=1.0947, ask=1.0948, time_utc="2026-01-01T04:01:00Z"),
+                missed_entry=missed,
+                symbol_spec=spec,
+            )
+            self.assertEqual(invalid_stop.status, "market_recovery_invalid_stop_distance")
+
+            mt5.rates = None
+            path_unavailable = market_recovery_check(
+                mt5,
+                _setup(),
+                config=config,
+                market=MT5MarketSnapshot(bid=1.0997, ask=1.0998, time_utc="2026-01-01T04:01:00Z"),
+                missed_entry=missed,
+                symbol_spec=spec,
+            )
+            self.assertFalse(path_unavailable.checked)
+            self.assertEqual(path_unavailable.status, "market_recovery_path_unavailable")
+
+            mt5.rates = []
+            empty_path = live_module._market_recovery_path_block(
+                mt5,
+                _setup(),
+                config=config,
+                until_time_utc="2026-01-01T04:01:00Z",
+            )
+            self.assertEqual(empty_path["status"], "path_unavailable")
+
+            mt5.rates = [
+                {
+                    "time": int(pd.Timestamp("2026-01-01T00:00:00Z").timestamp()),
+                    "open": 1.1,
+                    "high": 1.1,
+                    "low": 1.099,
+                    "close": 1.0995,
+                    "tick_volume": 10,
+                    "spread": 2,
+                }
+            ]
+            clear_path = live_module._market_recovery_path_block(
+                mt5,
+                _setup(),
+                config=config,
+                until_time_utc="2026-01-01T00:00:00Z",
+            )
+            self.assertEqual(clear_path["status"], "clear")
+
+    def test_market_recovery_intent_rejects_safety_edges(self) -> None:
+        def ready_check(**overrides) -> MarketRecoveryCheck:
+            values = {
+                "checked": True,
+                "recoverable": True,
+                "status": "market_recovery_ready",
+                "original_entry": 1.1,
+                "fill_price": 1.0998,
+                "stop_loss": 1.095,
+                "original_take_profit": 1.105,
+                "recalculated_take_profit": 1.1046,
+                "spread_risk_fraction": 0.04,
+                "max_spread_risk_fraction": 0.10,
+            }
+            values.update(overrides)
+            return MarketRecoveryCheck(**values)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            spec = MT5SymbolExecutionSpec("EURUSD", 5, 0.0001, 10.0, 0.0001, 0.01, 100.0, 0.01)
+            account = SimpleNamespace(equity=100_000.0)
+
+            _, _, missing_price = live_module._build_market_recovery_intent(
+                mt5,
+                _setup(),
+                config=config,
+                state=LiveExecutorState(),
+                account=account,
+                symbol_spec=spec,
+                recovery_check=ready_check(fill_price=None),
+            )
+            self.assertEqual(missing_price.status, "market_recovery_missing_price")
+
+            mt5.calc_profit_result = None
+            _, _, invalid_symbol = live_module._build_market_recovery_intent(
+                mt5,
+                _setup(),
+                config=config,
+                state=LiveExecutorState(),
+                account=account,
+                symbol_spec=spec,
+                recovery_check=ready_check(),
+            )
+            self.assertEqual(invalid_symbol.status, "market_recovery_invalid_symbol_value")
+            mt5.calc_profit_result = -500.0
+
+            _, _, missing_bucket = live_module._build_market_recovery_intent(
+                mt5,
+                _setup(timeframe="M15"),
+                config=config,
+                state=LiveExecutorState(),
+                account=account,
+                symbol_spec=spec,
+                recovery_check=ready_check(),
+            )
+            self.assertEqual(missing_bucket.status, "missing_risk_bucket")
+
+            _, _, risk_limit = live_module._build_market_recovery_intent(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, risk_bucket_scale=10.0, journal_path=str(Path(tmpdir) / "risk.jsonl")),
+                state=LiveExecutorState(),
+                account=account,
+                symbol_spec=spec,
+                recovery_check=ready_check(),
+            )
+            self.assertEqual(risk_limit.status, "market_recovery_risk_pct_limit")
+
+            bad_spec = MT5SymbolExecutionSpec("EURUSD", 5, 0.0001, 10.0, 0.0001, 0.01, 100.0, 0.0)
+            _, _, volume_error = live_module._build_market_recovery_intent(
+                mt5,
+                _setup(),
+                config=config,
+                state=LiveExecutorState(),
+                account=account,
+                symbol_spec=bad_spec,
+                recovery_check=ready_check(),
+            )
+            self.assertEqual(volume_error.status, "market_recovery_invalid_volume_spec")
+
+            volume_spec = live_module._market_recovery_sized_volume(
+                account=account,
+                symbol_spec=bad_spec,
+                limits=ExecutionSafetyLimits(),
+                target_risk_pct=0.2,
+                risk_per_lot=500.0,
+            )
+            self.assertEqual(volume_spec["error"], "market_recovery_invalid_volume_spec")
+
+            invalid_risk = live_module._market_recovery_sized_volume(
+                account=account,
+                symbol_spec=spec,
+                limits=ExecutionSafetyLimits(),
+                target_risk_pct=0.2,
+                risk_per_lot=0.0,
+            )
+            self.assertEqual(invalid_risk["error"], "market_recovery_invalid_symbol_value")
+
+            invalid_equity = live_module._market_recovery_sized_volume(
+                account=SimpleNamespace(equity=0.0),
+                symbol_spec=spec,
+                limits=ExecutionSafetyLimits(),
+                target_risk_pct=0.2,
+                risk_per_lot=500.0,
+            )
+            self.assertEqual(invalid_equity["error"], "market_recovery_invalid_account_equity")
+
+            capped = live_module._market_recovery_sized_volume(
+                account=account,
+                symbol_spec=spec,
+                limits=ExecutionSafetyLimits(max_lots_per_order=0.1),
+                target_risk_pct=0.2,
+                risk_per_lot=500.0,
+            )
+            self.assertEqual(capped["volume"], 0.1)
+
+            below_min = live_module._market_recovery_sized_volume(
+                account=SimpleNamespace(equity=1_000.0),
+                symbol_spec=spec,
+                limits=ExecutionSafetyLimits(),
+                target_risk_pct=0.01,
+                risk_per_lot=100_000.0,
+            )
+            self.assertEqual(below_min["error"], "market_recovery_volume_below_min")
+
+            _, _, max_open_risk = live_module._build_market_recovery_intent(
+                mt5,
+                _setup(),
+                config=config,
+                state=LiveExecutorState(active_positions=(_active(actual_risk_pct=5.9),)),
+                account=account,
+                symbol_spec=spec,
+                recovery_check=ready_check(),
+            )
+            self.assertEqual(max_open_risk.status, "market_recovery_max_open_risk")
+
+            _, _, expiration_failed = live_module._build_market_recovery_intent(
+                mt5,
+                _setup(metadata={"fs_signal_time_utc": None}),
+                config=config,
+                state=LiveExecutorState(),
+                account=account,
+                symbol_spec=spec,
+                recovery_check=ready_check(),
+            )
+            self.assertEqual(expiration_failed.status, "market_recovery_expiration_failed")
+
     def test_send_and_cancel_pending_order_outcomes(self) -> None:
         mt5 = FakeMT5()
         intent = MT5OrderIntent(
@@ -624,6 +968,48 @@ class LiveExecutorTests(unittest.TestCase):
         cancelled = cancel_pending_order(mt5, _pending())
         self.assertTrue(cancelled.sent)
         self.assertEqual(mt5.order_send_requests[-1]["action"], mt5.TRADE_ACTION_REMOVE)
+
+        market_intent = MT5OrderIntent(
+            signal_key="lpfs:EURUSD:H4:10:long",
+            symbol="EURUSD",
+            timeframe="H4",
+            side="long",
+            order_type="BUY",
+            volume=0.02,
+            entry_price=1.0998,
+            stop_loss=1.095,
+            take_profit=1.1046,
+            target_risk_pct=0.01,
+            actual_risk_pct=0.01,
+            expiration_time_utc=pd.Timestamp("2026-01-12T04:00:00Z"),
+            magic=131500,
+            comment="LPFS H4 L 10",
+            setup_id="setup",
+        )
+        mt5.order_send_result = SimpleNamespace(retcode=mt5.TRADE_RETCODE_DONE, comment="market done", order=9101, deal=9201)
+        market_check = run_market_order_check(mt5, market_intent, deviation_points=0)
+        self.assertTrue(market_check.passed)
+        self.assertEqual(market_check.request["action"], mt5.TRADE_ACTION_DEAL)
+        sent_market = send_market_recovery_order(mt5, market_intent, deviation_points=0)
+        self.assertTrue(sent_market.sent)
+        self.assertEqual(sent_market.deal_ticket, 9201)
+        self.assertEqual(mt5.order_send_requests[-1]["action"], mt5.TRADE_ACTION_DEAL)
+
+        with self.assertRaisesRegex(ValueError, "pending order intents"):
+            build_order_check_request(mt5, market_intent)
+        with self.assertRaisesRegex(ValueError, "Pending order type expected"):
+            live_module._mt5_pending_order_type(mt5, market_intent)
+        minimal_mt5 = SimpleNamespace(
+            TRADE_ACTION_DEAL=mt5.TRADE_ACTION_DEAL,
+            ORDER_TYPE_BUY=mt5.ORDER_TYPE_BUY,
+            ORDER_TYPE_SELL=mt5.ORDER_TYPE_SELL,
+        )
+        minimal_request = live_module.build_market_order_request(minimal_mt5, market_intent)
+        self.assertNotIn("type_filling", minimal_request)
+
+        mt5.order_send_result = SimpleNamespace(retcode=999, comment="bad market", order=0, deal=0)
+        rejected_market = send_market_recovery_order(mt5, market_intent, deviation_points=0)
+        self.assertFalse(rejected_market.sent)
 
     def test_pending_expiry_counts_actual_bars_across_weekend_gaps_for_all_timeframes(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -894,6 +1280,226 @@ class LiveExecutorTests(unittest.TestCase):
                 state=LiveExecutorState(),
             )
             self.assertEqual(rejected_send.status, "order_rejected")
+            self.assertIn(rejected_send.signal_key, rejected_send.state.processed_signal_keys)
+
+            mt5.order_send_result = SimpleNamespace(
+                retcode=mt5.TRADE_RETCODE_CLIENT_DISABLES_AT,
+                comment="AutoTrading disabled by client",
+                order=0,
+                deal=0,
+            )
+            operator_blocked = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "autotrading_disabled.jsonl")),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(operator_blocked.status, "blocked")
+            self.assertNotIn(operator_blocked.signal_key, operator_blocked.state.processed_signal_keys)
+            self.assertIn("setup_blocked:", operator_blocked.state.notified_event_keys[0])
+
+            mt5.order_send_result = SimpleNamespace(retcode=mt5.TRADE_RETCODE_PLACED, comment="placed", order=9002, deal=0)
+            retried_after_operator_fix = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "autotrading_retried.jsonl")),
+                state=operator_blocked.state,
+            )
+            self.assertEqual(retried_after_operator_fix.status, "order_sent")
+
+    def test_process_live_setup_market_recovery_sends_market_order_and_tracks_position(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            notifier_client = FakeNotifierClient()
+            notifier = TelegramNotifier(TelegramConfig("token", "chat", dry_run=False), notifier_client)
+            mt5 = FakeMT5()
+            mt5.rates[-1]["low"] = 1.0996
+            mt5.rates[-1]["high"] = 1.1004
+            mt5.tick = SimpleNamespace(
+                bid=1.0997,
+                ask=1.0998,
+                time_msc=int(pd.Timestamp("2026-01-01T04:02:00Z").timestamp() * 1000),
+                time=0,
+            )
+            mt5.order_send_result = SimpleNamespace(retcode=mt5.TRADE_RETCODE_DONE, comment="market done", order=9101, deal=9201)
+
+            recovered = process_trade_setup_live_send(mt5, _setup(), config=config, state=LiveExecutorState(), notifier=notifier)
+
+            self.assertEqual(recovered.status, "market_recovery_sent")
+            self.assertEqual(mt5.order_check_requests[-1]["action"], mt5.TRADE_ACTION_DEAL)
+            self.assertEqual(mt5.order_send_requests[-1]["action"], mt5.TRADE_ACTION_DEAL)
+            self.assertEqual(mt5.order_send_requests[-1]["deviation"], 0)
+            self.assertEqual(len(recovered.state.pending_orders), 0)
+            self.assertEqual(len(recovered.state.active_positions), 1)
+            self.assertIn(recovered.signal_key, recovered.state.processed_signal_keys)
+            active = recovered.state.active_positions[0]
+            self.assertEqual(active.position_id, 9201)
+            self.assertAlmostEqual(active.entry_price, 1.0998)
+            self.assertAlmostEqual(active.stop_loss, 1.095)
+            self.assertAlmostEqual(active.take_profit, 1.1046)
+            self.assertIn("LPFS LIVE | MARKET RECOVERY", notifier_client.payloads[0]["text"])
+            self.assertIn("Original 1.10000 | Fill 1.09980", notifier_client.payloads[0]["text"])
+            self.assertIn("Touched: 2026-01-01 12:00 SGT | H/L 1.10040/1.09960", notifier_client.payloads[0]["text"])
+
+            rows = [json.loads(line) for line in Path(config.journal_path).read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(rows[-1]["event"], "market_recovery_sent")
+            self.assertEqual(rows[-1]["notification_event"]["fields"]["deal_ticket"], 9201)
+            loaded = load_live_state(config.state_path)
+            self.assertEqual(len(loaded.active_positions), 1)
+
+    def test_process_live_setup_market_recovery_blocks_and_rejects_edge_paths(self) -> None:
+        def recoverable_mt5() -> FakeMT5:
+            mt5 = FakeMT5()
+            mt5.rates[-1]["low"] = 1.0996
+            mt5.rates[-1]["high"] = 1.1004
+            mt5.tick = SimpleNamespace(
+                bid=1.0997,
+                ask=1.0998,
+                time_msc=int(pd.Timestamp("2026-01-01T04:02:00Z").timestamp() * 1000),
+                time=0,
+            )
+            mt5.order_send_result = SimpleNamespace(retcode=mt5.TRADE_RETCODE_DONE, comment="market done", order=9101, deal=9201)
+            return mt5
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            disabled = process_trade_setup_live_send(
+                recoverable_mt5(),
+                _setup(),
+                config=_config(tmpdir, market_recovery_mode="disabled", journal_path=str(Path(tmpdir) / "disabled.jsonl")),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(disabled.status, "rejected")
+            self.assertIn(disabled.signal_key, disabled.state.processed_signal_keys)
+
+            mt5 = recoverable_mt5()
+            mt5.order_check_result = SimpleNamespace(retcode=123, comment="market check rejected")
+            failed_check = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_check.jsonl")),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(failed_check.status, "order_check_failed")
+            self.assertEqual(mt5.order_check_requests[-1]["action"], mt5.TRADE_ACTION_DEAL)
+
+            mt5 = recoverable_mt5()
+            mt5.rates = None
+            path_failed = live_module._process_market_recovery_live_send(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_path.jsonl")),
+                state=LiveExecutorState(),
+                account=mt5.account,
+                symbol_spec=live_module.symbol_spec_from_mt5(mt5, "EURUSD"),
+                missed_entry=MissedEntryCheck(checked=True, missed=True, first_touch_time_utc="2026-01-01T04:00:00+00:00"),
+                bar_expiry=live_module.PendingBarExpiryCheck(checked=True, expired=False),
+                notifier=None,
+            )
+            self.assertEqual(path_failed.status, "rejected")
+            self.assertIn(path_failed.signal_key, path_failed.state.processed_signal_keys)
+
+            ready_check = MarketRecoveryCheck(
+                checked=True,
+                recoverable=True,
+                status="market_recovery_ready",
+                original_entry=1.1,
+                fill_price=1.0998,
+                stop_loss=1.095,
+                original_take_profit=1.105,
+                recalculated_take_profit=1.1046,
+                spread_risk_fraction=0.04,
+                max_spread_risk_fraction=0.10,
+            )
+            with mock.patch.object(live_module, "market_recovery_check", return_value=ready_check):
+                with mock.patch.object(live_module, "_build_market_recovery_intent", return_value=(None, None, None)):
+                    intent_failed = live_module._process_market_recovery_live_send(
+                        recoverable_mt5(),
+                        _setup(),
+                        config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_intent.jsonl")),
+                        state=LiveExecutorState(),
+                        account=mt5.account,
+                        symbol_spec=live_module.symbol_spec_from_mt5(recoverable_mt5(), "EURUSD"),
+                        missed_entry=MissedEntryCheck(checked=True, missed=True, first_touch_time_utc="2026-01-01T04:00:00+00:00"),
+                        bar_expiry=live_module.PendingBarExpiryCheck(checked=True, expired=False),
+                        notifier=None,
+                    )
+            self.assertEqual(intent_failed.status, "rejected")
+
+            mt5 = recoverable_mt5()
+            mt5.order_send_result = SimpleNamespace(
+                retcode=mt5.TRADE_RETCODE_CLIENT_DISABLES_AT,
+                comment="AutoTrading disabled by client",
+                order=0,
+                deal=0,
+            )
+            operator_blocked = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_autotrading.jsonl")),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(operator_blocked.status, "blocked")
+            self.assertNotIn(operator_blocked.signal_key, operator_blocked.state.processed_signal_keys)
+
+            mt5 = recoverable_mt5()
+            mt5.order_send_result = SimpleNamespace(retcode=123, comment="market rejected", order=0, deal=0)
+            send_rejected = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_rejected.jsonl")),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(send_rejected.status, "order_rejected")
+            self.assertIn(send_rejected.signal_key, send_rejected.state.processed_signal_keys)
+
+            mt5 = recoverable_mt5()
+            mt5.auto_create_market_position = False
+            fallback = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=_config(
+                    tmpdir,
+                    journal_path=str(Path(tmpdir) / "market_fallback.jsonl"),
+                    state_path=str(Path(tmpdir) / "market_fallback_state.json"),
+                ),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(fallback.status, "market_recovery_sent")
+            self.assertEqual(fallback.state.active_positions[0].position_id, 9101)
+
+            mt5 = recoverable_mt5()
+            mt5.tick = SimpleNamespace(
+                bid=1.0988,
+                ask=1.0998,
+                time_msc=int(pd.Timestamp("2026-01-01T04:02:00Z").timestamp() * 1000),
+                time=0,
+            )
+            spread_blocked = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_spread.jsonl")),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(spread_blocked.status, "blocked")
+            self.assertEqual(mt5.order_check_requests, [])
+            self.assertNotIn(spread_blocked.signal_key, spread_blocked.state.processed_signal_keys)
+
+            expired_check = live_module.PendingBarExpiryCheck(
+                checked=True,
+                expired=True,
+                bars_after_signal=7,
+                max_entry_wait_bars=6,
+                signal_time_utc="2026-01-01T00:00:00+00:00",
+                first_expired_bar_time_utc="2026-01-02T04:00:00+00:00",
+            )
+            with mock.patch.object(live_module, "setup_bar_expiry_check", return_value=expired_check):
+                expired = process_trade_setup_live_send(
+                    recoverable_mt5(),
+                    _setup(),
+                    config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_expired.jsonl")),
+                    state=LiveExecutorState(),
+                )
+            self.assertEqual(expired.status, "rejected")
 
     def test_successful_order_send_persists_state_before_notification_delivery(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
