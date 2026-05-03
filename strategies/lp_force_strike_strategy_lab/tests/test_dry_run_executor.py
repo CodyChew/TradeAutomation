@@ -334,6 +334,25 @@ class DryRunExecutorTests(unittest.TestCase):
             self.assertFalse(env_settings.local.use_existing_terminal_session)
             self.assertEqual(env_settings.executor.symbols, ("EURUSD",))
 
+    def test_load_settings_accepts_powershell_utf8_bom_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.local.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "mt5": {"expected_login": "123", "expected_server": "Demo"},
+                        "dry_run": {"symbols": ["EURUSD"], "timeframes": ["H4"]},
+                    }
+                ),
+                encoding="utf-8-sig",
+            )
+
+            settings = load_dry_run_settings(config_path, env={})
+
+            self.assertEqual(settings.local.expected_login, "123")
+            self.assertEqual(settings.local.expected_server, "Demo")
+            self.assertEqual(settings.executor.symbols, ("EURUSD",))
+
     def test_required_credentials_and_initialize_fail_without_leaking_secrets(self) -> None:
         with self.assertRaisesRegex(LocalConfigError, "MT5_EXPECTED_LOGIN, MT5_EXPECTED_SERVER"):
             require_mt5_credentials(DryRunLocalConfig())

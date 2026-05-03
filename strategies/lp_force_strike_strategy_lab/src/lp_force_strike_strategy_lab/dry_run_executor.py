@@ -200,7 +200,7 @@ def load_dry_run_settings(
     config_path = Path(path)
     payload: dict[str, Any] = {}
     if config_path.exists():
-        with config_path.open("r", encoding="utf-8") as handle:
+        with config_path.open("r", encoding="utf-8-sig") as handle:
             payload = dict(json.load(handle))
     base_dir = config_path.parent if config_path.parent != Path("") else Path(".")
     source_env = os.environ if env is None else env

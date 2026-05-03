@@ -369,6 +369,31 @@ class LiveExecutorTests(unittest.TestCase):
             string_symbol = load_live_send_settings(config_path, env={})
             self.assertEqual(string_symbol.executor.symbols, ("EURUSD",))
 
+    def test_live_settings_accept_powershell_utf8_bom_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.local.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "mt5": {"expected_login": "123", "expected_server": "Real"},
+                        "live_send": {
+                            "execution_mode": LIVE_SEND_MODE,
+                            "live_send_enabled": True,
+                            "real_money_ack": LIVE_SEND_ACK,
+                            "symbols": ["EURUSD"],
+                            "timeframes": ["H4"],
+                        },
+                    }
+                ),
+                encoding="utf-8-sig",
+            )
+
+            settings = load_live_send_settings(config_path, env={})
+
+            self.assertEqual(settings.local.expected_login, "123")
+            self.assertEqual(settings.executor.symbols, ("EURUSD",))
+            validate_live_send_settings(settings)
+
     def test_state_round_trip_and_config_helpers(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "state.json"

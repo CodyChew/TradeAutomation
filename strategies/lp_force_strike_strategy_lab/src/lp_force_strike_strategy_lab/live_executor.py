@@ -304,7 +304,7 @@ def load_live_send_settings(path: str | Path = "config.local.json", *, env: dict
     config_path = Path(path)
     payload: dict[str, Any] = {}
     if config_path.exists():
-        payload = dict(json.loads(config_path.read_text(encoding="utf-8")))
+        payload = dict(json.loads(config_path.read_text(encoding="utf-8-sig")))
     base_dir = config_path.parent if config_path.parent != Path("") else Path(".")
     live_payload = dict(payload.get("live_send", {}) or {})
     dry_executor = dry_settings.executor
