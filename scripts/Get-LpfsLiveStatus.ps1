@@ -60,10 +60,22 @@ if (Test-Path -LiteralPath $KillSwitchPath) {
 $Processes = @(Get-CimInstance Win32_Process | Where-Object {
     $_.CommandLine -like "*run_lp_force_strike_live_executor.py*"
 })
+$ProcessById = @{}
+foreach ($Process in $Processes) {
+    $ProcessById[$Process.ProcessId] = $Process
+}
+$ChildEntries = @($Processes | Where-Object { $ProcessById.ContainsKey($_.ParentProcessId) })
 Write-Host ""
 Write-Host "processes=$($Processes.Count)"
+if ($Processes.Count -eq 2 -and $ChildEntries.Count -ge 1) {
+    Write-Host "process_note=two_entries_parent_child_windows_venv_launcher"
+} elseif ($Processes.Count -gt 1) {
+    Write-Host "process_note=multiple_entries_verify_parent_pid_exe_config_runtime"
+}
 foreach ($Process in $Processes) {
     Write-Host "pid=$($Process.ProcessId)"
+    Write-Host "parent_pid=$($Process.ParentProcessId)"
+    Write-Host "exe=$($Process.ExecutablePath)"
     Write-Host "command=$($Process.CommandLine)"
 }
 

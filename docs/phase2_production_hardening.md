@@ -202,7 +202,9 @@ open in the user session.
 
 Phase 2 is ready for VPS migration when these pass locally:
 
-- The status command reports no unexpected second runner.
+- The status command reports no unexpected second logical runner. On Windows,
+  one venv-launched logical runner can appear as two process entries when
+  `venv\Scripts\python.exe` is the parent of the real child interpreter.
 - The watchdog refuses to start while `KILL_SWITCH` exists.
 - The runner exits before MT5 initialization when `KILL_SWITCH` exists.
 - A kill switch created during sleep stops before the next live cycle.

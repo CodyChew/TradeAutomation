@@ -1,7 +1,8 @@
 # TradeAutomation Session Handoff
 
 Last updated: 2026-05-04 SGT after installing the Amazon Lightsail VPS
-production task and keeping the VPS runtime paused by kill switch.
+production task, starting the VPS runner, and clarifying Windows process-count
+semantics.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -290,8 +291,9 @@ only if live evidence shows too many good H4 setups are skipped.
 
 Current stage: controlled live validation on a real MT5 account with low-risk
 scaled V15 sizing. The Lightsail VPS production wrapper is installed and
-observable, but the runtime is intentionally paused by kill switch until the
-operator explicitly clears it.
+observable, and the operator has started the long-running VPS task. Current
+state must be verified from the VPS status packet, MT5, heartbeat, latest log,
+and journal rather than from this static handoff.
 
 Phase 2 local production hardening is now implemented without changing strategy
 rules:
@@ -329,8 +331,8 @@ Local rehearsal passed on 2026-05-03:
   auto-start task is installed locally.
 
 The same wrapper has now been moved to Amazon Lightsail using
-`docs/lpfs_lightsail_vps_runbook.md`. Keep risk unchanged and keep the VPS kill
-switch active until explicit go-live.
+`docs/lpfs_lightsail_vps_runbook.md`. Keep risk unchanged; the VPS runner was
+started only after explicit operator go-live checks.
 
 Lightsail VPS deployment checkpoint passed on 2026-05-04 SGT:
 
@@ -358,14 +360,21 @@ Lightsail VPS deployment checkpoint passed on 2026-05-04 SGT:
   lifecycle cards succeeded.
 - Final at-logon scheduled task `LPFS_Live` is installed and `Ready`. It runs
   `scripts\run_lpfs_live_forever.ps1` with `Cycles 100000000` and
-  `SleepSeconds 30`, but the kill switch is active with reason
-  `production task installed but paused`.
-- Current desired VPS idle state before go-live: `kill_switch_active=True`,
-  `processes=0`, `pending_orders=2`, `active_positions=0`.
+  `SleepSeconds 30`.
+- The user cleared the VPS kill switch and started `LPFS_Live`. The latest
+  pasted status showed `kill_switch_active=False`, heartbeat `running`,
+  `pending_orders=2`, `active_positions=0`, and `processes=2`.
+- `processes=2` is expected for one logical Windows venv-launched runner when
+  one entry is `C:\TradeAutomation\venv\Scripts\python.exe` and the other is
+  its child `C:\Program Files\Python312\python.exe` for the same LPFS command.
+  Confirm with `parent_pid`, `exe`, heartbeat freshness, matching config/runtime
+  root, and one advancing latest log. Treat it as duplicate only if that
+  parent/child shape is absent, configs/runtime roots differ, heartbeat is
+  stale, or there are more than two runner entries.
 
-Next VPS decision: either leave `LPFS_Live` paused until market-open/operator
-review, or explicitly clear the kill switch and start `LPFS_Live` for the
-long-running production loop. Do not run the local PC runner at the same time.
+Next VPS decision: keep the VPS runner under observation with status packets,
+MT5 open orders/positions, Telegram alerts, and the latest log. Do not run the
+local PC runner at the same time.
 
 Operator quick checks live in `docs/lpfs_lightsail_vps_runbook.md` under
 `Operator Quick Reference`. The main packet to paste into Codex is:

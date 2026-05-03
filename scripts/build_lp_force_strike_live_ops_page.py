@@ -426,7 +426,16 @@ Get-ScheduledTaskInfo -TaskName "LPFS_Live" """.strip(),
             "Check for live runner processes",
             r"""Get-CimInstance Win32_Process |
     Where-Object { $_.CommandLine -match "run_lp_force_strike_live_executor|run_lpfs_live_forever" } |
-    Select-Object ProcessId,CommandLine""",
+    Select-Object ProcessId,ParentProcessId,ExecutablePath,CommandLine""",
+        ),
+        (
+            "Confirm one logical Windows venv runner",
+            r"""Get-CimInstance Win32_Process |
+    Where-Object { $_.CommandLine -match "run_lp_force_strike_live_executor" } |
+    Select-Object ProcessId,ParentProcessId,ExecutablePath,CommandLine
+
+# processes=2 is expected when one entry is venv\Scripts\python.exe
+# and the other entry is its child C:\Program Files\Python312\python.exe.""",
         ),
         (
             "Read heartbeat JSON",
@@ -451,6 +460,19 @@ Get-Content $LatestLog.FullName -Tail 80""",
 Start-ScheduledTask -TaskName "LPFS_Live"
 Start-Sleep -Seconds 60
 .\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60""",
+        ),
+        (
+            "Recover from suspected duplicate runner processes",
+            r""".\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason "duplicate runner check"
+Start-Sleep -Seconds 90
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60""",
+        ),
+        (
+            "Hard-stop remaining LPFS runners only after graceful wait",
+            r"""Stop-ScheduledTask -TaskName "LPFS_Live" -ErrorAction SilentlyContinue
+Get-CimInstance Win32_Process |
+    Where-Object { $_.CommandLine -match "run_lp_force_strike_live_executor" } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force }""",
         ),
     ]
     vps_operator_command_html = "\n".join(
@@ -521,7 +543,7 @@ Start-Sleep -Seconds 60
         ),
     ]
 
-    html_text = f"""<!doctype html>
+    html_text = rf"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -627,7 +649,7 @@ Start-Sleep -Seconds 60
 
     <section id="vps-operator" aria-labelledby="vps-operator-title">
       <h2 id="vps-operator-title">VPS Operator Quick Reference</h2>
-      <p class="callout warning"><strong>Current installed VPS state:</strong> final task <code>LPFS_Live</code> is installed and ready, the kill switch is active, no runner process should be active, and the VPS should show two tracked LPFS pending orders with zero LPFS active positions until go-live is deliberately started.</p>
+      <p class="callout warning"><strong>Installed VPS baseline:</strong> final task <code>LPFS_Live</code> is installed, MT5 is the broker source of truth, and the runtime folder is <code>C:\TradeAutomationRuntime</code>. Do not rely on this static page for current process state; run the status packet.</p>
       <div class="ops-grid">
         {_fact_grid([
             ("Code path", "C:\\TradeAutomation", "Repository clone used by the Lightsail production task."),
@@ -639,6 +661,7 @@ Start-Sleep -Seconds 60
         ])}
       </div>
       <p class="callout">Do not run the local PC runner and the VPS runner at the same time. After RDP review, disconnect instead of signing out so the interactive MT5 session stays open.</p>
+      <p class="callout warning"><strong>Windows process count:</strong> <code>processes=2</code> can be one healthy logical runner when <code>parent_pid</code> links <code>venv\Scripts\python.exe</code> to its child <code>C:\Program Files\Python312\python.exe</code>. Treat it as suspicious only if the parent/child link is absent, configs/runtime roots differ, the heartbeat is stale, or there are more than two runner entries.</p>
       <div class="command-list">
         {vps_operator_command_html}
       </div>

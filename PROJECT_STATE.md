@@ -1,7 +1,8 @@
 # TradeAutomation Project State
 
 Last updated: 2026-05-04 local time after LPFS Amazon Lightsail VPS
-production-task installation and paused handoff.
+production-task installation, go-live check, and Windows process-count
+clarification.
 
 ## Purpose
 
@@ -580,8 +581,13 @@ Next execution phase:
    copied state/journal match the two LPFS pending orders, direct one-cycle,
    watchdog one-cycle, Task Scheduler smoke, and Task Scheduler one-cycle tests
    passed, Telegram delivery works after the `certifi` HTTPS fix, and final
-   at-logon task `LPFS_Live` is installed. The current intended state is paused:
-   VPS kill switch active, no runner process, pending orders still tracked.
+   at-logon task `LPFS_Live` is installed. The user then cleared the VPS kill
+   switch and started `LPFS_Live`; status showed heartbeat `running`,
+   `pending_orders=2`, `active_positions=0`, and `processes=2`.
+   `processes=2` is expected on Windows when it is the venv launcher process
+   plus its child Python interpreter for the same LPFS command. Confirm with
+   `parent_pid`, `exe`, heartbeat freshness, and matching config/runtime root;
+   do not treat that shape as a duplicate runner by itself.
 
 ## Force Strike Side-Lab Comparison Learnings
 
@@ -649,12 +655,13 @@ scripts/run_lp_force_strike_live_executor.py with risk_bucket_scale=0.05,
 max_open_risk_pct=0.65, dynamic spread gating, restart-safe state, MT5
 order/position/deal reconciliation, and compact Telegram lifecycle cards.
 Connected MT5 is a real account; do not run live-send or clear state casually.
-Local Phase 2 rehearsal has passed and Amazon Lightsail deployment is installed
-but paused. The VPS uses C:\TradeAutomation plus C:\TradeAutomationRuntime, MT5
-Python attach works against FTMO-Server, Telegram delivery works after the
-certifi HTTPS fix, and scheduled task LPFS_Live is Ready with the kill switch
-active. Before going live, verify MT5/state/journal/broker truth, ensure the
-local PC runner is not active, then deliberately clear the VPS kill switch and
-start LPFS_Live. Do not change strategy behavior while doing the operations
-move.
+Local Phase 2 rehearsal has passed and Amazon Lightsail deployment is installed.
+The VPS uses C:\TradeAutomation plus C:\TradeAutomationRuntime, MT5 Python attach
+works against FTMO-Server, Telegram delivery works after the certifi HTTPS fix,
+and scheduled task LPFS_Live is installed. The user has started the VPS runner;
+`Get-LpfsLiveStatus.ps1` can show `processes=2` for one healthy logical runner
+because Windows launches venv\Scripts\python.exe as a parent of the real child
+Python interpreter. Verify parent_pid/exe/heartbeat/log freshness before
+calling it duplicate. Do not change strategy behavior while doing the
+operations move.
 ```

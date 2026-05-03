@@ -239,9 +239,14 @@ Start-Sleep -Seconds 60
 .\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60
 ```
 
-Expected first check: one `powershell`/Python runner path active, heartbeat
-`running`, latest log updated, and Telegram `RUNNER STARTED` received. Do not
-run a local PC runner at the same time.
+Expected first check: one logical runner active, heartbeat `running`, latest
+log updated, and Telegram `RUNNER STARTED` received. On Windows, the status
+packet can show `processes=2` for one logical runner because the venv launcher
+`C:\TradeAutomation\venv\Scripts\python.exe` starts the child interpreter
+`C:\Program Files\Python312\python.exe`. Confirm this by checking that one
+listed `parent_pid` points to the other listed `pid`, and that both command
+lines use the same config and runtime root. Do not run a local PC runner at the
+same time.
 
 ## Operator Quick Reference
 
@@ -270,8 +275,13 @@ Check for live runner processes directly:
 ```powershell
 Get-CimInstance Win32_Process |
     Where-Object { $_.CommandLine -match "run_lp_force_strike_live_executor|run_lpfs_live_forever" } |
-    Select-Object ProcessId,CommandLine
+    Select-Object ProcessId,ParentProcessId,ExecutablePath,CommandLine
 ```
+
+Interpretation: `processes=2` is normal only when it is the Windows venv
+launcher plus its child Python interpreter for the same LPFS command. Treat it
+as suspicious if the parent/child relationship is absent, configs/runtime roots
+differ, the heartbeat is stale, or there are more than two runner entries.
 
 Read the heartbeat:
 
@@ -306,6 +316,31 @@ Start-ScheduledTask -TaskName "LPFS_Live"
 After any resume, verify with the status packet, MT5 open orders/positions, and
 Telegram runner lifecycle cards. Telegram confirms notifications only; MT5 is
 the broker source of truth for orders and positions.
+
+If status shows suspicious duplicate runner entries, pause first and
+investigate afterward:
+
+```powershell
+.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason "duplicate runner check"
+Start-Sleep -Seconds 90
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60
+```
+
+Expected recovery state is `kill_switch_active=True` and `processes=0` after a
+graceful stop. If any LPFS runner process remains, stop the scheduled task and
+only then kill the runner process:
+
+```powershell
+Stop-ScheduledTask -TaskName "LPFS_Live" -ErrorAction SilentlyContinue
+Get-CimInstance Win32_Process |
+    Where-Object { $_.CommandLine -match "run_lp_force_strike_live_executor" } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60
+```
+
+A hard stop can prevent the Python runner from sending `RUNNER STOPPED` to
+Telegram. In that case, trust the process table, heartbeat, latest log, and
+journal over the absence of a Telegram stop card.
 
 ## Liaison Packet For Codex
 
@@ -348,6 +383,20 @@ If the VPS reboots:
 - confirm account/server;
 - run status command;
 - let Task Scheduler or the watchdog start the runner.
+
+If suspicious duplicate runner processes appear after starting `LPFS_Live`:
+
+- first confirm it is not the normal two-entry Windows venv launcher/child
+  interpreter shape;
+- if suspicious, set kill switch immediately;
+- wait at least 90 seconds so the runner can exit gracefully;
+- verify `processes=0`;
+- if still active, use `Stop-ScheduledTask` and then stop only processes whose
+  command line contains `run_lp_force_strike_live_executor`;
+- do not interpret a missing Telegram `RUNNER STOPPED` card as proof the
+  runner is still active after a hard stop;
+- before restarting, verify only one `LPFS_Live` task exists and no manual
+  PowerShell live runner is still open.
 
 ## Non-Goals
 

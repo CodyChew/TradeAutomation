@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import os
 import sys
 import unittest
@@ -907,6 +908,24 @@ class NotificationTests(unittest.TestCase):
         self.assertEqual(response, {"ok": True})
         self.assertEqual(calls[0][1], 7)
         self.assertIs(calls[0][2], ssl_context)
+
+    def test_telegram_ssl_context_falls_back_without_certifi(self) -> None:
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "certifi":
+                raise ImportError("certifi unavailable")
+            return real_import(name, *args, **kwargs)
+
+        with mock.patch("builtins.__import__", side_effect=fake_import), mock.patch.object(
+            notification_module.ssl,
+            "create_default_context",
+            return_value="fallback_context",
+        ) as create_default_context:
+            context = notification_module._telegram_ssl_context()
+
+        self.assertEqual(context, "fallback_context")
+        create_default_context.assert_called_once_with()
 
 
 if __name__ == "__main__":
