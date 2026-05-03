@@ -29,6 +29,25 @@ function Read-JsonFile {
     }
 }
 
+function Get-JsonField {
+    param(
+        [object]$Object,
+        [string]$Name,
+        [string]$Default = ""
+    )
+    if ($null -eq $Object) {
+        return $Default
+    }
+    if ($Object.PSObject.Properties.Name -contains $Name) {
+        $Value = $Object.$Name
+        if ($null -eq $Value) {
+            return $Default
+        }
+        return "$Value"
+    }
+    return $Default
+}
+
 Write-Host "LPFS live status"
 Write-Host "checked_at=$((Get-Date).ToString("o"))"
 Write-Host "runtime_root=$RuntimeRoot"
@@ -85,9 +104,26 @@ if (Test-Path -LiteralPath $JournalPath) {
     foreach ($Line in $Rows) {
         try {
             $Row = $Line | ConvertFrom-Json
-            Write-Host "$($Row.occurred_at_utc) event=$($Row.event) symbol=$($Row.symbol) timeframe=$($Row.timeframe) status=$($Row.status)"
+            $OccurredAt = Get-JsonField -Object $Row -Name "occurred_at_utc"
+            $Event = Get-JsonField -Object $Row -Name "event"
+            $Symbol = Get-JsonField -Object $Row -Name "symbol"
+            $Timeframe = Get-JsonField -Object $Row -Name "timeframe"
+            $Status = Get-JsonField -Object $Row -Name "status"
+            $Ticket = Get-JsonField -Object $Row -Name "order_ticket"
+            $Retcode = Get-JsonField -Object $Row -Name "order_send_retcode"
+            $Parts = @($OccurredAt, "event=$Event")
+            if (-not [string]::IsNullOrWhiteSpace($Symbol)) { $Parts += "symbol=$Symbol" }
+            if (-not [string]::IsNullOrWhiteSpace($Timeframe)) { $Parts += "timeframe=$Timeframe" }
+            if (-not [string]::IsNullOrWhiteSpace($Status)) { $Parts += "status=$Status" }
+            if (-not [string]::IsNullOrWhiteSpace($Ticket)) { $Parts += "order_ticket=$Ticket" }
+            if (-not [string]::IsNullOrWhiteSpace($Retcode)) { $Parts += "order_send_retcode=$Retcode" }
+            Write-Host ($Parts -join " ")
         } catch {
-            Write-Host $Line
+            $Preview = $Line
+            if ($Preview.Length -gt 240) {
+                $Preview = $Preview.Substring(0, 237) + "..."
+            }
+            Write-Host "unparsed_journal_row=$Preview"
         }
     }
 } else {
