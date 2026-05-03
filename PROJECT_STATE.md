@@ -573,10 +573,11 @@ Next execution phase:
    Windows service uptime.
 4. Keep collecting low-risk forward evidence from MT5, Telegram, live state,
    and the JSONL journal before changing strategy rules or scaling risk.
-5. Phase 2 now has a local production wrapper without changing strategy
-   behavior. Rehearse `scripts/run_lpfs_live_forever.ps1`,
-   `scripts/Set-LpfsKillSwitch.ps1`, and `scripts/Get-LpfsLiveStatus.ps1`
-   locally with runtime root `C:\TradeAutomationRuntime`, then move to Amazon
+5. Phase 2 local rehearsal passed on 2026-05-03 without changing strategy
+   behavior. `C:\TradeAutomationRuntime` is staged with copied live state and
+   journal, kill switch is active, direct one-cycle and watchdog one-cycle runs
+   completed, and temporary Task Scheduler smoke/live rehearsals completed.
+   No persistent local auto-start task is installed. Next move is Amazon
    Lightsail using `docs/lpfs_lightsail_vps_runbook.md`.
 
 ## Force Strike Side-Lab Comparison Learnings
@@ -645,7 +646,8 @@ scripts/run_lp_force_strike_live_executor.py with risk_bucket_scale=0.05,
 max_open_risk_pct=0.65, dynamic spread gating, restart-safe state, MT5
 order/position/deal reconciliation, and compact Telegram lifecycle cards.
 Connected MT5 is a real account; do not run live-send or clear state casually.
-The next phase is local rehearsal of the implemented Phase 2 wrapper, then
-Amazon Lightsail deployment using docs/lpfs_lightsail_vps_runbook.md. Do not
-change strategy behavior while doing the operations move.
+Local Phase 2 rehearsal has passed. The next phase is Amazon Lightsail
+deployment using docs/lpfs_lightsail_vps_runbook.md. Keep the kill switch active
+during staging, verify MT5/state/journal/broker truth before clearing it, and
+do not change strategy behavior while doing the operations move.
 ```

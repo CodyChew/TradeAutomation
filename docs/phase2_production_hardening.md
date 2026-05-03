@@ -220,9 +220,25 @@ Phase 2 is ready for VPS migration when these pass locally:
 
 ## Amazon Lightsail Next Step
 
-Use `docs/lpfs_lightsail_vps_runbook.md` after local rehearsal passes. The
-recommended VPS target is a Windows Lightsail instance running MT5, Python, and
-the same Phase 2 wrapper.
+Local rehearsal passed on 2026-05-03:
 
-Do not migrate to VPS or increase risk until the local wrapper has passed the
-acceptance criteria above.
+- production runtime staged at `C:\TradeAutomationRuntime`;
+- current live state and journal copied into that runtime;
+- read-only MT5 preflight matched the expected account/server from local config;
+- MT5 showed two LPFS pending orders and zero LPFS positions, matching staged
+  runtime state;
+- direct one-cycle run completed with `frames_processed=140`, `orders_sent=0`,
+  `setups_rejected=0`, and `setups_blocked=0`;
+- watchdog one-cycle run completed and wrote a timestamped log;
+- temporary Task Scheduler smoke run returned kill-switch exit code `3`;
+- temporary Task Scheduler one-cycle live rehearsal returned result `0`;
+- all temporary scheduled tasks were removed after rehearsal;
+- `KILL_SWITCH` was re-enabled afterward for operator review.
+
+Use `docs/lpfs_lightsail_vps_runbook.md` for the next move. The recommended
+VPS target is a Windows Lightsail instance running MT5, Python, and the same
+Phase 2 wrapper.
+
+Do not increase risk during the VPS migration. Keep `KILL_SWITCH` active while
+staging, and only clear it for controlled one-cycle verification after MT5,
+config, state, journal, and broker state are checked.

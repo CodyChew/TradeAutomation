@@ -1001,9 +1001,12 @@ Expected next scope:
    re-arming the current latest-candle setups.
 4. Keep low-risk live validation running long enough to collect real broker
    lifecycle evidence before scaling risk or changing strategy rules.
-5. Rehearse the implemented Phase 2 production wrapper locally from
-   `../../docs/phase2_production_hardening.md`, then move the same setup to
-   Amazon Lightsail using `../../docs/lpfs_lightsail_vps_runbook.md`.
+5. Local Phase 2 rehearsal passed on 2026-05-03. Runtime
+   `C:\TradeAutomationRuntime` is staged with copied live state and journal,
+   kill switch is active, direct one-cycle and watchdog one-cycle runs
+   completed, and temporary Task Scheduler smoke/live rehearsals completed.
+   Move the same setup to Amazon Lightsail using
+   `../../docs/lpfs_lightsail_vps_runbook.md`.
 6. If stop robustness becomes a priority, run a focused spread-buffer
    validation by timeframe and symbol group. Do not change the live stop
    placement from no-buffer based on V16 alone.
@@ -1036,13 +1039,26 @@ Implemented controls:
    sleeps.
 8. Amazon Lightsail runbook at `../../docs/lpfs_lightsail_vps_runbook.md`.
 
+Local rehearsal result:
+
+1. `C:\TradeAutomationRuntime` was staged with copied live state and journal.
+2. `KILL_SWITCH` is active for post-rehearsal operator review.
+3. Direct one-cycle production-runtime run completed with 140 frames and no new
+   orders.
+4. Watchdog one-cycle run completed, updated heartbeat, and wrote a log.
+5. Temporary Task Scheduler smoke run returned kill-switch exit code `3`.
+6. Temporary Task Scheduler one-cycle live rehearsal returned result `0`.
+7. Temporary scheduled tasks were removed after rehearsal; no persistent local
+   auto-start task is installed.
+
 Recommended next path:
 
-1. Rehearse the wrapper locally with `C:\TradeAutomationRuntime`.
-2. Verify kill-switch stop, heartbeat, logs, status output, and restart
-   behavior.
-3. Rehearse Task Scheduler startup locally.
-4. Move to Amazon Lightsail after local rehearsal passes.
+1. Move to Amazon Lightsail using
+   `../../docs/lpfs_lightsail_vps_runbook.md`.
+2. Keep `KILL_SWITCH` active while staging the VPS.
+3. Verify MT5, config, copied state/journal, broker orders/positions, heartbeat,
+   logs, and status output before clearing the kill switch for a VPS one-cycle
+   test.
 
 Acceptance criteria include single-runner protection, no duplicate orders after
 restart, kill-switch stop before order send, state/journal/log survival across

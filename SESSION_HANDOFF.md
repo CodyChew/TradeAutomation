@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-03 SGT after adding the LPFS Phase 2 local production
-wrapper and Amazon Lightsail VPS runbook.
+Last updated: 2026-05-03 SGT after completing local Phase 2 production-wrapper
+rehearsal and keeping the production runtime paused by kill switch.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -309,8 +309,27 @@ rules:
   before MT5 init, before live cycles, and during sleeps when `KILL_SWITCH`
   exists.
 
-Next phase: rehearse these locally, then move the same wrapper to Amazon
-Lightsail using `docs/lpfs_lightsail_vps_runbook.md`.
+Local rehearsal passed on 2026-05-03:
+
+- `C:\TradeAutomationRuntime\data\live` was staged with copied live state and
+  journal.
+- `KILL_SWITCH` is active at `C:\TradeAutomationRuntime\data\live\KILL_SWITCH`.
+- Read-only MT5 preflight matched the expected account/server in local config.
+- MT5 showed two LPFS pending orders and zero LPFS positions, matching staged
+  runtime state.
+- Direct one-cycle production-runtime run completed with `frames_processed=140`,
+  `orders_sent=0`, `setups_rejected=0`, and `setups_blocked=0`.
+- Watchdog one-cycle run completed and wrote a timestamped log under
+  `C:\TradeAutomationRuntime\data\live\logs`.
+- Temporary Task Scheduler smoke run with kill switch active returned result
+  `3`, the expected kill-switch exit.
+- Temporary Task Scheduler one-cycle live rehearsal returned result `0`.
+- Temporary scheduled tasks were removed after rehearsal; no persistent
+  auto-start task is installed locally.
+
+Next phase: move the same wrapper to Amazon Lightsail using
+`docs/lpfs_lightsail_vps_runbook.md`. Keep risk unchanged and keep kill switch
+active during staging.
 
 Do not change signal rules, stops, targets, spread threshold, risk buckets, or
 pending expiration as part of Phase 2. V16 and V17 both support keeping current
