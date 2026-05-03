@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-03 local time after LPFS Phase 2 local production
-wrapper implementation and Amazon Lightsail VPS runbook.
+Last updated: 2026-05-04 local time after LPFS Amazon Lightsail VPS
+production-task installation and paused handoff.
 
 ## Purpose
 
@@ -574,11 +574,14 @@ Next execution phase:
 4. Keep collecting low-risk forward evidence from MT5, Telegram, live state,
    and the JSONL journal before changing strategy rules or scaling risk.
 5. Phase 2 local rehearsal passed on 2026-05-03 without changing strategy
-   behavior. `C:\TradeAutomationRuntime` is staged with copied live state and
-   journal, kill switch is active, direct one-cycle and watchdog one-cycle runs
-   completed, and temporary Task Scheduler smoke/live rehearsals completed.
-   No persistent local auto-start task is installed. Next move is Amazon
-   Lightsail using `docs/lpfs_lightsail_vps_runbook.md`.
+   behavior. The Amazon Lightsail Windows VPS deployment then passed staged
+   verification on 2026-05-04: repo at `C:\TradeAutomation`, runtime at
+   `C:\TradeAutomationRuntime`, MT5 Python attach to the FTMO terminal works,
+   copied state/journal match the two LPFS pending orders, direct one-cycle,
+   watchdog one-cycle, Task Scheduler smoke, and Task Scheduler one-cycle tests
+   passed, Telegram delivery works after the `certifi` HTTPS fix, and final
+   at-logon task `LPFS_Live` is installed. The current intended state is paused:
+   VPS kill switch active, no runner process, pending orders still tracked.
 
 ## Force Strike Side-Lab Comparison Learnings
 
@@ -646,8 +649,12 @@ scripts/run_lp_force_strike_live_executor.py with risk_bucket_scale=0.05,
 max_open_risk_pct=0.65, dynamic spread gating, restart-safe state, MT5
 order/position/deal reconciliation, and compact Telegram lifecycle cards.
 Connected MT5 is a real account; do not run live-send or clear state casually.
-Local Phase 2 rehearsal has passed. The next phase is Amazon Lightsail
-deployment using docs/lpfs_lightsail_vps_runbook.md. Keep the kill switch active
-during staging, verify MT5/state/journal/broker truth before clearing it, and
-do not change strategy behavior while doing the operations move.
+Local Phase 2 rehearsal has passed and Amazon Lightsail deployment is installed
+but paused. The VPS uses C:\TradeAutomation plus C:\TradeAutomationRuntime, MT5
+Python attach works against FTMO-Server, Telegram delivery works after the
+certifi HTTPS fix, and scheduled task LPFS_Live is Ready with the kill switch
+active. Before going live, verify MT5/state/journal/broker truth, ensure the
+local PC runner is not active, then deliberately clear the VPS kill switch and
+start LPFS_Live. Do not change strategy behavior while doing the operations
+move.
 ```

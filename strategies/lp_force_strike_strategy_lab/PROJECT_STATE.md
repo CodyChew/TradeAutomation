@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-03 local time after adding the Phase 2 local production
-wrapper and Amazon Lightsail VPS runbook.
+Last updated: 2026-05-04 local time after installing the Amazon Lightsail VPS
+production task and leaving it paused by kill switch.
 
 ## Purpose
 
@@ -1001,12 +1001,14 @@ Expected next scope:
    re-arming the current latest-candle setups.
 4. Keep low-risk live validation running long enough to collect real broker
    lifecycle evidence before scaling risk or changing strategy rules.
-5. Local Phase 2 rehearsal passed on 2026-05-03. Runtime
-   `C:\TradeAutomationRuntime` is staged with copied live state and journal,
-   kill switch is active, direct one-cycle and watchdog one-cycle runs
-   completed, and temporary Task Scheduler smoke/live rehearsals completed.
-   Move the same setup to Amazon Lightsail using
-   `../../docs/lpfs_lightsail_vps_runbook.md`.
+5. Local Phase 2 rehearsal passed on 2026-05-03. Amazon Lightsail VPS
+   deployment passed staged verification on 2026-05-04: repo at
+   `C:\TradeAutomation`, runtime at `C:\TradeAutomationRuntime`, MT5 Python
+   attach to the FTMO terminal works, state/journal match the two LPFS pending
+   orders, direct one-cycle and watchdog one-cycle tests passed, temporary Task
+   Scheduler smoke/live tests passed, Telegram works after the `certifi` HTTPS
+   fix, and final at-logon task `LPFS_Live` is installed but paused by kill
+   switch.
 6. If stop robustness becomes a priority, run a focused spread-buffer
    validation by timeframe and symbol group. Do not change the live stop
    placement from no-buffer based on V16 alone.
@@ -1053,12 +1055,14 @@ Local rehearsal result:
 
 Recommended next path:
 
-1. Move to Amazon Lightsail using
-   `../../docs/lpfs_lightsail_vps_runbook.md`.
-2. Keep `KILL_SWITCH` active while staging the VPS.
-3. Verify MT5, config, copied state/journal, broker orders/positions, heartbeat,
-   logs, and status output before clearing the kill switch for a VPS one-cycle
-   test.
+1. Keep the VPS kill switch active until the operator deliberately chooses
+   unattended go-live.
+2. Before go-live, verify MT5, config, copied state/journal, broker
+   orders/positions, heartbeat, logs, status output, Telegram, and that no
+   local PC runner is active.
+3. To go live, clear the VPS kill switch and start the installed `LPFS_Live`
+   scheduled task, then verify process table, heartbeat, latest log, MT5, and
+   Telegram lifecycle cards.
 
 Acceptance criteria include single-runner protection, no duplicate orders after
 restart, kill-switch stop before order send, state/journal/log survival across

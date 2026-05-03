@@ -215,6 +215,98 @@ C:\TradeAutomation
 After confirming the task starts the runner, disconnect RDP. Do not sign out,
 because signing out can close the interactive MT5 session.
 
+Validated 2026-05-04 VPS checkpoint:
+
+- Final task name: `LPFS_Live`.
+- Trigger: at logon.
+- Wrapper command: `run_lpfs_live_forever.ps1` with `Cycles 100000000` and
+  `SleepSeconds 30`.
+- Production runtime: `C:\TradeAutomationRuntime`.
+- Safe paused state: `KILL_SWITCH` exists, `LPFS_Live` is `Ready`, no runner
+  process is active, and `Get-LpfsLiveStatus.ps1` reports two tracked pending
+  LPFS orders and zero LPFS positions.
+- Telegram delivery on Windows Server requires `certifi`; if Telegram fails
+  with `CERTIFICATE_VERIFY_FAILED`, run `git pull` and
+  `.\venv\Scripts\python -m pip install certifi`.
+
+When intentionally going live from the paused state:
+
+```powershell
+cd C:\TradeAutomation
+Remove-Item "C:\TradeAutomationRuntime\data\live\KILL_SWITCH" -ErrorAction SilentlyContinue
+Start-ScheduledTask -TaskName "LPFS_Live"
+Start-Sleep -Seconds 60
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60
+```
+
+Expected first check: one `powershell`/Python runner path active, heartbeat
+`running`, latest log updated, and Telegram `RUNNER STARTED` received. Do not
+run a local PC runner at the same time.
+
+## Operator Quick Reference
+
+Run these from the VPS in PowerShell after RDP login:
+
+```powershell
+cd C:\TradeAutomation
+```
+
+Primary status packet for Codex/operator review:
+
+```powershell
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60
+```
+
+Check whether the production scheduled task exists and what Windows thinks
+happened last:
+
+```powershell
+Get-ScheduledTask -TaskName "LPFS_Live"
+Get-ScheduledTaskInfo -TaskName "LPFS_Live"
+```
+
+Check for live runner processes directly:
+
+```powershell
+Get-CimInstance Win32_Process |
+    Where-Object { $_.CommandLine -match "run_lp_force_strike_live_executor|run_lpfs_live_forever" } |
+    Select-Object ProcessId,CommandLine
+```
+
+Read the heartbeat:
+
+```powershell
+Get-Content C:\TradeAutomationRuntime\data\live\lpfs_live_heartbeat.json -Raw |
+    ConvertFrom-Json |
+    ConvertTo-Json -Depth 20
+```
+
+Read the latest wrapper log:
+
+```powershell
+$LatestLog = Get-ChildItem C:\TradeAutomationRuntime\data\live\logs -Filter "lpfs_live_*.log" |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+Get-Content $LatestLog.FullName -Tail 80
+```
+
+Pause/stop new live cycles:
+
+```powershell
+.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason "operator stop"
+```
+
+Resume intentionally:
+
+```powershell
+Remove-Item "C:\TradeAutomationRuntime\data\live\KILL_SWITCH" -ErrorAction SilentlyContinue
+Start-ScheduledTask -TaskName "LPFS_Live"
+```
+
+After any resume, verify with the status packet, MT5 open orders/positions, and
+Telegram runner lifecycle cards. Telegram confirms notifications only; MT5 is
+the broker source of truth for orders and positions.
+
 ## Liaison Packet For Codex
 
 When asking Codex to inspect the live process, paste:

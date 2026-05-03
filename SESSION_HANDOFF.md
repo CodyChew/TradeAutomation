@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-03 SGT after completing local Phase 2 production-wrapper
-rehearsal and keeping the production runtime paused by kill switch.
+Last updated: 2026-05-04 SGT after installing the Amazon Lightsail VPS
+production task and keeping the VPS runtime paused by kill switch.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -289,8 +289,9 @@ only if live evidence shows too many good H4 setups are skipped.
 ## Phase 2 Readiness
 
 Current stage: controlled live validation on a real MT5 account with low-risk
-scaled V15 sizing. The live executor is mature enough to observe real broker
-lifecycle events, but it is still a finite CLI loop, not a production daemon.
+scaled V15 sizing. The Lightsail VPS production wrapper is installed and
+observable, but the runtime is intentionally paused by kill switch until the
+operator explicitly clears it.
 
 Phase 2 local production hardening is now implemented without changing strategy
 rules:
@@ -327,9 +328,56 @@ Local rehearsal passed on 2026-05-03:
 - Temporary scheduled tasks were removed after rehearsal; no persistent
   auto-start task is installed locally.
 
-Next phase: move the same wrapper to Amazon Lightsail using
-`docs/lpfs_lightsail_vps_runbook.md`. Keep risk unchanged and keep kill switch
-active during staging.
+The same wrapper has now been moved to Amazon Lightsail using
+`docs/lpfs_lightsail_vps_runbook.md`. Keep risk unchanged and keep the VPS kill
+switch active until explicit go-live.
+
+Lightsail VPS deployment checkpoint passed on 2026-05-04 SGT:
+
+- Instance path: Amazon Lightsail Windows Server 2022 in `ap-southeast-1`,
+  2 GB plan, host `EC2AMAZ-ON6FOF2`.
+- VPS repo path: `C:\TradeAutomation`.
+- VPS runtime root: `C:\TradeAutomationRuntime`.
+- MT5 path: `C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe`.
+- MT5 Python attach succeeds against `FTMO-Server` and the expected account.
+- MT5 API sees the two LPFS strategy pending orders, both with magic `131500`:
+  `EURNZD H8 SHORT #257048012` and `GBPJPY H12 SHORT #257048014`.
+- MT5 API also showed two non-LPFS open positions with `magic=0`; those are
+  outside LPFS management but still consume account margin/risk.
+- `config.local.json`, `lpfs_live_state.json`, and `lpfs_live_journal.jsonl`
+  were copied to the VPS production paths.
+- VPS direct one-cycle run completed with exit code `0`.
+- VPS watchdog one-cycle run completed with exit code `0`, wrote a timestamped
+  log, and delivered Telegram runner start/stop cards.
+- Temporary VPS Task Scheduler smoke test with kill switch active returned
+  result `3`, the expected kill-switch exit.
+- Temporary VPS Task Scheduler one-cycle live test returned result `0`.
+- Telegram initially failed on the VPS with an SSL certificate verification
+  error. Commit `3a9cb0a` added `certifi` for Telegram HTTPS; after `git pull`
+  and `pip install certifi`, explicit Telegram test delivery and runner
+  lifecycle cards succeeded.
+- Final at-logon scheduled task `LPFS_Live` is installed and `Ready`. It runs
+  `scripts\run_lpfs_live_forever.ps1` with `Cycles 100000000` and
+  `SleepSeconds 30`, but the kill switch is active with reason
+  `production task installed but paused`.
+- Current desired VPS idle state before go-live: `kill_switch_active=True`,
+  `processes=0`, `pending_orders=2`, `active_positions=0`.
+
+Next VPS decision: either leave `LPFS_Live` paused until market-open/operator
+review, or explicitly clear the kill switch and start `LPFS_Live` for the
+long-running production loop. Do not run the local PC runner at the same time.
+
+Operator quick checks live in `docs/lpfs_lightsail_vps_runbook.md` under
+`Operator Quick Reference`. The main packet to paste into Codex is:
+
+```powershell
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60
+```
+
+Also inspect MT5 open orders/positions on the VPS and compare against the state
+file whenever Telegram reports a placement, cancellation, fill, stop, target,
+or runner error. Telegram is useful for signal/runner monitoring, but MT5 is
+the broker source of truth.
 
 Do not change signal rules, stops, targets, spread threshold, risk buckets, or
 pending expiration as part of Phase 2. V16 and V17 both support keeping current
