@@ -543,7 +543,13 @@ def market_recovery_check(
             **base_fields,
         )
 
-    path_block = _market_recovery_path_block(mt5_module, setup, config=config, until_time_utc=market.time_utc)
+    path_block = _market_recovery_path_block(
+        mt5_module,
+        setup,
+        config=config,
+        until_time_utc=market.time_utc,
+        from_time_utc=missed_entry.first_touch_time_utc,
+    )
     if path_block["status"] == "path_unavailable":
         return MarketRecoveryCheck(
             checked=False,
@@ -776,6 +782,7 @@ def _market_recovery_path_block(
     *,
     config: LiveSendExecutorConfig,
     until_time_utc: pd.Timestamp | str | None,
+    from_time_utc: pd.Timestamp | str | None = None,
 ) -> dict[str, Any]:
     try:
         signal_time = setup_signal_time_utc(setup)
@@ -793,7 +800,11 @@ def _market_recovery_path_block(
 
     until_time = pd.Timestamp.now(tz="UTC") if until_time_utc is None else _as_utc_timestamp(until_time_utc)
     times = pd.to_datetime(data["time_utc"], utc=True)
-    after_signal = data.loc[(times > signal_time) & (times <= until_time)].copy()
+    if from_time_utc is None:
+        after_signal = data.loc[(times > signal_time) & (times <= until_time)].copy()
+    else:
+        from_time = _as_utc_timestamp(from_time_utc)
+        after_signal = data.loc[(times >= from_time) & (times <= until_time)].copy()
     if after_signal.empty:
         return {"status": "clear"}
 
@@ -1026,8 +1037,17 @@ def _process_market_recovery_live_send(
             signal_key,
             recovery_check.to_dict(),
         )
-        if recovery_check.status == "market_recovery_spread_too_wide":
-            next_state = _record_event_once(config, state, notifier, f"setup_blocked:{signal_key}:market_recovery_spread", event)
+        retryable_statuses = {
+            "market_recovery_not_better",
+            "market_recovery_spread_too_wide",
+        }
+        if recovery_check.status in retryable_statuses:
+            retry_reason = (
+                "market_recovery_price"
+                if recovery_check.status == "market_recovery_not_better"
+                else "market_recovery_spread"
+            )
+            next_state = _record_event_once(config, state, notifier, f"setup_blocked:{signal_key}:{retry_reason}", event)
             return LiveSetupResult(state=next_state, signal_key=signal_key, status="blocked")
         next_state = _with_processed_key(state, signal_key)
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:{recovery_check.status}", event)

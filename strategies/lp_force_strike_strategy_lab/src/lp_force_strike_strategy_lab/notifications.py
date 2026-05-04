@@ -639,6 +639,7 @@ def _format_live_exception_card(event: NotificationEvent, *, max_field_value_len
     if event.kind == "setup_rejected" and event.status in {
         "spread_too_wide",
         "spread_too_wide_before_send",
+        "market_recovery_not_better",
         "market_recovery_spread_too_wide",
         "autotrading_disabled",
     }:
@@ -825,7 +826,7 @@ def _human_reason(event: NotificationEvent) -> str:
         "spread_too_wide": "Spread is too wide",
         "spread_too_wide_before_send": "Spread widened before send",
         "market_recovery_spread_too_wide": "Market recovery spread is too wide",
-        "market_recovery_not_better": "Current price is no longer better than the original entry",
+        "market_recovery_not_better": "Current executable price is worse than the original entry",
         "market_recovery_stop_touched": "Stop traded before market recovery",
         "market_recovery_target_touched": "Target traded before market recovery",
         "market_recovery_invalid_stop_distance": "Current price is not valid versus the stop",
@@ -845,6 +846,8 @@ def _human_action(event: NotificationEvent) -> str:
         return "Will retry on future cycles until entry touch or expiry"
     if event.kind == "setup_rejected" and event.status == "market_recovery_spread_too_wide":
         return "Will retry market recovery while price remains better and inside the 6-bar window"
+    if event.kind == "setup_rejected" and event.status == "market_recovery_not_better":
+        return "Will retry market recovery until price returns same-or-better, path invalidates, or the 6-bar window expires"
     if event.kind == "setup_rejected" and event.status == "autotrading_disabled":
         return "Enable Algo Trading in MT5; will retry until entry touch or expiry"
     if event.kind in {"setup_rejected", "order_check_failed", "order_rejected"}:
@@ -870,6 +873,9 @@ def _human_key_metric(event: NotificationEvent) -> str:
         low = event.fields.get("first_touch_low")
         if entry not in (None, ""):
             parts.append(f"Entry {_trim(format_trader_price(_market_symbol(event), entry, price_digits=event.fields.get('price_digits')), 32)}")
+        fill = event.fields.get("fill_price")
+        if fill not in (None, ""):
+            parts.append(f"Fill {_trim(format_trader_price(_market_symbol(event), fill, price_digits=event.fields.get('price_digits')), 32)}")
         if high not in (None, "") or low not in (None, ""):
             parts.append(
                 "H/L "

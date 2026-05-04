@@ -581,9 +581,11 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertTrue(missed.missed)
             self.assertEqual(missed.first_touch_time_utc, "2026-01-01T04:00:00+00:00")
 
-            rejected = process_trade_setup_live_send(mt5, _setup(), config=config, state=LiveExecutorState())
-            self.assertEqual(rejected.status, "rejected")
+            price_wait = process_trade_setup_live_send(mt5, _setup(), config=config, state=LiveExecutorState())
+            self.assertEqual(price_wait.status, "blocked")
             self.assertEqual(mt5.order_check_requests, [])
+            self.assertEqual(mt5.order_send_requests, [])
+            self.assertNotIn(price_wait.signal_key, price_wait.state.processed_signal_keys)
 
             missing_meta = missed_entry_before_placement(
                 mt5,
@@ -666,6 +668,66 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertFalse(target_touched.recoverable)
             self.assertEqual(target_touched.status, "market_recovery_target_touched")
 
+            mt5.rates = [
+                {**mt5.rates[0], "high": 1.1000, "low": 1.0990},
+                {
+                    "time": int(pd.Timestamp("2026-01-01T04:00:00Z").timestamp()),
+                    "open": 1.1020,
+                    "high": 1.1051,
+                    "low": 1.1010,
+                    "close": 1.1040,
+                    "tick_volume": 10,
+                    "spread": 2,
+                },
+                {
+                    "time": int(pd.Timestamp("2026-01-01T08:00:00Z").timestamp()),
+                    "open": 1.1003,
+                    "high": 1.1004,
+                    "low": 1.0996,
+                    "close": 1.1001,
+                    "tick_volume": 10,
+                    "spread": 2,
+                },
+            ]
+            later_touch = MissedEntryCheck(
+                checked=True,
+                missed=True,
+                bars_checked=2,
+                first_touch_time_utc="2026-01-01T08:00:00+00:00",
+                first_touch_high=1.1004,
+                first_touch_low=1.0996,
+            )
+            pre_touch_target = market_recovery_check(
+                mt5,
+                _setup(),
+                config=config,
+                market=MT5MarketSnapshot(bid=1.0997, ask=1.0998, time_utc="2026-01-01T08:01:00Z"),
+                missed_entry=later_touch,
+                symbol_spec=spec,
+            )
+            self.assertTrue(pre_touch_target.recoverable)
+            self.assertEqual(pre_touch_target.status, "market_recovery_ready")
+
+            mt5.rates = [
+                {
+                    "time": int(pd.Timestamp("2026-01-01T00:00:00Z").timestamp()),
+                    "open": 1.1000,
+                    "high": 1.1000,
+                    "low": 1.0990,
+                    "close": 1.0995,
+                    "tick_volume": 10,
+                    "spread": 2,
+                },
+                {
+                    "time": int(pd.Timestamp("2026-01-01T04:00:00Z").timestamp()),
+                    "open": 1.1003,
+                    "high": 1.1004,
+                    "low": 1.0996,
+                    "close": 1.1001,
+                    "tick_volume": 10,
+                    "spread": 2,
+                },
+            ]
             mt5.rates[-1]["high"] = 1.1004
             wide = market_recovery_check(
                 mt5,
@@ -778,6 +840,14 @@ class LiveExecutorTests(unittest.TestCase):
                 until_time_utc="2026-01-01T00:00:00Z",
             )
             self.assertEqual(clear_path["status"], "clear")
+            clear_after_first_touch_filter = live_module._market_recovery_path_block(
+                mt5,
+                _setup(),
+                config=config,
+                until_time_utc="2026-01-01T00:00:00Z",
+                from_time_utc="2026-01-01T04:00:00Z",
+            )
+            self.assertEqual(clear_after_first_touch_filter["status"], "clear")
 
     def test_market_recovery_intent_rejects_safety_edges(self) -> None:
         def ready_check(**overrides) -> MarketRecoveryCheck:
@@ -1398,6 +1468,18 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(path_failed.status, "rejected")
             self.assertIn(path_failed.signal_key, path_failed.state.processed_signal_keys)
 
+            mt5 = recoverable_mt5()
+            mt5.rates[-1]["low"] = 1.0949
+            stop_touched = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_stop_touched.jsonl")),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(stop_touched.status, "rejected")
+            self.assertEqual(mt5.order_check_requests, [])
+            self.assertIn(stop_touched.signal_key, stop_touched.state.processed_signal_keys)
+
             ready_check = MarketRecoveryCheck(
                 checked=True,
                 recoverable=True,
@@ -1484,6 +1566,94 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(mt5.order_check_requests, [])
             self.assertNotIn(spread_blocked.signal_key, spread_blocked.state.processed_signal_keys)
 
+            price_wait_config = _config(
+                tmpdir,
+                journal_path=str(Path(tmpdir) / "market_not_better.jsonl"),
+                state_path=str(Path(tmpdir) / "market_not_better_state.json"),
+            )
+            mt5 = recoverable_mt5()
+            mt5.tick = SimpleNamespace(
+                bid=1.1001,
+                ask=1.1002,
+                time_msc=int(pd.Timestamp("2026-01-01T04:02:00Z").timestamp() * 1000),
+                time=0,
+            )
+            price_blocked = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=price_wait_config,
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(price_blocked.status, "blocked")
+            self.assertEqual(mt5.order_check_requests, [])
+            self.assertEqual(mt5.order_send_requests, [])
+            self.assertNotIn(price_blocked.signal_key, price_blocked.state.processed_signal_keys)
+            self.assertIn(
+                f"setup_blocked:{price_blocked.signal_key}:market_recovery_price",
+                price_blocked.state.notified_event_keys,
+            )
+
+            mt5.tick = SimpleNamespace(
+                bid=1.0997,
+                ask=1.0998,
+                time_msc=int(pd.Timestamp("2026-01-01T04:03:00Z").timestamp() * 1000),
+                time=0,
+            )
+            recovered_after_wait = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=price_wait_config,
+                state=price_blocked.state,
+            )
+            self.assertEqual(recovered_after_wait.status, "market_recovery_sent")
+            self.assertIn(recovered_after_wait.signal_key, recovered_after_wait.state.processed_signal_keys)
+            self.assertEqual(mt5.order_check_requests[-1]["action"], mt5.TRADE_ACTION_DEAL)
+
+            short_mt5 = recoverable_mt5()
+            short_mt5.rates = [
+                {**short_mt5.rates[0], "high": 1.1990, "low": 1.1980},
+                {**short_mt5.rates[1], "high": 1.2005, "low": 1.1990},
+            ]
+            short_mt5.tick = SimpleNamespace(
+                bid=1.1998,
+                ask=1.1999,
+                time_msc=int(pd.Timestamp("2026-01-01T04:02:00Z").timestamp() * 1000),
+                time=0,
+            )
+            short_blocked = process_trade_setup_live_send(
+                short_mt5,
+                _short_setup(),
+                config=_config(
+                    tmpdir,
+                    journal_path=str(Path(tmpdir) / "market_short_not_better.jsonl"),
+                    state_path=str(Path(tmpdir) / "market_short_not_better_state.json"),
+                ),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(short_blocked.status, "blocked")
+            self.assertEqual(short_mt5.order_check_requests, [])
+            self.assertEqual(short_mt5.order_send_requests, [])
+            self.assertNotIn(short_blocked.signal_key, short_blocked.state.processed_signal_keys)
+
+            expiry_wait_config = _config(
+                tmpdir,
+                journal_path=str(Path(tmpdir) / "market_not_better_expired.jsonl"),
+                state_path=str(Path(tmpdir) / "market_not_better_expired_state.json"),
+            )
+            mt5 = recoverable_mt5()
+            mt5.tick = SimpleNamespace(
+                bid=1.1001,
+                ask=1.1002,
+                time_msc=int(pd.Timestamp("2026-01-01T04:02:00Z").timestamp() * 1000),
+                time=0,
+            )
+            initially_waiting = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=expiry_wait_config,
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(initially_waiting.status, "blocked")
             expired_check = live_module.PendingBarExpiryCheck(
                 checked=True,
                 expired=True,
@@ -1496,10 +1666,11 @@ class LiveExecutorTests(unittest.TestCase):
                 expired = process_trade_setup_live_send(
                     recoverable_mt5(),
                     _setup(),
-                    config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_expired.jsonl")),
-                    state=LiveExecutorState(),
+                    config=expiry_wait_config,
+                    state=initially_waiting.state,
                 )
             self.assertEqual(expired.status, "rejected")
+            self.assertIn(expired.signal_key, expired.state.processed_signal_keys)
 
     def test_successful_order_send_persists_state_before_notification_delivery(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

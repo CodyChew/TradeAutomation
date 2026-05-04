@@ -219,12 +219,15 @@ Phase 2 is ready for VPS migration when these pass locally:
 - Telegram failure does not change trade validity.
 - Existing MT5 pending orders and positions are reconciled before any new
   signal send.
-- Weekly-open spread WAITING and entry-touch SKIPPED behavior is reviewed with
-  live gate attribution before changing the `0.10` spread/risk gate.
+- Weekly-open spread WAITING and market-recovery price WAITING behavior is
+  reviewed with live gate attribution before changing the `0.10` spread/risk
+  gate.
 - Better-than-entry market recovery is default-on for missed pending touches:
   long ask must be at or below original entry, short bid must be at or above
   original entry, spread must still be <= 10% of actual fill-to-stop risk, and
-  the original stop/target path must remain clean.
+  the original stop/target path after the first entry touch must remain clean.
+  Worse-than-entry quotes wait/retry until same-or-better price, path
+  invalidation, or actual-bar expiry.
 - Rollback is explicit and local: set `live_send.market_recovery_mode` to
   `"disabled"` and restart the runner intentionally.
 - Verification on 2026-05-04: focused live executor/notification tests passed

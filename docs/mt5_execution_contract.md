@@ -220,12 +220,18 @@ It adds:
   touch or expiry;
 - late-start missed-entry recovery: after the signal candle, if the current or
   later MT5 bars already traded through the planned limit entry, the runner
-  attempts default-on better-than-entry market recovery. It skips only when
-  recovery is disabled or ineligible;
+  attempts default-on better-than-entry market recovery. If current executable
+  price is temporarily worse than the original entry, the runner records a
+  WAITING event, does not mark the signal processed, and retries while the
+  actual 6-bar window remains open;
 - market recovery uses `TRADE_ACTION_DEAL`, current ask for longs or current
   bid for shorts, the original structure stop, a recalculated 1R TP from the
   actual fill, actual fill-to-stop risk sizing, and
   `live_send.market_recovery_deviation_points` for slippage control;
+- market recovery path validation is evaluated from the first actual entry
+  touch onward. Stop/target events after that touch make late recovery
+  ineligible; pre-touch target/stop movement does not by itself permanently
+  skip the setup because the backtest pending order would not have filled yet;
 - actual-bar expiry guard: after the signal candle, only real MT5 bars count
   toward `max_entry_wait_bars`. Weekend and holiday gaps do not consume the
   window. Once the first bar after the allowed wait appears, a still-pending
@@ -238,7 +244,7 @@ It adds:
   widening does not auto-cancel it and does not currently emit a dedicated
   Telegram alert;
 - weekly-open spread behavior is expected to be more conservative than the
-  historical V15 baseline. If spread WAITING cards or entry-touch SKIPPED cards
+  historical V15 baseline. If spread or not-better recovery WAITING cards
   cluster only around poor-liquidity windows, keep the current `0.10` gate. If
   they persist during normal liquid hours, measure the divergence with a live
   gate attribution report before changing the live rule;

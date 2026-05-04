@@ -972,6 +972,17 @@ written.
   order if spread improves before entry touch or expiry. The one old NZDCHF
   spread skip was cleaned from local live state explicitly instead of keeping
   compatibility code.
+- 2026-05-05 market-recovery retry alignment: after a pending entry is touched
+  before placement, `market_recovery_not_better` is now retryable WAITING
+  instead of a permanent skip. The runner does not mark the signal processed
+  and does not call `order_check`/`order_send` while current executable price
+  is worse than the original entry. It can recover later if price returns
+  same-or-better, spread is acceptable, the actual 6-bar window remains open,
+  and the stop/target path after the first entry touch remains clean. Existing
+  historical skipped keys remain processed; do not edit VPS live state to
+  rearm them without a separate operator plan. Verification passed the focused
+  live executor/notification tests, full LPFS test discovery (`215` tests), and
+  core coverage at `100.00%`.
 - After a pending order is placed, spread widening does not auto-cancel it and
   does not currently trigger a dedicated Telegram alert.
 - V16 closed the first execution-realism gap. The no-buffer bid/ask model did

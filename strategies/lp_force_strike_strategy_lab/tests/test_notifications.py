@@ -762,6 +762,27 @@ class NotificationTests(unittest.TestCase):
         self.assertIn("Reason: Market recovery spread is too wide", recovery_spread_wait)
         self.assertIn("Action: Will retry market recovery while price remains better and inside the 6-bar window", recovery_spread_wait)
 
+        recovery_price_wait = format_notification_message(
+            NotificationEvent(
+                kind="setup_rejected",
+                mode="LIVE",
+                title="Recovery price",
+                status="market_recovery_not_better",
+                signal_key="lpfs:CADCHF:H4:299:short:c:2026-05-04T17:00:00Z",
+                fields={
+                    "original_entry": 0.57567,
+                    "fill_price": 0.57540,
+                    "first_touch_time_utc": "2026-05-04T13:00:00+00:00",
+                    "first_touch_high": 0.57571,
+                    "first_touch_low": 0.57465,
+                },
+            )
+        )
+        self.assertIn("LPFS LIVE | WAITING", recovery_price_wait)
+        self.assertIn("Reason: Current executable price is worse than the original entry", recovery_price_wait)
+        self.assertIn("Touched: 2026-05-04 21:00 SGT | Entry 0.57567 | Fill 0.57540", recovery_price_wait)
+        self.assertIn("Action: Will retry market recovery until price returns same-or-better", recovery_price_wait)
+
     def test_trader_formatting_helpers_are_compact_and_sgt_based(self) -> None:
         self.assertEqual(format_trader_price("AUDJPY", 114.31234), "114.312")
         self.assertEqual(format_trader_price("EURUSD", 1.1), "1.10000")

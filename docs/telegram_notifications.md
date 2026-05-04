@@ -132,9 +132,10 @@ comments, exact floats, and diagnostic fields stay in the JSONL journal.
   hold time, SGT close time, deal ticket, and signal ref.
 - `position_closed`: `LPFS LIVE | TRADE CLOSED` for manual or unknown broker
   close reasons, still using MT5 PnL/R and deal details.
-- spread-only `setup_rejected`: `WAITING`, human reason, spread ratio, retry
-  action, and signal ref. This includes pending-order spread waits and
-  market-recovery spread waits.
+- retryable `setup_rejected`: `WAITING`, human reason, key metric, retry
+  action, and signal ref. This includes pending-order spread waits,
+  market-recovery spread waits, and market-recovery price waits where current
+  executable price is worse than the original entry.
 - other `setup_rejected` / `order_check_failed` / `order_rejected`: `SKIPPED`
   or `REJECTED`, human reason, key metric such as touched time, action taken,
   and signal ref.

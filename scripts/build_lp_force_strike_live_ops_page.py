@@ -282,7 +282,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         (
             "Signal",
             "Build a pending or recovery order",
-            "A fresh LPFS signal becomes a BUY LIMIT or SELL LIMIT at the 50% signal-candle pullback. If that entry was touched before placement, the default live path may recover with a market order only when the current executable price is better than the original entry.",
+            "A fresh LPFS signal becomes a BUY LIMIT or SELL LIMIT at the 50% signal-candle pullback. If that entry was touched before placement, the default live path may recover with a market order only when the current executable price is same-or-better than the original entry.",
         ),
         (
             "Guard",
@@ -325,12 +325,17 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         [
             "Missed entry, better quote",
             "Before final skip",
-            "Default-on market recovery may send a market order if current ask for a long is at or below original entry, or current bid for a short is at or above original entry, spread is within 10%, and the stop/target path is still clean.",
+            "Default-on market recovery may send a market order if current ask for a long is at or below original entry, or current bid for a short is at or above original entry, spread is within 10%, and the stop/target path after first entry touch is still clean.",
         ],
         [
-            "Missed entry, recovery not valid",
+            "Missed entry, worse quote",
+            "Retryable WAITING",
+            "If current executable price is worse than original entry, no MT5 order is sent, the signal is not processed, and a future cycle can recover before expiry if price returns same-or-better.",
+        ],
+        [
+            "Missed entry, final recovery block",
             "Before final skip",
-            "If recovery is disabled, price is no longer better, stop/target already traded, the 6-bar window expired, or broker validation fails, the setup is skipped or rejected with explicit audit fields.",
+            "If recovery is disabled, stop/target traded after first entry touch, the 6-bar window expired, path verification failed, or broker validation fails, the setup is skipped or rejected with explicit audit fields.",
         ],
         [
             "Pending missing",
@@ -611,14 +616,15 @@ Get-CimInstance Win32_Process |
     <section id="spread-policy" aria-labelledby="spread-policy-title">
       <h2 id="spread-policy-title">Spread Policy</h2>
       <p class="callout"><strong>Current behavior:</strong> a setup blocked because spread is too wide stays retryable. The runner records one WAITING alert, does not mark the signal processed, and can place the pending order on a future cycle if spread improves while the setup is still valid.</p>
-      <p class="callout"><strong>Market recovery:</strong> if spread was too wide first and the entry later touches before a pending order exists, the default live path tries a better-than-entry market recovery. It sends only if the current executable price is better than the original pending entry and spread is still no more than 10% of actual fill-to-stop risk.</p>
-      <p class="callout warning"><strong>Weekly-open observation:</strong> first live VPS market-open monitoring showed multiple WAITING cards where spread was far above the 10% risk-distance limit, followed by SKIPPED cards after entry touch. Market recovery reduces this forward/backtest drift only when the later live quote is still better than the backtested entry and the stop/target path is clean.</p>
+      <p class="callout"><strong>Market recovery:</strong> if spread was too wide first and the entry later touches before a pending order exists, the default live path tries a better-than-entry market recovery. It sends only if the current executable price is same-or-better than the original pending entry and spread is still no more than 10% of actual fill-to-stop risk. Worse-than-entry quotes are WAITING, not permanently skipped, while the actual 6-bar window remains open.</p>
+      <p class="callout warning"><strong>Weekly-open observation:</strong> first live VPS market-open monitoring showed multiple WAITING cards where spread was far above the 10% risk-distance limit, followed by missed-entry recovery checks. Market recovery reduces this forward/backtest drift when a later live quote becomes same-or-better than the backtested entry and the stop/target path after first entry touch remains clean.</p>
       <div class="ops-grid">
         {_fact_grid([
             ("Check cadence", "Once per live cycle", "Default sleep is 30 seconds only when the runner is started with cycles greater than one."),
             ("Before placement", "Retryable WAITING", "If spread is above 10% of risk distance, no order is placed yet and the same signal can be checked again."),
-            ("After missed touch", "Default recovery", "If the pending entry was touched before placement, market recovery is attempted at a better executable price before final skip."),
-            ("Recovery price", "Better only", "Long recovery requires ask <= original entry. Short recovery requires bid >= original entry."),
+            ("After missed touch", "Default recovery", "If the pending entry was touched before placement, market recovery is attempted at a same-or-better executable price before final skip."),
+            ("Recovery price", "Same-or-better", "Long recovery requires ask <= original entry. Short recovery requires bid >= original entry. Worse prices stay retryable WAITING until expiry or path invalidation."),
+            ("Recovery path", "From first touch", "Stop/target movement after first entry touch blocks late recovery; pre-touch target movement does not by itself skip the setup."),
             ("Recovery TP", "Recalculated 1R", "The original structure stop is kept and TP is reset to 1R from the actual market fill."),
             ("Before order_send", "Final quote refresh", "After order_check passes, spread is checked again immediately before live order_send."),
             ("After placement", "No spread cancel", "Once pending, spread widening does not remove the order by default."),
@@ -703,7 +709,7 @@ Get-CimInstance Win32_Process |
             ("Phase 2", "Production wrapper", "The wrapper adds a launcher, kill switch, watchdog, logs, heartbeat, runtime-root override, Task Scheduler rehearsal path, and Lightsail runbook."),
             ("Protection", "Kill switch", "KILL_SWITCH stops new live cycles before MT5 initialization, before each live cycle, and during sleeps. It does not close positions or delete pending orders by itself."),
             ("Limit", "No spread auto-cancel", "Spread is a send gate. Once an order is pending, spread widening does not cancel it and does not have a dedicated Telegram alert yet."),
-            ("Limit", "Forward/backtest drift", "Live recovery narrows missed-entry drift but still skips when the current quote is worse than original entry, spread is too wide, or stop/target already traded."),
+            ("Limit", "Forward/backtest drift", "Live recovery narrows missed-entry drift but still skips on expiry, path invalidation after first touch, broker rejection, or disabled recovery."),
             ("Limit", "Manual deletion is respected", "Deleting a pending order manually does not automatically re-arm that same signal because the signal key stays processed."),
             ("Limit", "Close reason depends on broker history", "TP/SL classification uses MT5 deal/order history. Ambiguous broker comments may fall back to a less specific close alert."),
         ])}

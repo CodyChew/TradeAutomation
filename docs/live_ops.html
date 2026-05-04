@@ -584,8 +584,8 @@
     <section id="spread-policy" aria-labelledby="spread-policy-title">
       <h2 id="spread-policy-title">Spread Policy</h2>
       <p class="callout"><strong>Current behavior:</strong> a setup blocked because spread is too wide stays retryable. The runner records one WAITING alert, does not mark the signal processed, and can place the pending order on a future cycle if spread improves while the setup is still valid.</p>
-      <p class="callout"><strong>Market recovery:</strong> if spread was too wide first and the entry later touches before a pending order exists, the default live path tries a better-than-entry market recovery. It sends only if the current executable price is better than the original pending entry and spread is still no more than 10% of actual fill-to-stop risk.</p>
-      <p class="callout warning"><strong>Weekly-open observation:</strong> first live VPS market-open monitoring showed multiple WAITING cards where spread was far above the 10% risk-distance limit, followed by SKIPPED cards after entry touch. Market recovery reduces this forward/backtest drift only when the later live quote is still better than the backtested entry and the stop/target path is clean.</p>
+      <p class="callout"><strong>Market recovery:</strong> if spread was too wide first and the entry later touches before a pending order exists, the default live path tries a better-than-entry market recovery. It sends only if the current executable price is same-or-better than the original pending entry and spread is still no more than 10% of actual fill-to-stop risk. Worse-than-entry quotes are WAITING, not permanently skipped, while the actual 6-bar window remains open.</p>
+      <p class="callout warning"><strong>Weekly-open observation:</strong> first live VPS market-open monitoring showed multiple WAITING cards where spread was far above the 10% risk-distance limit, followed by missed-entry recovery checks. Market recovery reduces this forward/backtest drift when a later live quote becomes same-or-better than the backtested entry and the stop/target path after first entry touch remains clean.</p>
       <div class="ops-grid">
 
         <article class="ops-fact">
@@ -605,14 +605,21 @@
         <article class="ops-fact">
           <span>After missed touch</span>
           <strong>Default recovery</strong>
-          <p>If the pending entry was touched before placement, market recovery is attempted at a better executable price before final skip.</p>
+          <p>If the pending entry was touched before placement, market recovery is attempted at a same-or-better executable price before final skip.</p>
         </article>
 
 
         <article class="ops-fact">
           <span>Recovery price</span>
-          <strong>Better only</strong>
-          <p>Long recovery requires ask &lt;= original entry. Short recovery requires bid &gt;= original entry.</p>
+          <strong>Same-or-better</strong>
+          <p>Long recovery requires ask &lt;= original entry. Short recovery requires bid &gt;= original entry. Worse prices stay retryable WAITING until expiry or path invalidation.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Recovery path</span>
+          <strong>From first touch</strong>
+          <p>Stop/target movement after first entry touch blocks late recovery; pre-touch target movement does not by itself skip the setup.</p>
         </article>
 
 
@@ -678,8 +685,9 @@
 <tr><td>Pending expired</td><td>Every cycle</td><td>Cancel the MT5 order once the first bar after the allowed 6-bar window appears, remove it from active state, and send a cancelled/expired Telegram event. Weekend time does not count.</td></tr>
 <tr><td>Pending filled</td><td>Every cycle</td><td>Detect a matching MT5 position by comment or broker history linkage, move state from pending to active, and send ENTERED as a reply to the original order card when message_id exists.</td></tr>
 <tr><td>Existing broker item found</td><td>Before order_send</td><td>If an exact same pending order or already-open matching position exists under the strategy magic/comment, adopt it into local state and do not send a duplicate order.</td></tr>
-<tr><td>Missed entry, better quote</td><td>Before final skip</td><td>Default-on market recovery may send a market order if current ask for a long is at or below original entry, or current bid for a short is at or above original entry, spread is within 10%, and the stop/target path is still clean.</td></tr>
-<tr><td>Missed entry, recovery not valid</td><td>Before final skip</td><td>If recovery is disabled, price is no longer better, stop/target already traded, the 6-bar window expired, or broker validation fails, the setup is skipped or rejected with explicit audit fields.</td></tr>
+<tr><td>Missed entry, better quote</td><td>Before final skip</td><td>Default-on market recovery may send a market order if current ask for a long is at or below original entry, or current bid for a short is at or above original entry, spread is within 10%, and the stop/target path after first entry touch is still clean.</td></tr>
+<tr><td>Missed entry, worse quote</td><td>Retryable WAITING</td><td>If current executable price is worse than original entry, no MT5 order is sent, the signal is not processed, and a future cycle can recover before expiry if price returns same-or-better.</td></tr>
+<tr><td>Missed entry, final recovery block</td><td>Before final skip</td><td>If recovery is disabled, stop/target traded after first entry touch, the 6-bar window expired, path verification failed, or broker validation fails, the setup is skipped or rejected with explicit audit fields.</td></tr>
 <tr><td>Pending missing</td><td>Every cycle</td><td>If no matching position exists, treat as broker/user removed or rejected, clear state, and alert once.</td></tr>
 <tr><td>Position still open</td><td>Every cycle</td><td>Keep tracking the position. MT5 remains the source of truth for SL, TP, volume, and position ID.</td></tr>
 <tr><td>Position closed</td><td>Every cycle</td><td>Query deal history by position ID first, classify TP/SL where possible, compute PnL/R/hold time, then send the close card once. Manual or unknown exits are shown as TRADE CLOSED, not as stop losses.</td></tr>
@@ -1032,7 +1040,7 @@ Get-CimInstance Win32_Process |
         <article class="step-card">
           <span>Limit</span>
           <h3>Forward/backtest drift</h3>
-          <p>Live recovery narrows missed-entry drift but still skips when the current quote is worse than original entry, spread is too wide, or stop/target already traded.</p>
+          <p>Live recovery narrows missed-entry drift but still skips on expiry, path invalidation after first touch, broker rejection, or disabled recovery.</p>
         </article>
 
 

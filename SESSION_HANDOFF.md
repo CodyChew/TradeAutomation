@@ -250,12 +250,26 @@ It sends a `TRADE_ACTION_DEAL` only when current executable price is at least as
 good as the original entry (`ask <= entry` for longs, `bid >= entry` for
 shorts), spread is still no more than `10%` of actual fill-to-stop risk, the
 setup is still inside the 6 actual-bar window, and the original stop/target
-path is clean. It keeps the original structure stop, recalculates TP to 1R from
-actual fill, and sizes volume from actual fill-to-stop risk. Rollback is
-`live_send.market_recovery_mode="disabled"`.
+path after the first entry touch is clean. Worse-than-entry executable prices
+are now retryable `WAITING` events, not permanent skips; the signal key is not
+marked processed and no MT5 order is sent while waiting. It keeps the original
+structure stop, recalculates TP to 1R from actual fill, and sizes volume from
+actual fill-to-stop risk. Rollback is `live_send.market_recovery_mode="disabled"`.
 
-Implementation verification on 2026-05-04:
+Continuity note for VPS handoff: this change does not rearm historical skipped
+signals already present in `lpfs_live_state.json`. Do not edit live state to
+recover old skips unless a separate operator plan explicitly approves it.
 
+Implementation verification:
+
+- 2026-05-05 market-recovery retry focused tests:
+  `.\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_live_executor strategies.lp_force_strike_strategy_lab.tests.test_notifications -v`
+  passed: 38 tests.
+- `.\venv\Scripts\python -m unittest discover -s strategies\lp_force_strike_strategy_lab\tests`
+  passed: 215 tests.
+- `.\venv\Scripts\python scripts\run_core_coverage.py` passed with 100.00%
+  total coverage.
+- 2026-05-04 market-recovery initial verification:
 - `.\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_live_executor strategies.lp_force_strike_strategy_lab.tests.test_notifications -v`
   passed: 38 tests.
 - `.\venv\Scripts\python -m unittest discover -s strategies\lp_force_strike_strategy_lab\tests`
