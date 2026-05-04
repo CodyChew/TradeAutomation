@@ -21,13 +21,14 @@ patterns. It now has these layers:
   pending/order/position/deal reconciliation, and restart-safe lifecycle
   notifications.
 
-It still does not contain a combined TradingView indicator. V10-V13 add
-portfolio-style research analytics. V14 adds account-risk sizing and drawdown
-views. V15 adds 3-bucket risk-ladder sensitivity. V16 adds broker-side bid/ask
-trigger realism and spread-buffer research. V17 tests whether the Force Strike
-structure must be close to or touching the broken LP. The dry-run phase is
-explicitly broker-safe and does not send orders; the live-send phase can place
-real pending orders only when local live config is explicitly enabled.
+It now includes a combined TradingView visual indicator for LPFS chart review
+and alerts at `tradingview/lp_force_strike.pine`. V10-V13 add portfolio-style
+research analytics. V14 adds account-risk sizing and drawdown views. V15 adds
+3-bucket risk-ladder sensitivity. V16 adds broker-side bid/ask trigger realism
+and spread-buffer research. V17 tests whether the Force Strike structure must
+be close to or touching the broken LP. The dry-run phase is explicitly
+broker-safe and does not send orders; the live-send phase can place real
+pending orders only when local live config is explicitly enabled.
 
 ## Concept Dependencies
 
@@ -35,8 +36,9 @@ real pending orders only when local live config is explicitly enabled.
 - Raw Force Strike pattern: `../../concepts/force_strike_pattern_lab`
 
 Python remains the source of truth for MT5-data strategy development.
-TradingView combined visuals should be built after this signal contract is
-stable.
+The combined TradingView visual lives at `tradingview/lp_force_strike.pine`.
+It is for chart-side inspection and alerts only; Python/MT5 remains the source
+of truth for research and live execution.
 
 Future PnL backtests should load candles through
 `../../shared/market_data_lab` so this strategy uses the same broker data and

@@ -1,0 +1,444 @@
+//@version=6
+indicator(
+     "LP + Force Strike",
+     "LPFS",
+     overlay = true,
+     max_bars_back = 5000,
+     max_lines_count = 500,
+     max_boxes_count = 200,
+     max_labels_count = 200)
+
+// Visual-only LP + Force Strike indicator.
+//
+// Python/MT5 remains the source of truth for backtests, live orders, spread
+// gates, market recovery, sizing, fills, and lifecycle state. This script
+// evaluates the same rule family on the active TradingView chart candles.
+
+string groupDetection = "Detection"
+pivotStrength = input.int(3, "LP pivot strength", minval = 1, maxval = 50, group = groupDetection)
+maxBarsFromLpBreak = input.int(6, "Max bars from LP break to FS", minval = 1, maxval = 20, group = groupDetection)
+minTotalBarsInput = input.int(3, "Minimum FS formation bars", minval = 3, maxval = 6, group = groupDetection)
+maxTotalBarsInput = input.int(6, "Maximum FS formation bars", minval = 3, maxval = 6, group = groupDetection)
+entryZone = input.float(0.5, "Signal-candle pullback", minval = 0.0, maxval = 1.0, step = 0.05, group = groupDetection)
+targetR = input.float(1.0, "Target R", minval = 0.25, maxval = 5.0, step = 0.25, group = groupDetection)
+maxTrapWindows = input.int(150, "Max retained LP trap windows", minval = 10, maxval = 450, group = groupDetection)
+
+string groupDisplay = "Display"
+showActiveLpLevels = input.bool(true, "Show active LP levels", group = groupDisplay)
+showStructureBox = input.bool(true, "Draw FS structure box", group = groupDisplay)
+showTradePlan = input.bool(true, "Draw entry / stop / target", group = groupDisplay)
+showExpiryProjection = input.bool(true, "Draw expiry projection", group = groupDisplay)
+confirmOnClose = input.bool(true, "Confirm on candle close", group = groupDisplay)
+maxDrawings = input.int(80, "Max signal drawings to keep", minval = 10, maxval = 120, group = groupDisplay)
+
+activeResistanceColor = input.color(color.new(color.red, 0), "Active resistance", group = groupDisplay)
+activeSupportColor = input.color(color.new(color.lime, 0), "Active support", group = groupDisplay)
+bullSignalColor = input.color(color.new(color.lime, 0), "Bullish LPFS", group = groupDisplay)
+bearSignalColor = input.color(color.new(color.red, 0), "Bearish LPFS", group = groupDisplay)
+entryColor = input.color(color.new(color.white, 0), "Entry", group = groupDisplay)
+stopColor = input.color(color.new(color.red, 0), "Stop", group = groupDisplay)
+targetColor = input.color(color.new(color.lime, 0), "Target", group = groupDisplay)
+lpSelectionColor = input.color(color.new(color.yellow, 0), "Selected LP", group = groupDisplay)
+
+int minBars = math.min(minTotalBarsInput, maxTotalBarsInput)
+int maxBars = math.max(minTotalBarsInput, maxTotalBarsInput)
+
+var array<line> activeHighLines = array.new<line>()
+var array<float> activeHighPrices = array.new<float>()
+var array<int> activeHighTimes = array.new<int>()
+var array<int> activeHighBars = array.new<int>()
+
+var array<line> activeLowLines = array.new<line>()
+var array<float> activeLowPrices = array.new<float>()
+var array<int> activeLowTimes = array.new<int>()
+var array<int> activeLowBars = array.new<int>()
+
+var array<int> trapSides = array.new<int>()
+var array<float> trapLpPrices = array.new<float>()
+var array<int> trapBreakBars = array.new<int>()
+var array<int> trapBreakTimes = array.new<int>()
+
+var array<line> signalLines = array.new<line>()
+var array<box> signalBoxes = array.new<box>()
+var array<label> signalLabels = array.new<label>()
+
+f_lookback_days() =>
+    int seconds = timeframe.in_seconds(timeframe.period)
+    int days = 365
+    if not na(seconds)
+        if seconds <= 135 * 60
+            days := 5
+        else if seconds == 8 * 60 * 60
+            days := 60
+        else if seconds == 12 * 60 * 60
+            days := 180
+        else if seconds <= 14 * 60 * 60
+            days := 30
+        else if seconds <= 4 * 24 * 60 * 60 + 12 * 60 * 60
+            days := 365
+        else
+            days := 1460
+    days
+
+f_strict_pivot_high(int strength) =>
+    bool isPivot = not na(high[strength * 2]) and not na(high[strength])
+    float pivotHigh = high[strength]
+    if isPivot
+        for distance = 1 to strength
+            isPivot := isPivot and pivotHigh > high[strength + distance] and pivotHigh > high[strength - distance]
+    isPivot
+
+f_strict_pivot_low(int strength) =>
+    bool isPivot = not na(low[strength * 2]) and not na(low[strength])
+    float pivotLow = low[strength]
+    if isPivot
+        for distance = 1 to strength
+            isPivot := isPivot and pivotLow < low[strength + distance] and pivotLow < low[strength - distance]
+    isPivot
+
+f_delete_old_active(
+     array<line> levelLines,
+     array<float> levelPrices,
+     array<int> levelTimes,
+     array<int> levelBars,
+     int cutoffTime) =>
+    int count = array.size(levelLines)
+    if count > 0
+        for stepIndex = 0 to count - 1
+            int idx = count - 1 - stepIndex
+            if array.get(levelTimes, idx) < cutoffTime
+                line.delete(array.get(levelLines, idx))
+                array.remove(levelLines, idx)
+                array.remove(levelPrices, idx)
+                array.remove(levelTimes, idx)
+                array.remove(levelBars, idx)
+
+f_prune_trap_windows(int maxBarsFromBreak, int maxWindows) =>
+    int count = array.size(trapSides)
+    if count > 0
+        for stepIndex = 0 to count - 1
+            int idx = count - 1 - stepIndex
+            int barsFromBreak = bar_index - array.get(trapBreakBars, idx) + 1
+            if barsFromBreak > maxBarsFromBreak
+                array.remove(trapSides, idx)
+                array.remove(trapLpPrices, idx)
+                array.remove(trapBreakBars, idx)
+                array.remove(trapBreakTimes, idx)
+    while array.size(trapSides) > maxWindows
+        array.shift(trapSides)
+        array.shift(trapLpPrices)
+        array.shift(trapBreakBars)
+        array.shift(trapBreakTimes)
+
+f_trim_lines(array<line> lines, int maxCount) =>
+    while array.size(lines) > maxCount
+        line.delete(array.shift(lines))
+
+f_trim_boxes(array<box> boxes, int maxCount) =>
+    while array.size(boxes) > maxCount
+        box.delete(array.shift(boxes))
+
+f_trim_labels(array<label> labels, int maxCount) =>
+    while array.size(labels) > maxCount
+        label.delete(array.shift(labels))
+
+f_close_location(int off) =>
+    float barRange = high[off] - low[off]
+    barRange <= 0.0 ? 0.5 : (close[off] - low[off]) / barRange
+
+f_is_bullish_bar(int off) =>
+    (high[off] > low[off]) and f_close_location(off) >= (2.0 / 3.0)
+
+f_is_bearish_bar(int off) =>
+    (high[off] > low[off]) and f_close_location(off) <= (1.0 / 3.0)
+
+f_pattern_at(int motherOff, int signalOff) =>
+    bool ok = false
+    int side = 0
+    float motherHigh = high[motherOff]
+    float motherLow = low[motherOff]
+    float structureHigh = na
+    float structureLow = na
+    if not na(motherHigh) and not na(motherLow) and motherOff - signalOff + 1 >= minBars
+        int firstBabyOff = motherOff - 1
+        bool barTwoInside = high[firstBabyOff] <= motherHigh and low[firstBabyOff] >= motherLow
+        if barTwoInside
+            bool brokeLow = false
+            bool brokeHigh = false
+            for off = signalOff to motherOff
+                if not na(high[off]) and not na(low[off])
+                    structureHigh := na(structureHigh) ? high[off] : math.max(structureHigh, high[off])
+                    structureLow := na(structureLow) ? low[off] : math.min(structureLow, low[off])
+            for off = signalOff to motherOff - 1
+                brokeLow := brokeLow or low[off] < motherLow
+                brokeHigh := brokeHigh or high[off] > motherHigh
+            bool closeInside = close[signalOff] >= motherLow and close[signalOff] <= motherHigh
+            if closeInside and not (brokeLow and brokeHigh)
+                if brokeLow and f_is_bullish_bar(signalOff)
+                    ok := true
+                    side := 1
+                else if brokeHigh and f_is_bearish_bar(signalOff)
+                    ok := true
+                    side := -1
+    [ok, side, motherHigh, motherLow, structureHigh, structureLow]
+
+f_has_prior_signal(int motherOff) =>
+    bool found = false
+    int oldestSignalOff = motherOff - minBars + 1
+    if oldestSignalOff >= 1
+        for stepIndex = 0 to oldestSignalOff - 1
+            int sigOff = oldestSignalOff - stepIndex
+            if not found
+                [priorOk, priorSide, priorMotherHigh, priorMotherLow, priorStructureHigh, priorStructureLow] = f_pattern_at(motherOff, sigOff)
+                found := priorOk
+    found
+
+int lookbackDays = f_lookback_days()
+int lookbackMs = lookbackDays * 24 * 60 * 60 * 1000
+int cutoffTime = time - lookbackMs
+
+f_delete_old_active(activeHighLines, activeHighPrices, activeHighTimes, activeHighBars, cutoffTime)
+f_delete_old_active(activeLowLines, activeLowPrices, activeLowTimes, activeLowBars, cutoffTime)
+f_prune_trap_windows(maxBarsFromLpBreak, maxTrapWindows)
+
+bool supportBreakFound = false
+float supportBreakPrice = na
+int supportBreakTime = na
+int supportBreakBar = na
+int lowCountBeforeBreak = array.size(activeLowLines)
+if lowCountBeforeBreak > 0
+    for stepIndex = 0 to lowCountBeforeBreak - 1
+        int idx = lowCountBeforeBreak - 1 - stepIndex
+        float price = array.get(activeLowPrices, idx)
+        bool breached = low <= price
+        if breached
+            bool betterSupport = not supportBreakFound or price < supportBreakPrice
+            if betterSupport
+                supportBreakFound := true
+                supportBreakPrice := price
+                supportBreakTime := time
+                supportBreakBar := bar_index
+            line.delete(array.get(activeLowLines, idx))
+            array.remove(activeLowLines, idx)
+            array.remove(activeLowPrices, idx)
+            array.remove(activeLowTimes, idx)
+            array.remove(activeLowBars, idx)
+
+bool resistanceBreakFound = false
+float resistanceBreakPrice = na
+int resistanceBreakTime = na
+int resistanceBreakBar = na
+int highCountBeforeBreak = array.size(activeHighLines)
+if highCountBeforeBreak > 0
+    for stepIndex = 0 to highCountBeforeBreak - 1
+        int idx = highCountBeforeBreak - 1 - stepIndex
+        float price = array.get(activeHighPrices, idx)
+        bool breached = high >= price
+        if breached
+            bool betterResistance = not resistanceBreakFound or price > resistanceBreakPrice
+            if betterResistance
+                resistanceBreakFound := true
+                resistanceBreakPrice := price
+                resistanceBreakTime := time
+                resistanceBreakBar := bar_index
+            line.delete(array.get(activeHighLines, idx))
+            array.remove(activeHighLines, idx)
+            array.remove(activeHighPrices, idx)
+            array.remove(activeHighTimes, idx)
+            array.remove(activeHighBars, idx)
+
+if supportBreakFound
+    array.push(trapSides, 1)
+    array.push(trapLpPrices, supportBreakPrice)
+    array.push(trapBreakBars, supportBreakBar)
+    array.push(trapBreakTimes, supportBreakTime)
+
+if resistanceBreakFound
+    array.push(trapSides, -1)
+    array.push(trapLpPrices, resistanceBreakPrice)
+    array.push(trapBreakBars, resistanceBreakBar)
+    array.push(trapBreakTimes, resistanceBreakTime)
+
+bool highPivot = f_strict_pivot_high(pivotStrength)
+bool lowPivot = f_strict_pivot_low(pivotStrength)
+int pivotTime = time[pivotStrength]
+int pivotBarIndex = bar_index - pivotStrength
+bool pivotInsideLookback = not na(pivotTime) and pivotTime >= cutoffTime
+color visibleResistanceColor = showActiveLpLevels ? activeResistanceColor : color.new(activeResistanceColor, 100)
+color visibleSupportColor = showActiveLpLevels ? activeSupportColor : color.new(activeSupportColor, 100)
+
+if pivotInsideLookback and highPivot
+    float resistancePrice = high[pivotStrength]
+    line resistanceLine = line.new(
+         x1 = pivotBarIndex,
+         y1 = resistancePrice,
+         x2 = bar_index,
+         y2 = resistancePrice,
+         xloc = xloc.bar_index,
+         extend = extend.right,
+         color = visibleResistanceColor,
+         width = 1)
+    array.push(activeHighLines, resistanceLine)
+    array.push(activeHighPrices, resistancePrice)
+    array.push(activeHighTimes, pivotTime)
+    array.push(activeHighBars, pivotBarIndex)
+
+if pivotInsideLookback and lowPivot
+    float supportPrice = low[pivotStrength]
+    line supportLine = line.new(
+         x1 = pivotBarIndex,
+         y1 = supportPrice,
+         x2 = bar_index,
+         y2 = supportPrice,
+         xloc = xloc.bar_index,
+         extend = extend.right,
+         color = visibleSupportColor,
+         width = 1)
+    array.push(activeLowLines, supportLine)
+    array.push(activeLowPrices, supportPrice)
+    array.push(activeLowTimes, pivotTime)
+    array.push(activeLowBars, pivotBarIndex)
+
+while array.size(activeHighLines) + array.size(activeLowLines) > 450
+    bool removeHigh = array.size(activeLowTimes) == 0
+    if array.size(activeHighTimes) > 0 and array.size(activeLowTimes) > 0
+        removeHigh := array.get(activeHighTimes, 0) <= array.get(activeLowTimes, 0)
+    if removeHigh
+        line.delete(array.shift(activeHighLines))
+        array.shift(activeHighPrices)
+        array.shift(activeHighTimes)
+        array.shift(activeHighBars)
+    else
+        line.delete(array.shift(activeLowLines))
+        array.shift(activeLowPrices)
+        array.shift(activeLowTimes)
+        array.shift(activeLowBars)
+
+bool rawSignal = false
+int foundSide = 0
+int foundMotherOff = na
+float foundMotherHigh = na
+float foundMotherLow = na
+float foundStructureHigh = na
+float foundStructureLow = na
+
+for stepIndex = 0 to maxBars - minBars
+    int totalBars = maxBars - stepIndex
+    if not rawSignal
+        int motherOff = totalBars - 1
+        [patternOk, patternSide, motherHigh, motherLow, structureHigh, structureLow] = f_pattern_at(motherOff, 0)
+        bool priorRaw = patternOk ? f_has_prior_signal(motherOff) : false
+        if patternOk and not priorRaw
+            rawSignal := true
+            foundSide := patternSide
+            foundMotherOff := motherOff
+            foundMotherHigh := motherHigh
+            foundMotherLow := motherLow
+            foundStructureHigh := structureHigh
+            foundStructureLow := structureLow
+
+bool closeConfirmed = not confirmOnClose or barstate.isconfirmed
+int selectedWindowIndex = na
+float selectedLpPrice = na
+int selectedBreakBar = na
+int selectedBreakTime = na
+int windowCount = array.size(trapSides)
+
+if rawSignal and closeConfirmed and windowCount > 0
+    for idx = 0 to windowCount - 1
+        int trapSide = array.get(trapSides, idx)
+        float lpPrice = array.get(trapLpPrices, idx)
+        int breakBar = array.get(trapBreakBars, idx)
+        int barsFromBreak = bar_index - breakBar + 1
+        bool sideMatches = trapSide == foundSide
+        bool insideBreakWindow = barsFromBreak >= 1 and barsFromBreak <= maxBarsFromLpBreak
+        bool closeValidSide = foundSide > 0 ? close >= lpPrice : close <= lpPrice
+        if sideMatches and insideBreakWindow and closeValidSide
+            bool betterWindow = na(selectedWindowIndex)
+            if not betterWindow
+                if foundSide > 0
+                    betterWindow := lpPrice < selectedLpPrice or (lpPrice == selectedLpPrice and breakBar > selectedBreakBar)
+                else
+                    betterWindow := lpPrice > selectedLpPrice or (lpPrice == selectedLpPrice and breakBar > selectedBreakBar)
+            if betterWindow
+                selectedWindowIndex := idx
+                selectedLpPrice := lpPrice
+                selectedBreakBar := breakBar
+                selectedBreakTime := array.get(trapBreakTimes, idx)
+
+bool lpfsSignal = rawSignal and closeConfirmed and not na(selectedWindowIndex)
+bool bullishLpfsSignal = lpfsSignal and foundSide > 0
+bool bearishLpfsSignal = lpfsSignal and foundSide < 0
+
+float signalHigh = high
+float signalLow = low
+float plannedEntry = bullishLpfsSignal ? signalLow + (signalHigh - signalLow) * entryZone : bearishLpfsSignal ? signalHigh - (signalHigh - signalLow) * entryZone : na
+float plannedStop = bullishLpfsSignal ? foundStructureLow : bearishLpfsSignal ? foundStructureHigh : na
+float plannedRisk = lpfsSignal ? math.abs(plannedEntry - plannedStop) : na
+float plannedTarget = bullishLpfsSignal ? plannedEntry + plannedRisk * targetR : bearishLpfsSignal ? plannedEntry - plannedRisk * targetR : na
+int expiryBar = bar_index + maxBarsFromLpBreak
+color signalColor = bullishLpfsSignal ? bullSignalColor : bearSignalColor
+
+plotshape(bullishLpfsSignal, "Bullish LPFS Signal", style = shape.triangleup, location = location.belowbar, color = bullSignalColor, text = "LPFS", textcolor = color.white, size = size.small)
+plotshape(bearishLpfsSignal, "Bearish LPFS Signal", style = shape.triangledown, location = location.abovebar, color = bearSignalColor, text = "LPFS", textcolor = color.white, size = size.small)
+
+if lpfsSignal
+    if showStructureBox
+        box structureBox = box.new(
+             left = bar_index - foundMotherOff,
+             top = foundStructureHigh,
+             right = bar_index,
+             bottom = foundStructureLow,
+             xloc = xloc.bar_index,
+             border_color = color.new(signalColor, 0),
+             bgcolor = color.new(signalColor, 88))
+        array.push(signalBoxes, structureBox)
+
+    line selectedLpLine = line.new(
+         x1 = selectedBreakBar,
+         y1 = selectedLpPrice,
+         x2 = expiryBar,
+         y2 = selectedLpPrice,
+         xloc = xloc.bar_index,
+         extend = extend.none,
+         color = lpSelectionColor,
+         width = 2)
+    array.push(signalLines, selectedLpLine)
+
+    if showTradePlan
+        line entryLine = line.new(bar_index, plannedEntry, expiryBar, plannedEntry, xloc = xloc.bar_index, extend = extend.none, color = entryColor, width = 2, style = line.style_solid)
+        line stopLine = line.new(bar_index, plannedStop, expiryBar, plannedStop, xloc = xloc.bar_index, extend = extend.none, color = stopColor, width = 2, style = line.style_dashed)
+        line targetLine = line.new(bar_index, plannedTarget, expiryBar, plannedTarget, xloc = xloc.bar_index, extend = extend.none, color = targetColor, width = 2, style = line.style_dashed)
+        array.push(signalLines, entryLine)
+        array.push(signalLines, stopLine)
+        array.push(signalLines, targetLine)
+
+    if showExpiryProjection
+        float expiryTop = math.max(plannedStop, plannedTarget)
+        float expiryBottom = math.min(plannedStop, plannedTarget)
+        line expiryLine = line.new(expiryBar, expiryBottom, expiryBar, expiryTop, xloc = xloc.bar_index, extend = extend.none, color = color.new(color.gray, 0), width = 1, style = line.style_dotted)
+        array.push(signalLines, expiryLine)
+
+    label signalLabel = label.new(
+         x = bar_index,
+         y = bullishLpfsSignal ? low : high,
+         text = bullishLpfsSignal ? "LPFS Long" : "LPFS Short",
+         xloc = xloc.bar_index,
+         yloc = yloc.price,
+         style = bullishLpfsSignal ? label.style_label_up : label.style_label_down,
+         color = color.new(signalColor, 0),
+         textcolor = color.white,
+         size = size.small)
+    array.push(signalLabels, signalLabel)
+
+    array.remove(trapSides, selectedWindowIndex)
+    array.remove(trapLpPrices, selectedWindowIndex)
+    array.remove(trapBreakBars, selectedWindowIndex)
+    array.remove(trapBreakTimes, selectedWindowIndex)
+
+f_trim_lines(signalLines, maxDrawings * 5)
+f_trim_boxes(signalBoxes, maxDrawings)
+f_trim_labels(signalLabels, maxDrawings)
+
+alertcondition(bullishLpfsSignal, "Bullish LPFS Signal", "Bullish LPFS signal on {{ticker}} {{interval}}")
+alertcondition(bearishLpfsSignal, "Bearish LPFS Signal", "Bearish LPFS signal on {{ticker}} {{interval}}")
