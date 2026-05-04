@@ -13,6 +13,7 @@ COVERAGE_RC = ROOT / ".coveragerc"
 
 SRC_ROOTS = [
     ROOT / "concepts" / "lp_levels_lab" / "src",
+    ROOT / "concepts" / "majority_flush_lab" / "src",
     ROOT / "concepts" / "force_strike_pattern_lab" / "src",
     ROOT / "shared" / "backtest_engine_lab" / "src",
     ROOT / "shared" / "market_data_lab" / "src",
@@ -21,6 +22,7 @@ SRC_ROOTS = [
 
 LABS = [
     ("lp_levels", ROOT / "concepts" / "lp_levels_lab" / "tests"),
+    ("majority_flush", ROOT / "concepts" / "majority_flush_lab" / "tests"),
     ("force_strike", ROOT / "concepts" / "force_strike_pattern_lab" / "tests"),
     ("backtest_engine", ROOT / "shared" / "backtest_engine_lab" / "tests"),
     ("market_data", ROOT / "shared" / "market_data_lab" / "tests"),

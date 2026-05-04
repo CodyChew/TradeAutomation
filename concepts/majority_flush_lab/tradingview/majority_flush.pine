@@ -1,0 +1,358 @@
+//@version=6
+indicator(
+     "Majority Flush",
+     "Majority Flush",
+     overlay = true,
+     max_bars_back = 5000,
+     max_lines_count = 500,
+     max_labels_count = 200)
+
+// LP-based Majority Flush visual. Python remains the research source of truth;
+// this chart script draws the same concept shape for inspection.
+
+string groupDetection = "Detection"
+pivotStrengthInput = input.int(3, "LP pivot strength", minval = 1, maxval = 50, group = groupDetection)
+maxCongestedBarRatioInput = input.float(0.35, "Max congested bar ratio", minval = 0.0, maxval = 1.0, step = 0.05, group = groupDetection)
+maxRetainedMovesInput = input.int(80, "Max retained moves", minval = 10, maxval = 150, group = groupDetection)
+
+string groupDisplay = "Display"
+showMidpointGuidesInput = input.bool(true, "Show midpoint guides", group = groupDisplay)
+showRejectedDiagnosticsInput = input.bool(false, "Show midpoint-failed diagnostics", group = groupDisplay)
+downsideColorInput = input.color(color.new(color.red, 0), "Downside flush", group = groupDisplay)
+upsideColorInput = input.color(color.new(color.lime, 0), "Upside flush", group = groupDisplay)
+forcedLpColorInput = input.color(color.new(color.yellow, 0), "Forced LP", group = groupDisplay)
+midpointColorInput = input.color(color.new(color.gray, 20), "Midpoint guide", group = groupDisplay)
+
+var array<float> activeResistancePrices = array.new<float>()
+var array<int> activeResistanceBars = array.new<int>()
+var array<int> activeResistanceTimes = array.new<int>()
+
+var array<float> activeSupportPrices = array.new<float>()
+var array<int> activeSupportBars = array.new<int>()
+var array<int> activeSupportTimes = array.new<int>()
+
+var array<line> retainedLines = array.new<line>()
+var array<label> retainedLabels = array.new<label>()
+
+var bool downsideLegActive = false
+var bool downsideLegHasForce = false
+var int downsideOriginBarIndex = na
+var float downsideOriginPriceState = na
+var float downsideFlushStartPriceState = na
+var float downsideBestLowState = na
+var int downsideNoProgressCount = 0
+var int downsideInsideCount = 0
+var int downsideCongestedBarCount = 0
+var line downsideFullLegLine = na
+var label downsideFlushLabel = na
+
+var bool upsideLegActive = false
+var bool upsideLegHasForce = false
+var int upsideOriginBarIndex = na
+var float upsideOriginPriceState = na
+var float upsideFlushStartPriceState = na
+var float upsideBestHighState = na
+var int upsideNoProgressCount = 0
+var int upsideInsideCount = 0
+var int upsideCongestedBarCount = 0
+var line upsideFullLegLine = na
+var label upsideFlushLabel = na
+
+f_lookback_days() =>
+    int seconds = timeframe.in_seconds(timeframe.period)
+    int days = 365
+    if not na(seconds)
+        if seconds <= 135 * 60
+            days := 5
+        else if seconds == 8 * 60 * 60
+            days := 60
+        else if seconds == 12 * 60 * 60
+            days := 180
+        else if seconds <= 14 * 60 * 60
+            days := 30
+        else if seconds <= 4 * 24 * 60 * 60 + 12 * 60 * 60
+            days := 365
+        else
+            days := 1460
+    days
+
+f_strict_pivot_high(int strength) =>
+    bool isPivot = not na(high[strength * 2]) and not na(high[strength])
+    float pivotHigh = high[strength]
+    if isPivot
+        for distance = 1 to strength
+            isPivot := isPivot and pivotHigh > high[strength + distance] and pivotHigh > high[strength - distance]
+    isPivot
+
+f_strict_pivot_low(int strength) =>
+    bool isPivot = not na(low[strength * 2]) and not na(low[strength])
+    float pivotLow = low[strength]
+    if isPivot
+        for distance = 1 to strength
+            isPivot := isPivot and pivotLow < low[strength + distance] and pivotLow < low[strength - distance]
+    isPivot
+
+f_delete_old_active(array<float> prices, array<int> bars, array<int> times, int cutoffTime) =>
+    int count = array.size(prices)
+    if count > 0
+        for stepIndex = 0 to count - 1
+            int idx = count - 1 - stepIndex
+            if array.get(times, idx) < cutoffTime
+                array.remove(prices, idx)
+                array.remove(bars, idx)
+                array.remove(times, idx)
+
+f_push_line(line item) =>
+    array.push(retainedLines, item)
+    while array.size(retainedLines) > maxRetainedMovesInput * 4
+        line.delete(array.shift(retainedLines))
+
+f_push_label(label item) =>
+    array.push(retainedLabels, item)
+    while array.size(retainedLabels) > maxRetainedMovesInput * 2
+        label.delete(array.shift(retainedLabels))
+
+f_draw_forced_lp(
+     int originBarIndex,
+     int forceBarIndex,
+     float lpPrice,
+     float midpointPrice,
+     color flushColor,
+     bool midpointPassed,
+     bool congestionPassed) =>
+    bool accepted = midpointPassed and congestionPassed
+    line forcedLpLine = line.new(
+         x1 = originBarIndex,
+         y1 = lpPrice,
+         x2 = forceBarIndex,
+         y2 = lpPrice,
+         xloc = xloc.bar_index,
+         color = accepted ? forcedLpColorInput : color.new(color.orange, 0),
+         width = accepted ? 2 : 1)
+    f_push_line(forcedLpLine)
+    if showMidpointGuidesInput
+        line midpointGuideLine = line.new(
+             x1 = originBarIndex,
+             y1 = midpointPrice,
+             x2 = forceBarIndex,
+             y2 = midpointPrice,
+             xloc = xloc.bar_index,
+             color = midpointColorInput,
+             style = line.style_dotted,
+             width = 1)
+        f_push_line(midpointGuideLine)
+    if showRejectedDiagnosticsInput and not accepted
+        label rejectedLabel = label.new(
+             x = forceBarIndex,
+             y = lpPrice,
+             text = midpointPassed ? "cong" : "50%",
+             xloc = xloc.bar_index,
+             style = label.style_label_left,
+             color = color.new(flushColor, 65),
+             textcolor = color.white,
+             size = size.tiny)
+        f_push_label(rejectedLabel)
+
+f_remove_forced_levels(array<float> prices, array<int> bars, array<int> times, bool isResistance) =>
+    int count = array.size(prices)
+    if count > 0
+        for stepIndex = 0 to count - 1
+            int idx = count - 1 - stepIndex
+            float price = array.get(prices, idx)
+            bool forcedNow = isResistance ? high >= price : low <= price
+            if forcedNow
+                array.remove(prices, idx)
+                array.remove(bars, idx)
+                array.remove(times, idx)
+
+int lookbackDays = f_lookback_days()
+int lookbackMs = lookbackDays * 24 * 60 * 60 * 1000
+int cutoffTime = time - lookbackMs
+
+f_delete_old_active(activeResistancePrices, activeResistanceBars, activeResistanceTimes, cutoffTime)
+f_delete_old_active(activeSupportPrices, activeSupportBars, activeSupportTimes, cutoffTime)
+
+bool downsideFlushSignal = false
+bool upsideFlushSignal = false
+
+bool newDownsideOrigin = not downsideLegActive and high[1] > high[2] and high[1] > high and low < low[1]
+if newDownsideOrigin
+    downsideLegActive := true
+    downsideLegHasForce := false
+    downsideOriginBarIndex := bar_index - 1
+    downsideOriginPriceState := high[1]
+    downsideFlushStartPriceState := open
+    downsideBestLowState := low[1]
+    downsideNoProgressCount := 0
+    downsideInsideCount := 0
+    downsideCongestedBarCount := 0
+    downsideFullLegLine := na
+    downsideFlushLabel := na
+
+if downsideLegActive
+    bool madeDownsideProgress = low < downsideBestLowState
+    if madeDownsideProgress
+        downsideBestLowState := low
+        downsideNoProgressCount := 0
+    else
+        downsideNoProgressCount += 1
+
+    bool downsideInsideBar = high <= high[1] and low >= low[1]
+    if downsideInsideBar
+        downsideInsideCount += 1
+    else
+        downsideInsideCount := 0
+
+    bool downsideCounterBody = close > open
+    if not madeDownsideProgress or downsideInsideBar or downsideCounterBody
+        downsideCongestedBarCount += 1
+
+    bool downsideInvalidated = downsideNoProgressCount >= 2 or downsideInsideCount >= 2
+    if downsideInvalidated
+        downsideLegActive := false
+    else
+        int downsideDurationBars = bar_index - downsideOriginBarIndex
+        float downsideCongestedBarRatio = downsideDurationBars > 0 ? downsideCongestedBarCount / downsideDurationBars : 1.0
+        int forceCount = 0
+        int supportCount = array.size(activeSupportPrices)
+        if supportCount > 0
+            for idx = 0 to supportCount - 1
+                float lpPrice = array.get(activeSupportPrices, idx)
+                if downsideOriginPriceState > lpPrice and low <= lpPrice
+                    float midpointPrice = (downsideOriginPriceState + lpPrice) / 2.0
+                    bool midpointPassed = downsideFlushStartPriceState > midpointPrice
+                    bool congestionPassed = downsideCongestedBarRatio <= maxCongestedBarRatioInput
+                    if (midpointPassed and congestionPassed) or showRejectedDiagnosticsInput
+                        f_draw_forced_lp(downsideOriginBarIndex, bar_index, lpPrice, midpointPrice, downsideColorInput, midpointPassed, congestionPassed)
+                    if midpointPassed and congestionPassed
+                        forceCount += 1
+        if forceCount > 0
+            downsideFlushSignal := true
+            if not downsideLegHasForce
+                downsideFullLegLine := line.new(
+                     x1 = downsideOriginBarIndex,
+                     y1 = downsideOriginPriceState,
+                     x2 = bar_index,
+                     y2 = low,
+                     xloc = xloc.bar_index,
+                     color = downsideColorInput,
+                     width = 2)
+                f_push_line(downsideFullLegLine)
+                downsideFlushLabel := label.new(
+                     x = bar_index,
+                     y = low,
+                     text = "MF",
+                     xloc = xloc.bar_index,
+                     style = label.style_label_up,
+                     color = color.new(downsideColorInput, 0),
+                     textcolor = color.white,
+                     size = size.small)
+                f_push_label(downsideFlushLabel)
+                downsideLegHasForce := true
+            else
+                line.set_x2(downsideFullLegLine, bar_index)
+                line.set_y2(downsideFullLegLine, low)
+                label.set_x(downsideFlushLabel, bar_index)
+                label.set_y(downsideFlushLabel, low)
+
+bool newUpsideOrigin = not upsideLegActive and low[1] < low[2] and low[1] < low and high > high[1]
+if newUpsideOrigin
+    upsideLegActive := true
+    upsideLegHasForce := false
+    upsideOriginBarIndex := bar_index - 1
+    upsideOriginPriceState := low[1]
+    upsideFlushStartPriceState := open
+    upsideBestHighState := high[1]
+    upsideNoProgressCount := 0
+    upsideInsideCount := 0
+    upsideCongestedBarCount := 0
+    upsideFullLegLine := na
+    upsideFlushLabel := na
+
+if upsideLegActive
+    bool madeUpsideProgress = high > upsideBestHighState
+    if madeUpsideProgress
+        upsideBestHighState := high
+        upsideNoProgressCount := 0
+    else
+        upsideNoProgressCount += 1
+
+    bool upsideInsideBar = high <= high[1] and low >= low[1]
+    if upsideInsideBar
+        upsideInsideCount += 1
+    else
+        upsideInsideCount := 0
+
+    bool upsideCounterBody = close < open
+    if not madeUpsideProgress or upsideInsideBar or upsideCounterBody
+        upsideCongestedBarCount += 1
+
+    bool upsideInvalidated = upsideNoProgressCount >= 2 or upsideInsideCount >= 2
+    if upsideInvalidated
+        upsideLegActive := false
+    else
+        int upsideDurationBars = bar_index - upsideOriginBarIndex
+        float upsideCongestedBarRatio = upsideDurationBars > 0 ? upsideCongestedBarCount / upsideDurationBars : 1.0
+        int forceCount = 0
+        int resistanceCount = array.size(activeResistancePrices)
+        if resistanceCount > 0
+            for idx = 0 to resistanceCount - 1
+                float lpPrice = array.get(activeResistancePrices, idx)
+                if upsideOriginPriceState < lpPrice and high >= lpPrice
+                    float midpointPrice = (upsideOriginPriceState + lpPrice) / 2.0
+                    bool midpointPassed = upsideFlushStartPriceState < midpointPrice
+                    bool congestionPassed = upsideCongestedBarRatio <= maxCongestedBarRatioInput
+                    if (midpointPassed and congestionPassed) or showRejectedDiagnosticsInput
+                        f_draw_forced_lp(upsideOriginBarIndex, bar_index, lpPrice, midpointPrice, upsideColorInput, midpointPassed, congestionPassed)
+                    if midpointPassed and congestionPassed
+                        forceCount += 1
+        if forceCount > 0
+            upsideFlushSignal := true
+            if not upsideLegHasForce
+                upsideFullLegLine := line.new(
+                     x1 = upsideOriginBarIndex,
+                     y1 = upsideOriginPriceState,
+                     x2 = bar_index,
+                     y2 = high,
+                     xloc = xloc.bar_index,
+                     color = upsideColorInput,
+                     width = 2)
+                f_push_line(upsideFullLegLine)
+                upsideFlushLabel := label.new(
+                     x = bar_index,
+                     y = high,
+                     text = "MF",
+                     xloc = xloc.bar_index,
+                     style = label.style_label_down,
+                     color = color.new(upsideColorInput, 0),
+                     textcolor = color.white,
+                     size = size.small)
+                f_push_label(upsideFlushLabel)
+                upsideLegHasForce := true
+            else
+                line.set_x2(upsideFullLegLine, bar_index)
+                line.set_y2(upsideFullLegLine, high)
+                label.set_x(upsideFlushLabel, bar_index)
+                label.set_y(upsideFlushLabel, high)
+
+f_remove_forced_levels(activeResistancePrices, activeResistanceBars, activeResistanceTimes, true)
+f_remove_forced_levels(activeSupportPrices, activeSupportBars, activeSupportTimes, false)
+
+bool highPivot = f_strict_pivot_high(pivotStrengthInput)
+bool lowPivot = f_strict_pivot_low(pivotStrengthInput)
+int pivotTime = time[pivotStrengthInput]
+int pivotBarIndex = bar_index - pivotStrengthInput
+bool pivotInsideLookback = not na(pivotTime) and pivotTime >= cutoffTime
+
+if pivotInsideLookback and highPivot
+    array.push(activeResistancePrices, high[pivotStrengthInput])
+    array.push(activeResistanceBars, pivotBarIndex)
+    array.push(activeResistanceTimes, pivotTime)
+
+if pivotInsideLookback and lowPivot
+    array.push(activeSupportPrices, low[pivotStrengthInput])
+    array.push(activeSupportBars, pivotBarIndex)
+    array.push(activeSupportTimes, pivotTime)
+
+alertcondition(downsideFlushSignal, "Downside Majority Flush", "Downside Majority Flush on {{ticker}} {{interval}}")
+alertcondition(upsideFlushSignal, "Upside Majority Flush", "Upside Majority Flush on {{ticker}} {{interval}}")
