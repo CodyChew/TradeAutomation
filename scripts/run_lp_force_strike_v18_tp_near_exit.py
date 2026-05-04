@@ -165,6 +165,7 @@ def _variants_from_config(config: dict[str, Any]) -> list[TPNearExitVariant]:
             lock_r=float(item.get("lock_r", 0.0)),
             fill_haircut_spread_mult=float(item.get("fill_haircut_spread_mult", 0.0)),
             activation_delay_bars=int(item.get("activation_delay_bars", 0)),
+            full_target_priority=bool(item.get("full_target_priority", True)),
         )
         for item in config.get("tp_near_variants", [])
     ]
@@ -195,6 +196,7 @@ def _trade_row(trade, *, pivot_strength: int) -> dict[str, Any]:
     row["tp_near_lock_r"] = float(row.get("meta_tp_near_lock_r", 0.0) or 0.0)
     row["tp_near_fill_haircut_spread_mult"] = float(row.get("meta_tp_near_fill_haircut_spread_mult", 0.0) or 0.0)
     row["tp_near_activation_delay_bars"] = int(float(row.get("meta_tp_near_activation_delay_bars", 0.0) or 0.0))
+    row["tp_near_full_target_priority"] = str(row.get("meta_tp_near_full_target_priority", "True")).lower() == "true"
     row["trade_key"] = _trade_key(row)
     return row
 

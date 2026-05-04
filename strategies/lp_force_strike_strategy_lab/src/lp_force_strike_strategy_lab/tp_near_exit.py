@@ -49,6 +49,7 @@ class TPNearExitVariant:
     lock_r: float = 0.0
     fill_haircut_spread_mult: float = 0.0
     activation_delay_bars: int = 0
+    full_target_priority: bool = True
 
 
 def simulate_tp_near_exit_on_normalized_frame(
@@ -98,7 +99,7 @@ def simulate_tp_near_exit_on_normalized_frame(
                 risk=risk,
             )
             return _with_trigger_metadata(trade, trigger_index, trigger_price, protected_stop)
-        if target_hit:
+        if target_hit and variant.full_target_priority:
             trade = _record_bid_ask_trade(
                 setup=variant_setup,
                 data=data,
@@ -159,6 +160,17 @@ def simulate_tp_near_exit_on_normalized_frame(
                 if variant.mode == "breakeven_protect"
                 else "tp_near_lock_stop"
             )
+
+        if target_hit:
+            trade = _record_bid_ask_trade(
+                setup=variant_setup,
+                data=data,
+                exit_index=index,
+                exit_reference=float(variant_setup.target_price),
+                exit_reason="target",
+                risk=risk,
+            )
+            return _with_trigger_metadata(trade, trigger_index, trigger_price, protected_stop)
 
     final_index = len(data) - 1
     trade = _record_bid_ask_trade(
@@ -308,6 +320,7 @@ def _variant_metadata(variant: TPNearExitVariant) -> dict[str, object]:
         "tp_near_lock_r": float(variant.lock_r),
         "tp_near_fill_haircut_spread_mult": float(variant.fill_haircut_spread_mult),
         "tp_near_activation_delay_bars": int(variant.activation_delay_bars),
+        "tp_near_full_target_priority": bool(variant.full_target_priority),
         "tp_near_triggered": False,
     }
 

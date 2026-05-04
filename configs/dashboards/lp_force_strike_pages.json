@@ -519,8 +519,8 @@
       "title": "V19 TP-Near Robustness",
       "status_label": "Robustness study",
       "status_kind": "active",
-      "question": "Does the V18 TP-near edge survive conservative fill haircuts, delayed activation, symbol/timeframe concentration checks, and year-by-year stability checks?",
-      "setup": "Research-only robustness rerun using the V15 LPFS baseline and V16 no-buffer bid/ask control. The strategy model stays LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, and fixed 6-bar windows. V19 tests clean closes, haircut closes, delayed closes, breakeven protect, and locked-profit protect.",
+      "question": "Does a live-equivalent hard reduced-TP rule survive conservative fill haircuts, delayed activation, symbol/timeframe concentration checks, and year-by-year stability checks?",
+      "setup": "Research-only robustness rerun using the V15 LPFS baseline and V16 no-buffer bid/ask control. The strategy model stays LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, and fixed 6-bar windows. V19 close variants now treat the percent threshold as the actual effective TP, such as 0.9R instead of 1R; they do not get upgraded to full 1R after the threshold is touched. Protect variants remain separate.",
       "how_to_read": "Start with the Decision Card, then use the ranking, symbol/timeframe, year, stress, and changed-trade sample sections to see whether a TP-near variant deserves a later live-design plan.",
       "conclusion": "V19 is the decision dashboard for TP-near robustness. It does not change live behavior; it decides whether the TP-near idea should move to a separate live-design experiment.",
       "action": "Use this page to decide the next follow-up. Do not change VPS, MT5 orders, live state, Telegram lifecycle, or production TP handling from V19 alone.",
@@ -534,7 +534,7 @@
         "headline": "V19 result: use the generated Decision Card as the TP-near follow-up gate.",
         "key_results": [
           "V19 tests the full H4/H8/H12/D1/W1 historical LPFS population.",
-          "The dashboard compares each TP-near variant against V16 no-buffer bid/ask control and canonical V15.",
+          "The dashboard compares each hard reduced-TP / TP-near variant against V16 no-buffer bid/ask control and canonical V15.",
           "A live candidate must pass raw R, PF, return/DD, practical risk, saved/sacrificed R, concentration, year-stability, and same-bar checks.",
           "This is evidence only; any live TP-near close/protect behavior needs a separate implementation and VPS deployment plan."
         ],

@@ -99,6 +99,7 @@ def _variants_from_config(config: dict[str, Any]) -> list[TPNearExitVariant]:
             lock_r=float(item.get("lock_r", 0.0)),
             fill_haircut_spread_mult=float(item.get("fill_haircut_spread_mult", 0.0)),
             activation_delay_bars=int(item.get("activation_delay_bars", 0)),
+            full_target_priority=bool(item.get("full_target_priority", True)),
         )
         for item in config.get("tp_near_variants", [])
     ]
@@ -602,9 +603,10 @@ def _html_report(
       <ul>
         <li>Strategy baseline remains V15/V13 mechanics: LP3, all H4/H8/H12/D1/W1, 0.5 pullback, FS structure stop, 1R target, fixed 6-bar windows.</li>
         <li>Execution control is V16 no-buffer bid/ask: OHLC is Bid and Ask is approximated from stored candle spread.</li>
-        <li>Immediate-close variants behave as reduced effective TP, such as 0.9R target with 1R risk.</li>
+        <li>Immediate-close variants behave as hard reduced effective TP, such as 0.9R target with 1R risk.</li>
+        <li>Hard close variants do not get upgraded to the original full 1R target after the reduced TP threshold is touched.</li>
         <li>Haircut variants apply an adverse spread-multiple fill adjustment to immediate TP-near closes.</li>
-        <li>Delayed variants wait one bar after near-TP before close/protect activation; stop/target checks still run first.</li>
+        <li>Delayed variants wait one bar after near-TP before close/protect activation; stop checks still run first.</li>
         <li>Same-bar stop/target conflict remains stop-first.</li>
       </ul>
     </section>

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -35,6 +36,7 @@ class V19TPNearRobustnessReportTests(unittest.TestCase):
                         "mode": "close",
                         "threshold_value": 0.9,
                         "fill_haircut_spread_mult": 0.5,
+                        "full_target_priority": False,
                     },
                     {
                         "variant_id": "close_pct_95_delay_1bar",
@@ -47,10 +49,24 @@ class V19TPNearRobustnessReportTests(unittest.TestCase):
         )
 
         self.assertEqual(variants[1].fill_haircut_spread_mult, 0.5)
+        self.assertFalse(variants[1].full_target_priority)
         self.assertEqual(variants[2].activation_delay_bars, 1)
+        self.assertTrue(variants[2].full_target_priority)
 
         with self.assertRaises(ValueError):
             v19._variants_from_config({"tp_near_variants": [{"variant_id": "close_pct_90", "mode": "close"}]})
+
+    def test_v19_close_variants_are_hard_reduced_tp(self) -> None:
+        config = json.loads(
+            (WORKSPACE_ROOT / "configs" / "strategies" / "lp_force_strike_experiment_v19_tp_near_robustness.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        variants = v19._variants_from_config(config)
+        close_variants = [variant for variant in variants if variant.mode == "close"]
+
+        self.assertGreater(len(close_variants), 0)
+        self.assertTrue(all(not variant.full_target_priority for variant in close_variants))
 
     def test_decision_frame_marks_variant_candidate_when_all_gates_pass(self) -> None:
         summary = pd.DataFrame(

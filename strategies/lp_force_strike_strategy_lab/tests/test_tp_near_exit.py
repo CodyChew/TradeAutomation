@@ -182,6 +182,29 @@ class TPNearExitTests(unittest.TestCase):
         self.assertEqual(trade.exit_index, 2)
         self.assertAlmostEqual(trade.metadata["tp_near_protected_stop"], 102.5)
 
+    def test_delayed_protect_can_still_exit_at_target_after_activation(self) -> None:
+        trade = simulate_tp_near_exit_on_normalized_frame(
+            _frame(
+                [
+                    {"high": 104.8, "low": 100.0},
+                    {"high": 105.1, "low": 103.0},
+                ]
+            ),
+            _setup("long"),
+            TPNearExitVariant(
+                "lock_0p50r_pct_95_delay",
+                "lock_r_protect",
+                threshold_value=0.95,
+                lock_r=0.5,
+                activation_delay_bars=1,
+                full_target_priority=False,
+            ),
+        )
+
+        self.assertEqual(trade.exit_reason, "target")
+        self.assertEqual(trade.exit_index, 1)
+        self.assertAlmostEqual(trade.metadata["tp_near_protected_stop"], 102.5)
+
     def test_real_target_still_beats_near_target_close(self) -> None:
         trade = simulate_tp_near_exit_on_normalized_frame(
             _frame([{"high": 105.1, "low": 100.0}]),
@@ -191,6 +214,28 @@ class TPNearExitTests(unittest.TestCase):
 
         self.assertEqual(trade.exit_reason, "target")
         self.assertAlmostEqual(trade.net_r, 1.0)
+
+    def test_hard_near_target_close_beats_full_target(self) -> None:
+        trade = simulate_tp_near_exit_on_normalized_frame(
+            _frame([{"high": 105.1, "low": 100.0}]),
+            _setup("long"),
+            TPNearExitVariant("close_pct_90", "close", threshold_value=0.9, full_target_priority=False),
+        )
+
+        self.assertEqual(trade.exit_reason, "tp_near_close")
+        self.assertAlmostEqual(trade.net_r, 0.9)
+        self.assertFalse(trade.metadata["tp_near_full_target_priority"])
+
+    def test_hard_short_near_target_close_beats_full_target(self) -> None:
+        trade = simulate_tp_near_exit_on_normalized_frame(
+            _frame([{"high": 101.0, "low": 94.8, "spread_points": 2, "point": 0.1}]),
+            _setup("short"),
+            TPNearExitVariant("close_pct_90", "close", threshold_value=0.9, full_target_priority=False),
+        )
+
+        self.assertEqual(trade.exit_reason, "tp_near_close")
+        self.assertAlmostEqual(trade.exit_reference_price, 95.5)
+        self.assertAlmostEqual(trade.net_r, 0.9)
 
     def test_stop_first_same_bar_conservatism_is_preserved(self) -> None:
         trade = simulate_tp_near_exit_on_normalized_frame(

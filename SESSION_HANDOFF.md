@@ -334,28 +334,33 @@ V18/V19 TP-near research result:
 - V18 report: `docs/v18.html`.
 - V19 report: `docs/v19.html`.
 - V19 run folder:
-  `reports/strategies/lp_force_strike_experiment_v19_tp_near_robustness/20260504_182930`.
+  `reports/strategies/lp_force_strike_experiment_v19_tp_near_robustness/20260504_194519`.
 - V19 keeps the V15 LPFS strategy baseline and uses the V16 no-buffer bid/ask
   simulator as the control environment.
+- V19 close variants now use hard reduced-TP semantics: `close_pct_90` exits at
+  `0.9R` once touched and does not get upgraded to full `1R` later.
 - V19 full-universe scope: all `H4/H8/H12/D1/W1` LPFS datasets from
   `configs/datasets/forex_major_crosses_10y.json`.
 - V19 wrote `16,061` signals, `12,917` control trades, and `245,423` variant
   trade rows.
 - V16 no-buffer control: `12,917` trades, `1,535.2R`, PF about `1.270`.
-- V19 best live-design candidate: `close_pct_90`, with `12,917` trades,
-  `2,250.7R`, PF about `1.426`, and `+715.5R` versus the V16 control.
-- `close_pct_90` saved `390` trades from later stops for about `+741.0R`,
-  sacrificed `658` later full TPs for about `-65.8R`, and had `21`
-  same-bar-conflict rows.
-- The V19 decision matrix marks `close_pct_90` as passing raw R, PF,
+- Hard `close_pct_90`: `12,917` trades, `1,594.0R`, PF about `1.302`, only
+  `+58.8R` versus control. It is not a live candidate.
+- V19 best live-design candidate: `lock_0p50r_pct_90`, with `12,917` trades,
+  `1,878.7R`, PF about `1.356`, and `+343.5R` versus the V16 control.
+- `lock_0p50r_pct_90` saved `390` trades from later stops for about `+585.0R`,
+  sacrificed `259` later full TPs for about `-129.5R`, and had `308`
+  same-bar-conflict rows for about `-112.0R`.
+- The V19 decision matrix marks `lock_0p50r_pct_90` as passing raw R, PF,
   return/DD, practical bucket, saved/sacrificed, concentration,
   year-stability, and same-bar gates.
 - V19 is still research-only. It did not change live executor behavior, VPS
   runtime, MT5 orders/state, Telegram lifecycle behavior, or TradingView
   indicators.
-- Next research/design task: create a separate live TP-near close plan for
-  `close_pct_90`, covering market close checks, spread gating, order-send
-  failure handling, position reconciliation, Telegram lifecycle wording,
+- Next research/design task: create a separate live TP-near protection plan for
+  `lock_0p50r_pct_90`, covering stop-modification timing, broker stop
+  constraints, spread gating, order-modify failure handling, position
+  reconciliation, Telegram lifecycle wording, same-bar conflict policy,
   kill-switch behavior, and VPS deployment/rollback. Do not implement that
   inside V19.
 
@@ -475,9 +480,9 @@ the broker source of truth.
 
 Do not change signal rules, stops, targets, spread threshold, risk buckets, or
 pending expiration as part of Phase 2. V16 and V17 support keeping current V15
-live behavior unchanged while operations are hardened. V19 marks `close_pct_90`
-as a research-only live-design candidate, but no TP-near live behavior has been
-implemented or deployed.
+live behavior unchanged while operations are hardened. Corrected V19 marks
+`lock_0p50r_pct_90` as a research-only live-design candidate, but no TP-near
+live behavior has been implemented or deployed.
 
 ## Verification Commands
 
@@ -507,7 +512,7 @@ Full strict gate:
 
 Latest full strict result on 2026-05-05 after V19:
 
-- `329` unittest cases across the scoped core labs.
+- `333` unittest cases across the scoped core labs.
 - `100.00%` line and branch coverage.
 
 Latest selector revalidation on 2026-05-01:

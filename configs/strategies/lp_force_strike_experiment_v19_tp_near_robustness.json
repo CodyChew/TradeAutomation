@@ -31,81 +31,93 @@
       "variant_id": "close_pct_90",
       "mode": "close",
       "threshold_mode": "percent_to_target",
-      "threshold_value": 0.9
+      "threshold_value": 0.9,
+      "full_target_priority": false
     },
     {
       "variant_id": "close_pct_92p5",
       "mode": "close",
       "threshold_mode": "percent_to_target",
-      "threshold_value": 0.925
+      "threshold_value": 0.925,
+      "full_target_priority": false
     },
     {
       "variant_id": "close_pct_95",
       "mode": "close",
       "threshold_mode": "percent_to_target",
-      "threshold_value": 0.95
+      "threshold_value": 0.95,
+      "full_target_priority": false
     },
     {
       "variant_id": "close_pct_98",
       "mode": "close",
       "threshold_mode": "percent_to_target",
-      "threshold_value": 0.98
+      "threshold_value": 0.98,
+      "full_target_priority": false
     },
     {
       "variant_id": "close_pct_90_haircut_0p25x",
       "mode": "close",
       "threshold_mode": "percent_to_target",
       "threshold_value": 0.9,
-      "fill_haircut_spread_mult": 0.25
+      "fill_haircut_spread_mult": 0.25,
+      "full_target_priority": false
     },
     {
       "variant_id": "close_pct_90_haircut_0p5x",
       "mode": "close",
       "threshold_mode": "percent_to_target",
       "threshold_value": 0.9,
-      "fill_haircut_spread_mult": 0.5
+      "fill_haircut_spread_mult": 0.5,
+      "full_target_priority": false
     },
     {
       "variant_id": "close_pct_90_haircut_1x",
       "mode": "close",
       "threshold_mode": "percent_to_target",
       "threshold_value": 0.9,
-      "fill_haircut_spread_mult": 1.0
+      "fill_haircut_spread_mult": 1.0,
+      "full_target_priority": false
     },
     {
       "variant_id": "close_pct_95_haircut_0p25x",
       "mode": "close",
       "threshold_mode": "percent_to_target",
       "threshold_value": 0.95,
-      "fill_haircut_spread_mult": 0.25
+      "fill_haircut_spread_mult": 0.25,
+      "full_target_priority": false
     },
     {
       "variant_id": "close_pct_95_haircut_0p5x",
       "mode": "close",
       "threshold_mode": "percent_to_target",
       "threshold_value": 0.95,
-      "fill_haircut_spread_mult": 0.5
+      "fill_haircut_spread_mult": 0.5,
+      "full_target_priority": false
     },
     {
       "variant_id": "close_pct_95_haircut_1x",
       "mode": "close",
       "threshold_mode": "percent_to_target",
       "threshold_value": 0.95,
-      "fill_haircut_spread_mult": 1.0
+      "fill_haircut_spread_mult": 1.0,
+      "full_target_priority": false
     },
     {
       "variant_id": "close_pct_90_delay_1bar",
       "mode": "close",
       "threshold_mode": "percent_to_target",
       "threshold_value": 0.9,
-      "activation_delay_bars": 1
+      "activation_delay_bars": 1,
+      "full_target_priority": false
     },
     {
       "variant_id": "close_pct_95_delay_1bar",
       "mode": "close",
       "threshold_mode": "percent_to_target",
       "threshold_value": 0.95,
-      "activation_delay_bars": 1
+      "activation_delay_bars": 1,
+      "full_target_priority": false
     },
     {
       "variant_id": "breakeven_pct_90",

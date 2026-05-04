@@ -1250,7 +1250,7 @@ Run command:
 Full-universe run:
 
 - report folder:
-  `reports/strategies/lp_force_strike_experiment_v19_tp_near_robustness/20260504_182930`
+  `reports/strategies/lp_force_strike_experiment_v19_tp_near_robustness/20260504_194519`
 - dashboard: `docs/v19.html`
 - scope: all `H4/H8/H12/D1/W1` LPFS datasets from
   `configs/datasets/forex_major_crosses_10y.json`
@@ -1263,22 +1263,26 @@ Full-universe run:
   `variant_decision_matrix.csv`, `run_summary.json`, and `dashboard.html`
 
 V19 keeps the V15 LPFS strategy baseline and uses the V16 no-buffer bid/ask
-simulator as the control. It adds robustness checks around the V18 TP-near
-idea: clean reduced-TP closes, spread-haircut closes, one-bar delayed closes,
-breakeven protection, locked-profit protection, symbol/timeframe
+simulator as the control. The rerun corrected close variants to hard reduced-TP
+semantics: `close_pct_90` exits at `0.9R` once touched and does not get upgraded
+to full `1R` later. It also tests spread-haircut closes, one-bar delayed
+closes, breakeven protection, locked-profit protection, symbol/timeframe
 concentration, year stability, saved/sacrificed R, same-bar reliance, and V15
 bucket guardrails.
 
 Decision status:
 
-- `close_pct_90` is the strongest V19 live-design candidate.
+- `lock_0p50r_pct_90` is the strongest V19 live-design candidate.
 - V16 no-buffer control: `12,917` trades, `1,535.2R`, PF about `1.270`.
-- `close_pct_90`: `12,917` trades, `2,250.7R`, PF about `1.426`, a
-  `+715.5R` delta versus control.
-- `close_pct_90` saved `390` trades from later stops for about `+741.0R`,
-  sacrificed `658` later full TPs for about `-65.8R`, and had `21`
-  same-bar-conflict rows.
-- The generated decision matrix marks `close_pct_90` as passing raw R, PF,
+- Hard `close_pct_90`: `12,917` trades, `1,594.0R`, PF about `1.302`, only
+  `+58.8R` versus control. It is not a live candidate because reducing every
+  target to `0.9R` sacrifices too much full-TP profit.
+- `lock_0p50r_pct_90`: `12,917` trades, `1,878.7R`, PF about `1.356`, a
+  `+343.5R` delta versus control.
+- `lock_0p50r_pct_90` saved `390` trades from later stops for about `+585.0R`,
+  sacrificed `259` later full TPs for about `-129.5R`, and had `308`
+  same-bar-conflict rows for about `-112.0R`.
+- The generated decision matrix marks `lock_0p50r_pct_90` as passing raw R, PF,
   return/DD, practical bucket, saved/sacrificed, concentration, year-stability,
   and same-bar gates.
 - No live executor, VPS task, MT5 order, live state, live journal, or live
@@ -1287,9 +1291,10 @@ Decision status:
 Recommended follow-up:
 
 ```text
-Design a separate live TP-near close experiment for close_pct_90. It must cover
-market close checks, spread gating, order-send failure handling, position
-reconciliation, Telegram lifecycle wording, kill-switch behavior, and VPS
+Design a separate live TP-near protection experiment for lock_0p50r_pct_90. It
+must cover stop-modification timing, broker stop constraints, spread gating,
+order-modify failure handling, position reconciliation, Telegram lifecycle
+wording, same-bar conflict policy, kill-switch behavior, and VPS
 deployment/rollback. Do not implement it inside V19.
 ```
 
