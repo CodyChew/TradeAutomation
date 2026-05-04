@@ -1,0 +1,166 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v19_tp_near_robustness",
+  "dataset_config": "configs/datasets/forex_major_crosses_10y.json",
+  "baseline_trades_path": "reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260501_032404/trades.csv",
+  "v15_bucket_config": "configs/strategies/lp_force_strike_experiment_v15_bucket_sensitivity.json",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v19_tp_near_robustness",
+  "symbols": null,
+  "excluded_symbols": [],
+  "timeframes": [
+    "H4",
+    "H8",
+    "H12",
+    "D1",
+    "W1"
+  ],
+  "pivot_strength": 3,
+  "max_bars_from_lp_break": 6,
+  "atr_period": 14,
+  "max_entry_wait_bars": 6,
+  "entry_model": "signal_zone_pullback",
+  "entry_zone": 0.5,
+  "stop_model": "fs_structure",
+  "exit_model": "single_target",
+  "target_r": 1.0,
+  "tp_near_variants": [
+    {
+      "variant_id": "control_bid_ask",
+      "mode": "control"
+    },
+    {
+      "variant_id": "close_pct_90",
+      "mode": "close",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.9
+    },
+    {
+      "variant_id": "close_pct_92p5",
+      "mode": "close",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.925
+    },
+    {
+      "variant_id": "close_pct_95",
+      "mode": "close",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.95
+    },
+    {
+      "variant_id": "close_pct_98",
+      "mode": "close",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.98
+    },
+    {
+      "variant_id": "close_pct_90_haircut_0p25x",
+      "mode": "close",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.9,
+      "fill_haircut_spread_mult": 0.25
+    },
+    {
+      "variant_id": "close_pct_90_haircut_0p5x",
+      "mode": "close",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.9,
+      "fill_haircut_spread_mult": 0.5
+    },
+    {
+      "variant_id": "close_pct_90_haircut_1x",
+      "mode": "close",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.9,
+      "fill_haircut_spread_mult": 1.0
+    },
+    {
+      "variant_id": "close_pct_95_haircut_0p25x",
+      "mode": "close",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.95,
+      "fill_haircut_spread_mult": 0.25
+    },
+    {
+      "variant_id": "close_pct_95_haircut_0p5x",
+      "mode": "close",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.95,
+      "fill_haircut_spread_mult": 0.5
+    },
+    {
+      "variant_id": "close_pct_95_haircut_1x",
+      "mode": "close",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.95,
+      "fill_haircut_spread_mult": 1.0
+    },
+    {
+      "variant_id": "close_pct_90_delay_1bar",
+      "mode": "close",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.9,
+      "activation_delay_bars": 1
+    },
+    {
+      "variant_id": "close_pct_95_delay_1bar",
+      "mode": "close",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.95,
+      "activation_delay_bars": 1
+    },
+    {
+      "variant_id": "breakeven_pct_90",
+      "mode": "breakeven_protect",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.9
+    },
+    {
+      "variant_id": "breakeven_pct_95",
+      "mode": "breakeven_protect",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.95
+    },
+    {
+      "variant_id": "lock_0p25r_pct_90",
+      "mode": "lock_r_protect",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.9,
+      "lock_r": 0.25
+    },
+    {
+      "variant_id": "lock_0p50r_pct_90",
+      "mode": "lock_r_protect",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.9,
+      "lock_r": 0.5
+    },
+    {
+      "variant_id": "lock_0p25r_pct_95",
+      "mode": "lock_r_protect",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.95,
+      "lock_r": 0.25
+    },
+    {
+      "variant_id": "lock_0p50r_pct_95",
+      "mode": "lock_r_protect",
+      "threshold_mode": "percent_to_target",
+      "threshold_value": 0.95,
+      "lock_r": 0.5
+    }
+  ],
+  "decision_criteria": {
+    "min_stressed_r_delta": 250.0,
+    "min_saved_to_sacrificed_r_ratio": 2.0,
+    "max_reserved_drawdown_pct": 10.0,
+    "max_reserved_open_risk_pct": 6.0,
+    "min_worst_month_pct": -5.0
+  },
+  "costs": {
+    "use_candle_spread": true,
+    "fallback_spread_points": 0.0,
+    "entry_slippage_points": 0.0,
+    "exit_slippage_points": 0.0,
+    "round_turn_commission_points": 0.0
+  },
+  "drop_incomplete_latest_bar": true
+}

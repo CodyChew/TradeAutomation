@@ -47,6 +47,8 @@ class TPNearExitVariant:
     threshold_mode: TPNearThresholdMode = "percent_to_target"
     threshold_value: float = 1.0
     lock_r: float = 0.0
+    fill_haircut_spread_mult: float = 0.0
+    activation_delay_bars: int = 0
 
 
 def simulate_tp_near_exit_on_normalized_frame(
@@ -75,6 +77,7 @@ def simulate_tp_near_exit_on_normalized_frame(
     protected_reason = "stop"
     trigger_index: int | None = None
     trigger_price: float | None = None
+    pending_activation_index: int | None = None
 
     for index in range(int(variant_setup.entry_index), len(data)):
         row = data.iloc[index]
@@ -106,16 +109,45 @@ def simulate_tp_near_exit_on_normalized_frame(
             )
             return _with_trigger_metadata(trade, trigger_index, trigger_price, protected_stop)
 
-        near_price = _near_trigger_price(variant_setup, row, variant, cost_config, risk)
-        if _near_target_hit(variant_setup, row, near_price, cost_config):
-            trigger_index = index
-            trigger_price = near_price
+        if pending_activation_index is not None and index >= pending_activation_index:
             if variant.mode == "close":
                 trade = _record_bid_ask_trade(
                     setup=variant_setup,
                     data=data,
                     exit_index=index,
-                    exit_reference=near_price,
+                    exit_reference=_delayed_close_reference(
+                        variant_setup,
+                        row,
+                        float(trigger_price),
+                        variant,
+                        cost_config,
+                    ),
+                    exit_reason="tp_near_close",
+                    risk=risk,
+                )
+                return _with_trigger_metadata(trade, trigger_index, trigger_price, protected_stop)
+            protection_active = True
+            protected_stop = _protected_stop_price(variant_setup, variant, risk)
+            protected_reason = (
+                "tp_near_breakeven_stop"
+                if variant.mode == "breakeven_protect"
+                else "tp_near_lock_stop"
+            )
+            pending_activation_index = None
+
+        near_price = _near_trigger_price(variant_setup, row, variant, cost_config, risk)
+        if trigger_index is None and _near_target_hit(variant_setup, row, near_price, cost_config):
+            trigger_index = index
+            trigger_price = near_price
+            if variant.activation_delay_bars > 0:
+                pending_activation_index = index + int(variant.activation_delay_bars)
+                continue
+            if variant.mode == "close":
+                trade = _record_bid_ask_trade(
+                    setup=variant_setup,
+                    data=data,
+                    exit_index=index,
+                    exit_reference=_apply_close_haircut(variant_setup, row, near_price, variant, cost_config),
                     exit_reason="tp_near_close",
                     risk=risk,
                 )
@@ -255,6 +287,10 @@ def _validate_variant(variant: TPNearExitVariant) -> None:
         raise ValueError("percent_to_target threshold_value must be <= 1.0.")
     if variant.mode == "lock_r_protect" and not (0.0 <= variant.lock_r < 1.0):
         raise ValueError("lock_r_protect requires 0 <= lock_r < 1.")
+    if variant.fill_haircut_spread_mult < 0:
+        raise ValueError("fill_haircut_spread_mult must be non-negative.")
+    if int(variant.activation_delay_bars) != variant.activation_delay_bars or variant.activation_delay_bars < 0:
+        raise ValueError("activation_delay_bars must be a non-negative integer.")
 
 
 def _setup_for_variant(setup: TradeSetup, variant: TPNearExitVariant) -> TradeSetup:
@@ -270,6 +306,8 @@ def _variant_metadata(variant: TPNearExitVariant) -> dict[str, object]:
         "tp_near_threshold_mode": variant.threshold_mode,
         "tp_near_threshold_value": float(variant.threshold_value),
         "tp_near_lock_r": float(variant.lock_r),
+        "tp_near_fill_haircut_spread_mult": float(variant.fill_haircut_spread_mult),
+        "tp_near_activation_delay_bars": int(variant.activation_delay_bars),
         "tp_near_triggered": False,
     }
 
@@ -306,6 +344,36 @@ def _near_target_hit(setup: TradeSetup, row: pd.Series, trigger_price: float, co
         return float(row["high"]) >= trigger_price
     ask_low = float(row["low"]) + spread
     return ask_low <= trigger_price
+
+
+def _apply_close_haircut(
+    setup: TradeSetup,
+    row: pd.Series,
+    exit_reference: float,
+    variant: TPNearExitVariant,
+    costs: CostConfig,
+) -> float:
+    haircut = spread_price_from_row(row, costs) * float(variant.fill_haircut_spread_mult)
+    if setup.side == "long":
+        return float(exit_reference - haircut)
+    return float(exit_reference + haircut)
+
+
+def _delayed_close_reference(
+    setup: TradeSetup,
+    row: pd.Series,
+    trigger_price: float,
+    variant: TPNearExitVariant,
+    costs: CostConfig,
+) -> float:
+    spread = spread_price_from_row(row, costs)
+    if setup.side == "long":
+        executable_close = float(row["close"])
+        exit_reference = min(trigger_price, executable_close)
+    else:
+        executable_close = float(row["close"]) + spread
+        exit_reference = max(trigger_price, executable_close)
+    return _apply_close_haircut(setup, row, exit_reference, variant, costs)
 
 
 def _protected_stop_price(setup: TradeSetup, variant: TPNearExitVariant, risk: float) -> float:

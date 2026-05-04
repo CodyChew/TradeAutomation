@@ -90,9 +90,9 @@ Core logic regression gate:
 .\venv\Scripts\python scripts\run_core_coverage.py
 ```
 
-Current result on 2026-05-01:
+Current result on 2026-05-05:
 
-- 246 unittest cases across the five core labs after V17.
+- 329 unittest cases across the scoped core labs after V19.
 - `100.00%` line and branch coverage for the scoped core packages.
 - Scope and edge-case rules documented in `docs/testing_strategy.md`.
 
@@ -505,6 +505,15 @@ Live-send adapter facts:
   placed orders, spread waits, later placements after spread improved,
   entry-touch skips, expiries, symbols/timeframes affected, and whether blocks
   cluster around weekly open.
+- V19 TP-near robustness has now been run as research-only evidence:
+  `docs/v19.html` and
+  `reports/strategies/lp_force_strike_experiment_v19_tp_near_robustness/20260504_182930`.
+  It keeps the V15 LPFS baseline, uses the V16 no-buffer bid/ask control, and
+  marks `close_pct_90` as the strongest live-design candidate: `2,250.7R`
+  versus `1,535.2R` control, PF about `1.426` versus `1.270`, `+715.5R`
+  delta, `390` saved-from-stop trades, `658` sacrificed full-TP trades, and
+  `21` same-bar-conflict rows. No live behavior changed. The next TP-near step
+  must be a separate live close/protection design and VPS deployment plan.
 - Once a pending order is placed, spread widening does not auto-cancel it and
   does not currently trigger a dedicated Telegram alert.
 - Research gap: the historical baseline includes candle-spread cost drag, but
@@ -661,7 +670,9 @@ docs/mt5_execution_contract.md, docs/telegram_notifications.md,
 docs/dry_run_executor.md, and docs/phase2_production_hardening.md. The current
 baseline is V13 `take_all` with LP3 across H4/H8/H12/D1/W1 and V15 efficient
 risk buckets: H4/H8 0.20%, H12/D1 0.30%, W1 0.75%. V16 and V17 did not justify
-changing live rules. A guarded live-send runner exists at
+changing live rules. V19 TP-near robustness marks `close_pct_90` as a
+research-only live-design candidate, but no TP-near live behavior has been
+implemented. A guarded live-send runner exists at
 scripts/run_lp_force_strike_live_executor.py with risk_bucket_scale=0.05,
 max_open_risk_pct=0.65, dynamic spread gating, restart-safe state, MT5
 order/position/deal reconciliation, and compact Telegram lifecycle cards.

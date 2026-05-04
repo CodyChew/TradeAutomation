@@ -1233,6 +1233,66 @@ Decision status:
 - Full-universe results must be reviewed before any live TP-near close/protect
   behavior is considered.
 
+## Experiment V19 TP-Near Robustness Backtest
+
+Experiment V19 is configured by:
+
+```text
+../../configs/strategies/lp_force_strike_experiment_v19_tp_near_robustness.json
+```
+
+Run command:
+
+```powershell
+.\venv\Scripts\python scripts\run_lp_force_strike_v19_tp_near_robustness.py --config configs\strategies\lp_force_strike_experiment_v19_tp_near_robustness.json --docs-output docs\v19.html
+```
+
+Full-universe run:
+
+- report folder:
+  `reports/strategies/lp_force_strike_experiment_v19_tp_near_robustness/20260504_182930`
+- dashboard: `docs/v19.html`
+- scope: all `H4/H8/H12/D1/W1` LPFS datasets from
+  `configs/datasets/forex_major_crosses_10y.json`
+- result rows: `16,061` signals, `12,917` control trades, and `245,423`
+  variant trade rows
+- artifacts include `trades.csv`, `summary_by_variant.csv`,
+  `old_vs_new_trade_delta.csv`, `tp_near_outcome_breakdown.csv`,
+  `symbol_timeframe_breakdown.csv`, `year_breakdown.csv`,
+  `stress_sensitivity.csv`, `changed_trade_samples.csv`,
+  `variant_decision_matrix.csv`, `run_summary.json`, and `dashboard.html`
+
+V19 keeps the V15 LPFS strategy baseline and uses the V16 no-buffer bid/ask
+simulator as the control. It adds robustness checks around the V18 TP-near
+idea: clean reduced-TP closes, spread-haircut closes, one-bar delayed closes,
+breakeven protection, locked-profit protection, symbol/timeframe
+concentration, year stability, saved/sacrificed R, same-bar reliance, and V15
+bucket guardrails.
+
+Decision status:
+
+- `close_pct_90` is the strongest V19 live-design candidate.
+- V16 no-buffer control: `12,917` trades, `1,535.2R`, PF about `1.270`.
+- `close_pct_90`: `12,917` trades, `2,250.7R`, PF about `1.426`, a
+  `+715.5R` delta versus control.
+- `close_pct_90` saved `390` trades from later stops for about `+741.0R`,
+  sacrificed `658` later full TPs for about `-65.8R`, and had `21`
+  same-bar-conflict rows.
+- The generated decision matrix marks `close_pct_90` as passing raw R, PF,
+  return/DD, practical bucket, saved/sacrificed, concentration, year-stability,
+  and same-bar gates.
+- No live executor, VPS task, MT5 order, live state, live journal, or live
+  Telegram behavior has been changed.
+
+Recommended follow-up:
+
+```text
+Design a separate live TP-near close experiment for close_pct_90. It must cover
+market close checks, spread gating, order-send failure handling, position
+reconciliation, Telegram lifecycle wording, kill-switch behavior, and VPS
+deployment/rollback. Do not implement it inside V19.
+```
+
 ## Dashboard Interpretation UX
 
 The dashboard interpretation metadata lives in:
@@ -1242,7 +1302,8 @@ The dashboard interpretation metadata lives in:
 ```
 
 On 2026-04-30, V6-V15 were given a `decision_brief` section in that metadata.
-V16 and V17 also have decision briefs for execution realism and LP-FS proximity.
+V16-V19 also have decision briefs for execution realism, LP-FS proximity,
+TP-near research, and TP-near robustness.
 The shared renderer now shows a prominent `Decision Brief` near the top of each
 page, before the tables. This preserves the concise chat-style interpretation
 the user found useful, for example the V11 bullets explaining why removing H4

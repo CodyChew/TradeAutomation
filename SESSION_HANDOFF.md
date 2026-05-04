@@ -329,6 +329,36 @@ V17 LP-FS proximity result:
   structure to touch the selected LP. A future dashboard/live label can show
   LP-FS proximity as setup quality, but it is not a trade filter.
 
+V18/V19 TP-near research result:
+
+- V18 report: `docs/v18.html`.
+- V19 report: `docs/v19.html`.
+- V19 run folder:
+  `reports/strategies/lp_force_strike_experiment_v19_tp_near_robustness/20260504_182930`.
+- V19 keeps the V15 LPFS strategy baseline and uses the V16 no-buffer bid/ask
+  simulator as the control environment.
+- V19 full-universe scope: all `H4/H8/H12/D1/W1` LPFS datasets from
+  `configs/datasets/forex_major_crosses_10y.json`.
+- V19 wrote `16,061` signals, `12,917` control trades, and `245,423` variant
+  trade rows.
+- V16 no-buffer control: `12,917` trades, `1,535.2R`, PF about `1.270`.
+- V19 best live-design candidate: `close_pct_90`, with `12,917` trades,
+  `2,250.7R`, PF about `1.426`, and `+715.5R` versus the V16 control.
+- `close_pct_90` saved `390` trades from later stops for about `+741.0R`,
+  sacrificed `658` later full TPs for about `-65.8R`, and had `21`
+  same-bar-conflict rows.
+- The V19 decision matrix marks `close_pct_90` as passing raw R, PF,
+  return/DD, practical bucket, saved/sacrificed, concentration,
+  year-stability, and same-bar gates.
+- V19 is still research-only. It did not change live executor behavior, VPS
+  runtime, MT5 orders/state, Telegram lifecycle behavior, or TradingView
+  indicators.
+- Next research/design task: create a separate live TP-near close plan for
+  `close_pct_90`, covering market close checks, spread gating, order-send
+  failure handling, position reconciliation, Telegram lifecycle wording,
+  kill-switch behavior, and VPS deployment/rollback. Do not implement that
+  inside V19.
+
 A read-only sanity check over 720 recent detected setups showed:
 
 - `5%` gate: 607/720 pass (`84.3%`).
@@ -444,8 +474,10 @@ or runner error. Telegram is useful for signal/runner monitoring, but MT5 is
 the broker source of truth.
 
 Do not change signal rules, stops, targets, spread threshold, risk buckets, or
-pending expiration as part of Phase 2. V16 and V17 both support keeping current
-V15 live behavior unchanged while operations are hardened.
+pending expiration as part of Phase 2. V16 and V17 support keeping current V15
+live behavior unchanged while operations are hardened. V19 marks `close_pct_90`
+as a research-only live-design candidate, but no TP-near live behavior has been
+implemented or deployed.
 
 ## Verification Commands
 
@@ -473,9 +505,9 @@ Full strict gate:
 .\venv\Scripts\python scripts\run_core_coverage.py
 ```
 
-Latest full strict result on 2026-05-01 after V17:
+Latest full strict result on 2026-05-05 after V19:
 
-- `246` unittest cases across core labs.
+- `329` unittest cases across the scoped core labs.
 - `100.00%` line and branch coverage.
 
 Latest selector revalidation on 2026-05-01:
@@ -500,14 +532,17 @@ Latest selector revalidation on 2026-05-01:
 - `scripts/summarize_lpfs_live_trades.py`
 - `scripts/build_lp_force_strike_live_ops_page.py`
 - `scripts/run_lp_force_strike_v17_lp_fs_proximity.py`
+- `scripts/run_lp_force_strike_v19_tp_near_robustness.py`
 - `docs/phase2_production_hardening.md`
 - `docs/lpfs_lightsail_vps_runbook.md`
 - `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/proximity.py`
+- `strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/tp_near_exit.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_live_executor.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_live_runner.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_live_trade_summary.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_proximity.py`
 - `strategies/lp_force_strike_strategy_lab/tests/test_v17_lp_fs_proximity_report.py`
+- `strategies/lp_force_strike_strategy_lab/tests/test_v19_tp_near_robustness_report.py`
 
 The tracked code also includes the execution contract, dry-run executor,
 dashboard docs, and notification UX changes. Do not revert unrelated user/local

@@ -68,6 +68,19 @@ class TPNearExitTests(unittest.TestCase):
         self.assertTrue(trade.metadata["tp_near_triggered"])
         self.assertEqual(trade.metadata["tp_near_trigger_index"], 0)
 
+    def test_percent_close_variants_use_effective_reduced_tp_with_full_risk(self) -> None:
+        for threshold in [0.9, 0.925, 0.95, 0.98]:
+            with self.subTest(threshold=threshold):
+                trade = simulate_tp_near_exit_on_normalized_frame(
+                    _frame([{"high": 100.0 + 5.0 * threshold + 0.01, "low": 100.0}]),
+                    _setup("long"),
+                    TPNearExitVariant(f"close_pct_{threshold}", "close", threshold_value=threshold),
+                )
+
+                self.assertEqual(trade.exit_reason, "tp_near_close")
+                self.assertAlmostEqual(trade.risk_distance, 5.0)
+                self.assertAlmostEqual(trade.net_r, threshold)
+
     def test_short_spread_multiple_close_uses_ask_low(self) -> None:
         trade = simulate_tp_near_exit_on_normalized_frame(
             _frame([{"high": 101.0, "low": 95.0, "spread_points": 2, "point": 0.1}]),
@@ -89,6 +102,85 @@ class TPNearExitTests(unittest.TestCase):
         self.assertEqual(trade.exit_reason, "tp_near_close")
         self.assertAlmostEqual(trade.exit_reference_price, 104.8)
         self.assertAlmostEqual(trade.net_r, 0.96)
+
+    def test_long_close_haircut_reduces_exit_reference_by_spread_multiple(self) -> None:
+        trade = simulate_tp_near_exit_on_normalized_frame(
+            _frame([{"high": 104.8, "low": 100.0, "spread_points": 2, "point": 0.1}]),
+            _setup("long"),
+            TPNearExitVariant("close_pct_95_haircut", "close", threshold_value=0.95, fill_haircut_spread_mult=0.5),
+        )
+
+        self.assertEqual(trade.exit_reason, "tp_near_close")
+        self.assertAlmostEqual(trade.exit_reference_price, 104.65)
+        self.assertAlmostEqual(trade.net_r, 0.93)
+
+    def test_short_close_haircut_worsens_exit_reference_by_spread_multiple(self) -> None:
+        trade = simulate_tp_near_exit_on_normalized_frame(
+            _frame([{"high": 101.0, "low": 95.0, "spread_points": 2, "point": 0.1}]),
+            _setup("short"),
+            TPNearExitVariant("close_pct_95_haircut", "close", threshold_value=0.95, fill_haircut_spread_mult=0.5),
+        )
+
+        self.assertEqual(trade.exit_reason, "tp_near_close")
+        self.assertAlmostEqual(trade.exit_reference_price, 95.35)
+        self.assertAlmostEqual(trade.net_r, 0.93)
+
+    def test_one_bar_delayed_close_waits_and_uses_conservative_executable_close(self) -> None:
+        trade = simulate_tp_near_exit_on_normalized_frame(
+            _frame(
+                [
+                    {"high": 104.8, "low": 100.0, "close": 104.7},
+                    {"high": 104.0, "low": 100.0, "close": 103.0},
+                ]
+            ),
+            _setup("long"),
+            TPNearExitVariant("close_pct_95_delay", "close", threshold_value=0.95, activation_delay_bars=1),
+        )
+
+        self.assertEqual(trade.exit_reason, "tp_near_close")
+        self.assertEqual(trade.exit_index, 1)
+        self.assertAlmostEqual(trade.exit_reference_price, 103.0)
+        self.assertAlmostEqual(trade.net_r, 0.6)
+
+    def test_short_one_bar_delayed_close_uses_conservative_ask_close(self) -> None:
+        trade = simulate_tp_near_exit_on_normalized_frame(
+            _frame(
+                [
+                    {"high": 101.0, "low": 95.0, "close": 95.4, "spread_points": 2, "point": 0.1},
+                    {"high": 97.0, "low": 95.3, "close": 96.0, "spread_points": 2, "point": 0.1},
+                ]
+            ),
+            _setup("short"),
+            TPNearExitVariant("close_pct_95_delay", "close", threshold_value=0.95, activation_delay_bars=1),
+        )
+
+        self.assertEqual(trade.exit_reason, "tp_near_close")
+        self.assertEqual(trade.exit_index, 1)
+        self.assertAlmostEqual(trade.exit_reference_price, 96.2)
+        self.assertAlmostEqual(trade.net_r, 0.76)
+
+    def test_one_bar_delayed_protect_waits_before_locking_stop(self) -> None:
+        trade = simulate_tp_near_exit_on_normalized_frame(
+            _frame(
+                [
+                    {"high": 104.8, "low": 100.0},
+                    {"high": 103.0, "low": 100.0},
+                    {"high": 103.0, "low": 102.4},
+                ]
+            ),
+            _setup("long"),
+            TPNearExitVariant(
+                "lock_0p50r_pct_95_delay",
+                "lock_r_protect",
+                threshold_value=0.95,
+                lock_r=0.5,
+                activation_delay_bars=1,
+            ),
+        )
+
+        self.assertEqual(trade.exit_reason, "tp_near_lock_stop")
+        self.assertEqual(trade.exit_index, 2)
+        self.assertAlmostEqual(trade.metadata["tp_near_protected_stop"], 102.5)
 
     def test_real_target_still_beats_near_target_close(self) -> None:
         trade = simulate_tp_near_exit_on_normalized_frame(
@@ -249,6 +341,8 @@ class TPNearExitTests(unittest.TestCase):
             TPNearExitVariant("bad", "close", threshold_value=0.0),
             TPNearExitVariant("bad", "close", threshold_value=1.1),
             TPNearExitVariant("bad", "lock_r_protect", threshold_value=0.9, lock_r=1.0),
+            TPNearExitVariant("bad", "close", threshold_value=0.9, fill_haircut_spread_mult=-0.1),
+            TPNearExitVariant("bad", "close", threshold_value=0.9, activation_delay_bars=-1),
         ]
         for variant in bad_variants:
             with self.subTest(variant=variant):
