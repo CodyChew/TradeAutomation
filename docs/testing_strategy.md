@@ -49,6 +49,9 @@ that behavior into a core package and cover it there.
 - V17 LP-FS proximity tightening is completed. The current strategy does not
   require the Force Strike structure to touch the broken LP; strict-touch and
   ATR-gap filters are rejected as live trade filters for now.
+- V18 TP-near exit research is research-only. It compares close/protect
+  variants against the V16 no-buffer bid/ask control and must not change live
+  TP handling unless a separate live-change decision is made.
 - Realized drawdown measures closed-trade equity only. Risk-reserved drawdown
   subtracts open reserved risk while trades are active and is the safer account
   stress metric.

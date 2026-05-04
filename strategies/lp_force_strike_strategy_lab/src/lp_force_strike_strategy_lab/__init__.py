@@ -149,6 +149,12 @@ from .proximity import (
     proximity_variant_mask,
     quality_bucket_for_gap_atr,
 )
+from .tp_near_exit import (
+    TPNearExitVariant,
+    classify_tp_near_outcome,
+    run_lp_force_strike_tp_near_exit_on_frame,
+    simulate_tp_near_exit_on_normalized_frame,
+)
 from .signals import LPForceStrikeSignal, detect_lp_force_strike_signals
 from .portfolio import (
     PortfolioResult,
@@ -211,6 +217,7 @@ __all__ = [
     "TelegramConfig",
     "TelegramNotifier",
     "TradeModelCandidate",
+    "TPNearExitVariant",
     "UrllibTelegramHttpClient",
     "V15_EFFICIENT_RISK_BUCKET_PCT",
     "add_atr",
@@ -232,6 +239,7 @@ __all__ = [
     "closed_trade_drawdown_metrics",
     "classify_lp_fs_proximity",
     "classify_trade_row",
+    "classify_tp_near_outcome",
     "current_strategy_orders",
     "current_strategy_positions",
     "default_setup_provider",
@@ -286,6 +294,7 @@ __all__ = [
     "run_portfolio_rule",
     "run_lp_force_strike_experiment_on_frame",
     "run_lp_force_strike_execution_realism_on_frame",
+    "run_lp_force_strike_tp_near_exit_on_frame",
     "run_stability_analysis",
     "sanitize_for_logging",
     "save_live_state",
@@ -293,6 +302,7 @@ __all__ = [
     "send_pending_order",
     "send_market_recovery_order",
     "simulate_bid_ask_bracket_trade_on_normalized_frame",
+    "simulate_tp_near_exit_on_normalized_frame",
     "select_portfolio_trades",
     "signal_key_for_setup",
     "setup_signal_time_utc",

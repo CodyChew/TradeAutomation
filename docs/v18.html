@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LP + Force Strike V18 TP-Near Exit - by Cody</title>
+  <style>
+
+    :root {
+      --bg: #f3f6f8;
+      --panel: #ffffff;
+      --panel-soft: #f8fafb;
+      --ink: #17202a;
+      --muted: #5d6d7e;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --accent-2: #3f7f5f;
+      --good: #256f46;
+      --bad: #9f3333;
+      --warn: #8a5a00;
+      --focus: #f2c94c;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 Inter, Segoe UI, Roboto, Arial, sans-serif;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+    code { overflow-wrap: anywhere; }
+    .dashboard-header {
+      background: #17202a;
+      color: white;
+      padding: 28px max(18px, 5vw);
+      border-bottom: 4px solid #57a773;
+    }
+    .dashboard-header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 4vw, 30px);
+      letter-spacing: 0;
+    }
+    .dashboard-header p {
+      margin: 0;
+      color: #d8e0e8;
+      max-width: 1080px;
+      overflow-wrap: anywhere;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .page-nav {
+      margin-top: 18px;
+    }
+    .report-nav {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, .18);
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+    }
+    nav a:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .page-nav a.active {
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }
+    .report-nav a {
+      background: rgba(255, 255, 255, .03);
+      color: #edf4f7;
+    }
+    .archive-nav {
+      min-height: 34px;
+      position: relative;
+    }
+    .archive-nav summary {
+      cursor: pointer;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+      list-style: none;
+    }
+    .archive-nav summary::-webkit-details-marker {
+      display: none;
+    }
+    .archive-nav summary::after {
+      content: " +";
+      font-weight: 700;
+    }
+    .archive-nav[open] summary {
+      background: rgba(255, 255, 255, .16);
+    }
+    .archive-nav[open] summary::after {
+      content: " -";
+    }
+    .archive-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      max-width: min(680px, 100%);
+    }
+    .archive-links a {
+      font-size: 13px;
+      padding: 6px 9px;
+      min-height: 30px;
+    }
+    main {
+      padding: 24px max(18px, 5vw) 48px;
+    }
+    section {
+      margin: 0 0 22px;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(23, 32, 42, .05);
+      max-width: 100%;
+      overflow: visible;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 15px;
+      color: #34495e;
+      letter-spacing: 0;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi, .fact {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi-label, .fact span, .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .kpi-value, .kpi strong, .fact strong {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-note {
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 18px;
+    }
+    .note {
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+      margin-bottom: 14px;
+    }
+    .warning {
+      background: #fff8e8;
+      border-left-color: var(--warn);
+      color: #4d3b13;
+    }
+    .metric-glossary {
+      border-top: 4px solid #5c7f95;
+    }
+    .metric-glossary dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 10px;
+    }
+    .metric-glossary dl > div {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .metric-glossary dt {
+      margin: 0 0 5px;
+      font-weight: 700;
+    }
+    .metric-glossary dd {
+      margin: 0;
+      color: var(--muted);
+    }
+    .table-scroll, .scroll, .summary-comparison {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th, td {
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      box-shadow: 1px 0 0 var(--line);
+    }
+    th:first-child {
+      z-index: 3;
+    }
+    td:first-child {
+      background: var(--panel);
+      font-weight: 600;
+    }
+    th {
+      color: #3f4d5c;
+      background: #eef3f6;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tbody tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+    tbody tr:hover td {
+      background: #eef6f2;
+    }
+    .positive {
+      color: var(--good);
+      font-weight: 700;
+    }
+    .negative {
+      color: var(--bad);
+      font-weight: 700;
+    }
+    .neutral {
+      color: var(--muted);
+    }
+    footer {
+      color: var(--muted);
+      padding: 0 max(18px, 5vw) 28px;
+    }
+
+    @media (max-width: 760px) {
+      .dashboard-header {
+        padding: 22px 16px;
+      }
+      nav a {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+      .archive-nav {
+        flex: 1 1 100%;
+      }
+      .archive-nav summary {
+        text-align: center;
+      }
+      .archive-links a {
+        flex: 1 1 calc(25% - 8px);
+        text-align: center;
+      }
+      main {
+        padding: 16px 12px 34px;
+      }
+      section {
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 14px;
+      }
+      .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .kpi {
+        padding: 10px;
+      }
+      .kpi-value, .kpi strong, .fact strong {
+        font-size: 20px;
+      }
+      th, td {
+        padding: 6px 7px;
+        font-size: 12px;
+      }
+    }
+    @media (max-width: 480px) {
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+      .report-nav a {
+        flex-basis: calc(50% - 4px);
+      }
+    }
+
+
+    .experiment-summary {
+      border-top: 4px solid var(--accent);
+    }
+    .summary-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .summary-heading h2 {
+      margin-bottom: 0;
+    }
+    .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .status-badge {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      background: #f7f9fb;
+      color: var(--muted);
+    }
+    .status-active {
+      color: var(--good);
+      border-color: #b9dbc7;
+      background: #edf8f1;
+    }
+    .status-rejected {
+      color: var(--bad);
+      border-color: #e7bcbc;
+      background: #fff1f1;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+      gap: 12px;
+    }
+    .summary-grid div {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fbfc;
+      padding: 12px;
+    }
+    .summary-grid h3 {
+      margin: 0 0 6px;
+    }
+    .summary-grid p {
+      margin: 0;
+      color: var(--ink);
+    }
+    .conclusion-box {
+      margin-top: 14px;
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+    }
+    .decision-brief {
+      margin-top: 14px;
+      border: 1px solid #cbd8e4;
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 14px 16px;
+    }
+    .decision-brief h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--ink);
+    }
+    .decision-brief .brief-headline {
+      margin: 0 0 8px;
+      font-weight: 700;
+    }
+    .decision-brief ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .decision-brief li {
+      margin: 6px 0;
+    }
+    .decision-brief .brief-next {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+    .summary-comparison {
+      margin-top: 14px;
+      overflow-x: auto;
+    }
+    .comparison-table td:first-child,
+    .comparison-table th:first-child {
+      text-align: left;
+    }
+    @media (max-width: 760px) {
+      .summary-heading {
+        display: block;
+      }
+      .status-badge {
+        display: inline-block;
+        margin-top: 10px;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <header class="dashboard-header">
+    <h1>LP + Force Strike V18 TP-Near Exit - by Cody</h1>
+    <p>Research-only V18 report. It compares TP-near close/protect variants against the no-buffer bid/ask control; no MT5 live state or orders are touched.</p>
+    <nav class="page-nav" aria-label="Dashboard pages">
+      <a class="page-link" href="index.html">Home</a>
+      <a class="page-link" href="strategy.html">Strategy</a>
+      <a class="page-link" href="live_ops.html">Live Ops</a>
+      <a class="page-link" href="v13.html">V13</a>
+      <a class="page-link" href="v14.html">V14</a>
+      <a class="page-link" href="v15.html">V15</a>
+      <a class="page-link" href="v16.html">V16</a>
+      <a class="page-link" href="v17.html">V17</a>
+      <a class="page-link active" href="v18.html">V18</a>
+      <details class="archive-nav">
+        <summary>Archive V1-V12</summary>
+        <div class="archive-links">
+          <a class="page-link archive-link" href="v1.html">V1</a><a class="page-link archive-link" href="v2.html">V2</a><a class="page-link archive-link" href="v3.html">V3</a><a class="page-link archive-link" href="v4.html">V4</a><a class="page-link archive-link" href="v5.html">V5</a><a class="page-link archive-link" href="v6.html">V6</a><a class="page-link archive-link" href="v7.html">V7</a><a class="page-link archive-link" href="v8.html">V8</a><a class="page-link archive-link" href="v9.html">V9</a><a class="page-link archive-link" href="v10.html">V10</a><a class="page-link archive-link" href="v11.html">V11</a><a class="page-link archive-link" href="v12.html">V12</a>
+        </div>
+      </details>
+    </nav>
+
+    <nav class="report-nav" aria-label="Report sections">
+      <a href="#decision">Decision</a><a href="#variants">Variants</a><a href="#outcomes">Outcomes</a><a href="#buckets">Buckets</a><a href="#rules">Rules</a>
+    </nav>
+
+  </header>
+
+  <main>
+
+    <section id="experiment-summary" class="experiment-summary">
+      <div class="summary-heading">
+        <div>
+          <div class="eyebrow">V18 Research Snapshot</div>
+          <h2>V18 TP-Near Exit Research</h2>
+        </div>
+        <span class="status-badge status-active">TP-near study</span>
+      </div>
+
+      <div class="decision-brief">
+        <h3>Decision Brief</h3>
+        <p class="brief-headline">V18 result: TP-near exits have potential, but need review before any live change.</p>
+        <ul><li>No-buffer bid/ask control: 12,917 trades, 1,535.2R, 0.119R avg, PF 1.270.</li><li>Best variant close_pct_90: 2,250.7R, 0.174R avg, PF 1.426, a +715.5R delta versus the control.</li><li>close_pct_90 saved 390 trades from later stops for about +741.0R, but sacrificed 658 full TPs for about -65.8R.</li><li>This is still research-only. It does not touch MT5 live orders, pending-order lifecycle, market recovery, or Telegram execution behavior.</li></ul>
+        <p class="brief-next"><strong>Next:</strong> Inspect the changed-trade rows by symbol/timeframe and decide whether the next experiment should validate close_pct_90, a locked-profit variant, or a stricter volatility-aware TP-near rule.</p>
+      </div>
+
+      <div class="summary-grid">
+        <div><h3>What This Tests</h3><p>Should LPFS close or protect trades when bid/ask price gets very close to the 1R target before the full target is filled?</p></div>
+        <div><h3>Setup Tested</h3><p>Research-only TP-near exit study using the V16 bid/ask simulator as the control environment. The trade model stays LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, fixed 6-bar signal window, and fixed 6-bar pullback wait. Variants test immediate close, breakeven protect, and locked-profit protect at percent-to-target and spread-multiple thresholds.</p></div>
+        <div><h3>How To Read This Page</h3><p>Start with Decision Read, then compare each TP-near variant against the no-buffer bid/ask control and canonical V15. Use the outcome breakdown to separate saved stops from sacrificed full TPs before considering any live change.</p></div>
+        <div><h3>Use / Do Not Use</h3><p>Keep live behavior unchanged. Review the changed-trade samples and robustness by symbol/timeframe before deciding whether TP-near close or protect logic deserves a separate live-change plan.</p></div>
+      </div>
+      <div class="conclusion-box"><strong>Conclusion:</strong> The TP-near idea has promise but is not a live-rule change yet. The 90% immediate-close variant materially improved the research control, mainly by saving trades from later stops, while still sacrificing some full TPs.</div>
+
+    </section>
+
+    <section id="decision">
+      <h2>Decision Read</h2>
+      <p class="callout"><strong>A TP-near rule has potential, but needs review before live changes.</strong> close_pct_90 improved raw R by 715.5 and efficient return/DD from 48.40 to 95.91.</p>
+      <div class="kpi-grid">
+        <div class="kpi"><span>Control trades</span><strong>12,917</strong><small>no-buffer bid/ask</small></div>
+        <div class="kpi"><span>Variant rows</span><strong>129,170</strong><small>all TP-near variants</small></div>
+        <div class="kpi"><span>Best efficient variant</span><strong>close_pct_90</strong><small>by return/reserved-DD</small></div>
+        <div class="kpi"><span>Signals</span><strong>16,061</strong><small>detected across scope</small></div>
+      </div>
+    </section>
+    <section id="variants">
+      <h2>TP-Near Variant Leaderboard</h2>
+      <p>Delta is measured against the no-buffer bid/ask control. Canonical V15 deltas are also written to <code>old_vs_new_trade_delta.csv</code>.</p>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Trades</th><th>Total R</th><th>Avg R</th><th>PF</th><th>Exit Changes</th><th>R Delta</th><th>TP-Near Exits</th></tr></thead><tbody><tr><td>control_bid_ask</td><td>12,917</td><td class="positive">1,535.2</td><td class="positive">0.119</td><td>1.270</td><td>0</td><td class="neutral">0.0</td><td>0</td></tr><tr><td>close_pct_90</td><td>12,917</td><td class="positive">2,250.7</td><td class="positive">0.174</td><td>1.426</td><td>1,070</td><td class="positive">715.5</td><td>1,070</td></tr><tr><td>close_pct_95</td><td>12,917</td><td class="positive">1,901.4</td><td class="positive">0.147</td><td>1.346</td><td>517</td><td class="positive">366.1</td><td>517</td></tr><tr><td>close_pct_98</td><td>12,917</td><td class="positive">1,665.1</td><td class="positive">0.129</td><td>1.296</td><td>208</td><td class="positive">129.8</td><td>208</td></tr><tr><td>close_spread_0p5x</td><td>12,917</td><td class="positive">1,647.7</td><td class="positive">0.128</td><td>1.293</td><td>153</td><td class="positive">112.4</td><td>153</td></tr><tr><td>close_spread_1p5x</td><td>12,917</td><td class="positive">1,844.5</td><td class="positive">0.143</td><td>1.335</td><td>462</td><td class="positive">309.3</td><td>462</td></tr><tr><td>close_spread_1x</td><td>12,917</td><td class="positive">1,764.6</td><td class="positive">0.137</td><td>1.317</td><td>311</td><td class="positive">229.4</td><td>311</td></tr><tr><td>breakeven_pct_95</td><td>12,917</td><td class="positive">1,574.2</td><td class="positive">0.122</td><td>1.287</td><td>346</td><td class="positive">39.0</td><td>275</td></tr><tr><td>lock_0p25r_pct_95</td><td>12,917</td><td class="positive">1,634.0</td><td class="positive">0.126</td><td>1.297</td><td>384</td><td class="positive">98.7</td><td>292</td></tr><tr><td>lock_0p50r_pct_95</td><td>12,917</td><td class="positive">1,700.7</td><td class="positive">0.132</td><td>1.310</td><td>446</td><td class="positive">165.5</td><td>307</td></tr></tbody></table></div>
+    </section>
+    <section id="outcomes">
+      <h2>TP-Near Outcome Breakdown</h2>
+      <p>Changed trades are classified against the control row, so near-TP then later full TP is counted as sacrificed full TP for immediate-close variants.</p>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Outcome</th><th>Trades</th></tr></thead><tbody><tr><td>control_bid_ask</td><td>unchanged</td><td>12,917</td></tr><tr><td>control_bid_ask</td><td>saved_from_stop</td><td>0</td></tr><tr><td>control_bid_ask</td><td>sacrificed_full_tp</td><td>0</td></tr><tr><td>control_bid_ask</td><td>improved_end_of_data</td><td>0</td></tr><tr><td>control_bid_ask</td><td>worsened_end_of_data</td><td>0</td></tr><tr><td>control_bid_ask</td><td>same_bar_conflict</td><td>0</td></tr><tr><td>close_pct_90</td><td>unchanged</td><td>11,847</td></tr><tr><td>close_pct_90</td><td>saved_from_stop</td><td>390</td></tr><tr><td>close_pct_90</td><td>sacrificed_full_tp</td><td>658</td></tr><tr><td>close_pct_90</td><td>improved_end_of_data</td><td>1</td></tr><tr><td>close_pct_90</td><td>worsened_end_of_data</td><td>0</td></tr><tr><td>close_pct_90</td><td>same_bar_conflict</td><td>21</td></tr><tr><td>close_pct_95</td><td>unchanged</td><td>12,400</td></tr><tr><td>close_pct_95</td><td>saved_from_stop</td><td>188</td></tr><tr><td>close_pct_95</td><td>sacrificed_full_tp</td><td>321</td></tr><tr><td>close_pct_95</td><td>improved_end_of_data</td><td>0</td></tr><tr><td>close_pct_95</td><td>worsened_end_of_data</td><td>0</td></tr><tr><td>close_pct_95</td><td>same_bar_conflict</td><td>8</td></tr><tr><td>close_pct_98</td><td>unchanged</td><td>12,709</td></tr><tr><td>close_pct_98</td><td>saved_from_stop</td><td>65</td></tr><tr><td>close_pct_98</td><td>sacrificed_full_tp</td><td>141</td></tr><tr><td>close_pct_98</td><td>improved_end_of_data</td><td>0</td></tr><tr><td>close_pct_98</td><td>worsened_end_of_data</td><td>0</td></tr><tr><td>close_pct_98</td><td>same_bar_conflict</td><td>2</td></tr><tr><td>close_spread_0p5x</td><td>unchanged</td><td>12,764</td></tr><tr><td>close_spread_0p5x</td><td>saved_from_stop</td><td>58</td></tr><tr><td>close_spread_0p5x</td><td>sacrificed_full_tp</td><td>93</td></tr><tr><td>close_spread_0p5x</td><td>improved_end_of_data</td><td>0</td></tr><tr><td>close_spread_0p5x</td><td>worsened_end_of_data</td><td>0</td></tr><tr><td>close_spread_0p5x</td><td>same_bar_conflict</td><td>2</td></tr><tr><td>close_spread_1p5x</td><td>unchanged</td><td>12,455</td></tr><tr><td>close_spread_1p5x</td><td>saved_from_stop</td><td>174</td></tr><tr><td>close_spread_1p5x</td><td>sacrificed_full_tp</td><td>274</td></tr><tr><td>close_spread_1p5x</td><td>improved_end_of_data</td><td>0</td></tr><tr><td>close_spread_1p5x</td><td>worsened_end_of_data</td><td>0</td></tr><tr><td>close_spread_1p5x</td><td>same_bar_conflict</td><td>14</td></tr><tr><td>close_spread_1x</td><td>unchanged</td><td>12,606</td></tr><tr><td>close_spread_1x</td><td>saved_from_stop</td><td>121</td></tr><tr><td>close_spread_1x</td><td>sacrificed_full_tp</td><td>181</td></tr><tr><td>close_spread_1x</td><td>improved_end_of_data</td><td>0</td></tr><tr><td>close_spread_1x</td><td>worsened_end_of_data</td><td>0</td></tr><tr><td>close_spread_1x</td><td>same_bar_conflict</td><td>9</td></tr><tr><td>breakeven_pct_95</td><td>unchanged</td><td>12,564</td></tr><tr><td>breakeven_pct_95</td><td>saved_from_stop</td><td>188</td></tr><tr><td>breakeven_pct_95</td><td>sacrificed_full_tp</td><td>86</td></tr><tr><td>breakeven_pct_95</td><td>improved_end_of_data</td><td>0</td></tr><tr><td>breakeven_pct_95</td><td>worsened_end_of_data</td><td>0</td></tr><tr><td>breakeven_pct_95</td><td>same_bar_conflict</td><td>79</td></tr><tr><td>lock_0p25r_pct_95</td><td>unchanged</td><td>12,526</td></tr><tr><td>lock_0p25r_pct_95</td><td>saved_from_stop</td><td>188</td></tr><tr><td>lock_0p25r_pct_95</td><td>sacrificed_full_tp</td><td>103</td></tr><tr><td>lock_0p25r_pct_95</td><td>improved_end_of_data</td><td>0</td></tr><tr><td>lock_0p25r_pct_95</td><td>worsened_end_of_data</td><td>0</td></tr><tr><td>lock_0p25r_pct_95</td><td>same_bar_conflict</td><td>100</td></tr><tr><td>lock_0p50r_pct_95</td><td>unchanged</td><td>12,464</td></tr><tr><td>lock_0p50r_pct_95</td><td>saved_from_stop</td><td>188</td></tr><tr><td>lock_0p50r_pct_95</td><td>sacrificed_full_tp</td><td>118</td></tr><tr><td>lock_0p50r_pct_95</td><td>improved_end_of_data</td><td>0</td></tr><tr><td>lock_0p50r_pct_95</td><td>worsened_end_of_data</td><td>0</td></tr><tr><td>lock_0p50r_pct_95</td><td>same_bar_conflict</td><td>147</td></tr></tbody></table></div>
+    </section>
+    <section id="buckets">
+      <h2>V15 Bucket Sensitivity Rerun</h2>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Efficient Schedule</th><th>Return</th><th>Reserved DD</th><th>Max Open Risk</th><th>Worst Month</th><th>Return/DD</th><th>Practical</th></tr></thead><tbody><tr><td>control_bid_ask</td><td>bucket_ltf0p20_h12_d10p20_w10p75</td><td class="positive">331.52%</td><td>6.85%</td><td>4.55%</td><td>-3.40%</td><td>48.40</td><td>yes</td></tr><tr><td>close_pct_90</td><td>bucket_ltf0p20_h12_d10p30_w10p45</td><td class="positive">539.03%</td><td>5.62%</td><td>4.55%</td><td>-2.83%</td><td>95.91</td><td>yes</td></tr><tr><td>close_pct_95</td><td>bucket_ltf0p15_h12_d10p20_w10p60</td><td class="positive">344.11%</td><td>5.00%</td><td>3.65%</td><td>-1.97%</td><td>68.82</td><td>yes</td></tr><tr><td>close_pct_98</td><td>bucket_ltf0p15_h12_d10p20_w10p60</td><td class="positive">301.77%</td><td>5.27%</td><td>4.05%</td><td>-2.75%</td><td>57.25</td><td>yes</td></tr><tr><td>close_spread_0p5x</td><td>bucket_ltf0p15_h12_d10p20_w10p60</td><td class="positive">296.44%</td><td>5.20%</td><td>4.05%</td><td>-2.48%</td><td>57.00</td><td>yes</td></tr><tr><td>close_spread_1p5x</td><td>bucket_ltf0p15_h12_d10p20_w10p60</td><td class="positive">329.31%</td><td>5.20%</td><td>4.05%</td><td>-2.25%</td><td>63.29</td><td>yes</td></tr><tr><td>close_spread_1x</td><td>bucket_ltf0p15_h12_d10p20_w10p60</td><td class="positive">315.87%</td><td>5.20%</td><td>4.05%</td><td>-2.29%</td><td>60.72</td><td>yes</td></tr><tr><td>breakeven_pct_95</td><td>bucket_ltf0p25_h12_d10p30_w10p75</td><td class="positive">446.30%</td><td>8.60%</td><td>5.80%</td><td>-3.65%</td><td>51.89</td><td>yes</td></tr><tr><td>lock_0p25r_pct_95</td><td>bucket_ltf0p25_h12_d10p30_w10p75</td><td class="positive">463.13%</td><td>8.46%</td><td>5.80%</td><td>-3.67%</td><td>54.73</td><td>yes</td></tr><tr><td>lock_0p50r_pct_95</td><td>bucket_ltf0p25_h12_d10p30_w10p75</td><td class="positive">481.72%</td><td>8.48%</td><td>5.80%</td><td>-3.50%</td><td>56.84</td><td>yes</td></tr></tbody></table></div>
+    </section>
+    <section id="rules">
+      <h2>Rules Tested</h2>
+      <ul>
+        <li>Control uses V16 no-buffer bid/ask mechanics, not a live behavior change.</li>
+        <li>Long TP-near uses Bid; short TP-near uses Ask.</li>
+        <li>Immediate-close variants exit at the threshold price when reached.</li>
+        <li>Protect variants activate breakeven or locked-R stop after the near-TP bar; full TP can still hit later.</li>
+        <li>Same-bar stop/target conflict remains stop-first.</li>
+      </ul>
+    </section>
+
+    <section id="metric-glossary" class="metric-glossary" aria-labelledby="metric-glossary-title">
+      <h2 id="metric-glossary-title">Metric Glossary</h2>
+      <dl><div><dt>Realized DD</dt><dd>Closed-trade equity drawdown only. It ignores open trade risk until a position exits.</dd></div><div><dt>Risk-Reserved DD</dt><dd>Live-account stress drawdown that subtracts full open risk while positions are active.</dd></div><div><dt>Max Reserved Risk</dt><dd>Largest total open risk reserved at one time across accepted portfolio trades.</dd></div><div><dt>Worst Month</dt><dd>Largest calendar-month loss in account-percent terms for the tested schedule.</dd></div><div><dt>Return/DD</dt><dd>Total return divided by risk-reserved drawdown where available; higher is more efficient.</dd></div><div><dt>Avg R / PF</dt><dd>Average net R per trade and profit factor. Use both with trade count before trusting a row.</dd></div></dl>
+    </section>
+
+  </main>
+  <footer>Generated from <code>reports\strategies\lp_force_strike_experiment_v18_tp_near_exit\20260504_155205</code>. Research-only; no MT5 live calls.</footer>
+</body>
+</html>

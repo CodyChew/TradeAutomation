@@ -482,6 +482,35 @@
         ],
         "next_step": "Keep live rules unchanged. If desired, add a trader-facing setup quality label later instead of filtering orders."
       }
+    },
+    {
+      "page": "v18.html",
+      "nav_label": "V18",
+      "index_order": -8,
+      "title": "V18 TP-Near Exit Research",
+      "status_label": "TP-near study",
+      "status_kind": "active",
+      "question": "Should LPFS close or protect trades when bid/ask price gets very close to the 1R target before the full target is filled?",
+      "setup": "Research-only TP-near exit study using the V16 bid/ask simulator as the control environment. The trade model stays LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, fixed 6-bar signal window, and fixed 6-bar pullback wait. Variants test immediate close, breakeven protect, and locked-profit protect at percent-to-target and spread-multiple thresholds.",
+      "how_to_read": "Start with Decision Read, then compare each TP-near variant against the no-buffer bid/ask control and canonical V15. Use the outcome breakdown to separate saved stops from sacrificed full TPs before considering any live change.",
+      "conclusion": "The TP-near idea has promise but is not a live-rule change yet. The 90% immediate-close variant materially improved the research control, mainly by saving trades from later stops, while still sacrificing some full TPs.",
+      "action": "Keep live behavior unchanged. Review the changed-trade samples and robustness by symbol/timeframe before deciding whether TP-near close or protect logic deserves a separate live-change plan.",
+      "facts": [
+        ["Control", "1,535.2R"],
+        ["Best Variant", "close_pct_90"],
+        ["Best Delta", "+715.5R"],
+        ["Status", "Research only"]
+      ],
+      "decision_brief": {
+        "headline": "V18 result: TP-near exits have potential, but need review before any live change.",
+        "key_results": [
+          "No-buffer bid/ask control: 12,917 trades, 1,535.2R, 0.119R avg, PF 1.270.",
+          "Best variant close_pct_90: 2,250.7R, 0.174R avg, PF 1.426, a +715.5R delta versus the control.",
+          "close_pct_90 saved 390 trades from later stops for about +741.0R, but sacrificed 658 full TPs for about -65.8R.",
+          "This is still research-only. It does not touch MT5 live orders, pending-order lifecycle, market recovery, or Telegram execution behavior."
+        ],
+        "next_step": "Inspect the changed-trade rows by symbol/timeframe and decide whether the next experiment should validate close_pct_90, a locked-profit variant, or a stricter volatility-aware TP-near rule."
+      }
     }
   ]
 }

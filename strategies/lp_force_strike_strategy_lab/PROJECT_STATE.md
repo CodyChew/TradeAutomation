@@ -26,7 +26,8 @@ and alerts at `tradingview/lp_force_strike.pine`. V10-V13 add portfolio-style
 research analytics. V14 adds account-risk sizing and drawdown views. V15 adds
 3-bucket risk-ladder sensitivity. V16 adds broker-side bid/ask trigger realism
 and spread-buffer research. V17 tests whether the Force Strike structure must
-be close to or touching the broken LP. The dry-run phase is explicitly
+be close to or touching the broken LP. V18 adds research-only TP-near exit
+experiments against the V16 no-buffer bid/ask control. The dry-run phase is explicitly
 broker-safe and does not send orders; the live-send phase can place real
 pending orders only when local live config is explicitly enabled.
 
@@ -1174,6 +1175,43 @@ Decision:
   remove too much useful edge.
 - LP-FS proximity can become a future setup-quality label for trader context,
   but it is not a live execution rule.
+
+## Experiment V18 TP-Near Exit Research
+
+Experiment V18 is configured by:
+
+```text
+../../configs/strategies/lp_force_strike_experiment_v18_tp_near_exit.json
+```
+
+Run command:
+
+```powershell
+.\venv\Scripts\python scripts\run_lp_force_strike_v18_tp_near_exit.py --config configs\strategies\lp_force_strike_experiment_v18_tp_near_exit.json --docs-output docs\v18.html
+```
+
+Smoke verification run:
+
+- report folder:
+  `reports/strategies/lp_force_strike_experiment_v18_tp_near_exit/smoke`
+- scope: `GBPCAD H4`
+- result rows: `320` signals and `2,510` variant trade rows
+- artifacts include `trades.csv`, `summary_by_variant.csv`,
+  `old_vs_new_trade_delta.csv`, `tp_near_outcome_breakdown.csv`,
+  `run_summary.json`, and `dashboard.html`
+
+V18 is not the strategy baseline. The current strategy baseline remains V13
+mechanics with V15 risk buckets. V18 uses the V16 no-buffer bid/ask simulator
+as the control environment because TP-near behavior depends on bid/ask side and
+spread-aware near-miss detection.
+
+Decision status:
+
+- Research-only implementation exists.
+- No live executor, VPS task, MT5 order, live state, live journal, or live
+  Telegram behavior has been changed.
+- Full-universe results must be reviewed before any live TP-near close/protect
+  behavior is considered.
 
 ## Dashboard Interpretation UX
 
