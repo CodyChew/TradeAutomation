@@ -1019,29 +1019,33 @@ written.
 
 Expected next scope:
 
-1. Inspect `../../data/live/lpfs_live_journal.jsonl`,
-   `../../data/live/lpfs_live_state.json`, MT5 pending orders/positions, and
-   Telegram lifecycle messages before running again.
-2. The live runner is a finite-cycle CLI. For a manual long run, use a very
-   large cycle count and Ctrl+C to stop it; do not present this as guaranteed
-   Windows service uptime.
-3. If a user manually deletes a pending order, let the next reconciliation
+1. Keep the Amazon Lightsail VPS runner under observation with
+   `../../scripts/Get-LpfsLiveStatus.ps1`, MT5 open orders/positions,
+   `C:\TradeAutomationRuntime\data\live\lpfs_live_state.json`,
+   `lpfs_live_journal.jsonl`, Telegram lifecycle cards, and the latest log.
+   MT5 remains broker truth; Telegram is only a monitoring channel.
+2. Verify the VPS repo is at `f7881f3` or newer before assuming
+   worse-than-entry market recovery is retryable WAITING in production.
+3. Do not run a local PC live runner against the same account while
+   `LPFS_Live` is running on the VPS.
+4. If a user manually deletes a pending order, let the next reconciliation
    record it as cancelled/missing; do not clear state unless intentionally
    re-arming the current latest-candle setups.
-4. Keep low-risk live validation running long enough to collect real broker
+5. Keep low-risk live validation running long enough to collect real broker
    lifecycle evidence before scaling risk or changing strategy rules.
-5. Local Phase 2 rehearsal passed on 2026-05-03. Amazon Lightsail VPS
+6. Local Phase 2 rehearsal passed on 2026-05-03. Amazon Lightsail VPS
    deployment passed staged verification on 2026-05-04: repo at
    `C:\TradeAutomation`, runtime at `C:\TradeAutomationRuntime`, MT5 Python
    attach to the FTMO terminal works, state/journal match the two LPFS pending
    orders, direct one-cycle and watchdog one-cycle tests passed, temporary Task
    Scheduler smoke/live tests passed, Telegram works after the `certifi` HTTPS
-   fix, and final at-logon task `LPFS_Live` is installed but paused by kill
-   switch.
-6. If stop robustness becomes a priority, run a focused spread-buffer
+   fix, and final at-logon task `LPFS_Live` is installed. By 2026-05-05 it is
+   expected to run under `C:\TradeAutomationRuntime` when the kill switch is
+   absent.
+7. If stop robustness becomes a priority, run a focused spread-buffer
    validation by timeframe and symbol group. Do not change the live stop
    placement from no-buffer based on V16 alone.
-7. If discretionary review needs more context, surface LP-FS proximity as a
+8. If discretionary review needs more context, surface LP-FS proximity as a
    setup-quality label in dashboards/Telegram, not as a live trade filter.
 
 ## Phase 2 Production Hardening
@@ -1084,14 +1088,19 @@ Local rehearsal result:
 
 Recommended next path:
 
-1. Keep the VPS kill switch active until the operator deliberately chooses
-   unattended go-live.
-2. Before go-live, verify MT5, config, copied state/journal, broker
-   orders/positions, heartbeat, logs, status output, Telegram, and that no
-   local PC runner is active.
-3. To go live, clear the VPS kill switch and start the installed `LPFS_Live`
-   scheduled task, then verify process table, heartbeat, latest log, MT5, and
-   Telegram lifecycle cards.
+1. Leave `LPFS_Live` running only if the status packet shows a fresh heartbeat,
+   the expected parent/child Python process shape, `kill_switch_active=False`,
+   and MT5 state matches local live state.
+2. For deployment or emergency pause, set the VPS kill switch first, wait for
+   graceful stop, then verify process table, heartbeat, latest log, MT5, and
+   Telegram lifecycle cards before changing code or config.
+3. Do not edit `lpfs_live_state.json` or `lpfs_live_journal.jsonl` to rearm old
+   processed signals. Historical skipped keys remain skipped unless a separate
+   live operator plan explicitly approves state surgery.
+4. The next research/ops evidence task is live gate attribution: quantify
+   spread waits, market-recovery price waits, later recoveries, expiries,
+   symbols/timeframes affected, and whether blocks cluster around weekly open
+   before changing the spread gate or recovery rules.
 
 Acceptance criteria include single-runner protection, no duplicate orders after
 restart, kill-switch stop before order send, state/journal/log survival across
