@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-05 SGT after accepting LPFS V22 hard LP/FS separation as
-the new signal baseline.
+Last updated: 2026-05-05 SGT after adding LPFS order-placement timing telemetry
+and AI-agent VPS completion guidance.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -19,6 +19,25 @@ file, and the JSONL journal before making operational decisions.
    switch, heartbeat, status command, or Task Scheduler setup.
 7. `docs/lpfs_lightsail_vps_runbook.md` before moving the runner to Amazon
    Lightsail.
+
+## AI Agent Continuity Rules
+
+- External Codex memory may be read-only. Treat this repo handoff plus
+  `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` as the durable
+  continuity layer for future AI agents.
+- For any LPFS live/runtime, Telegram, MT5 execution, scheduled-task, or VPS
+  operations change, do not stop at a local patch. Carry the work to a clear
+  completion state: focused tests, full relevant tests when practical, commit,
+  push, and explicit VPS deploy/verification steps.
+- By default, final answers for LPFS live/runtime work must include the VPS
+  operator path: pause with kill switch, verify runner stopped, pull/deploy,
+  run focused checks, resume `LPFS_Live`, and verify heartbeat, latest log,
+  state, journal, MT5 orders/positions, and Telegram lifecycle cards.
+- If the change is docs-only and does not need runtime activation, say that no
+  VPS runner restart is required. Still give a minimal VPS pull step if the
+  user wants the docs available on the VPS checkout.
+- Never instruct future agents to edit VPS live state, journal, MT5 orders, or
+  MT5 positions unless the user explicitly approves a separate operator plan.
 
 ## Current Project Focus
 

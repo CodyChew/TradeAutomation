@@ -947,6 +947,17 @@ SGT start/stop time, and are also written to the live JSONL journal.
 The connected MT5 account is real. Treat `scripts/run_lp_force_strike_live_executor.py`
 as real-order capable whenever ignored local config enables live-send.
 
+AI-agent continuity rule: future LPFS live/runtime, Telegram, MT5 execution,
+scheduled-task, or VPS operations work should be carried through to a clear
+completion state by default. Include focused verification, commit/push status,
+and concrete VPS steps in the final answer. The VPS sequence should pause with
+the kill switch, verify the runner is stopped, pull/deploy, run focused checks,
+resume `LPFS_Live`, and verify heartbeat, latest log, state, journal, MT5
+orders/positions, and Telegram lifecycle cards. For docs-only changes that do
+not affect runtime, state clearly that no VPS runner restart is required.
+External assistant memory may be read-only, so keep this file and
+`../../SESSION_HANDOFF.md` updated for continuity.
+
 Current local run scope is the full V15 universe: 28 major/cross pairs across
 `H4/H8/H12/D1/W1`, or 140 checks per cycle. The current FTMO-style terminal
 uses `Europe/Helsinki` broker-time normalization.
