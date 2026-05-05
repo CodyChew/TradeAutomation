@@ -992,14 +992,14 @@ Get-CimInstance Win32_Process |
 
 
         <div class="command-row">
-          <strong>Print recent trade summary</strong>
-          <code>.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5</code>
+          <strong>Print 7-day performance summary</strong>
+          <code>.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7</code>
         </div>
 
 
         <div class="command-row">
-          <strong>Post recent trade summary to Telegram</strong>
-          <code>.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5 --post-telegram</code>
+          <strong>Post 4-week performance summary to Telegram</strong>
+          <code>.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --weeks 4 --post-telegram</code>
         </div>
 
 

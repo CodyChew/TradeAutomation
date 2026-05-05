@@ -312,24 +312,26 @@ Fill, close, expiry, and cancellation cards reply to the original
 `ORDER PLACED` Telegram message when Telegram returns a message ID. Raw broker
 comments, retcodes, exact floats, and diagnostics stay in the JSONL journal.
 
-Print a manual recent-trade summary:
+Print a manual performance summary. The default output is metric-only and does
+not list exact trades; add `--include-trades` only when the old detailed trade
+list is needed:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --days 7
 ```
 
 Post that same summary to Telegram:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5 --post-telegram
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --weeks 4 --post-telegram
 ```
 
 On the VPS, include the runtime root because production live state and journal
 files live outside the repo:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5 --post-telegram
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --weeks 4 --post-telegram
 ```
 
 The full V15 dry-run universe is the 28 AUD/CAD/CHF/EUR/GBP/JPY/NZD/USD

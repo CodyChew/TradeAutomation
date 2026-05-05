@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-05 SGT session wrap-up after merging LPFS
-order-placement timing telemetry into `main` and documenting VPS handoff.
+Last updated: 2026-05-05 SGT after making LPFS manual trade summaries
+metric-only by default with `--days` / `--weeks` lookbacks.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -281,24 +281,24 @@ Runner start/stop alerts are process heartbeat cards. They show cadence,
 requested/completed cycles, runtime, state-save status, and SGT start/stop
 time. They are best-effort Telegram UX and are also journaled.
 
-Manual summary:
+Manual performance summary, metric-only by default:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --days 7
 ```
 
 Post summary:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5 --post-telegram
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --weeks 4 --post-telegram
 ```
 
 On the VPS, production journal/state live under `C:\TradeAutomationRuntime`, so
 the summary commands must include `--runtime-root`:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5 --post-telegram
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --weeks 4 --post-telegram
 ```
 
 ## Spread Gate

@@ -34,9 +34,22 @@ def main() -> int:
         default=None,
         help="Runtime root containing data/live/lpfs_live_journal.jsonl, e.g. C:\\TradeAutomationRuntime.",
     )
-    parser.add_argument("--limit", type=int, default=5, help="Number of recent closed trades to show.")
+    period = parser.add_mutually_exclusive_group()
+    period.add_argument("--days", type=int, default=None, help="Summarize trades closed in the last N days.")
+    period.add_argument("--weeks", type=int, default=None, help="Summarize trades closed in the last N weeks.")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Fallback latest-trade count when --days/--weeks is omitted; also caps --include-trades details.",
+    )
+    parser.add_argument("--include-trades", action="store_true", help="Append the old per-trade detail list.")
     parser.add_argument("--post-telegram", action="store_true", help="Post the summary to the configured Telegram chat.")
     args = parser.parse_args()
+    if args.days is not None and args.days <= 0:
+        parser.error("--days must be positive")
+    if args.weeks is not None and args.weeks <= 0:
+        parser.error("--weeks must be positive")
 
     settings = load_live_send_settings(args.config)
     journal_path = args.journal or (
@@ -54,7 +67,13 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
-    message = build_recent_trade_summary_message(events=events, limit=args.limit)
+    message = build_recent_trade_summary_message(
+        events=events,
+        limit=args.limit,
+        days=args.days,
+        weeks=args.weeks,
+        include_trades=args.include_trades,
+    )
     print(message)
 
     if not args.post_telegram:

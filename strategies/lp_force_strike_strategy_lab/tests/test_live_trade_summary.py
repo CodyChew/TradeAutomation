@@ -116,13 +116,21 @@ class LiveTradeSummaryTests(unittest.TestCase):
         self.assertEqual(trades[0].close_kind, "TAKE PROFIT")
 
         message = build_recent_trade_summary_message(events=events, limit=5)
-        self.assertIn("LPFS LIVE | RECENT TRADE SUMMARY", message)
-        self.assertIn("Trades: 2 | Wins 1 | Losses 1", message)
-        self.assertIn("Net PnL +4.34 | Avg +0.00R", message)
+        self.assertIn("LPFS LIVE | PERFORMANCE SUMMARY", message)
+        self.assertIn("Period: Latest 5 closed trades | Closed trades 2", message)
+        self.assertIn("Win rate: 50.0% | Wins 1 | Losses 1 | Flat 0", message)
+        self.assertIn("Net PnL +4.34 | Total +0.00R | Avg +0.00R", message)
+        self.assertIn("Profit factor: 1.00 | Best +1.00R | Worst -1.00R", message)
+        self.assertIn("Avg win +1.00R | Avg loss -1.00R | Avg hold 4h 37m", message)
         self.assertIn("Exit mix: TP 1 | SL 1", message)
-        self.assertIn("1) EURUSD H4 LONG | TAKE PROFIT | +1.00R | +12.34", message)
-        self.assertIn("Entry 1.10000 -> Exit 1.10500 | Size 0.02", message)
-        self.assertIn("Hold 8h 15m | Closed 2026-05-02 06:15 SGT", message)
+        self.assertIn("By side: Long 1 | Short 1", message)
+        self.assertIn("By TF: H4 2", message)
+        self.assertNotIn("1) EURUSD H4 LONG", message)
+
+        detail_message = build_recent_trade_summary_message(events=events, limit=5, include_trades=True)
+        self.assertIn("1) EURUSD H4 LONG | TAKE PROFIT | +1.00R | +12.34", detail_message)
+        self.assertIn("Entry 1.10000 -> Exit 1.10500 | Size 0.02", detail_message)
+        self.assertIn("Hold 8h 15m | Closed 2026-05-02 06:15 SGT", detail_message)
 
         empty = build_recent_trade_summary_message(events=[], limit=5)
         self.assertIn("No closed trades found", empty)
@@ -159,6 +167,57 @@ class LiveTradeSummaryTests(unittest.TestCase):
         self.assertEqual(trades[0].entry_price, 1.2)
         message = build_recent_trade_summary_message(events=events, limit=5)
         self.assertIn("Exit mix: TP 0 | SL 0 | Other 1", message)
+
+    def test_summary_filters_by_days_and_weeks_without_trade_list(self) -> None:
+        recent_trade = summary_module.LPFSLiveClosedTrade(
+            symbol="GBPJPY",
+            timeframe="H12",
+            side="LONG",
+            close_kind="TAKE PROFIT",
+            position_id=1,
+            deal_ticket=10,
+            entry_price=1.0,
+            close_price=1.1,
+            volume=0.01,
+            close_profit=10.0,
+            r_result=1.0,
+            opened_utc="2026-05-04T00:00:00+00:00",
+            closed_utc="2026-05-04T12:00:00+00:00",
+            signal_key="",
+        )
+        old_trade = summary_module.LPFSLiveClosedTrade(
+            symbol="EURCAD",
+            timeframe="H8",
+            side="SHORT",
+            close_kind="STOP LOSS",
+            position_id=2,
+            deal_ticket=20,
+            entry_price=1.0,
+            close_price=0.9,
+            volume=0.01,
+            close_profit=-7.0,
+            r_result=-1.0,
+            opened_utc="2026-04-20T00:00:00+00:00",
+            closed_utc="2026-04-20T12:00:00+00:00",
+            signal_key="",
+        )
+
+        days_message = build_recent_trade_summary_message(
+            trades=[recent_trade, old_trade],
+            days=7,
+            now_utc="2026-05-05T00:00:00+00:00",
+        )
+        self.assertIn("Period: 7 days | Closed trades 1", days_message)
+        self.assertIn("Profit factor: no losses", days_message)
+        self.assertNotIn("1) GBPJPY", days_message)
+
+        weeks_message = build_recent_trade_summary_message(
+            trades=[recent_trade, old_trade],
+            weeks=3,
+            now_utc="2026-05-05T00:00:00+00:00",
+        )
+        self.assertIn("Period: 3 weeks | Closed trades 2", weeks_message)
+        self.assertIn("By TF: H8 1 | H12 1", weeks_message)
 
     def test_summary_loads_jsonl_and_script_prints_without_posting(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -205,8 +264,8 @@ class LiveTradeSummaryTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("LPFS LIVE | RECENT TRADE SUMMARY", result.stdout)
-            self.assertIn("Trades: 1 | Wins 1 | Losses 0", result.stdout)
+            self.assertIn("LPFS LIVE | PERFORMANCE SUMMARY", result.stdout)
+            self.assertIn("Closed trades 1", result.stdout)
 
             runtime_root = Path(tmpdir) / "runtime"
             runtime_journal = runtime_root / "data" / "live" / "lpfs_live_journal.jsonl"
@@ -229,7 +288,28 @@ class LiveTradeSummaryTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(runtime_result.returncode, 0, runtime_result.stderr)
-            self.assertIn("LPFS LIVE | RECENT TRADE SUMMARY", runtime_result.stdout)
+            self.assertIn("LPFS LIVE | PERFORMANCE SUMMARY", runtime_result.stdout)
+
+            days_result = subprocess.run(
+                [
+                    sys.executable,
+                    str(WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_trades.py"),
+                    "--config",
+                    str(config),
+                    "--runtime-root",
+                    str(runtime_root),
+                    "--include-trades",
+                    "--limit",
+                    "1",
+                ],
+                cwd=WORKSPACE_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(days_result.returncode, 0, days_result.stderr)
+            self.assertIn("LPFS LIVE | PERFORMANCE SUMMARY", days_result.stdout)
+            self.assertIn("1) EURUSD H4 LONG", days_result.stdout)
 
             missing_result = subprocess.run(
                 [
@@ -314,9 +394,9 @@ class LiveTradeSummaryTests(unittest.TestCase):
             closed_utc=None,
             signal_key="",
         )
-        message = build_recent_trade_summary_message(trades=[profit_only, flat_unknown], limit=2)
-        self.assertIn("Trades: 2 | Wins 1 | Losses 0", message)
-        self.assertIn("Net PnL +3.00 | Avg n/a", message)
+        message = build_recent_trade_summary_message(trades=[profit_only, flat_unknown], limit=2, include_trades=True)
+        self.assertIn("Win rate: 50.0% | Wins 1 | Losses 0 | Flat 1", message)
+        self.assertIn("Net PnL +3.00 | Total n/a | Avg n/a", message)
         self.assertIn("n/a | TAKE PROFIT | n/a | +3.00", message)
 
         self.assertEqual(summary_module._signal_part({"signal_key": "manual"}, 1), "")

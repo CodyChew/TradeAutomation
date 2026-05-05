@@ -153,19 +153,21 @@ Live fill, close, expiry, and cancellation cards reply to the original
 `message_id`. Missing message IDs or Telegram failures do not affect trading or
 reconciliation.
 
-Manual recent trade summaries can be printed or posted:
+Manual performance summaries can be printed or posted. The default output is
+metric-only and does not list exact trades; add `--include-trades` only for the
+older per-trade detail list.
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5 --post-telegram
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --days 7
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --weeks 4 --post-telegram
 ```
 
 On the VPS, live state and journal files are under `C:\TradeAutomationRuntime`,
 so include the runtime root:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5 --post-telegram
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --weeks 4 --post-telegram
 ```
 
 The summary pairs enriched `notification_event` rows from

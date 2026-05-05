@@ -126,34 +126,61 @@ def build_recent_trade_summary_message(
     events: Sequence[dict[str, Any]] | None = None,
     trades: Sequence[LPFSLiveClosedTrade] | None = None,
     limit: int = 5,
+    days: int | None = None,
+    weeks: int | None = None,
+    include_trades: bool = False,
+    now_utc: Any = None,
 ) -> str:
-    """Render a compact manual Telegram summary."""
+    """Render a compact manual Telegram performance summary."""
 
-    rows = list(trades if trades is not None else build_closed_trade_summaries(events or []))
-    recent = rows[: max(0, int(limit))]
+    rows = sorted(
+        list(trades if trades is not None else build_closed_trade_summaries(events or [])),
+        key=lambda trade: _timestamp_sort_key(trade.closed_utc),
+        reverse=True,
+    )
+    recent, period_label = _select_trade_window(rows, limit=limit, days=days, weeks=weeks, now_utc=now_utc)
     if not recent:
-        return "LPFS LIVE | RECENT TRADE SUMMARY\nNo closed trades found in the live journal."
+        return f"LPFS LIVE | PERFORMANCE SUMMARY\nPeriod: {period_label}\nNo closed trades found in the live journal."
 
     pnl_values = [float(row.close_profit) for row in recent if row.close_profit is not None]
     r_values = [float(row.r_result) for row in recent if row.r_result is not None]
     wins = sum(1 for row in recent if _trade_result_value(row) > 0)
     losses = sum(1 for row in recent if _trade_result_value(row) < 0)
+    flat = len(recent) - wins - losses
     total_pnl = "n/a" if not pnl_values else format_trader_signed_number(sum(pnl_values))
+    total_r = "n/a" if not r_values else format_trader_r(sum(r_values))
     avg_r = "n/a" if not r_values else format_trader_r(sum(r_values) / len(r_values))
+    best_r = "n/a" if not r_values else format_trader_r(max(r_values))
+    worst_r = "n/a" if not r_values else format_trader_r(min(r_values))
+    avg_win = _average_text([value for value in r_values if value > 0])
+    avg_loss = _average_text([value for value in r_values if value < 0])
     exit_mix = Counter(row.close_kind for row in recent)
+    side_mix = Counter(row.side for row in recent if row.side)
+    timeframe_mix = Counter(row.timeframe for row in recent if row.timeframe)
 
     lines = [
-        "LPFS LIVE | RECENT TRADE SUMMARY",
-        f"Trades: {len(recent)} | Wins {wins} | Losses {losses}",
-        f"Net PnL {total_pnl} | Avg {avg_r}",
+        "LPFS LIVE | PERFORMANCE SUMMARY",
+        f"Period: {period_label} | Closed trades {len(recent)}",
+        f"Closed: {_closed_range_text(recent)}",
+        f"Win rate: {_percent_text(wins, len(recent))} | Wins {wins} | Losses {losses} | Flat {flat}",
+        f"Net PnL {total_pnl} | Total {total_r} | Avg {avg_r}",
+        f"Profit factor: {_profit_factor_text(r_values)} | Best {best_r} | Worst {worst_r}",
+        f"Avg win {avg_win} | Avg loss {avg_loss} | Avg hold {_average_hold_text(recent)}",
         (
             f"Exit mix: TP {exit_mix.get('TAKE PROFIT', 0)} | "
             f"SL {exit_mix.get('STOP LOSS', 0)} | Other {exit_mix.get('TRADE CLOSED', 0)}"
         ),
-        "",
+        f"By side: {_counter_text(side_mix, ['LONG', 'SHORT'])}",
+        f"By TF: {_counter_text(timeframe_mix, ['H4', 'H8', 'H12', 'D1', 'W1'])}",
     ]
 
-    for index, trade in enumerate(recent, start=1):
+    if not include_trades:
+        return "\n".join(lines)
+
+    lines.append("")
+    detail_limit = max(0, int(limit))
+    detail_rows = recent[:detail_limit] if detail_limit else recent
+    for index, trade in enumerate(detail_rows, start=1):
         lines.append(
             f"{index}) {_trade_market(trade)} | {trade.close_kind} | "
             f"{format_trader_r(trade.r_result)} | {format_trader_signed_number(trade.close_profit)}"
@@ -169,6 +196,119 @@ def build_recent_trade_summary_message(
         )
 
     return "\n".join(lines)
+
+
+def _select_trade_window(
+    rows: Sequence[LPFSLiveClosedTrade],
+    *,
+    limit: int,
+    days: int | None,
+    weeks: int | None,
+    now_utc: Any,
+) -> tuple[list[LPFSLiveClosedTrade], str]:
+    if days is not None and weeks is not None:
+        raise ValueError("Use either days or weeks, not both.")
+    if days is not None:
+        if days <= 0:
+            raise ValueError("days must be positive.")
+        start = _period_start(days=days, now_utc=now_utc)
+        return [row for row in rows if _timestamp_sort_key(row.closed_utc) >= start], _plural(days, "day")
+    if weeks is not None:
+        if weeks <= 0:
+            raise ValueError("weeks must be positive.")
+        start = _period_start(days=weeks * 7, now_utc=now_utc)
+        return [row for row in rows if _timestamp_sort_key(row.closed_utc) >= start], _plural(weeks, "week")
+
+    count = max(0, int(limit))
+    if count == 0:
+        return list(rows), "All closed trades"
+    return list(rows[:count]), f"Latest {_plural(count, 'closed trade')}"
+
+
+def _period_start(*, days: int, now_utc: Any) -> pd.Timestamp:
+    if now_utc is None:
+        now = pd.Timestamp.now(tz="UTC")
+    else:
+        now = _timestamp_sort_key(str(now_utc))
+    return now - pd.Timedelta(days=days)
+
+
+def _plural(count: int, word: str) -> str:
+    suffix = "" if count == 1 else "s"
+    return f"{count} {word}{suffix}"
+
+
+def _percent_text(part: int, whole: int) -> str:
+    if whole <= 0:
+        return "n/a"
+    return f"{(part / whole) * 100:.1f}%"
+
+
+def _profit_factor_text(r_values: Sequence[float]) -> str:
+    if not r_values:
+        return "n/a"
+    gross_win = sum(value for value in r_values if value > 0)
+    gross_loss = abs(sum(value for value in r_values if value < 0))
+    if gross_loss <= 0:
+        return "no losses" if gross_win > 0 else "n/a"
+    return f"{gross_win / gross_loss:.2f}"
+
+
+def _average_text(values: Sequence[float]) -> str:
+    if not values:
+        return "n/a"
+    return format_trader_r(sum(values) / len(values))
+
+
+def _closed_range_text(trades: Sequence[LPFSLiveClosedTrade]) -> str:
+    timestamps = [_timestamp_sort_key(row.closed_utc) for row in trades if row.closed_utc not in (None, "")]
+    valid_timestamps = [timestamp for timestamp in timestamps if timestamp != pd.Timestamp.min.tz_localize("UTC")]
+    if not valid_timestamps:
+        return "n/a"
+    oldest = min(valid_timestamps).isoformat()
+    newest = max(valid_timestamps).isoformat()
+    return f"{format_trader_timestamp(oldest)} -> {format_trader_timestamp(newest)}"
+
+
+def _average_hold_text(trades: Sequence[LPFSLiveClosedTrade]) -> str:
+    seconds = [_hold_seconds(row) for row in trades]
+    valid_seconds = [value for value in seconds if value is not None]
+    if not valid_seconds:
+        return "n/a"
+    return _duration_text(int(sum(valid_seconds) / len(valid_seconds)))
+
+
+def _hold_seconds(trade: LPFSLiveClosedTrade) -> int | None:
+    opened = _timestamp_sort_key(trade.opened_utc)
+    closed = _timestamp_sort_key(trade.closed_utc)
+    minimum = pd.Timestamp.min.tz_localize("UTC")
+    if opened == minimum or closed == minimum:
+        return None
+    return int(max(0, (closed - opened).total_seconds()))
+
+
+def _duration_text(seconds: int) -> str:
+    days, remainder = divmod(max(0, int(seconds)), 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes = remainder // 60
+    if days:
+        return f"{days}d {hours}h"
+    if hours:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m"
+
+
+def _counter_text(counter: Counter[str], preferred_order: Sequence[str]) -> str:
+    parts: list[str] = []
+    seen: set[str] = set()
+    for key in preferred_order:
+        if counter.get(key, 0) > 0:
+            parts.append(f"{key.title()} {counter[key]}")
+            seen.add(key)
+    for key, count in sorted(counter.items()):
+        if key not in seen and count > 0:
+            parts.append(f"{key.title()} {count}")
+    return " | ".join(parts) if parts else "n/a"
 
 
 def _notification_event(row: dict[str, Any]) -> dict[str, Any] | None:

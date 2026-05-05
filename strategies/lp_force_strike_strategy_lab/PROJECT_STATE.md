@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-05 local time after merging LPFS order-placement timing
-telemetry into `main` and documenting the VPS handoff path.
+Last updated: 2026-05-05 local time after making LPFS manual trade summaries
+metric-only by default with `--days` / `--weeks` lookbacks.
 
 ## Purpose
 
@@ -934,8 +934,10 @@ Live Telegram messages add real broker lifecycle alerts:
 Fill, close, expiry, and cancellation alerts reply to the original
 `ORDER PLACED` or `ORDER ADOPTED` Telegram message when Telegram returns a
 message ID. The live state stores those IDs under `telegram_message_ids`. The
-manual summary script is `../../scripts/summarize_lpfs_live_trades.py --config
-config.local.json --limit 5`. On the VPS, include
+manual performance summary script is
+`../../scripts/summarize_lpfs_live_trades.py --config config.local.json --days
+7` or `--weeks 4`; it is metric-only by default and lists exact trades only
+with `--include-trades`. On the VPS, include
 `--runtime-root C:\TradeAutomationRuntime` because production live state and
 journal files live outside the repo checkout.
 

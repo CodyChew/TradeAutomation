@@ -585,10 +585,11 @@ Live-send adapter facts:
   state exists and the new runtime-root state is missing, the runner exits until
   state is copied or `--allow-empty-runtime-state` is intentionally used after
   broker-state verification.
-- Manual recent-trade summary:
-  `scripts/summarize_lpfs_live_trades.py --config config.local.json --limit 5`
-  with optional `--post-telegram`; on the VPS add
-  `--runtime-root C:\TradeAutomationRuntime`.
+- Manual performance summary:
+  `scripts/summarize_lpfs_live_trades.py --config config.local.json --days 7`
+  or `--weeks 4` with optional `--post-telegram`; on the VPS add
+  `--runtime-root C:\TradeAutomationRuntime`. It is metric-only by default and
+  lists exact trades only with `--include-trades`.
 - Live Ops dashboard page: `docs/live_ops.html`.
 - The runner script is
   `scripts/run_lp_force_strike_live_executor.py --config config.local.json`.

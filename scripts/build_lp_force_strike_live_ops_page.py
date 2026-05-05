@@ -407,12 +407,12 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             r".\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 20 -LogLines 40",
         ),
         (
-            "Print recent trade summary",
-            r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5",
+            "Print 7-day performance summary",
+            r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7",
         ),
         (
-            "Post recent trade summary to Telegram",
-            r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5 --post-telegram",
+            "Post 4-week performance summary to Telegram",
+            r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --weeks 4 --post-telegram",
         ),
         (
             "Run strict core coverage",
