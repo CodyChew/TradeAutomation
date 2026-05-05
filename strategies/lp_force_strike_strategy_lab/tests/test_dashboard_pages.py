@@ -23,19 +23,19 @@ class DashboardPagesTests(unittest.TestCase):
         metadata = load_dashboard_metadata()
         pages = {page["page"]: page for page in metadata["pages"]}
 
-        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 21)})
-        for version in range(1, 21):
+        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 22)})
+        for version in range(1, 22):
             page = pages[f"v{version}.html"]
             for field in ("title", "question", "setup", "how_to_read", "conclusion", "action", "status_label"):
                 self.assertTrue(page[field], f"missing {field} for v{version}")
 
     def test_every_generated_dashboard_links_to_all_pages(self) -> None:
         expected_links = ['href="index.html"', 'href="strategy.html"', 'href="live_ops.html"'] + [
-            f'href="v{version}.html"' for version in range(1, 21)
+            f'href="v{version}.html"' for version in range(1, 22)
         ]
 
         for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html"] + [
-            DOCS_ROOT / f"v{version}.html" for version in range(1, 21)
+            DOCS_ROOT / f"v{version}.html" for version in range(1, 22)
         ]:
             html = path.read_text(encoding="utf-8")
             for link in expected_links:
@@ -43,7 +43,7 @@ class DashboardPagesTests(unittest.TestCase):
 
     def test_generated_dashboards_use_shared_static_chrome(self) -> None:
         paths = [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html"] + [
-            DOCS_ROOT / f"v{version}.html" for version in range(1, 21)
+            DOCS_ROOT / f"v{version}.html" for version in range(1, 22)
         ]
 
         for path in paths:
@@ -53,13 +53,13 @@ class DashboardPagesTests(unittest.TestCase):
             self.assertNotIn("<script", html.lower(), f"{path.name} should remain CSS-only")
 
         for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html"] + [
-            DOCS_ROOT / f"v{version}.html" for version in range(1, 21)
+            DOCS_ROOT / f"v{version}.html" for version in range(1, 22)
         ]:
             html = path.read_text(encoding="utf-8")
             self.assertIn('id="metric-glossary"', html, f"{path.name} missing metric glossary")
             self.assertIn("Risk-Reserved DD", html, f"{path.name} missing risk-reserved DD definition")
 
-        for version in range(1, 21):
+        for version in range(1, 22):
             html = (DOCS_ROOT / f"v{version}.html").read_text(encoding="utf-8")
             self.assertIn('class="table-scroll"', html, f"v{version}.html missing table scroll wrapper")
             self.assertIn('class="data-table', html, f"v{version}.html missing data-table class")

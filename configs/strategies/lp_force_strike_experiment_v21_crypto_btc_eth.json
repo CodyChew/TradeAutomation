@@ -1,0 +1,38 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v21_crypto_btc_eth",
+  "dataset_config": "configs/datasets/crypto_btc_eth_sol_broker_history.json",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v21_crypto_btc_eth",
+  "decision_symbols": ["BTCUSD", "ETHUSD"],
+  "exploratory_symbols": ["SOLUSD"],
+  "timeframes": ["H4", "H8", "H12", "D1", "W1"],
+  "pivot_strength": 3,
+  "max_bars_from_lp_break": 6,
+  "atr_period": 14,
+  "max_entry_wait_bars": 6,
+  "entry_model": "signal_zone_pullback",
+  "entry_zone": 0.5,
+  "stop_model": "fs_structure",
+  "exit_model": "single_target",
+  "target_r": 1.0,
+  "execution_variant_id": "control_bid_ask",
+  "risk_bucket_scale": 0.05,
+  "account_equity": null,
+  "max_spread_risk_fraction": 0.1,
+  "costs": {
+    "use_candle_spread": true,
+    "fallback_spread_points": 0.0,
+    "entry_slippage_points": 0.0,
+    "exit_slippage_points": 0.0,
+    "round_turn_commission_points": 0.0
+  },
+  "drop_incomplete_latest_bar": true,
+  "decision_criteria": {
+    "min_trades": 30,
+    "min_total_net_r": 20.0,
+    "min_profit_factor": 1.15,
+    "min_return_to_drawdown": 2.0,
+    "min_sizeable_rate": 0.8,
+    "max_spread_fail_rate": 0.2,
+    "max_top_symbol_timeframe_net_r_share": 0.6
+  }
+}

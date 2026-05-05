@@ -569,6 +569,35 @@
         ],
         "next_step": "Keep live TP/SL unchanged. If this remains a priority, collect M1/tick replay data or forward live attribution for 0.9R touches, stop-modify success, too-fast misses, and later outcomes."
       }
+    },
+    {
+      "page": "v21.html",
+      "nav_label": "V21",
+      "index_order": -11,
+      "title": "V21 Crypto BTC/ETH Broker-History",
+      "status_label": "Crypto expansion study",
+      "status_kind": "active",
+      "question": "Does the unchanged LPFS baseline transfer to BTCUSD and ETHUSD on the current broker feed, after bid/ask realism, spread pressure, and min-lot sizeability checks?",
+      "setup": "Research-only crypto expansion test using current-broker MT5 data. BTCUSD and ETHUSD are the decision set; SOLUSD is displayed only as short-history exploratory evidence. The strategy model stays LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, and fixed 6-bar windows.",
+      "how_to_read": "Start with the Decision Card. Then check Symbol Verdicts, Timeframe Breakdown, Execution Feasibility, and Spread Risk before considering any crypto live-design plan.",
+      "conclusion": "V21 is a transfer test, not a live change. It must prove BTC/ETH edge and tradeability separately from the FX strategy before crypto can be considered for live support.",
+      "action": "Keep FX live unchanged. If V21 is promising, create a separate crypto live-design plan with isolated config, risk caps, and demo-only dry-run validation.",
+      "facts": [
+        ["Decision Set", "BTCUSD / ETHUSD"],
+        ["SOL", "Exploratory only"],
+        ["Execution", "Bid/Ask"],
+        ["Status", "Research only"]
+      ],
+      "decision_brief": {
+        "headline": "V21 result: use the generated crypto Decision Card as the expansion gate.",
+        "key_results": [
+          "BTCUSD has broker history from 2017-10-23; ETHUSD from 2020-11-11; SOLUSD only from 2025-04-17.",
+          "The dashboard reports raw R, PF, return/DD, symbol/timeframe contribution, spread-to-risk, and min-lot sizeability.",
+          "A live candidate requires positive BTC/ETH performance and enough safely sizeable trades at the current risk settings.",
+          "This is evidence only; no live FX runner, VPS runtime, MT5 order, Telegram lifecycle, or TradingView behavior changes from V21."
+        ],
+        "next_step": "Read the V21 dashboard. If it is research-only or rejected, do not add crypto live support."
+      }
     }
   ]
 }

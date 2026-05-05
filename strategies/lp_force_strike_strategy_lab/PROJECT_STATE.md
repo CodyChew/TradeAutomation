@@ -27,9 +27,11 @@ research analytics. V14 adds account-risk sizing and drawdown views. V15 adds
 3-bucket risk-ladder sensitivity. V16 adds broker-side bid/ask trigger realism
 and spread-buffer research. V17 tests whether the Force Strike structure must
 be close to or touching the broken LP. V18-V20 test TP-near close/protection
-ideas as research-only evidence. The dry-run phase is explicitly broker-safe
-and does not send orders; the live-send phase can place real pending orders
-only when local live config is explicitly enabled.
+ideas as research-only evidence. V21 tests BTC/ETH crypto expansion on current
+broker-history data, with SOL only as short-history exploratory evidence. The
+dry-run phase is explicitly broker-safe and does not send orders; the live-send
+phase can place real pending orders only when local live config is explicitly
+enabled.
 
 ## Concept Dependencies
 
@@ -1364,6 +1366,70 @@ success, too-fast misses, and later trade outcomes. Only then design the live
 stop-modification lifecycle.
 ```
 
+## Experiment V21 Crypto BTC/ETH Broker-History
+
+Experiment V21 is configured by:
+
+```text
+../../configs/strategies/lp_force_strike_experiment_v21_crypto_btc_eth.json
+```
+
+Dataset config:
+
+```text
+../../configs/datasets/crypto_btc_eth_sol_broker_history.json
+```
+
+Run command:
+
+```powershell
+.\venv\Scripts\python scripts\pull_mt5_dataset.py --config configs\datasets\crypto_btc_eth_sol_broker_history.json --output reports\data\crypto_btc_eth_sol_pull.json
+.\venv\Scripts\python scripts\run_lp_force_strike_v21_crypto_btc_eth.py --account-equity <current_equity>
+```
+
+Current local run:
+
+- report folder:
+  `reports/strategies/lp_force_strike_experiment_v21_crypto_btc_eth/20260505_062556`
+- dashboard: `docs/v21.html`
+- decision set: `BTCUSD` and `ETHUSD`
+- exploratory only: `SOLUSD`, because current broker history starts much later
+- broker-history starts observed on 2026-05-05:
+  `BTCUSD` from 2017-10-23, `ETHUSD` from 2020-11-11, and `SOLUSD` from
+  2025-04-17
+- dataset pull: 18/18 symbol-timeframe datasets saved for
+  `M30/H4/H8/H12/D1/W1`
+- data quality: no failures, warnings for large crypto moves and incomplete
+  latest bars from the live-ended pull
+- BTC/ETH decision-population result: `701` trades, `49.0R`, PF about `1.150`,
+  max drawdown about `21.0R`, return/DD about `2.33`, worst month about `-7.0R`
+- explicit baseline comparison now appears in `docs/v21.html` and
+  `baseline_comparison.csv`:
+  - V15 canonical FX baseline: `13,012` trades, about `1,512.3R`, PF `1.265`
+  - V16 FX bid/ask control: `12,917` trades, about `1,535.2R`, PF `1.270`
+  - V21 BTC/ETH crypto transfer: `701` trades, about `49.0R`, PF `1.150`
+- execution feasibility at the supplied current account equity:
+  `66.5%` live-feasible, with spread-fail rate about `13.3%`
+
+Decision status:
+
+- V21 marks crypto as `research_only`, not a live candidate.
+- The raw BTC/ETH result is positive, but one or more execution gates failed.
+  The key blocker is current-account tradeability after min-lot and spread
+  gates, not just raw R.
+- SOL is not part of the decision because its broker history is too short.
+- No live FX executor, VPS task, MT5 order, live state, live journal, Telegram
+  lifecycle behavior, or TradingView indicator has been changed.
+
+Recommended follow-up:
+
+```text
+Do not add crypto to live yet. Inspect V21 symbol/timeframe and feasibility
+rows first. If crypto remains a priority, the next step is not a live deploy;
+it is a focused BTC-only or ETH-only refinement with explicit sizeability and
+spread gates.
+```
+
 ## Dashboard Interpretation UX
 
 The dashboard interpretation metadata lives in:
@@ -1373,8 +1439,8 @@ The dashboard interpretation metadata lives in:
 ```
 
 On 2026-04-30, V6-V15 were given a `decision_brief` section in that metadata.
-V16-V20 also have decision briefs for execution realism, LP-FS proximity,
-TP-near research, TP-near robustness, and protection realism.
+V16-V21 also have decision briefs for execution realism, LP-FS proximity,
+TP-near research, TP-near robustness, protection realism, and crypto expansion.
 The shared renderer now shows a prominent `Decision Brief` near the top of each
 page, before the tables. This preserves the concise chat-style interpretation
 the user found useful, for example the V11 bullets explaining why removing H4

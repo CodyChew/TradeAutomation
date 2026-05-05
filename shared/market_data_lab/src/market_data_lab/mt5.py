@@ -86,6 +86,7 @@ def symbol_metadata(info: Any, symbol: str) -> dict[str, Any]:
 
     return {
         "symbol": str(symbol).upper(),
+        "visible": bool(getattr(info, "visible", False)),
         "digits": _safe_int(getattr(info, "digits", None)),
         "point": _safe_float(getattr(info, "point", None)),
         "spread_points": _safe_int(getattr(info, "spread", None)),
@@ -96,6 +97,9 @@ def symbol_metadata(info: Any, symbol: str) -> dict[str, Any]:
         "volume_max": _safe_float(getattr(info, "volume_max", None)),
         "volume_step": _safe_float(getattr(info, "volume_step", None)),
         "trade_contract_size": _safe_float(getattr(info, "trade_contract_size", None)),
+        "trade_stops_level": _safe_int(getattr(info, "trade_stops_level", None)),
+        "trade_freeze_level": _safe_int(getattr(info, "trade_freeze_level", None)),
+        "trade_mode": _safe_int(getattr(info, "trade_mode", None)),
     }
 
 
