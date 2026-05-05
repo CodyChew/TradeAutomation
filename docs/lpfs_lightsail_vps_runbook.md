@@ -70,6 +70,8 @@ Future agents and operators must differentiate environments explicitly:
   journal, MT5 orders, or MT5 positions unless the user has explicitly approved
   that operation.
 
+### First Commands Before Touching VPS
+
 Start any remote session by proving identity before analysis:
 
 ```powershell
@@ -508,10 +510,10 @@ Market-recovery operator note:
 
 Deployment note: market recovery retry and the broker filling-mode fallback
 were verified locally on 2026-05-05 with focused live executor tests, full LPFS
-discovery (`260` tests), and core coverage at `100.00%`. The VPS must be at
-commit `04e92c8` or newer and `LPFS_Live` must be intentionally restarted
-before both behaviors are active; an already running process keeps the old
-code.
+discovery (`260` tests), and core coverage at `100.00%`. The VPS repo must be
+on `main` and fast-forwarded to the deployed commit, and `LPFS_Live` must be
+intentionally restarted before code behavior changes are active; an already
+running process keeps the old code.
 
 LP/FS separation deployment note:
 

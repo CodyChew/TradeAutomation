@@ -503,7 +503,40 @@ Get-CimInstance Win32_Process |
         for label, command in vps_operator_commands
     )
 
+    remote_access_commands = [
+        (
+            "Prove VPS hostname",
+            r"ssh lpfs-vps hostname",
+        ),
+        (
+            "Prove SSH user",
+            r"ssh lpfs-vps whoami",
+        ),
+        (
+            "Verify VPS repo branch",
+            r'ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch"',
+        ),
+        (
+            "Fetch VPS live status packet",
+            r'ssh lpfs-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 40 -LogLines 80"',
+        ),
+    ]
+    remote_access_command_html = "\n".join(
+        f"""
+        <div class="command-row">
+          <strong>{_escape(label)}</strong>
+          <code>{_escape(command)}</code>
+        </div>
+        """
+        for label, command in remote_access_commands
+    )
+
     file_cards = [
+        (
+            "Start here",
+            "strategies/lp_force_strike_strategy_lab/START_HERE.md",
+            "Canonical first-read path for future AI agents, environment boundaries, source-of-truth map, and resume prompts.",
+        ),
         (
             "Live runner",
             "scripts/run_lp_force_strike_live_executor.py",
@@ -583,6 +616,7 @@ Get-CimInstance Win32_Process |
           ("#reconciliation-gates", "Reconcile"),
           ("#pending-expiry", "Expiry"),
           ("#telegram", "Telegram"),
+          ("#remote-access", "Remote Access"),
           ("#vps-operator", "VPS"),
           ("#commands", "Commands"),
           ("#limits", "Limits"),
@@ -672,6 +706,22 @@ Get-CimInstance Win32_Process |
         ])}
       </div>
       <p class="callout">Telegram delivery is best effort. A failed Telegram send must never validate or invalidate a trade. The journal remains the durable audit record.</p>
+    </section>
+
+    <section id="remote-access" aria-labelledby="remote-access-title">
+      <h2 id="remote-access-title">Remote VPS Access</h2>
+      <p class="callout warning"><strong>First command before touching VPS:</strong> prove the host, user, repo branch, and live status packet through <code>ssh lpfs-vps</code>. Local OneDrive is development; <code>C:\TradeAutomation</code> plus <code>C:\TradeAutomationRuntime</code> is production.</p>
+      <div class="ops-grid">
+        {_fact_grid([
+            ("Preferred access", "Tailscale + OpenSSH", "Use the private tailnet path instead of public SSH/RDP exposure for read-only audits and approved maintenance."),
+            ("Local PC", "cy-desktop", "Local Tailscale IP 100.105.200.52 and local repo C:\\Users\\chewc\\OneDrive\\Desktop\\TradeAutomation."),
+            ("VPS host", "EC2AMAZ-ON6FOF2", "VPS Tailscale IP 100.115.34.38, SSH user Administrator, alias lpfs-vps."),
+            ("SSH key", "~\\.ssh\\lpfs_vps_ed25519", "Local private key is ignored local material and must not be committed or pasted into docs/chat."),
+        ])}
+      </div>
+      <div class="command-list">
+        {remote_access_command_html}
+      </div>
     </section>
 
     <section id="vps-operator" aria-labelledby="vps-operator-title">

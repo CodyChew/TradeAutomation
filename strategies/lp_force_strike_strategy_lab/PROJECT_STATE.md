@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-05 local time after making LPFS manual trade summaries
-metric-only by default with `--days` / `--weeks` lookbacks.
+Last updated: 2026-05-05 local time after the LPFS handoff-first
+documentation cleanup.
 
 ## Purpose
 
@@ -43,6 +43,11 @@ Python remains the source of truth for MT5-data strategy development.
 The combined TradingView visual lives at `tradingview/lp_force_strike.pine`.
 It is for chart-side inspection and alerts only; Python/MT5 remains the source
 of truth for research and live execution.
+
+Canonical LPFS restart file:
+`START_HERE.md`. Future AI agents should read it immediately after
+`SESSION_HANDOFF.md` to get the source-of-truth map, environment boundaries,
+VPS first commands, live-run safety rules, and resume prompts.
 
 Future PnL backtests should load candles through
 `../../shared/market_data_lab` so this strategy uses the same broker data and
@@ -961,15 +966,10 @@ not affect runtime, state clearly that no VPS runner restart is required.
 External assistant memory may be read-only, so keep this file and
 `../../SESSION_HANDOFF.md` updated for continuity.
 
-Session wrap-up / branch state as of 2026-05-05:
+Historical timing-telemetry note:
 
-- `lpfs-order-placed-timing-telemetry` was fast-forward merged into `main`
-  locally. After the corresponding push, `main` is again the intended
-  canonical branch for future LPFS work.
-- The VPS can remain running while this repo-local merge is prepared, but it
-  will not use the merged `main` checkout until the operator pauses with the
-  kill switch, checks out/pulls `main`, runs focused checks, and restarts
-  `LPFS_Live`.
+- Order-placement timing telemetry was merged into `main` on 2026-05-05.
+  `main` is the intended canonical branch for future LPFS work.
 - The timing telemetry is observability-only. It adds signal-close time,
   order-placement time, and placement lag to `ORDER PLACED` Telegram cards and
   live journal rows; it does not change signal rules, order-send behavior,
@@ -1140,9 +1140,10 @@ Expected next scope:
    `C:\TradeAutomationRuntime\data\live\lpfs_live_state.json`,
    `lpfs_live_journal.jsonl`, Telegram lifecycle cards, and the latest log.
    MT5 remains broker truth; Telegram is only a monitoring channel.
-2. Verify the VPS repo is at `04e92c8` or newer before assuming
-   worse-than-entry market recovery is retryable WAITING and broker
-   filling-mode fallback is active in production.
+2. Verify the VPS repo is on `main` and fast-forwarded to `origin/main` before
+   assuming the latest local docs or live-runner behavior are present in
+   production. Use `ssh lpfs-vps hostname`, `whoami`, VPS `git status`, and
+   the LPFS status packet before drawing operational conclusions.
 3. Do not run a local PC live runner against the same account while
    `LPFS_Live` is running on the VPS.
 4. If a user manually deletes a pending order, let the next reconciliation

@@ -1,29 +1,31 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-05 local time after LPFS V20 lower-timeframe
-protection-realism research.
+Last updated: 2026-05-05 local time after the LPFS handoff-first
+documentation cleanup.
 
 ## Purpose
 
 This repository is a Python-first trading research workspace. TradingView is
 used for visual inspection, while Python modules and MT5 broker data are the
-source of truth for strategy research and future live execution work.
+source of truth for strategy research and live execution work.
 
 ## Read This First In A New Codex Session
 
 1. `SESSION_HANDOFF.md` for the latest operational snapshot.
-2. `PROJECT_STATE.md` for the overall workspace state.
-3. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for the current
+2. `strategies/lp_force_strike_strategy_lab/START_HERE.md` for the LPFS
+   first-read path, environment boundaries, and resume prompts.
+3. `PROJECT_STATE.md` for the overall workspace state.
+4. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for the current
    LP + Force Strike strategy research.
-4. `docs/strategy.html` for the current V13 mechanics + V15 risk-bucket guide.
-5. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+5. `docs/strategy.html` for the current V13 mechanics + V15 risk-bucket guide.
+6. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before continuing execution work.
-6. `docs/phase2_production_hardening.md` before operating watchdogs,
+7. `docs/phase2_production_hardening.md` before operating watchdogs,
    kill-switch controls, heartbeat, status checks, or Task Scheduler setup.
-7. `docs/lpfs_lightsail_vps_runbook.md` before moving LPFS to Amazon
-   Lightsail.
-8. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
-9. `concepts/lp_levels_lab/PROJECT_STATE.md` and
+8. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+   deployment, or maintenance.
+9. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
+10. `concepts/lp_levels_lab/PROJECT_STATE.md` and
    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
    concept behavior.
 

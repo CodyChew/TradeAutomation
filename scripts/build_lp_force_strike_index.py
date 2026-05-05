@@ -62,6 +62,36 @@ def _baseline_card(home: dict[str, Any]) -> str:
     """
 
 
+def _start_here_card() -> str:
+    return """
+    <section id="start-here" class="card featured">
+      <div class="status status-active">Start here</div>
+      <h2>LPFS Handoff Entry Point</h2>
+      <p>Future agents should start with the LPFS Start Here file, then verify current broker/runtime state before making live-operation conclusions.</p>
+      <div class="facts">
+        <div class="fact"><span>Primary audience</span><strong>Future AI agents</strong></div>
+        <div class="fact"><span>Boundary</span><strong>Local dev vs VPS production</strong></div>
+      </div>
+      <a class="button" href="https://github.com/CodyChew/TradeAutomation/blob/main/strategies/lp_force_strike_strategy_lab/START_HERE.md">Open START_HERE</a>
+    </section>
+    """
+
+
+def _truth_card() -> str:
+    return """
+    <section id="current-truth" class="card featured">
+      <div class="status status-active">Current truth</div>
+      <h2>What To Trust First</h2>
+      <p>Use Python and MT5 for trading truth, generated dashboards for current contracts, and the VPS status packet for production state. Version pages remain audit history.</p>
+      <div class="facts">
+        <div class="fact"><span>Strategy contract</span><strong>Strategy guide</strong></div>
+        <div class="fact"><span>Production state</span><strong>MT5 + runtime files</strong></div>
+      </div>
+      <a class="button" href="live_ops.html">Open Live Ops</a>
+    </section>
+    """
+
+
 def _strategy_card() -> str:
     return """
     <section id="strategy-guide" class="card featured">
@@ -132,6 +162,8 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
     current_pages = sorted(current_dashboard_pages(metadata), key=lambda page: int(page["index_order"]))
     archive_pages = sorted(archived_dashboard_pages(metadata), key=lambda page: int(page["index_order"]))
     cards = [
+        _start_here_card(),
+        _truth_card(),
         _baseline_card(home),
         _strategy_card(),
         _live_ops_card(),
@@ -359,6 +391,8 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
       subtitle_html=_escape(home["intro"]),
       current_page="index.html",
       section_links=[
+          ("#start-here", "Start Here"),
+          ("#current-truth", "Current Truth"),
           ("#current-baseline", "Current Baseline"),
           ("#strategy-guide", "Strategy Guide"),
           ("#live-ops", "Live Ops"),
@@ -371,7 +405,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
     {"".join(cards)}
     {metric_glossary_html()}
   </main>
-  <footer>Generated dashboards are static research snapshots. Strategy behavior remains in tested Python modules.</footer>
+  <footer>Generated dashboards are static research snapshots. Strategy behavior remains in tested Python modules; live state must be verified from MT5 and VPS runtime files.</footer>
 </body>
 </html>
 """

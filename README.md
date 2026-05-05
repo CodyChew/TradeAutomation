@@ -4,6 +4,7 @@ Trading research workspace organized around reusable concepts and future
 strategies.
 
 Start a new handover or Codex session with `SESSION_HANDOFF.md`, then
+`strategies/lp_force_strike_strategy_lab/START_HERE.md`, then
 `PROJECT_STATE.md`.
 
 ## Structure
@@ -52,8 +53,10 @@ Pages link for the latest dashboard.
 The current strategy guide and execution-readiness docs are:
 
 - `SESSION_HANDOFF.md`
+- `strategies/lp_force_strike_strategy_lab/START_HERE.md`
 - `docs/strategy.html`
 - `docs/live_ops.html`
+- `docs/lpfs_lightsail_vps_runbook.md`
 - `docs/mt5_execution_contract.md`
 - `docs/telegram_notifications.md`
 - `docs/dry_run_executor.md`
@@ -87,8 +90,9 @@ strict branch-coverage gate:
 
 See `docs/testing_strategy.md` for the scoped rules and edge-case expectations.
 
-Current core gate status on 2026-05-01: 205 unittest cases, `100.00%` line and
-branch coverage for the scoped core packages.
+The exact test count changes as LPFS grows. Treat the command output as the
+current authority; before changing strategy or execution behavior, rerun the
+gate and record the fresh result in the relevant handoff/state file.
 
 ## Current Shared Labs
 

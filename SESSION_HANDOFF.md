@@ -10,15 +10,18 @@ file, and the JSONL journal before making operational decisions.
 ## Read First
 
 1. `SESSION_HANDOFF.md` for this latest operational snapshot.
-2. `PROJECT_STATE.md` for workspace context.
-3. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for LPFS detail.
-4. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+2. `strategies/lp_force_strike_strategy_lab/START_HERE.md` for the LPFS
+   first-read path, source-of-truth map, environment boundaries, and resume
+   prompts.
+3. `PROJECT_STATE.md` for workspace context.
+4. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for LPFS detail.
+5. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before touching execution code.
-5. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
-6. `docs/phase2_production_hardening.md` before operating the watchdog, kill
+6. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
+7. `docs/phase2_production_hardening.md` before operating the watchdog, kill
    switch, heartbeat, status command, or Task Scheduler setup.
-7. `docs/lpfs_lightsail_vps_runbook.md` before moving the runner to Amazon
-   Lightsail.
+8. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+   deployment, or maintenance.
 
 ## AI Agent Continuity Rules
 
@@ -77,38 +80,26 @@ operational conclusions.
 
 ## 2026-05-05 Wrap-Up / Git State
 
-- The LPFS order-placement timing telemetry branch
-  `lpfs-order-placed-timing-telemetry` has been fast-forward merged into
-  `main` locally. After pushing this handoff, future local work should branch
-  from `main`.
+- Local tracked docs now include the LPFS handoff-first cleanup:
+  `strategies/lp_force_strike_strategy_lab/START_HERE.md`, refreshed
+  dashboard builders, and stale current-state notes removed.
+- Future local work should branch from `main` unless the user explicitly asks
+  for a different branch.
 - The telemetry change is observability-only: Telegram `ORDER PLACED` cards and
   journal rows now expose signal-close time, placement time, and placement lag.
   It did not change LPFS signal selection, MT5 order-send semantics, sizing,
   spread gates, pending expiry, live state schema, or TradingView behavior.
-- The VPS may still be checked out on `lpfs-order-placed-timing-telemetry`
-  until the operator intentionally switches it back to `main`. Verify the VPS
-  branch with `git branch` before assuming which checkout is live.
-- Once the pushed `main` is available on the VPS, the preferred production
-  baseline is `main`; do not continue new work from the old telemetry branch.
-- Safe VPS switch-over path:
+- The preferred production baseline is `main`. Verify both local and VPS repo
+  state with `git status --short --branch` before deploy or audit work.
+- Docs-only changes do not require restarting `LPFS_Live`. If the user wants
+  the docs available on the VPS checkout, use a pull-only update after proving
+  identity and status:
 
 ```powershell
-cd C:\TradeAutomation
-
-.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason "switch VPS to main after LPFS telemetry merge"
-Start-Sleep -Seconds 90
-
-git fetch origin
-git checkout main
-git pull --ff-only origin main
-
-.\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_notifications strategies.lp_force_strike_strategy_lab.tests.test_live_executor -v
-
-Remove-Item "C:\TradeAutomationRuntime\data\live\KILL_SWITCH" -ErrorAction SilentlyContinue
-Start-ScheduledTask -TaskName "LPFS_Live"
-Start-Sleep -Seconds 60
-
-.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 40 -LogLines 80
+ssh lpfs-vps hostname
+ssh lpfs-vps whoami
+ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch"
+ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git pull --ff-only origin main"
 ```
 
 ## Current Project Focus

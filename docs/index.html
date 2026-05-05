@@ -566,12 +566,34 @@
     </nav>
 
     <nav class="report-nav" aria-label="Report sections">
-      <a href="#current-baseline">Current Baseline</a><a href="#strategy-guide">Strategy Guide</a><a href="#live-ops">Live Ops</a><a href="#research-archive">Archive</a><a href="#metric-glossary">Glossary</a>
+      <a href="#start-here">Start Here</a><a href="#current-truth">Current Truth</a><a href="#current-baseline">Current Baseline</a><a href="#strategy-guide">Strategy Guide</a><a href="#live-ops">Live Ops</a><a href="#research-archive">Archive</a><a href="#metric-glossary">Glossary</a>
     </nav>
 
   </header>
 
   <main>
+
+    <section id="start-here" class="card featured">
+      <div class="status status-active">Start here</div>
+      <h2>LPFS Handoff Entry Point</h2>
+      <p>Future agents should start with the LPFS Start Here file, then verify current broker/runtime state before making live-operation conclusions.</p>
+      <div class="facts">
+        <div class="fact"><span>Primary audience</span><strong>Future AI agents</strong></div>
+        <div class="fact"><span>Boundary</span><strong>Local dev vs VPS production</strong></div>
+      </div>
+      <a class="button" href="https://github.com/CodyChew/TradeAutomation/blob/main/strategies/lp_force_strike_strategy_lab/START_HERE.md">Open START_HERE</a>
+    </section>
+
+    <section id="current-truth" class="card featured">
+      <div class="status status-active">Current truth</div>
+      <h2>What To Trust First</h2>
+      <p>Use Python and MT5 for trading truth, generated dashboards for current contracts, and the VPS status packet for production state. Version pages remain audit history.</p>
+      <div class="facts">
+        <div class="fact"><span>Strategy contract</span><strong>Strategy guide</strong></div>
+        <div class="fact"><span>Production state</span><strong>MT5 + runtime files</strong></div>
+      </div>
+      <a class="button" href="live_ops.html">Open Live Ops</a>
+    </section>
 
     <section id="current-baseline" class="card featured">
       <div class="status status-active">Active baseline</div>
@@ -811,6 +833,6 @@
     </section>
 
   </main>
-  <footer>Generated dashboards are static research snapshots. Strategy behavior remains in tested Python modules.</footer>
+  <footer>Generated dashboards are static research snapshots. Strategy behavior remains in tested Python modules; live state must be verified from MT5 and VPS runtime files.</footer>
 </body>
 </html>
