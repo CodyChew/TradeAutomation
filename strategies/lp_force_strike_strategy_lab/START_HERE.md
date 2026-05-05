@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-05-06 after the dedicated IC Markets VPS was provisioned,
-verified, and dry-run/order-check tested.
+Last updated: 2026-05-06 after the dedicated IC Markets VPS was promoted to
+its own live runner beside the existing FTMO VPS runner.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -18,12 +18,12 @@ operational decisions.
   signals; one local smoke live-send placed `AUDCHF H8` ticket `4419969921`,
   the user manually canceled it, and broker/local smoke state returned to `0`
   pending orders and `0` positions.
-- IC VPS staging status: dedicated host `EC2AMAZ-DT73P0T` is reachable through
-  `lpfs-ic-vps`, repo and venv are installed, MT5 is logged into
-  `ICMarketsSC-MT5-2`, all `28` symbols are available, quick H4/H8/H12/D1/W1
-  candle probes passed, the IC runtime kill switch is active, and one VPS
-  dry-run/order-check cycle passed `3/3` broker checks. No IC VPS live-send or
-  continuous `LPFS_IC_Live` task has been started.
+- IC VPS live status: dedicated host `EC2AMAZ-DT73P0T` is reachable through
+  `lpfs-ic-vps`, MT5 is logged into `ICMarketsSC-MT5-2`, all `28` symbols are
+  available, the IC runtime kill switch is clear, one VPS live-send smoke cycle
+  completed, and continuous task `LPFS_IC_Live` is installed/running with its
+  own runtime state, journal, heartbeat, logs, Telegram channel, magic
+  `231500`, and broker comment prefix `LPFSIC`.
 - Required LP/FS rule: selected LP pivot must be before the Force Strike mother
   bar (`lp_pivot_index < fs_mother_index`).
 - Execution state: guarded MT5 live-send path exists and can place real orders
@@ -64,7 +64,7 @@ operational decisions.
 | Remote VPS access | `docs/lpfs_lightsail_vps_runbook.md` | Tailscale + OpenSSH is preferred over public SSH/RDP exposure. |
 | Account and secrets | ignored `config.local.json` and local OS/user secrets | Never commit MT5 passwords, Telegram tokens, SSH private keys, or account credentials. |
 | IC account validation | `docs/account_validation.html`, `docs/lpfs_new_mt5_account_validation.md`, and `config.lpfs_new_mt5_account.example.json` | Local-only validation and smoke testing; do not touch VPS live account. |
-| IC production setup | `docs/lpfs_icmarkets_vps_runbook.md` and `config.lpfs_icmarkets_raw_spread.example.json` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
+| IC production setup | `docs/lpfs_icmarkets_vps_runbook.md`, `config.lpfs_icmarkets_raw_spread.example.json`, and `scripts/Get-LpfsDualVpsStatus.ps1` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
 | Dashboard HTML | builder scripts in `scripts/` | Edit builders, then regenerate HTML; do not make HTML-only dashboard changes. |
 
 ## Environment Boundaries
@@ -88,8 +88,8 @@ IC production uses a separate environment boundary: SSH alias `lpfs-ic-vps`,
 host `EC2AMAZ-DT73P0T`, Tailscale IP `100.98.12.113`, scheduled task
 `LPFS_IC_Live`, runtime root `C:\TradeAutomationRuntimeIC`, ignored config
 `config.lpfs_icmarkets_raw_spread.local.json`, magic `231500`, broker comment
-prefix `LPFSIC`, and a separate Telegram channel. The host is staged, but
-continuous live running has not been enabled.
+prefix `LPFSIC`, and a separate Telegram channel. It is a live production lane,
+not a staging-only host.
 
 ## First Commands Before Touching The VPS
 
@@ -100,16 +100,21 @@ ssh lpfs-vps hostname
 ssh lpfs-vps whoami
 ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch"
 ssh lpfs-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 40 -LogLines 80"
+ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -StateFileName lpfs_ic_live_state.json -JournalFileName lpfs_ic_live_journal.jsonl -HeartbeatFileName lpfs_ic_live_heartbeat.json -LogFilter 'lpfs_ic_live_*.log' -JournalLines 40 -LogLines 80"
+.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40
 ```
 
 If the command target is `C:\TradeAutomation` or
-`C:\TradeAutomationRuntime`, treat it as production-adjacent.
+`C:\TradeAutomationRuntime` / `C:\TradeAutomationRuntimeIC`, treat it as
+production-adjacent.
 
 ## Live-Run Safety Rules
 
 - Do not run a local LPFS live runner while `LPFS_Live` is active on the VPS
   unless the user explicitly approves a separate local-account smoke test with
   its own ignored config, state, journal, and reconciliation plan.
+- Do not run a manual IC live runner while `LPFS_IC_Live` is active on the IC
+  VPS; use the kill switch/status packet first.
 - Do not edit live state, journal rows, MT5 orders, MT5 positions, or deal
   history unless the user explicitly approves a separate operator plan.
 - Use the kill switch before approved deploy, restart, or emergency pause work.
@@ -128,4 +133,4 @@ Use one of these prompts to restart cleanly:
 - Live deployment planning: `Read START_HERE.md, docs/live_ops.html, and docs/lpfs_lightsail_vps_runbook.md, then produce a kill-switch-first VPS deploy plan before changing production.`
 - Second MT5 account planning: `Read START_HERE.md and docs/mt5_execution_contract.md, then plan a separate config/runtime/account boundary for another MT5 account without touching current VPS state.`
 - Second MT5 account validation: `Read START_HERE.md and docs/lpfs_new_mt5_account_validation.md, then audit the locally logged-in MT5 account before pulling data or running dry-run.`
-- IC VPS provisioning: `Read START_HERE.md and docs/lpfs_icmarkets_vps_runbook.md, then set up lpfs-ic-vps with its own MT5 terminal, Telegram channel, config, runtime root, status packet, and LPFS_IC_Live task while leaving LPFS_Live untouched.`
+- IC VPS audit: `Read START_HERE.md and docs/lpfs_icmarkets_vps_runbook.md, then run Get-LpfsDualVpsStatus.ps1 and verify LPFS_Live and LPFS_IC_Live from MT5/runtime state before making operational changes.`

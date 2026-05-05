@@ -27,14 +27,15 @@ runtime root, state, journal, heartbeat, kill switch, and scheduled task.
 
 ## Current Verified IC VPS State
 
-Last verified on 2026-05-06 after the dedicated IC VPS was provisioned.
+Last verified on 2026-05-06 after the dedicated IC VPS was promoted from
+staging to its own live runner.
 
 - SSH alias: `lpfs-ic-vps`.
 - Hostname: `EC2AMAZ-DT73P0T`.
 - Tailscale IP: `100.98.12.113`.
 - SSH user: `Administrator`.
-- Repo checkout: `C:\TradeAutomation`, clean `main...origin/main` at
-  `01351d5`.
+- Repo checkout: `C:\TradeAutomation`, clean `main...origin/main`. Pull latest
+  `main` before any maintenance.
 - Python venv: `C:\TradeAutomation\venv` with `pandas`, `certifi`,
   `MetaTrader5`, and `pytest` installed.
 - Focused IC-lane tests: `91 passed`.
@@ -45,15 +46,21 @@ Last verified on 2026-05-06 after the dedicated IC VPS was provisioned.
 - Symbol check: all `28` configured FX symbols selected, none missing.
 - Candle check: `140` probes across H4/H8/H12/D1/W1 returned `20` rows each
   in the quick availability probe.
-- IC runtime: `C:\TradeAutomationRuntimeIC` exists with the kill switch active.
+- IC runtime: `C:\TradeAutomationRuntimeIC` exists with the kill switch clear.
 - Telegram: IC VPS Telegram-only smoke delivered to the separate IC channel.
 - IC dry-run/order-check: one VPS dry-run cycle processed `140` frames, found
   `3` current setups, created `3` pending intents, and all `3` MT5
   `order_check` calls passed.
 - Broker state after dry-run: `0` orders, `0` positions, `0` IC-strategy orders,
   and `0` IC-strategy positions.
-- Continuous live state: not started. `LPFS_IC_Live` has not been installed or
-  started.
+- IC one-cycle live-send smoke: completed from the IC VPS against
+  `config.lpfs_icmarkets_raw_spread.local.json`; it placed `1` tracked pending
+  order, left `0` active positions, and wrote `lpfs_ic_live_state.json` plus
+  `lpfs_ic_live_journal.jsonl`.
+- Continuous live state: `LPFS_IC_Live` is installed and running through
+  `scripts\run_lpfs_live_forever.ps1` with `Cycles 100000000`,
+  `SleepSeconds 30`, runtime root `C:\TradeAutomationRuntimeIC`, and log prefix
+  `lpfs_ic_live`.
 
 ## Files Needed On The IC VPS
 
@@ -75,7 +82,8 @@ Ignored local files created on the IC VPS:
 
 Runtime files created outside the repo:
 
-- `C:\TradeAutomationRuntimeIC\data\live\KILL_SWITCH`
+- `C:\TradeAutomationRuntimeIC\data\live\KILL_SWITCH` only when intentionally
+  paused
 - `C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_state.json`
 - `C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl`
 - `C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_heartbeat.json`
@@ -108,6 +116,7 @@ ssh lpfs-ic-vps hostname
 ssh lpfs-ic-vps whoami
 ssh lpfs-ic-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch"
 ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -StateFileName lpfs_ic_live_state.json -JournalFileName lpfs_ic_live_journal.jsonl -HeartbeatFileName lpfs_ic_live_heartbeat.json -LogFilter 'lpfs_ic_live_*.log' -JournalLines 40 -LogLines 80"
+.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40
 ```
 
 ## Setup Order
@@ -130,12 +139,15 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
     - `telegram.enabled=true`
     - `telegram.dry_run=false` only after test delivery is confirmed
 12. Keep `live_send.execution_mode="DRY_RUN"` and
-    `live_send.live_send_enabled=false` until the staged checks pass.
+    `live_send.live_send_enabled=false` until the staged checks pass. The
+    promoted IC VPS now uses `live_send.execution_mode="LIVE_SEND"`,
+    `live_send.live_send_enabled=true`, 28 explicit live symbols, and
+    `risk_bucket_scale=2.0`.
 13. Create runtime folders and start with the kill switch active.
 
 ```powershell
 New-Item -ItemType Directory -Force -Path C:\TradeAutomationRuntimeIC\data\live\logs
-.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -Reason "IC initial staging"
+.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -Reason "IC maintenance pause"
 ```
 
 ## Staged Verification
@@ -180,6 +192,10 @@ git status --short --branch
 6. After the smoke test, reconcile MT5 orders/positions against the IC state
    and journal before any continuous runner is installed.
 
+Current promoted state: the one-cycle live-send smoke completed and
+`LPFS_IC_Live` is installed/running. Future agents should still repeat the same
+reconciliation after any config change or restart.
+
 ## Watchdog And Scheduled Task
 
 Manual watchdog command:
@@ -203,8 +219,9 @@ Task Scheduler action for `LPFS_IC_Live`:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\TradeAutomation\scripts\run_lpfs_live_forever.ps1" -RepoRoot "C:\TradeAutomation" -ConfigPath "C:\TradeAutomation\config.lpfs_icmarkets_raw_spread.local.json" -RuntimeRoot "C:\TradeAutomationRuntimeIC" -StateFileName "lpfs_ic_live_state.json" -JournalFileName "lpfs_ic_live_journal.jsonl" -HeartbeatFileName "lpfs_ic_live_heartbeat.json" -LogPrefix "lpfs_ic_live" -Cycles 100000000 -SleepSeconds 30
 ```
 
-Do not install or start `LPFS_IC_Live` until the manual watchdog command is
-verified with the kill switch active and then with a controlled finite run.
+`LPFS_IC_Live` is now installed. Do not replace it or start a second manual
+runner while the scheduled task is running. Use `Get-LpfsDualVpsStatus.ps1` or
+the IC status command above before maintenance.
 
 ## Guardrails
 
@@ -213,7 +230,7 @@ verified with the kill switch active and then with a controlled finite run.
 - Do not reuse FTMO state or journal files for IC.
 - Do not reuse FTMO Telegram channel for IC.
 - Do not run IC and FTMO from the same MT5 terminal.
-- Do not enable continuous IC live-send until a one-cycle smoke test is
-  reconciled cleanly.
+- Do not enable a second IC live-send process while `LPFS_IC_Live` is running.
+- Do not change IC live sizing without rerunning a one-cycle reconciliation.
 - Telegram is an alert channel only. MT5 orders/positions plus the JSONL journal
   remain the audit source of truth.

@@ -94,7 +94,8 @@ class LPFSNewMT5AccountValidationTests(unittest.TestCase):
         self.assertEqual(config["live_send"]["max_open_risk_pct"], 12.0)
         self.assertEqual(config["live_send"]["execution_mode"], "DRY_RUN")
         self.assertFalse(config["live_send"]["live_send_enabled"])
-        self.assertEqual(config["live_send"]["symbols"], [])
+        self.assertEqual(config["live_send"]["symbols"], config["dry_run"]["symbols"])
+        self.assertEqual(len(config["live_send"]["symbols"]), 28)
 
     def test_audit_script_does_not_send_or_check_orders(self) -> None:
         source = (SCRIPTS_ROOT / "audit_lpfs_new_mt5_account.py").read_text(encoding="utf-8")

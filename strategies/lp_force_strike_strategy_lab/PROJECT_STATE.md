@@ -1,8 +1,8 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-05 local time after running the local IC Markets Raw
-Spread LPFS validation through audit, data pull, V22 backtest, comparison, and
-dry-run.
+Last updated: 2026-05-06 local time after the IC Markets Raw Spread LPFS lane
+was promoted to a dedicated live VPS runner beside the existing FTMO VPS
+runner.
 
 ## Purpose
 
@@ -234,8 +234,9 @@ current adopted live strategy after explicit commission and bucket revalidation.
 The FTMO live/default bucket remains `0.20% / 0.30% / 0.75%`; the separate IC
 analysis recommendation is `0.25% / 0.30% / 0.75%` because the account can
 accept more growth while staying below the `10%` reserved DD and `6%` max-open
-risk practical caps. This is still analysis only; it is not approval for
-new-account `LIVE_SEND`.
+risk practical caps. This analysis was later used for a separately approved IC
+VPS live lane with its own config, runtime, MT5 account, Telegram channel, and
+scheduled task.
 
 Config support:
 
@@ -260,7 +261,8 @@ Dry-run evidence on `config.lpfs_icmarkets_raw_spread.local.json`:
 - Actual rounded risk: `AUDCHF H8 0.399898%` at `0.03` lots,
   `GBPCAD H12 0.591292%` at `0.04` lots, and `NZDCHF W1 1.354304%` at
   `0.05` lots.
-- Live-send remains disabled, so there were `0` live orders.
+- This dry-run was followed by a separate local smoke and then a dedicated IC
+  VPS live-send smoke before promotion.
 
 Local IC live-send smoke test:
 
@@ -278,6 +280,31 @@ Local IC live-send smoke test:
   orders and `0` positions.
 - The VPS FTMO live runner was not changed or restarted for this local IC
   smoke test.
+
+Dedicated IC VPS live lane:
+
+- SSH alias: `lpfs-ic-vps`.
+- Host: `EC2AMAZ-DT73P0T`, Tailscale IP `100.98.12.113`.
+- Repo path: `C:\TradeAutomation`.
+- Runtime root: `C:\TradeAutomationRuntimeIC`.
+- Scheduled task: `LPFS_IC_Live`.
+- Ignored config: `config.lpfs_icmarkets_raw_spread.local.json`.
+- State/journal/heartbeat/logs: `lpfs_ic_live_*`.
+- MT5 server: `ICMarketsSC-MT5-2`; company `Raw Trading Ltd`; currency `USD`.
+- Telegram: separate IC channel.
+- Identity: magic `231500`, broker comment prefix `LPFSIC`.
+- Live sizing: IC growth-practical `risk_buckets_pct` with
+  `live_send.risk_bucket_scale=2.0`; effective targets are H4/H8 `0.50%`,
+  H12/D1 `0.60%`, W1 `1.50%`; guardrail
+  `live_send.max_risk_pct_per_trade=1.5`.
+- One IC VPS live-send smoke cycle completed with `1` tracked pending order and
+  `0` active positions.
+- Continuous task `LPFS_IC_Live` is installed/running through the watchdog
+  wrapper. Do not run a manual IC live process while it is active.
+- Dual-environment audit command:
+  `../../scripts/Get-LpfsDualVpsStatus.ps1`, which writes ignored
+  `reports/live_ops/lpfs_dual_vps_status_*.md` packets and compares current
+  FTMO/IC open signal keys.
 
 ## Experiment V1
 

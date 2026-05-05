@@ -1,8 +1,8 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-06 local time after the local IC Markets Raw Spread
-LPFS validation, scale-2 order-check pass, one-cycle live-send smoke test,
-manual cancellation, and clean reconciliation.
+Last updated: 2026-05-06 local time after the IC Markets Raw Spread LPFS lane
+was promoted to a dedicated live VPS runner beside the existing FTMO VPS
+runner.
 
 ## Purpose
 
@@ -25,10 +25,11 @@ source of truth for strategy research and live execution work.
    kill-switch controls, heartbeat, status checks, or Task Scheduler setup.
 8. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
-9. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+9. `docs/lpfs_icmarkets_vps_runbook.md` before IC VPS maintenance.
+10. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-10. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
-11. `concepts/lp_levels_lab/PROJECT_STATE.md` and
+11. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
+12. `concepts/lp_levels_lab/PROJECT_STATE.md` and
    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
    concept behavior.
 
@@ -167,6 +168,26 @@ Current local IC validation status:
 - the user manually canceled ticket `4419969921`
 - MT5 and local smoke state reconciled to `0` pending orders and `0` positions
 - VPS FTMO live runner and VPS MT5 login were not changed
+
+Dedicated IC VPS production status:
+
+- SSH alias: `lpfs-ic-vps`.
+- Host: `EC2AMAZ-DT73P0T`, Tailscale IP `100.98.12.113`.
+- Repo: `C:\TradeAutomation`.
+- Runtime: `C:\TradeAutomationRuntimeIC`.
+- Task: `LPFS_IC_Live`.
+- Config: ignored `config.lpfs_icmarkets_raw_spread.local.json`.
+- Broker: `ICMarketsSC-MT5-2`, company `Raw Trading Ltd`, currency `USD`.
+- Risk: IC growth-practical buckets `0.25% / 0.30% / 0.75%` with
+  `risk_bucket_scale=2.0`; effective targets are H4/H8 `0.50%`, H12/D1
+  `0.60%`, W1 `1.50%`.
+- Identity: magic `231500`, broker comment prefix `LPFSIC`, separate Telegram
+  channel.
+- First IC VPS live-send smoke completed with `1` tracked pending order and
+  `0` active positions before continuous task startup.
+- `LPFS_IC_Live` is installed/running. Use
+  `scripts/Get-LpfsDualVpsStatus.ps1` from the local repo to capture both FTMO
+  and IC status packets into ignored `reports/live_ops/` files.
 
 ## Current LP Rules
 

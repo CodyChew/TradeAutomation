@@ -411,6 +411,10 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             r'.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -StateFileName lpfs_ic_live_state.json -JournalFileName lpfs_ic_live_journal.jsonl -HeartbeatFileName lpfs_ic_live_heartbeat.json -LogFilter "lpfs_ic_live_*.log" -JournalLines 20 -LogLines 40',
         ),
         (
+            "Dual VPS status report",
+            r".\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40",
+        ),
+        (
             "Print 7-day performance summary",
             r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7",
         ),
@@ -528,6 +532,10 @@ Get-CimInstance Win32_Process |
             "Fetch IC VPS live status packet",
             r"""ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -StateFileName lpfs_ic_live_state.json -JournalFileName lpfs_ic_live_journal.jsonl -HeartbeatFileName lpfs_ic_live_heartbeat.json -LogFilter 'lpfs_ic_live_*.log' -JournalLines 40 -LogLines 80" """.strip(),
         ),
+        (
+            "Collect both VPS packets from local",
+            r".\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40",
+        ),
     ]
     remote_access_command_html = "\n".join(
         f"""
@@ -559,6 +567,11 @@ Get-CimInstance Win32_Process |
             "Status command",
             "scripts/Get-LpfsLiveStatus.ps1",
             "Pasteable operator snapshot for process, heartbeat, state, journal, and latest log.",
+        ),
+        (
+            "Dual status command",
+            "scripts/Get-LpfsDualVpsStatus.ps1",
+            "Local orchestration command that SSHes into FTMO and IC, writes ignored reports/live_ops snapshots, and compares open signal keys.",
         ),
         (
             "Kill switch helper",
@@ -773,8 +786,9 @@ Get-CimInstance Win32_Process |
             ("Runtime files", "lpfs_ic_live_*", "State, journal, heartbeat, and logs use IC-specific names under C:\\TradeAutomationRuntimeIC."),
             ("MT5 identity", "ICMarketsSC-MT5-2", "Fail closed if the VPS MT5 terminal is not logged into the expected IC account/server."),
             ("Broker identity", "magic 231500 / LPFSIC", "Separate magic and broker comment prefix prevent FTMO and IC state from being confused."),
-            ("Current staging", "kill switch active", "Repo, venv, MT5 login, symbols, Telegram, and dry-run order_check are verified; LPFS_IC_Live has not been installed or started."),
-            ("Latest IC VPS dry-run", "3/3 broker checks passed", "AUDCHF H8 long, GBPCAD H12 long, and NZDCHF W1 short produced pending intents only; broker state stayed at 0 orders and 0 positions."),
+            ("Current production", "LPFS_IC_Live running", "The IC VPS has its own at-logon task, runtime root, heartbeat, logs, state, journal, Telegram channel, and MT5 account."),
+            ("Latest IC live smoke", "1 pending order placed", "The first IC VPS live-send cycle completed before continuous task startup; broker/runtime reconciliation is captured by the dual VPS status report."),
+            ("Sizing", "scale 2.0", "The IC live config uses the IC growth-practical 0.25/0.30/0.75 bucket shape with risk_bucket_scale=2.0 and max_risk_pct_per_trade=1.5."),
         ])}
       </div>
       <p class="callout">Full IC migration and communication-channel setup is documented in <code>docs/lpfs_icmarkets_vps_runbook.md</code>.</p>
