@@ -766,13 +766,15 @@ Get-CimInstance Win32_Process |
 
     <section id="ic-vps" aria-labelledby="ic-vps-title">
       <h2 id="ic-vps-title">IC Markets VPS Boundary</h2>
-      <p class="callout warning"><strong>Separate production lane:</strong> IC Markets should run on its own Windows VPS with alias <code>lpfs-ic-vps</code>, task <code>LPFS_IC_Live</code>, runtime root <code>C:\TradeAutomationRuntimeIC</code>, and separate Telegram channel. Do not change <code>LPFS_Live</code> on the FTMO VPS for IC setup.</p>
+      <p class="callout warning"><strong>Separate production lane:</strong> IC Markets is staged on its own Windows VPS with alias <code>lpfs-ic-vps</code>, host <code>EC2AMAZ-DT73P0T</code>, Tailscale IP <code>100.98.12.113</code>, runtime root <code>C:\TradeAutomationRuntimeIC</code>, and separate Telegram channel. Do not change <code>LPFS_Live</code> on the FTMO VPS for IC setup.</p>
       <div class="ops-grid">
         {_fact_grid([
             ("Config", "config.lpfs_icmarkets_raw_spread.local.json", "Ignored local config copied from the committed IC example; contains expected IC login/server and IC Telegram chat."),
             ("Runtime files", "lpfs_ic_live_*", "State, journal, heartbeat, and logs use IC-specific names under C:\\TradeAutomationRuntimeIC."),
             ("MT5 identity", "ICMarketsSC-MT5-2", "Fail closed if the VPS MT5 terminal is not logged into the expected IC account/server."),
             ("Broker identity", "magic 231500 / LPFSIC", "Separate magic and broker comment prefix prevent FTMO and IC state from being confused."),
+            ("Current staging", "kill switch active", "Repo, venv, MT5 login, symbols, Telegram, and dry-run order_check are verified; LPFS_IC_Live has not been installed or started."),
+            ("Latest IC VPS dry-run", "3/3 broker checks passed", "AUDCHF H8 long, GBPCAD H12 long, and NZDCHF W1 short produced pending intents only; broker state stayed at 0 orders and 0 positions."),
         ])}
       </div>
       <p class="callout">Full IC migration and communication-channel setup is documented in <code>docs/lpfs_icmarkets_vps_runbook.md</code>.</p>

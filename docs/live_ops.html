@@ -1014,7 +1014,7 @@ Get-CimInstance Win32_Process |
 
     <section id="ic-vps" aria-labelledby="ic-vps-title">
       <h2 id="ic-vps-title">IC Markets VPS Boundary</h2>
-      <p class="callout warning"><strong>Separate production lane:</strong> IC Markets should run on its own Windows VPS with alias <code>lpfs-ic-vps</code>, task <code>LPFS_IC_Live</code>, runtime root <code>C:\TradeAutomationRuntimeIC</code>, and separate Telegram channel. Do not change <code>LPFS_Live</code> on the FTMO VPS for IC setup.</p>
+      <p class="callout warning"><strong>Separate production lane:</strong> IC Markets is staged on its own Windows VPS with alias <code>lpfs-ic-vps</code>, host <code>EC2AMAZ-DT73P0T</code>, Tailscale IP <code>100.98.12.113</code>, runtime root <code>C:\TradeAutomationRuntimeIC</code>, and separate Telegram channel. Do not change <code>LPFS_Live</code> on the FTMO VPS for IC setup.</p>
       <div class="ops-grid">
 
         <article class="ops-fact">
@@ -1042,6 +1042,20 @@ Get-CimInstance Win32_Process |
           <span>Broker identity</span>
           <strong>magic 231500 / LPFSIC</strong>
           <p>Separate magic and broker comment prefix prevent FTMO and IC state from being confused.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Current staging</span>
+          <strong>kill switch active</strong>
+          <p>Repo, venv, MT5 login, symbols, Telegram, and dry-run order_check are verified; LPFS_IC_Live has not been installed or started.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Latest IC VPS dry-run</span>
+          <strong>3/3 broker checks passed</strong>
+          <p>AUDCHF H8 long, GBPCAD H12 long, and NZDCHF W1 short produced pending intents only; broker state stayed at 0 orders and 0 positions.</p>
         </article>
 
       </div>

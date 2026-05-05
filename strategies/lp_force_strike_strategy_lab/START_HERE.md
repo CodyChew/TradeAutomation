@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-05-06 after the local IC one-cycle live-send smoke test was
-sent, manually canceled, and reconciled cleanly.
+Last updated: 2026-05-06 after the dedicated IC Markets VPS was provisioned,
+verified, and dry-run/order-check tested.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -18,6 +18,12 @@ operational decisions.
   signals; one local smoke live-send placed `AUDCHF H8` ticket `4419969921`,
   the user manually canceled it, and broker/local smoke state returned to `0`
   pending orders and `0` positions.
+- IC VPS staging status: dedicated host `EC2AMAZ-DT73P0T` is reachable through
+  `lpfs-ic-vps`, repo and venv are installed, MT5 is logged into
+  `ICMarketsSC-MT5-2`, all `28` symbols are available, quick H4/H8/H12/D1/W1
+  candle probes passed, the IC runtime kill switch is active, and one VPS
+  dry-run/order-check cycle passed `3/3` broker checks. No IC VPS live-send or
+  continuous `LPFS_IC_Live` task has been started.
 - Required LP/FS rule: selected LP pivot must be before the Force Strike mother
   bar (`lp_pivot_index < fs_mother_index`).
 - Execution state: guarded MT5 live-send path exists and can place real orders
@@ -78,11 +84,12 @@ Local edits do not affect the VPS until they are committed, pushed, pulled on
 the VPS, and the production task is intentionally restarted. VPS runtime files
 do not belong in git.
 
-Planned IC production uses a separate environment boundary: SSH alias
-`lpfs-ic-vps`, scheduled task `LPFS_IC_Live`, runtime root
-`C:\TradeAutomationRuntimeIC`, ignored config
+IC production uses a separate environment boundary: SSH alias `lpfs-ic-vps`,
+host `EC2AMAZ-DT73P0T`, Tailscale IP `100.98.12.113`, scheduled task
+`LPFS_IC_Live`, runtime root `C:\TradeAutomationRuntimeIC`, ignored config
 `config.lpfs_icmarkets_raw_spread.local.json`, magic `231500`, broker comment
-prefix `LPFSIC`, and a separate Telegram channel.
+prefix `LPFSIC`, and a separate Telegram channel. The host is staged, but
+continuous live running has not been enabled.
 
 ## First Commands Before Touching The VPS
 

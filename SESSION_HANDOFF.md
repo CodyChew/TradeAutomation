@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-06 SGT after the local IC one-cycle live-send smoke test
-was sent, manually canceled, and reconciled cleanly.
+Last updated: 2026-05-06 SGT after the dedicated IC Markets VPS was
+provisioned, verified, and dry-run/order-check tested.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -115,12 +115,41 @@ ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; gi
 ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git pull --ff-only origin main"
 ```
 
-- IC Markets production setup is planned as a separate lane, not a change to
-  the existing FTMO VPS: new alias `lpfs-ic-vps`, task `LPFS_IC_Live`, runtime
-  root `C:\TradeAutomationRuntimeIC`, ignored config
+- IC Markets production setup is now staged as a separate VPS lane, not a
+  change to the existing FTMO VPS: alias `lpfs-ic-vps`, host
+  `EC2AMAZ-DT73P0T`, Tailscale IP `100.98.12.113`, runtime root
+  `C:\TradeAutomationRuntimeIC`, ignored config
   `config.lpfs_icmarkets_raw_spread.local.json`, magic `231500`, broker comment
-  prefix `LPFSIC`, and separate Telegram channel. Use
-  `docs/lpfs_icmarkets_vps_runbook.md` for setup.
+  prefix `LPFSIC`, and separate Telegram channel. `LPFS_IC_Live` has not been
+  installed or started yet. Use `docs/lpfs_icmarkets_vps_runbook.md` for setup.
+
+## IC Markets VPS Staging Status
+
+The dedicated IC VPS was provisioned and verified on 2026-05-06:
+
+- SSH alias `lpfs-ic-vps` works from the local PC.
+- Repo checkout `C:\TradeAutomation` is clean on `main...origin/main` at
+  `01351d5`.
+- Python venv exists at `C:\TradeAutomation\venv`.
+- Focused IC-lane test suite passed: `91 passed`.
+- Runtime root `C:\TradeAutomationRuntimeIC` exists and the kill switch is
+  active.
+- Telegram-only smoke from the IC VPS delivered to the separate IC channel.
+- MT5 is logged into the expected IC account/server:
+  `ICMarketsSC-MT5-2`, company `Raw Trading Ltd`, currency `USD`; expected
+  login matched without printing the full account number.
+- All `28` configured FX symbols are available/selected.
+- Quick candle probe returned `20` rows for every H4/H8/H12/D1/W1 frame.
+- One IC VPS dry-run cycle ran `order_check` only: `140` frames processed,
+  `3` setups checked, `3` pending intents created, `3` broker checks passed,
+  `0` broker checks failed.
+- The checked current setups were `AUDCHF H8` long, `GBPCAD H12` long, and
+  `NZDCHF W1` short using magic `231500` and comments beginning `LPFSIC`.
+- Broker state after dry-run remained flat for IC: `0` orders and
+  `0` positions.
+
+No real IC VPS order has been sent yet. Do not clear the IC kill switch, enable
+`live_send`, or install/start `LPFS_IC_Live` without explicit user approval.
 
 ## Current Project Focus
 

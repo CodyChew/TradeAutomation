@@ -25,6 +25,36 @@ runtime root, state, journal, heartbeat, kill switch, and scheduled task.
 | Heartbeat | `lpfs_live_heartbeat.json` | `lpfs_ic_live_heartbeat.json` |
 | Logs | `lpfs_live_*.log` | `lpfs_ic_live_*.log` |
 
+## Current Verified IC VPS State
+
+Last verified on 2026-05-06 after the dedicated IC VPS was provisioned.
+
+- SSH alias: `lpfs-ic-vps`.
+- Hostname: `EC2AMAZ-DT73P0T`.
+- Tailscale IP: `100.98.12.113`.
+- SSH user: `Administrator`.
+- Repo checkout: `C:\TradeAutomation`, clean `main...origin/main` at
+  `01351d5`.
+- Python venv: `C:\TradeAutomation\venv` with `pandas`, `certifi`,
+  `MetaTrader5`, and `pytest` installed.
+- Focused IC-lane tests: `91 passed`.
+- MT5 terminal: `C:\Program Files\MetaTrader 5 IC Markets Global`.
+- MT5 account check: expected login matched, server `ICMarketsSC-MT5-2`,
+  company `Raw Trading Ltd`, currency `USD`, terminal connected, trading
+  allowed.
+- Symbol check: all `28` configured FX symbols selected, none missing.
+- Candle check: `140` probes across H4/H8/H12/D1/W1 returned `20` rows each
+  in the quick availability probe.
+- IC runtime: `C:\TradeAutomationRuntimeIC` exists with the kill switch active.
+- Telegram: IC VPS Telegram-only smoke delivered to the separate IC channel.
+- IC dry-run/order-check: one VPS dry-run cycle processed `140` frames, found
+  `3` current setups, created `3` pending intents, and all `3` MT5
+  `order_check` calls passed.
+- Broker state after dry-run: `0` orders, `0` positions, `0` IC-strategy orders,
+  and `0` IC-strategy positions.
+- Continuous live state: not started. `LPFS_IC_Live` has not been installed or
+  started.
+
 ## Files Needed On The IC VPS
 
 Repo checkout:
@@ -60,9 +90,9 @@ Use the same operator channels as the FTMO VPS, but with IC-specific names:
 
 ```sshconfig
 Host lpfs-ic-vps
-  HostName <IC_VPS_TAILSCALE_IP>
+  HostName 100.98.12.113
   User Administrator
-  IdentityFile ~/.ssh/<IC_VPS_KEY>
+  IdentityFile ~/.ssh/lpfs_ic_vps_ed25519
 ```
 
 3. RDP only for MT5 login/visual review. Disconnect instead of signing out.
@@ -125,13 +155,10 @@ git status --short --branch
 3. Run one-cycle order-check only:
 
 ```powershell
-.\venv\Scripts\python scripts\run_lp_force_strike_live_executor.py `
+.\venv\Scripts\python scripts\run_lp_force_strike_dry_run_executor.py `
   --config config.lpfs_icmarkets_raw_spread.local.json `
   --cycles 1 `
-  --runtime-root C:\TradeAutomationRuntimeIC `
-  --runtime-state-file-name lpfs_ic_live_state.json `
-  --runtime-journal-file-name lpfs_ic_live_journal.jsonl `
-  --heartbeat-path C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_heartbeat.json
+  --sleep-seconds 1
 ```
 
 4. Inspect status:
