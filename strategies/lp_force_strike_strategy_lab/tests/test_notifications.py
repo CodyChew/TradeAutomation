@@ -390,7 +390,7 @@ class NotificationTests(unittest.TestCase):
         )
         self.assertIn("LPFS LIVE | RUNNER STARTED", started)
         self.assertIn("Status: Running", started)
-        self.assertIn("Cadence: every 30s | Cycles 100000000", started)
+        self.assertIn("Sleep after cycle: 30s | Cycles 100000000", started)
         self.assertIn("Started: 2026-05-01 15:00 SGT", started)
 
         stopped = format_notification_message(

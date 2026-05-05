@@ -596,9 +596,9 @@
       <div class="ops-grid">
 
         <article class="ops-fact">
-          <span>Check cadence</span>
-          <strong>Once per live cycle</strong>
-          <p>Default sleep is 30 seconds only when the runner is started with cycles greater than one.</p>
+          <span>Loop timing</span>
+          <strong>Scan then sleep</strong>
+          <p>The runner does not start every 30 wall-clock seconds. It scans all frames, saves state/heartbeat, then sleeps 30 seconds before the next cycle.</p>
         </article>
 
 
@@ -796,7 +796,7 @@
         <article class="ops-fact">
           <span>RUNNER STARTED / STOPPED</span>
           <strong>Process heartbeat</strong>
-          <p>Cadence, cycle count, runtime, state-save status, and SGT start/stop time.</p>
+          <p>Sleep-after-cycle setting, cycle count, runtime, state-save status, and SGT start/stop time.</p>
         </article>
 
       </div>
@@ -898,7 +898,7 @@
         <article class="ops-fact">
           <span>Scheduled task</span>
           <strong>LPFS_Live</strong>
-          <p>At-logon task that starts the production wrapper with 100000000 cycles and 30-second cadence.</p>
+          <p>At-logon task that starts the production wrapper with 100000000 cycles and a 30-second sleep after each completed scan.</p>
         </article>
 
 

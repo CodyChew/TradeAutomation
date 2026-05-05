@@ -114,7 +114,7 @@ def _live_ops_card() -> str:
       <h2>Live Ops Guide</h2>
       <p>Static verification guide for proving the guarded MT5 runner is correct using broker state, local state, journal rows, send gates, reconciliation gates, operator commands, and the separate IC VPS production lane.</p>
       <div class="facts">
-        <div class="fact"><span>Cycle</span><strong>Default 30s sleep</strong></div>
+        <div class="fact"><span>Loop delay</span><strong>30s after scan</strong></div>
         <div class="fact"><span>Pending expiry</span><strong>6 actual MT5 bars</strong></div>
       </div>
       <a class="button" href="live_ops.html">Open Live Ops</a>

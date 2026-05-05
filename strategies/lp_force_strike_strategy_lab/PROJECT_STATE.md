@@ -1112,8 +1112,10 @@ with `--include-trades`. On the VPS, include
 journal files live outside the repo checkout.
 
 Runner start/stop cards are intentionally separate from trade lifecycle cards.
-They show cadence, requested/completed cycles, runtime, state-save status, and
-SGT start/stop time, and are also written to the live JSONL journal.
+They show the sleep-after-cycle setting, requested/completed cycles, runtime,
+state-save status, and SGT start/stop time, and are also written to the live
+JSONL journal. The `30s` setting is a sleep after a completed scan, not a fixed
+wall-clock launch interval.
 
 ## Live Execution State And Last Verified Snapshot
 

@@ -688,7 +688,7 @@ Get-CimInstance Win32_Process |
       <p class="callout warning"><strong>Weekly-open observation:</strong> first live VPS market-open monitoring showed multiple WAITING cards where spread was far above the 10% risk-distance limit, followed by missed-entry recovery checks. Market recovery reduces this forward/backtest drift when a later live quote becomes same-or-better than the backtested entry and the stop/target path after first entry touch remains clean.</p>
       <div class="ops-grid">
         {_fact_grid([
-            ("Check cadence", "Once per live cycle", "Default sleep is 30 seconds only when the runner is started with cycles greater than one."),
+            ("Loop timing", "Scan then sleep", "The runner does not start every 30 wall-clock seconds. It scans all frames, saves state/heartbeat, then sleeps 30 seconds before the next cycle."),
             ("Before placement", "Retryable WAITING", "If spread is above 10% of risk distance, no order is placed yet and the same signal can be checked again."),
             ("After missed touch", "Default recovery", "If the pending entry was touched before placement, market recovery is attempted at a same-or-better executable price before final skip."),
             ("Recovery price", "Same-or-better", "Long recovery requires ask <= original entry. Short recovery requires bid >= original entry. Worse prices stay retryable WAITING until expiry or path invalidation."),
@@ -734,7 +734,7 @@ Get-CimInstance Win32_Process |
             ("TAKE PROFIT / STOP LOSS", "Reply to order", "Exit price/time, PnL, R, hold time, deal ticket, position ID, ref."),
             ("ORDER ADOPTED / TRADE CLOSED", "Recovery and manual exits", "Adopted broker items are not resent; manual/unknown exits keep real MT5 PnL and R without a false SL label."),
             ("SKIPPED / REJECTED / CANCELLED", "Readable reason", "Human reason, action taken, key metric, and ref. Raw fields remain in JSONL."),
-            ("RUNNER STARTED / STOPPED", "Process heartbeat", "Cadence, cycle count, runtime, state-save status, and SGT start/stop time."),
+            ("RUNNER STARTED / STOPPED", "Process heartbeat", "Sleep-after-cycle setting, cycle count, runtime, state-save status, and SGT start/stop time."),
         ])}
       </div>
       <p class="callout">Telegram delivery is best effort. A failed Telegram send must never validate or invalidate a trade. The journal remains the durable audit record.</p>
@@ -763,7 +763,7 @@ Get-CimInstance Win32_Process |
         {_fact_grid([
             ("Code path", "C:\\TradeAutomation", "Repository clone used by the Lightsail production task."),
             ("Runtime root", "C:\\TradeAutomationRuntime", "State, journal, heartbeat, kill switch, and logs live outside OneDrive."),
-            ("Scheduled task", "LPFS_Live", "At-logon task that starts the production wrapper with 100000000 cycles and 30-second cadence."),
+            ("Scheduled task", "LPFS_Live", "At-logon task that starts the production wrapper with 100000000 cycles and a 30-second sleep after each completed scan."),
             ("Recovery rollback", "market_recovery_mode=disabled", "Set this local live_send flag only if operator evidence shows recovery should be paused."),
             ("Safe paused state", "KILL_SWITCH exists", "Task can be installed and ready while live cycles are blocked."),
             ("Broker truth", "MT5 orders/positions", "Use MT5 as the source of truth for open exposure; Telegram is an alert channel."),

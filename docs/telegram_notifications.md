@@ -143,8 +143,9 @@ comments, exact floats, and diagnostic fields stay in the JSONL journal.
 - `pending_expired` / `pending_cancelled`: `CANCELLED`, human reason, order
   ticket, action taken, and signal ref. If MT5 rejects the cancellation, the
   card says cancellation failed and the local pending item is kept for retry.
-- `runner_started` / `runner_stopped`: process heartbeat cards showing
-  cadence, cycle counts, runtime, state-save status, and SGT start/stop time.
+- `runner_started` / `runner_stopped`: process heartbeat cards showing the
+  sleep-after-cycle setting, cycle counts, runtime, state-save status, and SGT
+  start/stop time.
 - `kill_switch_activated`: `LPFS LIVE | KILL SWITCH`, human reason, stage, and
   action stating that no new live cycles will run.
 

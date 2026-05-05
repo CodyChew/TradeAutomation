@@ -373,9 +373,11 @@ Fill, close, expiry, and cancellation alerts reply to the original order-card
 message when Telegram returns a `message_id`. Raw broker comments, retcodes,
 exact floats, and diagnostics stay in JSONL.
 
-Runner start/stop alerts are process heartbeat cards. They show cadence,
-requested/completed cycles, runtime, state-save status, and SGT start/stop
-time. They are best-effort Telegram UX and are also journaled.
+Runner start/stop alerts are process heartbeat cards. They show the
+sleep-after-cycle setting, requested/completed cycles, runtime, state-save
+status, and SGT start/stop time. The `30s` setting is a sleep after each
+completed scan, not a fixed wall-clock launch interval. They are best-effort
+Telegram UX and are also journaled.
 
 Manual performance summary, metric-only by default:
 

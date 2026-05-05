@@ -339,8 +339,8 @@ Live-send Telegram cards are compact and trader-oriented:
   mislabeling the exit as SL.
 - `SKIPPED` / `REJECTED` / `CANCELLED`: human reason, action taken, key metric,
   and ref.
-- `RUNNER STARTED` / `RUNNER STOPPED`: live process status, cadence, cycle
-  counts, runtime, state-save result, and SGT start/stop time.
+- `RUNNER STARTED` / `RUNNER STOPPED`: live process status, sleep-after-cycle
+  setting, cycle counts, runtime, state-save result, and SGT start/stop time.
 
 Fill, close, expiry, and cancellation cards reply to the original
 `ORDER PLACED` Telegram message when Telegram returns a message ID. Raw broker

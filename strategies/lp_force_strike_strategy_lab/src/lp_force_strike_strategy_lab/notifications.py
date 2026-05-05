@@ -461,7 +461,7 @@ def _format_runner_card(event: NotificationEvent, *, max_field_value_length: int
         sleep_seconds = _field(event, "sleep_seconds")
         if cycles or sleep_seconds:
             lines.append(
-                f"Cadence: every {_format_seconds(sleep_seconds)} | Cycles {cycles or 'n/a'}"
+                f"Sleep after cycle: {_format_seconds(sleep_seconds)} | Cycles {cycles or 'n/a'}"
             )
         if event.occurred_at_utc:
             lines.append(f"Started: {format_trader_timestamp(event.occurred_at_utc)}")

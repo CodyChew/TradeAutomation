@@ -653,9 +653,11 @@ Live-send adapter facts:
   returns a message ID.
 - Manual or unknown close reasons are reported as `TRADE CLOSED` with MT5 PnL/R
   instead of being mislabeled as stop losses.
-- Runner start/stop cards are process heartbeat alerts. They show cadence,
-  requested/completed cycles, runtime, state-save status, and SGT start/stop
-  time. They are also written to the live JSONL journal.
+- Runner start/stop cards are process heartbeat alerts. They show the
+  sleep-after-cycle setting, requested/completed cycles, runtime, state-save
+  status, and SGT start/stop time. The `30s` setting is a sleep after a
+  completed scan, not a fixed wall-clock launch interval. They are also written
+  to the live JSONL journal.
 - Phase 2 process controls are implemented outside the trade engine:
   production runtime root defaults to `C:\TradeAutomationRuntime`, kill switch
   file defaults to `KILL_SWITCH` beside the live state, heartbeat defaults to
