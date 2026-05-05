@@ -293,6 +293,14 @@ Post summary:
 .\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5 --post-telegram
 ```
 
+On the VPS, production journal/state live under `C:\TradeAutomationRuntime`, so
+the summary commands must include `--runtime-root`:
+
+```powershell
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5 --post-telegram
+```
+
 ## Spread Gate
 
 Current live setting: `max_spread_risk_fraction=0.1`.

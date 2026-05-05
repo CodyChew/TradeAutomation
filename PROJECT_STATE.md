@@ -587,7 +587,8 @@ Live-send adapter facts:
   broker-state verification.
 - Manual recent-trade summary:
   `scripts/summarize_lpfs_live_trades.py --config config.local.json --limit 5`
-  with optional `--post-telegram`.
+  with optional `--post-telegram`; on the VPS add
+  `--runtime-root C:\TradeAutomationRuntime`.
 - Live Ops dashboard page: `docs/live_ops.html`.
 - The runner script is
   `scripts/run_lp_force_strike_live_executor.py --config config.local.json`.

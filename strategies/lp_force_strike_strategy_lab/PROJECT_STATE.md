@@ -935,7 +935,9 @@ Fill, close, expiry, and cancellation alerts reply to the original
 `ORDER PLACED` or `ORDER ADOPTED` Telegram message when Telegram returns a
 message ID. The live state stores those IDs under `telegram_message_ids`. The
 manual summary script is `../../scripts/summarize_lpfs_live_trades.py --config
-config.local.json --limit 5`.
+config.local.json --limit 5`. On the VPS, include
+`--runtime-root C:\TradeAutomationRuntime` because production live state and
+journal files live outside the repo checkout.
 
 Runner start/stop cards are intentionally separate from trade lifecycle cards.
 They show cadence, requested/completed cycles, runtime, state-save status, and

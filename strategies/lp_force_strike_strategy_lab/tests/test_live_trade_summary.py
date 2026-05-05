@@ -208,6 +208,46 @@ class LiveTradeSummaryTests(unittest.TestCase):
             self.assertIn("LPFS LIVE | RECENT TRADE SUMMARY", result.stdout)
             self.assertIn("Trades: 1 | Wins 1 | Losses 0", result.stdout)
 
+            runtime_root = Path(tmpdir) / "runtime"
+            runtime_journal = runtime_root / "data" / "live" / "lpfs_live_journal.jsonl"
+            runtime_journal.parent.mkdir(parents=True)
+            runtime_journal.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
+            runtime_result = subprocess.run(
+                [
+                    sys.executable,
+                    str(WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_trades.py"),
+                    "--config",
+                    str(config),
+                    "--runtime-root",
+                    str(runtime_root),
+                    "--limit",
+                    "1",
+                ],
+                cwd=WORKSPACE_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(runtime_result.returncode, 0, runtime_result.stderr)
+            self.assertIn("LPFS LIVE | RECENT TRADE SUMMARY", runtime_result.stdout)
+
+            missing_result = subprocess.run(
+                [
+                    sys.executable,
+                    str(WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_trades.py"),
+                    "--config",
+                    str(config),
+                    "--runtime-root",
+                    str(Path(tmpdir) / "missing-runtime"),
+                ],
+                cwd=WORKSPACE_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(missing_result.returncode, 2)
+            self.assertIn("--runtime-root C:\\TradeAutomationRuntime", missing_result.stderr)
+
     def test_summary_private_fallback_branches(self) -> None:
         events = [
             _journal_row("order_sent", fields={"order_ticket": None}),

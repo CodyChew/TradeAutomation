@@ -408,11 +408,11 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         ),
         (
             "Print recent trade summary",
-            r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5",
+            r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5",
         ),
         (
             "Post recent trade summary to Telegram",
-            r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5 --post-telegram",
+            r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5 --post-telegram",
         ),
         (
             "Run strict core coverage",

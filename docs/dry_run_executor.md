@@ -324,6 +324,14 @@ Post that same summary to Telegram:
 .\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5 --post-telegram
 ```
 
+On the VPS, include the runtime root because production live state and journal
+files live outside the repo:
+
+```powershell
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5 --post-telegram
+```
+
 The full V15 dry-run universe is the 28 AUD/CAD/CHF/EUR/GBP/JPY/NZD/USD
 major/cross pairs across `H4`, `H8`, `H12`, `D1`, and `W1`. That is 140
 symbol/timeframe checks per cycle; use a multi-minute sleep interval for

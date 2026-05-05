@@ -29,13 +29,31 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="config.local.json", help="Ignored local config JSON path.")
     parser.add_argument("--journal", default=None, help="Override the live journal path.")
+    parser.add_argument(
+        "--runtime-root",
+        default=None,
+        help="Runtime root containing data/live/lpfs_live_journal.jsonl, e.g. C:\\TradeAutomationRuntime.",
+    )
     parser.add_argument("--limit", type=int, default=5, help="Number of recent closed trades to show.")
     parser.add_argument("--post-telegram", action="store_true", help="Post the summary to the configured Telegram chat.")
     args = parser.parse_args()
 
     settings = load_live_send_settings(args.config)
-    journal_path = args.journal or settings.executor.journal_path
-    events = load_live_journal_events(journal_path)
+    journal_path = args.journal or (
+        str(Path(args.runtime_root) / "data" / "live" / "lpfs_live_journal.jsonl")
+        if args.runtime_root
+        else settings.executor.journal_path
+    )
+    try:
+        events = load_live_journal_events(journal_path)
+    except FileNotFoundError as exc:
+        print(str(exc), file=sys.stderr)
+        print(
+            "Hint: on the VPS, pass --runtime-root C:\\TradeAutomationRuntime "
+            "or --journal C:\\TradeAutomationRuntime\\data\\live\\lpfs_live_journal.jsonl.",
+            file=sys.stderr,
+        )
+        return 2
     message = build_recent_trade_summary_message(events=events, limit=args.limit)
     print(message)
 

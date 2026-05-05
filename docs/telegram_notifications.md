@@ -160,6 +160,14 @@ Manual recent trade summaries can be printed or posted:
 .\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --limit 5 --post-telegram
 ```
 
+On the VPS, live state and journal files are under `C:\TradeAutomationRuntime`,
+so include the runtime root:
+
+```powershell
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --limit 5 --post-telegram
+```
+
 The summary pairs enriched `notification_event` rows from
 `data/live/lpfs_live_journal.jsonl`; older sparse rows may be skipped.
 
