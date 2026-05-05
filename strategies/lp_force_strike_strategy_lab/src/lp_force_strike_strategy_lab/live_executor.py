@@ -893,7 +893,59 @@ def send_pending_order(mt5_module: Any, intent: MT5OrderIntent) -> LiveOrderSend
     )
 
 
-def build_market_order_request(mt5_module: Any, intent: MT5OrderIntent, *, deviation_points: int = 0) -> dict[str, Any]:
+def _dedupe_filling_modes(values: list[Any]) -> list[Any]:
+    seen: set[int] = set()
+    deduped: list[Any] = []
+    for value in values:
+        if value is None:
+            continue
+        try:
+            key = int(value)
+        except (TypeError, ValueError):
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(value)
+    return deduped
+
+
+def _market_order_filling_candidates(mt5_module: Any, symbol: str) -> list[Any]:
+    """Return fill modes to try for market-recovery DEAL requests."""
+
+    symbol_info = getattr(mt5_module, "symbol_info", lambda _symbol: None)(symbol)
+    filling_mode = getattr(symbol_info, "filling_mode", None)
+    candidates: list[Any] = []
+
+    def add_order_filling(name: str) -> None:
+        if hasattr(mt5_module, name):
+            candidates.append(getattr(mt5_module, name))
+
+    if filling_mode is not None:
+        try:
+            mode_flags = int(filling_mode)
+        except (TypeError, ValueError):
+            mode_flags = 0
+        ioc_flag = int(getattr(mt5_module, "SYMBOL_FILLING_IOC", 2))
+        fok_flag = int(getattr(mt5_module, "SYMBOL_FILLING_FOK", 1))
+        if mode_flags & ioc_flag:
+            add_order_filling("ORDER_FILLING_IOC")
+        if mode_flags & fok_flag:
+            add_order_filling("ORDER_FILLING_FOK")
+
+    add_order_filling("ORDER_FILLING_IOC")
+    add_order_filling("ORDER_FILLING_FOK")
+    add_order_filling("ORDER_FILLING_RETURN")
+    return _dedupe_filling_modes(candidates)
+
+
+def build_market_order_request(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    *,
+    deviation_points: int = 0,
+    filling_mode: Any | None = None,
+) -> dict[str, Any]:
     """Translate a market-recovery intent to an MT5 TRADE_ACTION_DEAL request."""
 
     order_type = getattr(mt5_module, "ORDER_TYPE_BUY") if intent.side == "long" else getattr(mt5_module, "ORDER_TYPE_SELL")
@@ -909,20 +961,55 @@ def build_market_order_request(mt5_module: Any, intent: MT5OrderIntent, *, devia
         "magic": intent.magic,
         "comment": intent.comment,
     }
-    if hasattr(mt5_module, "ORDER_FILLING_RETURN"):
-        request["type_filling"] = mt5_module.ORDER_FILLING_RETURN
+    if filling_mode is None:
+        candidates = _market_order_filling_candidates(mt5_module, intent.symbol)
+        filling_mode = candidates[0] if candidates else None
+    if filling_mode is not None:
+        request["type_filling"] = filling_mode
     return request
+
+
+def _unsupported_filling_mode(mt5_module: Any, outcome: OrderCheckOutcome) -> bool:
+    invalid_fill_retcode = getattr(mt5_module, "TRADE_RETCODE_INVALID_FILL", 10030)
+    try:
+        retcode_matches = outcome.retcode is not None and int(outcome.retcode) == int(invalid_fill_retcode)
+    except (TypeError, ValueError):
+        retcode_matches = False
+    comment = str(outcome.comment or "").lower()
+    return retcode_matches or "unsupported filling mode" in comment or "invalid fill" in comment
 
 
 def run_market_order_check(mt5_module: Any, intent: MT5OrderIntent, *, deviation_points: int = 0) -> OrderCheckOutcome:
     """Run MT5 order_check for a market-recovery DEAL request."""
 
-    request = build_market_order_request(mt5_module, intent, deviation_points=deviation_points)
-    result = mt5_module.order_check(request)
-    retcode = None if result is None else getattr(result, "retcode", None)
-    comment = "order_check returned None" if result is None else str(getattr(result, "comment", "") or "")
-    passed = result is not None and retcode is not None and int(retcode) in _accepted_done_retcodes(mt5_module)
-    return OrderCheckOutcome(passed=passed, request=request, retcode=retcode, comment=comment)
+    filling_modes = _market_order_filling_candidates(mt5_module, intent.symbol)
+    attempts = filling_modes or [None]
+    last_outcome: OrderCheckOutcome | None = None
+    for filling_mode in attempts:
+        request = build_market_order_request(mt5_module, intent, deviation_points=deviation_points, filling_mode=filling_mode)
+        result = mt5_module.order_check(request)
+        retcode = None if result is None else getattr(result, "retcode", None)
+        comment = "order_check returned None" if result is None else str(getattr(result, "comment", "") or "")
+        passed = result is not None and retcode is not None and int(retcode) in _accepted_done_retcodes(mt5_module)
+        outcome = OrderCheckOutcome(passed=passed, request=request, retcode=retcode, comment=comment)
+        if passed:
+            return outcome
+        last_outcome = outcome
+        if not _unsupported_filling_mode(mt5_module, outcome):
+            return outcome
+    return last_outcome
+
+
+def _market_send_request(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    *,
+    deviation_points: int,
+    checked_request: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if checked_request is not None:
+        return dict(checked_request)
+    return build_market_order_request(mt5_module, intent, deviation_points=deviation_points)
 
 
 def send_market_recovery_order(
@@ -930,10 +1017,11 @@ def send_market_recovery_order(
     intent: MT5OrderIntent,
     *,
     deviation_points: int = 0,
+    checked_request: dict[str, Any] | None = None,
 ) -> LiveOrderSendOutcome:
     """Send a validated MT5 market-recovery order request."""
 
-    request = build_market_order_request(mt5_module, intent, deviation_points=deviation_points)
+    request = _market_send_request(mt5_module, intent, deviation_points=deviation_points, checked_request=checked_request)
     result = mt5_module.order_send(request)
     retcode = None if result is None else getattr(result, "retcode", None)
     comment = "order_send returned None" if result is None else str(getattr(result, "comment", "") or "")
@@ -1113,6 +1201,7 @@ def _process_market_recovery_live_send(
         mt5_module,
         intent,
         deviation_points=config.market_recovery_deviation_points,
+        checked_request=order_check.request,
     )
     if not outcome.sent:
         if _is_retryable_order_send_block(outcome):

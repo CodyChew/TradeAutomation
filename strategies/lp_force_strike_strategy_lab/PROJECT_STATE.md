@@ -985,6 +985,16 @@ written.
   rearm them without a separate operator plan. Verification passed the focused
   live executor/notification tests, full LPFS test discovery (`215` tests), and
   core coverage at `100.00%`.
+- 2026-05-05 market-recovery filling-mode fix: live evidence showed MT5
+  rejected an otherwise valid EURCHF D1 market recovery with retcode `10030`
+  and comment `Unsupported filling mode`. Market recovery now selects
+  broker-supported market `type_filling` modes, retries another filling mode
+  when `order_check` fails specifically for invalid/unsupported filling, and
+  sends using the exact request that passed `order_check`. This changes only
+  market-recovery request plumbing; it does not alter LPFS signals, risk
+  buckets, pending-limit behavior, VPS runtime state, or TradingView scripts.
+  Verification passed focused live executor tests, full LPFS test discovery
+  (`260` tests), and core coverage at `100.00%`.
 - After a pending order is placed, spread widening does not auto-cancel it and
   does not currently trigger a dedicated Telegram alert.
 - V16 closed the first execution-realism gap. The no-buffer bid/ask model did

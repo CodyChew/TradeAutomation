@@ -35,6 +35,7 @@ from lp_force_strike_strategy_lab import (  # noqa: E402
     LiveTrackedOrder,
     LiveTrackedPosition,
     LocalConfigError,
+    OrderCheckOutcome,
     SkippedTrade,
     TelegramConfig,
     TelegramNotifier,
@@ -206,9 +207,14 @@ class FakeMT5:
     SYMBOL_EXPIRATION_DAY = 2
     SYMBOL_EXPIRATION_SPECIFIED = 4
     SYMBOL_EXPIRATION_SPECIFIED_DAY = 8
+    SYMBOL_FILLING_FOK = 1
+    SYMBOL_FILLING_IOC = 2
+    ORDER_FILLING_FOK = 0
+    ORDER_FILLING_IOC = 1
     ORDER_FILLING_RETURN = 2
     TRADE_RETCODE_DONE = 10009
     TRADE_RETCODE_PLACED = 10008
+    TRADE_RETCODE_INVALID_FILL = 10030
     TRADE_RETCODE_CLIENT_DISABLES_AT = 10027
     DEAL_ENTRY_OUT = 1
     DEAL_ENTRY_INOUT = 2
@@ -227,6 +233,7 @@ class FakeMT5:
             volume_step=0.01,
             trade_stops_level=0,
             trade_freeze_level=0,
+            filling_mode=3,
             visible=True,
             trade_allowed=True,
         )
@@ -290,6 +297,10 @@ class FakeMT5:
 
     def order_check(self, request: dict):
         self.order_check_requests.append(request)
+        if isinstance(self.order_check_result, list):
+            if not self.order_check_result:
+                return None
+            return self.order_check_result.pop(0)
         return self.order_check_result
 
     def order_send(self, request: dict):
@@ -1060,10 +1071,54 @@ class LiveExecutorTests(unittest.TestCase):
         market_check = run_market_order_check(mt5, market_intent, deviation_points=0)
         self.assertTrue(market_check.passed)
         self.assertEqual(market_check.request["action"], mt5.TRADE_ACTION_DEAL)
+        self.assertEqual(market_check.request["type_filling"], mt5.ORDER_FILLING_IOC)
         sent_market = send_market_recovery_order(mt5, market_intent, deviation_points=0)
         self.assertTrue(sent_market.sent)
         self.assertEqual(sent_market.deal_ticket, 9201)
         self.assertEqual(mt5.order_send_requests[-1]["action"], mt5.TRADE_ACTION_DEAL)
+        self.assertEqual(mt5.order_send_requests[-1]["type_filling"], mt5.ORDER_FILLING_IOC)
+
+        mt5.order_check_result = [
+            SimpleNamespace(retcode=mt5.TRADE_RETCODE_INVALID_FILL, comment="Unsupported filling mode"),
+            SimpleNamespace(retcode=mt5.TRADE_RETCODE_DONE, comment="check ok"),
+        ]
+        recovered_check = run_market_order_check(mt5, market_intent, deviation_points=0)
+        self.assertTrue(recovered_check.passed)
+        self.assertEqual(
+            [request["type_filling"] for request in mt5.order_check_requests[-2:]],
+            [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK],
+        )
+        sent_with_checked_mode = send_market_recovery_order(
+            mt5,
+            market_intent,
+            deviation_points=0,
+            checked_request=recovered_check.request,
+        )
+        self.assertTrue(sent_with_checked_mode.sent)
+        self.assertEqual(mt5.order_send_requests[-1]["type_filling"], mt5.ORDER_FILLING_FOK)
+
+        mt5.order_check_result = [
+            SimpleNamespace(retcode=mt5.TRADE_RETCODE_INVALID_FILL, comment="Unsupported filling mode"),
+            SimpleNamespace(retcode=mt5.TRADE_RETCODE_INVALID_FILL, comment="Unsupported filling mode"),
+            SimpleNamespace(retcode=mt5.TRADE_RETCODE_INVALID_FILL, comment="Unsupported filling mode"),
+        ]
+        all_modes_failed = run_market_order_check(mt5, market_intent, deviation_points=0)
+        self.assertFalse(all_modes_failed.passed)
+        self.assertEqual(all_modes_failed.retcode, mt5.TRADE_RETCODE_INVALID_FILL)
+        self.assertEqual(all_modes_failed.request["type_filling"], mt5.ORDER_FILLING_RETURN)
+
+        malformed_mt5 = FakeMT5()
+        malformed_mt5.info.filling_mode = "not-an-int"
+        malformed_modes = live_module._market_order_filling_candidates(malformed_mt5, "EURUSD")
+        self.assertEqual(malformed_modes, [malformed_mt5.ORDER_FILLING_IOC, malformed_mt5.ORDER_FILLING_FOK, malformed_mt5.ORDER_FILLING_RETURN])
+        self.assertEqual(live_module._dedupe_filling_modes([None, "bad", 1, 1, 2]), [1, 2])
+        malformed_retcode = OrderCheckOutcome(
+            passed=False,
+            request={},
+            retcode="not-an-int",
+            comment="invalid fill",
+        )
+        self.assertTrue(live_module._unsupported_filling_mode(malformed_mt5, malformed_retcode))
 
         with self.assertRaisesRegex(ValueError, "pending order intents"):
             build_order_check_request(mt5, market_intent)
@@ -1451,6 +1506,24 @@ class LiveExecutorTests(unittest.TestCase):
             )
             self.assertEqual(failed_check.status, "order_check_failed")
             self.assertEqual(mt5.order_check_requests[-1]["action"], mt5.TRADE_ACTION_DEAL)
+
+            mt5 = recoverable_mt5()
+            mt5.order_check_result = [
+                SimpleNamespace(retcode=mt5.TRADE_RETCODE_INVALID_FILL, comment="Unsupported filling mode"),
+                SimpleNamespace(retcode=mt5.TRADE_RETCODE_DONE, comment="ok"),
+            ]
+            recovered_after_fill_fallback = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_fill_fallback.jsonl")),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(recovered_after_fill_fallback.status, "market_recovery_sent")
+            self.assertEqual(
+                [request["type_filling"] for request in mt5.order_check_requests[-2:]],
+                [mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK],
+            )
+            self.assertEqual(mt5.order_send_requests[-1]["type_filling"], mt5.ORDER_FILLING_FOK)
 
             mt5 = recoverable_mt5()
             mt5.rates = None

@@ -228,6 +228,10 @@ It adds:
   bid for shorts, the original structure stop, a recalculated 1R TP from the
   actual fill, actual fill-to-stop risk sizing, and
   `live_send.market_recovery_deviation_points` for slippage control;
+- market recovery does not hardcode pending-order filling behavior. It selects
+  broker-supported market `type_filling` modes from symbol metadata, retries
+  another fill mode if MT5 returns invalid/unsupported filling on
+  `order_check`, and sends with the exact request that passed `order_check`;
 - market recovery path validation is evaluated from the first actual entry
   touch onward. Stop/target events after that touch make late recovery
   ineligible; pre-touch target/stop movement does not by itself permanently
