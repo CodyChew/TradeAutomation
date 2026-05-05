@@ -83,6 +83,7 @@ class LiveSendExecutorConfig:
     max_same_symbol_stack: int = 4
     max_concurrent_strategy_trades: int = 17
     strategy_magic: int = 131500
+    order_comment_prefix: str = "LPFS"
     pivot_strength: int = 3
     max_bars_from_lp_break: int = 6
     require_lp_pivot_before_fs_mother: bool = True
@@ -369,6 +370,7 @@ def load_live_send_settings(path: str | Path = "config.local.json", *, env: dict
             live_payload.get("max_concurrent_strategy_trades", dry_executor.max_concurrent_strategy_trades)
         ),
         strategy_magic=int(live_payload.get("strategy_magic", dry_executor.strategy_magic)),
+        order_comment_prefix=str(live_payload.get("order_comment_prefix", dry_executor.order_comment_prefix)),
         pivot_strength=int(live_payload.get("pivot_strength", dry_executor.pivot_strength)),
         max_bars_from_lp_break=int(live_payload.get("max_bars_from_lp_break", dry_executor.max_bars_from_lp_break)),
         require_lp_pivot_before_fs_mother=_optional_bool(
@@ -466,6 +468,7 @@ def live_execution_safety_from_config(config: LiveSendExecutorConfig) -> Executi
         max_concurrent_strategy_trades=config.max_concurrent_strategy_trades,
         max_spread_points=None,
         strategy_magic=config.strategy_magic,
+        order_comment_prefix=config.order_comment_prefix,
     )
 
 
@@ -1923,7 +1926,7 @@ def _build_market_recovery_intent(
         actual_risk_pct=actual_risk_pct,
         expiration_time_utc=broker_backstop,
         magic=limits.strategy_magic,
-        comment=_live_order_comment(setup),
+        comment=_live_order_comment(setup, config.order_comment_prefix),
         setup_id=setup.setup_id,
         signal_time_utc=signal_time,
         max_entry_wait_bars=config.max_entry_wait_bars,
@@ -2005,9 +2008,10 @@ def _round_volume_down(volume: float, step: float) -> float:
     return units * float(step)
 
 
-def _live_order_comment(setup: TradeSetup) -> str:
+def _live_order_comment(setup: TradeSetup, prefix: str = "LPFS") -> str:
     signal_index = "na" if setup.signal_index is None else str(setup.signal_index)
-    return f"LPFS {str(setup.timeframe).upper()} {str(setup.side)[0].upper()} {signal_index}"[:31]
+    safe_prefix = str(prefix or "LPFS").strip() or "LPFS"
+    return f"{safe_prefix} {str(setup.timeframe).upper()} {str(setup.side)[0].upper()} {signal_index}"[:31]
 
 
 def _adopt_existing_broker_item(
@@ -2640,6 +2644,7 @@ def _dry_compatible_config(config: LiveSendExecutorConfig) -> Any:
         max_same_symbol_stack=config.max_same_symbol_stack,
         max_concurrent_strategy_trades=config.max_concurrent_strategy_trades,
         strategy_magic=config.strategy_magic,
+        order_comment_prefix=config.order_comment_prefix,
         pivot_strength=config.pivot_strength,
         max_bars_from_lp_break=config.max_bars_from_lp_break,
         require_lp_pivot_before_fs_mother=config.require_lp_pivot_before_fs_mother,

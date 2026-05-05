@@ -40,9 +40,11 @@ operational decisions.
    and operator commands.
 6. `docs/lpfs_lightsail_vps_runbook.md` before any VPS maintenance or remote
    access work.
-7. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+7. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+   IC Markets production runner.
+8. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before changing execution or notification code.
-8. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+9. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
 
 ## Source-Of-Truth Matrix
@@ -56,6 +58,7 @@ operational decisions.
 | Remote VPS access | `docs/lpfs_lightsail_vps_runbook.md` | Tailscale + OpenSSH is preferred over public SSH/RDP exposure. |
 | Account and secrets | ignored `config.local.json` and local OS/user secrets | Never commit MT5 passwords, Telegram tokens, SSH private keys, or account credentials. |
 | IC account validation | `docs/account_validation.html`, `docs/lpfs_new_mt5_account_validation.md`, and `config.lpfs_new_mt5_account.example.json` | Local-only validation and smoke testing; do not touch VPS live account. |
+| IC production setup | `docs/lpfs_icmarkets_vps_runbook.md` and `config.lpfs_icmarkets_raw_spread.example.json` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
 | Dashboard HTML | builder scripts in `scripts/` | Edit builders, then regenerate HTML; do not make HTML-only dashboard changes. |
 
 ## Environment Boundaries
@@ -74,6 +77,12 @@ operational decisions.
 Local edits do not affect the VPS until they are committed, pushed, pulled on
 the VPS, and the production task is intentionally restarted. VPS runtime files
 do not belong in git.
+
+Planned IC production uses a separate environment boundary: SSH alias
+`lpfs-ic-vps`, scheduled task `LPFS_IC_Live`, runtime root
+`C:\TradeAutomationRuntimeIC`, ignored config
+`config.lpfs_icmarkets_raw_spread.local.json`, magic `231500`, broker comment
+prefix `LPFSIC`, and a separate Telegram channel.
 
 ## First Commands Before Touching The VPS
 
@@ -112,3 +121,4 @@ Use one of these prompts to restart cleanly:
 - Live deployment planning: `Read START_HERE.md, docs/live_ops.html, and docs/lpfs_lightsail_vps_runbook.md, then produce a kill-switch-first VPS deploy plan before changing production.`
 - Second MT5 account planning: `Read START_HERE.md and docs/mt5_execution_contract.md, then plan a separate config/runtime/account boundary for another MT5 account without touching current VPS state.`
 - Second MT5 account validation: `Read START_HERE.md and docs/lpfs_new_mt5_account_validation.md, then audit the locally logged-in MT5 account before pulling data or running dry-run.`
+- IC VPS provisioning: `Read START_HERE.md and docs/lpfs_icmarkets_vps_runbook.md, then set up lpfs-ic-vps with its own MT5 terminal, Telegram channel, config, runtime root, status packet, and LPFS_IC_Live task while leaving LPFS_Live untouched.`

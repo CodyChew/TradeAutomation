@@ -167,6 +167,17 @@ class ExecutionContractTests(unittest.TestCase):
         self.assertEqual(decision.intent.to_dict()["broker_backstop_expiration_time_utc"], "2026-01-12T04:00:00+00:00")
         self.assertEqual(decision.to_dict()["status"], "ready")
 
+        ic_decision = build_mt5_order_intent(
+            _setup(),
+            account=_account(),
+            symbol_spec=_spec(),
+            market=MT5MarketSnapshot(bid=1.1018, ask=1.1020, time_utc=pd.Timestamp("2026-01-01T04:00:00Z")),
+            safety=ExecutionSafetyLimits(strategy_magic=231500, order_comment_prefix="LPFSIC"),
+        )
+        assert ic_decision.intent is not None
+        self.assertEqual(ic_decision.intent.magic, 231500)
+        self.assertEqual(ic_decision.intent.comment, "LPFSIC H4 L 10")
+
         legacy_intent = decision.intent.__class__(
             signal_key="manual",
             symbol="EURUSD",

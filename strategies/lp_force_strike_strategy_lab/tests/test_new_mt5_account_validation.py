@@ -76,6 +76,26 @@ class LPFSNewMT5AccountValidationTests(unittest.TestCase):
         self.assertIn("lpfs_new_mt5_account", config["dry_run"]["journal_path"])
         self.assertIn("lpfs_new_mt5_account", config["live_send"]["state_path"])
 
+    def test_icmarkets_production_config_example_has_separate_runtime_identity(self) -> None:
+        config = json.loads((WORKSPACE_ROOT / "config.lpfs_icmarkets_raw_spread.example.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(config["account_profile"]["production_task"], "LPFS_IC_Live")
+        self.assertEqual(config["account_profile"]["production_runtime_root"], "C:\\TradeAutomationRuntimeIC")
+        self.assertEqual(config["account_profile"]["production_ssh_alias"], "lpfs-ic-vps")
+        self.assertEqual(config["mt5"]["expected_server"], "ICMarketsSC-MT5-2")
+        self.assertFalse(config["telegram"]["enabled"])
+        self.assertTrue(config["telegram"]["dry_run"])
+        self.assertEqual(config["dry_run"]["strategy_magic"], 231500)
+        self.assertEqual(config["live_send"]["strategy_magic"], 231500)
+        self.assertEqual(config["dry_run"]["order_comment_prefix"], "LPFSIC")
+        self.assertEqual(config["live_send"]["order_comment_prefix"], "LPFSIC")
+        self.assertEqual(config["live_send"]["risk_bucket_scale"], 2.0)
+        self.assertEqual(config["live_send"]["max_risk_pct_per_trade"], 1.5)
+        self.assertEqual(config["live_send"]["max_open_risk_pct"], 12.0)
+        self.assertEqual(config["live_send"]["execution_mode"], "DRY_RUN")
+        self.assertFalse(config["live_send"]["live_send_enabled"])
+        self.assertEqual(config["live_send"]["symbols"], [])
+
     def test_audit_script_does_not_send_or_check_orders(self) -> None:
         source = (SCRIPTS_ROOT / "audit_lpfs_new_mt5_account.py").read_text(encoding="utf-8")
 

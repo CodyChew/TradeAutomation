@@ -827,6 +827,7 @@ class DryRunExecutorTests(unittest.TestCase):
                 max_same_symbol_stack=2,
                 max_concurrent_strategy_trades=3,
                 strategy_magic=42,
+                order_comment_prefix="LPFSIC",
             )
         )
         self.assertEqual(safety.max_spread_points, 12)
@@ -836,6 +837,7 @@ class DryRunExecutorTests(unittest.TestCase):
         self.assertEqual(safety.max_same_symbol_stack, 2)
         self.assertEqual(safety.max_concurrent_strategy_trades, 3)
         self.assertEqual(safety.strategy_magic, 42)
+        self.assertEqual(safety.order_comment_prefix, "LPFSIC")
         scaled_buckets = risk_buckets_from_config(DryRunExecutorConfig(risk_bucket_scale=0.1))
         self.assertAlmostEqual(scaled_buckets["H4"], 0.02)
         self.assertAlmostEqual(scaled_buckets["H8"], 0.02)

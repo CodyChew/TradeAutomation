@@ -47,6 +47,8 @@ class RunnerLockActive(RuntimeError):
 KILL_SWITCH_EXIT_CODE = 3
 RUNTIME_STATE_MIGRATION_EXIT_CODE = 4
 DEFAULT_RUNTIME_LIVE_DIR = Path("data/live")
+DEFAULT_STATE_NAME = "lpfs_live_state.json"
+DEFAULT_JOURNAL_NAME = "lpfs_live_journal.jsonl"
 DEFAULT_HEARTBEAT_NAME = "lpfs_live_heartbeat.json"
 
 
@@ -147,16 +149,24 @@ def _default_heartbeat_path(state_path: str | Path) -> Path:
     return Path(state_path).parent / DEFAULT_HEARTBEAT_NAME
 
 
-def _settings_with_runtime_root(settings, runtime_root: str | Path | None):
+def _settings_with_runtime_root(
+    settings,
+    runtime_root: str | Path | None,
+    *,
+    state_file_name: str = DEFAULT_STATE_NAME,
+    journal_file_name: str = DEFAULT_JOURNAL_NAME,
+):
     if runtime_root in (None, ""):
         return settings
     live_dir = Path(runtime_root) / DEFAULT_RUNTIME_LIVE_DIR
+    state_name = str(state_file_name or DEFAULT_STATE_NAME)
+    journal_name = str(journal_file_name or DEFAULT_JOURNAL_NAME)
     return replace(
         settings,
         executor=replace(
             settings.executor,
-            journal_path=str(live_dir / "lpfs_live_journal.jsonl"),
-            state_path=str(live_dir / "lpfs_live_state.json"),
+            journal_path=str(live_dir / journal_name),
+            state_path=str(live_dir / state_name),
         ),
     )
 
@@ -278,6 +288,16 @@ def main() -> int:
         help="Optional production runtime root. Overrides live state/journal to <root>/data/live.",
     )
     parser.add_argument(
+        "--runtime-state-file-name",
+        default=DEFAULT_STATE_NAME,
+        help=f"State filename to use inside --runtime-root data/live. Defaults to {DEFAULT_STATE_NAME}.",
+    )
+    parser.add_argument(
+        "--runtime-journal-file-name",
+        default=DEFAULT_JOURNAL_NAME,
+        help=f"Journal filename to use inside --runtime-root data/live. Defaults to {DEFAULT_JOURNAL_NAME}.",
+    )
+    parser.add_argument(
         "--kill-switch-path",
         default="",
         help="Optional kill switch path. Defaults to KILL_SWITCH beside the live state file.",
@@ -295,7 +315,12 @@ def main() -> int:
     args = parser.parse_args()
 
     original_settings = load_live_send_settings(args.config)
-    settings = _settings_with_runtime_root(original_settings, args.runtime_root)
+    settings = _settings_with_runtime_root(
+        original_settings,
+        args.runtime_root,
+        state_file_name=args.runtime_state_file_name,
+        journal_file_name=args.runtime_journal_file_name,
+    )
     validate_live_send_settings(settings)
     if (
         str(args.runtime_root).strip()

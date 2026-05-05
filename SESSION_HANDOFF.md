@@ -22,7 +22,9 @@ file, and the JSONL journal before making operational decisions.
    switch, heartbeat, status command, or Task Scheduler setup.
 8. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
-9. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+9. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+   IC Markets production runner.
+10. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
 
 ## AI Agent Continuity Rules
@@ -112,6 +114,13 @@ ssh lpfs-vps whoami
 ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch"
 ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git pull --ff-only origin main"
 ```
+
+- IC Markets production setup is planned as a separate lane, not a change to
+  the existing FTMO VPS: new alias `lpfs-ic-vps`, task `LPFS_IC_Live`, runtime
+  root `C:\TradeAutomationRuntimeIC`, ignored config
+  `config.lpfs_icmarkets_raw_spread.local.json`, magic `231500`, broker comment
+  prefix `LPFSIC`, and separate Telegram channel. Use
+  `docs/lpfs_icmarkets_vps_runbook.md` for setup.
 
 ## Current Project Focus
 

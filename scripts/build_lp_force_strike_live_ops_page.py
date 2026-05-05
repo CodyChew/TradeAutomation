@@ -407,6 +407,10 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             r".\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 20 -LogLines 40",
         ),
         (
+            "Pasteable IC production status",
+            r'.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -StateFileName lpfs_ic_live_state.json -JournalFileName lpfs_ic_live_journal.jsonl -HeartbeatFileName lpfs_ic_live_heartbeat.json -LogFilter "lpfs_ic_live_*.log" -JournalLines 20 -LogLines 40',
+        ),
+        (
             "Print 7-day performance summary",
             r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7",
         ),
@@ -520,6 +524,10 @@ Get-CimInstance Win32_Process |
             "Fetch VPS live status packet",
             r'ssh lpfs-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 40 -LogLines 80"',
         ),
+        (
+            "Fetch IC VPS live status packet",
+            r"""ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -StateFileName lpfs_ic_live_state.json -JournalFileName lpfs_ic_live_journal.jsonl -HeartbeatFileName lpfs_ic_live_heartbeat.json -LogFilter 'lpfs_ic_live_*.log' -JournalLines 40 -LogLines 80" """.strip(),
+        ),
     ]
     remote_access_command_html = "\n".join(
         f"""
@@ -578,6 +586,16 @@ Get-CimInstance Win32_Process |
             "Amazon Lightsail Windows VPS setup, security, cost sizing, Task Scheduler, and liaison packet.",
         ),
         (
+            "IC VPS runbook",
+            "docs/lpfs_icmarkets_vps_runbook.md",
+            "Dedicated IC Markets VPS migration plan, file manifest, Tailscale/SSH alias, Telegram channel, and LPFS_IC_Live commands.",
+        ),
+        (
+            "IC config example",
+            "config.lpfs_icmarkets_raw_spread.example.json",
+            "Fail-closed example for the IC production runner with separate magic, comment prefix, runtime files, and Telegram settings.",
+        ),
+        (
             "State file",
             "data/live/lpfs_live_state.json",
             "Restart continuity, processed signal keys, pending orders, active positions, Telegram message IDs.",
@@ -618,6 +636,7 @@ Get-CimInstance Win32_Process |
           ("#telegram", "Telegram"),
           ("#remote-access", "Remote Access"),
           ("#vps-operator", "VPS"),
+          ("#ic-vps", "IC VPS"),
           ("#commands", "Commands"),
           ("#limits", "Limits"),
           ("#files", "Files"),
@@ -743,6 +762,20 @@ Get-CimInstance Win32_Process |
       <div class="command-list">
         {vps_operator_command_html}
       </div>
+    </section>
+
+    <section id="ic-vps" aria-labelledby="ic-vps-title">
+      <h2 id="ic-vps-title">IC Markets VPS Boundary</h2>
+      <p class="callout warning"><strong>Separate production lane:</strong> IC Markets should run on its own Windows VPS with alias <code>lpfs-ic-vps</code>, task <code>LPFS_IC_Live</code>, runtime root <code>C:\TradeAutomationRuntimeIC</code>, and separate Telegram channel. Do not change <code>LPFS_Live</code> on the FTMO VPS for IC setup.</p>
+      <div class="ops-grid">
+        {_fact_grid([
+            ("Config", "config.lpfs_icmarkets_raw_spread.local.json", "Ignored local config copied from the committed IC example; contains expected IC login/server and IC Telegram chat."),
+            ("Runtime files", "lpfs_ic_live_*", "State, journal, heartbeat, and logs use IC-specific names under C:\\TradeAutomationRuntimeIC."),
+            ("MT5 identity", "ICMarketsSC-MT5-2", "Fail closed if the VPS MT5 terminal is not logged into the expected IC account/server."),
+            ("Broker identity", "magic 231500 / LPFSIC", "Separate magic and broker comment prefix prevent FTMO and IC state from being confused."),
+        ])}
+      </div>
+      <p class="callout">Full IC migration and communication-channel setup is documented in <code>docs/lpfs_icmarkets_vps_runbook.md</code>.</p>
     </section>
 
     <section id="commands" aria-labelledby="commands-title">

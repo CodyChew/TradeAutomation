@@ -129,6 +129,7 @@ class DryRunExecutorConfig:
     max_same_symbol_stack: int = 4
     max_concurrent_strategy_trades: int = 17
     strategy_magic: int = 131500
+    order_comment_prefix: str = "LPFS"
     pivot_strength: int = 3
     max_bars_from_lp_break: int = 6
     require_lp_pivot_before_fs_mother: bool = True
@@ -247,6 +248,7 @@ def load_dry_run_settings(
         max_same_symbol_stack=int(dry_run_payload.get("max_same_symbol_stack", 4)),
         max_concurrent_strategy_trades=int(dry_run_payload.get("max_concurrent_strategy_trades", 17)),
         strategy_magic=int(dry_run_payload.get("strategy_magic", 131500)),
+        order_comment_prefix=str(dry_run_payload.get("order_comment_prefix", "LPFS")),
         pivot_strength=int(dry_run_payload.get("pivot_strength", 3)),
         max_bars_from_lp_break=int(dry_run_payload.get("max_bars_from_lp_break", 6)),
         require_lp_pivot_before_fs_mother=_optional_bool(
@@ -537,6 +539,7 @@ def execution_safety_from_config(config: DryRunExecutorConfig) -> ExecutionSafet
         max_concurrent_strategy_trades=config.max_concurrent_strategy_trades,
         max_spread_points=config.max_spread_points,
         strategy_magic=config.strategy_magic,
+        order_comment_prefix=config.order_comment_prefix,
     )
 
 

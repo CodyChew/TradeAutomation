@@ -477,7 +477,7 @@
     </nav>
 
     <nav class="report-nav" aria-label="Report sections">
-      <a href="#proof">Proof</a><a href="#operator-checklist">Checklist</a><a href="#send-gates">Send Gates</a><a href="#reconciliation-gates">Reconcile</a><a href="#pending-expiry">Expiry</a><a href="#telegram">Telegram</a><a href="#remote-access">Remote Access</a><a href="#vps-operator">VPS</a><a href="#commands">Commands</a><a href="#limits">Limits</a><a href="#files">Files</a>
+      <a href="#proof">Proof</a><a href="#operator-checklist">Checklist</a><a href="#send-gates">Send Gates</a><a href="#reconciliation-gates">Reconcile</a><a href="#pending-expiry">Expiry</a><a href="#telegram">Telegram</a><a href="#remote-access">Remote Access</a><a href="#vps-operator">VPS</a><a href="#ic-vps">IC VPS</a><a href="#commands">Commands</a><a href="#limits">Limits</a><a href="#files">Files</a>
     </nav>
 
   </header>
@@ -861,6 +861,12 @@
           <code>ssh lpfs-vps &quot;powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 40 -LogLines 80&quot;</code>
         </div>
 
+
+        <div class="command-row">
+          <strong>Fetch IC VPS live status packet</strong>
+          <code>ssh lpfs-ic-vps &quot;powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -StateFileName lpfs_ic_live_state.json -JournalFileName lpfs_ic_live_journal.jsonl -HeartbeatFileName lpfs_ic_live_heartbeat.json -LogFilter &#x27;lpfs_ic_live_*.log&#x27; -JournalLines 40 -LogLines 80&quot;</code>
+        </div>
+
       </div>
     </section>
 
@@ -1006,6 +1012,42 @@ Get-CimInstance Win32_Process |
       </div>
     </section>
 
+    <section id="ic-vps" aria-labelledby="ic-vps-title">
+      <h2 id="ic-vps-title">IC Markets VPS Boundary</h2>
+      <p class="callout warning"><strong>Separate production lane:</strong> IC Markets should run on its own Windows VPS with alias <code>lpfs-ic-vps</code>, task <code>LPFS_IC_Live</code>, runtime root <code>C:\TradeAutomationRuntimeIC</code>, and separate Telegram channel. Do not change <code>LPFS_Live</code> on the FTMO VPS for IC setup.</p>
+      <div class="ops-grid">
+
+        <article class="ops-fact">
+          <span>Config</span>
+          <strong>config.lpfs_icmarkets_raw_spread.local.json</strong>
+          <p>Ignored local config copied from the committed IC example; contains expected IC login/server and IC Telegram chat.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Runtime files</span>
+          <strong>lpfs_ic_live_*</strong>
+          <p>State, journal, heartbeat, and logs use IC-specific names under C:\TradeAutomationRuntimeIC.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>MT5 identity</span>
+          <strong>ICMarketsSC-MT5-2</strong>
+          <p>Fail closed if the VPS MT5 terminal is not logged into the expected IC account/server.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Broker identity</span>
+          <strong>magic 231500 / LPFSIC</strong>
+          <p>Separate magic and broker comment prefix prevent FTMO and IC state from being confused.</p>
+        </article>
+
+      </div>
+      <p class="callout">Full IC migration and communication-channel setup is documented in <code>docs/lpfs_icmarkets_vps_runbook.md</code>.</p>
+    </section>
+
     <section id="commands" aria-labelledby="commands-title">
       <h2 id="commands-title">Operator Commands</h2>
       <p>Run these from the repository root after confirming <code>config.local.json</code> is intentionally set for the target account.</p>
@@ -1050,6 +1092,12 @@ Get-CimInstance Win32_Process |
         <div class="command-row">
           <strong>Pasteable production status</strong>
           <code>.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 20 -LogLines 40</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Pasteable IC production status</strong>
+          <code>.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -StateFileName lpfs_ic_live_state.json -JournalFileName lpfs_ic_live_journal.jsonl -HeartbeatFileName lpfs_ic_live_heartbeat.json -LogFilter &quot;lpfs_ic_live_*.log&quot; -JournalLines 20 -LogLines 40</code>
         </div>
 
 
@@ -1138,7 +1186,7 @@ Get-CimInstance Win32_Process |
     <section id="files" aria-labelledby="files-title">
       <h2 id="files-title">Where To Inspect The Implementation</h2>
       <div class="file-grid">
-        <article class="file-card"><h3>Start here</h3><p><code>strategies/lp_force_strike_strategy_lab/START_HERE.md</code></p><p>Canonical first-read path for future AI agents, environment boundaries, source-of-truth map, and resume prompts.</p></article><article class="file-card"><h3>Live runner</h3><p><code>scripts/run_lp_force_strike_live_executor.py</code></p><p>CLI wrapper for cycle count, sleep interval, runtime-root override, kill switch, heartbeat, lock, and lifecycle notifications.</p></article><article class="file-card"><h3>Watchdog launcher</h3><p><code>scripts/run_lpfs_live_forever.ps1</code></p><p>Production PowerShell wrapper that logs stdout/stderr and restarts after unexpected crashes while respecting KILL_SWITCH.</p></article><article class="file-card"><h3>Status command</h3><p><code>scripts/Get-LpfsLiveStatus.ps1</code></p><p>Pasteable operator snapshot for process, heartbeat, state, journal, and latest log.</p></article><article class="file-card"><h3>Kill switch helper</h3><p><code>scripts/Set-LpfsKillSwitch.ps1</code></p><p>Creates or clears the runtime KILL_SWITCH file used to stop new live cycles.</p></article><article class="file-card"><h3>Live engine</h3><p><code>strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py</code></p><p>Live-send guards, MT5 request construction, reconciliation, and lifecycle notifications.</p></article><article class="file-card"><h3>Execution contract</h3><p><code>docs/mt5_execution_contract.md</code></p><p>Operational contract for order keys, duplicate prevention, and MT5 source-of-truth behavior.</p></article><article class="file-card"><h3>Phase 2 plan</h3><p><code>docs/phase2_production_hardening.md</code></p><p>Implemented local production-hardening runbook for launcher, kill switch, watchdog, runtime folder, Task Scheduler, and VPS readiness.</p></article><article class="file-card"><h3>Lightsail runbook</h3><p><code>docs/lpfs_lightsail_vps_runbook.md</code></p><p>Amazon Lightsail Windows VPS setup, security, cost sizing, Task Scheduler, and liaison packet.</p></article><article class="file-card"><h3>State file</h3><p><code>data/live/lpfs_live_state.json</code></p><p>Restart continuity, processed signal keys, pending orders, active positions, Telegram message IDs.</p></article><article class="file-card"><h3>Journal</h3><p><code>data/live/lpfs_live_journal.jsonl</code></p><p>Durable audit log with raw technical fields and notification payloads.</p></article><article class="file-card"><h3>Handoff</h3><p><code>SESSION_HANDOFF.md</code></p><p>Current project snapshot for the next Codex run.</p></article>
+        <article class="file-card"><h3>Start here</h3><p><code>strategies/lp_force_strike_strategy_lab/START_HERE.md</code></p><p>Canonical first-read path for future AI agents, environment boundaries, source-of-truth map, and resume prompts.</p></article><article class="file-card"><h3>Live runner</h3><p><code>scripts/run_lp_force_strike_live_executor.py</code></p><p>CLI wrapper for cycle count, sleep interval, runtime-root override, kill switch, heartbeat, lock, and lifecycle notifications.</p></article><article class="file-card"><h3>Watchdog launcher</h3><p><code>scripts/run_lpfs_live_forever.ps1</code></p><p>Production PowerShell wrapper that logs stdout/stderr and restarts after unexpected crashes while respecting KILL_SWITCH.</p></article><article class="file-card"><h3>Status command</h3><p><code>scripts/Get-LpfsLiveStatus.ps1</code></p><p>Pasteable operator snapshot for process, heartbeat, state, journal, and latest log.</p></article><article class="file-card"><h3>Kill switch helper</h3><p><code>scripts/Set-LpfsKillSwitch.ps1</code></p><p>Creates or clears the runtime KILL_SWITCH file used to stop new live cycles.</p></article><article class="file-card"><h3>Live engine</h3><p><code>strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py</code></p><p>Live-send guards, MT5 request construction, reconciliation, and lifecycle notifications.</p></article><article class="file-card"><h3>Execution contract</h3><p><code>docs/mt5_execution_contract.md</code></p><p>Operational contract for order keys, duplicate prevention, and MT5 source-of-truth behavior.</p></article><article class="file-card"><h3>Phase 2 plan</h3><p><code>docs/phase2_production_hardening.md</code></p><p>Implemented local production-hardening runbook for launcher, kill switch, watchdog, runtime folder, Task Scheduler, and VPS readiness.</p></article><article class="file-card"><h3>Lightsail runbook</h3><p><code>docs/lpfs_lightsail_vps_runbook.md</code></p><p>Amazon Lightsail Windows VPS setup, security, cost sizing, Task Scheduler, and liaison packet.</p></article><article class="file-card"><h3>IC VPS runbook</h3><p><code>docs/lpfs_icmarkets_vps_runbook.md</code></p><p>Dedicated IC Markets VPS migration plan, file manifest, Tailscale/SSH alias, Telegram channel, and LPFS_IC_Live commands.</p></article><article class="file-card"><h3>IC config example</h3><p><code>config.lpfs_icmarkets_raw_spread.example.json</code></p><p>Fail-closed example for the IC production runner with separate magic, comment prefix, runtime files, and Telegram settings.</p></article><article class="file-card"><h3>State file</h3><p><code>data/live/lpfs_live_state.json</code></p><p>Restart continuity, processed signal keys, pending orders, active positions, Telegram message IDs.</p></article><article class="file-card"><h3>Journal</h3><p><code>data/live/lpfs_live_journal.jsonl</code></p><p>Durable audit log with raw technical fields and notification payloads.</p></article><article class="file-card"><h3>Handoff</h3><p><code>SESSION_HANDOFF.md</code></p><p>Current project snapshot for the next Codex run.</p></article>
       </div>
     </section>
   </main>

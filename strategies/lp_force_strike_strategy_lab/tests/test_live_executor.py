@@ -367,6 +367,8 @@ class LiveExecutorTests(unittest.TestCase):
                             "max_risk_pct_per_trade": "1.5",
                             "risk_buckets_pct": {"H4": 0.25, "H8": 0.25},
                             "risk_bucket_scale": 0.05,
+                            "strategy_magic": 231500,
+                            "order_comment_prefix": "LPFSIC",
                             "max_open_risk_pct": 0.65,
                             "max_spread_risk_fraction": 0.1,
                             "require_lp_pivot_before_fs_mother": False,
@@ -385,6 +387,8 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(settings.executor.max_lots_per_order, 0.5)
             self.assertEqual(settings.executor.max_risk_pct_per_trade, 1.5)
             self.assertEqual(settings.executor.risk_buckets_pct, {"H4": 0.25, "H8": 0.25})
+            self.assertEqual(settings.executor.strategy_magic, 231500)
+            self.assertEqual(settings.executor.order_comment_prefix, "LPFSIC")
             self.assertEqual(settings.executor.market_recovery_mode, "better_than_entry_only")
             self.assertEqual(settings.executor.market_recovery_deviation_points, 0)
             self.assertFalse(settings.executor.require_lp_pivot_before_fs_mother)
@@ -482,6 +486,7 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(safety.max_open_risk_pct, 0.65)
             self.assertEqual(safety.max_lots_per_order, 0.5)
             self.assertEqual(safety.max_risk_pct_per_trade, 0.75)
+            self.assertEqual(safety.order_comment_prefix, "LPFS")
             buckets = live_risk_buckets_from_config(config)
             self.assertAlmostEqual(buckets["H4"], 0.0125)
             self.assertAlmostEqual(buckets["W1"], 0.0375)

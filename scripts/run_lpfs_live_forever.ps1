@@ -3,6 +3,10 @@ param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
     [string]$ConfigPath = "config.local.json",
     [string]$RuntimeRoot = "C:\TradeAutomationRuntime",
+    [string]$StateFileName = "lpfs_live_state.json",
+    [string]$JournalFileName = "lpfs_live_journal.jsonl",
+    [string]$HeartbeatFileName = "lpfs_live_heartbeat.json",
+    [string]$LogPrefix = "lpfs_live",
     [string]$PythonPath = "",
     [int]$Cycles = 100000000,
     [double]$SleepSeconds = 30,
@@ -33,7 +37,7 @@ if (-not (Test-Path -LiteralPath $ResolvedConfigPath)) {
 $LiveDir = Join-Path $RuntimeRoot "data\live"
 $LogDir = Join-Path $LiveDir "logs"
 $KillSwitchPath = Join-Path $LiveDir "KILL_SWITCH"
-$HeartbeatPath = Join-Path $LiveDir "lpfs_live_heartbeat.json"
+$HeartbeatPath = Join-Path $LiveDir $HeartbeatFileName
 
 New-Item -ItemType Directory -Force -Path $LiveDir | Out-Null
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
@@ -46,13 +50,15 @@ while ($true) {
     }
 
     $Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-    $LogPath = Join-Path $LogDir "lpfs_live_$Timestamp.log"
+    $LogPath = Join-Path $LogDir "$($LogPrefix)_$Timestamp.log"
     $RunnerArgs = @(
         "scripts\run_lp_force_strike_live_executor.py",
         "--config", $ResolvedConfigPath,
         "--cycles", "$Cycles",
         "--sleep-seconds", "$SleepSeconds",
         "--runtime-root", $RuntimeRoot,
+        "--runtime-state-file-name", $StateFileName,
+        "--runtime-journal-file-name", $JournalFileName,
         "--kill-switch-path", $KillSwitchPath,
         "--heartbeat-path", $HeartbeatPath
     )

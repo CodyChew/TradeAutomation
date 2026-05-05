@@ -86,6 +86,7 @@ class ExecutionSafetyLimits:
     max_concurrent_strategy_trades: int = 17
     max_spread_points: float | None = None
     strategy_magic: int = 131500
+    order_comment_prefix: str = "LPFS"
 
 
 @dataclass(frozen=True)
@@ -328,7 +329,7 @@ def build_mt5_order_intent(
         actual_risk_pct=actual_risk_pct,
         expiration_time_utc=broker_backstop,
         magic=limits.strategy_magic,
-        comment=_order_comment(setup),
+        comment=_order_comment(setup, limits.order_comment_prefix),
         setup_id=setup.setup_id,
         signal_time_utc=signal_time,
         max_entry_wait_bars=max_entry_wait_bars,
@@ -464,9 +465,10 @@ def _round_volume_down(volume: float, step: float) -> float:
     return units * float(step)
 
 
-def _order_comment(setup: TradeSetup) -> str:
+def _order_comment(setup: TradeSetup, prefix: str = "LPFS") -> str:
     signal_index = "na" if setup.signal_index is None else str(setup.signal_index)
-    return f"LPFS {str(setup.timeframe).upper()} {setup.side[0].upper()} {signal_index}"[:31]
+    safe_prefix = str(prefix or "LPFS").strip() or "LPFS"
+    return f"{safe_prefix} {str(setup.timeframe).upper()} {setup.side[0].upper()} {signal_index}"[:31]
 
 
 def _reject(reason: str, detail: str, checks: list[str]) -> MT5ExecutionDecision:

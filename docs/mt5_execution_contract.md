@@ -36,6 +36,11 @@ ignored account configs may raise it for validation, for example to allow an
 IC scale-2 dry-run where W1 targets `1.50%`. Keep the FTMO/VPS live config at
 its approved cap unless a separate live-send decision explicitly changes it.
 
+`strategy_magic` and `order_comment_prefix` are account-bound identity fields.
+The FTMO runner keeps magic `131500` and prefix `LPFS`. The IC Markets runner
+uses magic `231500` and prefix `LPFSIC` so broker orders, local state, journal
+rows, and Telegram cards cannot be confused across accounts.
+
 The current detector default is `require_lp_pivot_before_fs_mother=true`. This
 means new setups are emitted only when `lp_pivot_index < fs_mother_index`.
 LP==mother and LP-inside-FS candidates are treated as invalid/self-referential

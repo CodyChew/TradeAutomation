@@ -22,6 +22,8 @@ for src_root in [
 
 from lp_force_strike_strategy_lab import NotificationDelivery  # noqa: E402
 from scripts.run_lp_force_strike_live_executor import (  # noqa: E402
+    DEFAULT_JOURNAL_NAME,
+    DEFAULT_STATE_NAME,
     LiveRunnerLock,
     RunnerLockActive,
     _default_heartbeat_path,
@@ -32,8 +34,11 @@ from scripts.run_lp_force_strike_live_executor import (  # noqa: E402
     _runner_lock_path,
     _send_runner_lifecycle_event,
     _sleep_with_kill_switch,
+    _settings_with_runtime_root,
     _write_heartbeat,
 )
+from lp_force_strike_strategy_lab.live_executor import LiveSendExecutorConfig, LiveSendSettings  # noqa: E402
+from lp_force_strike_strategy_lab.dry_run_executor import DryRunLocalConfig  # noqa: E402
 
 
 class RecordingNotifier:
@@ -171,6 +176,35 @@ class LiveRunnerNotificationTests(unittest.TestCase):
 
             self.assertFalse(_runtime_state_requires_migration(original_state, runtime_state))
             self.assertFalse(_runtime_state_requires_migration(original_state, original_state))
+
+    def test_runtime_root_can_use_account_specific_file_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            settings = LiveSendSettings(
+                local=DryRunLocalConfig(),
+                executor=LiveSendExecutorConfig(
+                    journal_path="repo/data/live/journal.jsonl",
+                    state_path="repo/data/live/state.json",
+                ),
+            )
+            runtime_settings = _settings_with_runtime_root(
+                settings,
+                tmpdir,
+                state_file_name="lpfs_ic_live_state.json",
+                journal_file_name="lpfs_ic_live_journal.jsonl",
+            )
+
+            self.assertEqual(
+                Path(runtime_settings.executor.state_path),
+                Path(tmpdir) / "data" / "live" / "lpfs_ic_live_state.json",
+            )
+            self.assertEqual(
+                Path(runtime_settings.executor.journal_path),
+                Path(tmpdir) / "data" / "live" / "lpfs_ic_live_journal.jsonl",
+            )
+
+            default_settings = _settings_with_runtime_root(settings, tmpdir)
+            self.assertEqual(Path(default_settings.executor.state_path).name, DEFAULT_STATE_NAME)
+            self.assertEqual(Path(default_settings.executor.journal_path).name, DEFAULT_JOURNAL_NAME)
 
     def test_kill_switch_event_is_journaled_and_sent(self) -> None:
         notifier = RecordingNotifier()

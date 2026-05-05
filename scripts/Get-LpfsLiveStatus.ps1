@@ -1,6 +1,10 @@
 [CmdletBinding()]
 param(
     [string]$RuntimeRoot = "C:\TradeAutomationRuntime",
+    [string]$StateFileName = "lpfs_live_state.json",
+    [string]$JournalFileName = "lpfs_live_journal.jsonl",
+    [string]$HeartbeatFileName = "lpfs_live_heartbeat.json",
+    [string]$LogFilter = "*.log",
     [int]$JournalLines = 10,
     [int]$LogLines = 20
 )
@@ -9,9 +13,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $LiveDir = Join-Path $RuntimeRoot "data\live"
-$StatePath = Join-Path $LiveDir "lpfs_live_state.json"
-$JournalPath = Join-Path $LiveDir "lpfs_live_journal.jsonl"
-$HeartbeatPath = Join-Path $LiveDir "lpfs_live_heartbeat.json"
+$StatePath = Join-Path $LiveDir $StateFileName
+$JournalPath = Join-Path $LiveDir $JournalFileName
+$HeartbeatPath = Join-Path $LiveDir $HeartbeatFileName
 $KillSwitchPath = Join-Path $LiveDir "KILL_SWITCH"
 $LogDir = Join-Path $LiveDir "logs"
 
@@ -145,7 +149,7 @@ if (Test-Path -LiteralPath $JournalPath) {
 Write-Host ""
 Write-Host "latest_log_dir=$LogDir"
 if (Test-Path -LiteralPath $LogDir) {
-    $LatestLog = Get-ChildItem -LiteralPath $LogDir -Filter "*.log" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $LatestLog = Get-ChildItem -LiteralPath $LogDir -Filter $LogFilter | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if ($null -ne $LatestLog) {
         Write-Host "latest_log=$($LatestLog.FullName)"
         Get-Content -LiteralPath $LatestLog.FullName -Tail $LogLines
