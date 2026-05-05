@@ -452,6 +452,9 @@ class NotificationTests(unittest.TestCase):
                     "target_risk_pct": 0.01,
                     "volume": 0.02,
                     "spread_risk_pct": 4.0,
+                    "signal_closed_time_utc": "2026-01-01T04:00:00+00:00",
+                    "placed_time_utc": "2026-01-01T06:36:00+00:00",
+                    "placement_lag_seconds": 9360,
                     "max_entry_wait_bars": 6,
                     "broker_backstop_expiration_utc": "2026-01-12T04:00:00+00:00",
                     "comment": "placed",
@@ -461,9 +464,10 @@ class NotificationTests(unittest.TestCase):
         )
         self.assertIn("LPFS LIVE | ORDER PLACED", order)
         self.assertIn("EURUSD H4 LONG | BUY LIMIT #9001", order)
+        self.assertIn("Signal: closed 2026-01-01 12:00 SGT | Placed 2026-01-01 14:36 SGT | Lag 2h 36m", order)
         self.assertIn("Plan: Entry 1.10000 | SL 1.09500 | TP 1.10500", order)
         self.assertIn("Risk: 0.0100% actual / 0.0100% target | Size 0.02 lots", order)
-        self.assertIn("Spread: 4.0% of risk | Strategy 6 bars | Backstop 2026-01-12 12:00 SGT", order)
+        self.assertIn("Spread: 4.0% of risk | Window 6 bars | Broker backstop 2026-01-12 12:00 SGT", order)
         self.assertIn("Why: Closed-candle LPFS setup", order)
         self.assertIn("Ref: EURUSD-H4-10-long", order)
         self.assertNotIn("Retcode:", order)
@@ -662,6 +666,7 @@ class NotificationTests(unittest.TestCase):
         bare_order = format_notification_message(NotificationEvent(kind="order_sent", mode="LIVE", title="Order"))
         self.assertIn("n/a | LIMIT #n/a", bare_order)
         self.assertIn("Plan: Entry n/a | SL n/a | TP n/a", bare_order)
+        self.assertNotIn("Signal:", bare_order)
         self.assertNotIn("Ref:", bare_order)
 
         bare_opened = format_notification_message(NotificationEvent(kind="position_opened", mode="LIVE", title="Opened"))

@@ -1336,6 +1336,8 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(len(result.state.pending_orders), 1)
             self.assertIn("LPFS LIVE | ORDER PLACED", notifier_client.payloads[0]["text"])
             self.assertIn("EURUSD H4 LONG | BUY LIMIT #9001", notifier_client.payloads[0]["text"])
+            self.assertIn("Signal: closed 2026-01-01 12:00 SGT | Placed", notifier_client.payloads[0]["text"])
+            self.assertIn("Lag", notifier_client.payloads[0]["text"])
             self.assertIn("Why: Closed-candle LP + Force Strike setup", notifier_client.payloads[0]["text"])
             self.assertNotIn("Why: Why:", notifier_client.payloads[0]["text"])
             self.assertEqual(result.state.telegram_message_ids["order:9001"], 1)
@@ -1347,6 +1349,11 @@ class LiveExecutorTests(unittest.TestCase):
 
             journal_row = json.loads(Path(config.journal_path).read_text(encoding="utf-8").strip().splitlines()[-1])
             self.assertEqual(journal_row["notification_event"]["kind"], "order_sent")
+            event_fields = journal_row["notification_event"]["fields"]
+            self.assertEqual(event_fields["signal_closed_time_utc"], "2026-01-01T04:00:00+00:00")
+            self.assertEqual(event_fields["latest_closed_candle_time_utc"], "2026-01-01T04:00:00+00:00")
+            self.assertIn("placed_time_utc", event_fields)
+            self.assertGreaterEqual(event_fields["placement_lag_seconds"], 0)
             self.assertEqual(journal_row["telegram_message_id"], 1)
 
             duplicate = process_trade_setup_live_send(mt5, _setup(), config=config, state=result.state)

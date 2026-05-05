@@ -293,7 +293,8 @@ stay in the journal.
 Live-send Telegram cards are compact and trader-oriented:
 
 - `ORDER PLACED`: market, order type/ticket, entry, SL, TP, risk, size,
-  spread, expiry, setup reason, and ref.
+  signal-close time, placement time, placement lag, spread, bar-count window,
+  broker backstop, setup reason, and ref.
 - `ORDER ADOPTED`: a matching MT5 order/position was found and tracked locally;
   no new order was sent.
 - `ENTERED`: market, position/order IDs, fill, size, risk, SL, TP, open time,

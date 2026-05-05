@@ -558,7 +558,7 @@
 
         <article class="checklist-card">
           <h3>After Telegram alert</h3>
-          <ul><li>For ORDER PLACED, verify the ticket exists in MT5 and the same ref exists in state and journal.</li><li>For MARKET RECOVERY, verify MT5 shows an open position, not a pending order; TP should be recalculated to 1R from actual fill and the original structure stop.</li><li>For ENTERED, verify the pending moved to a position and state moved from pending to active.</li><li>For CANCELLED or cancel_failed, verify MT5 broker state first; failed cancellation is retryable on later cycles.</li><li>For TAKE PROFIT / STOP LOSS / TRADE CLOSED, verify deal history and journal classification before acting on the label.</li></ul>
+          <ul><li>For ORDER PLACED, verify the ticket exists in MT5 and compare the signal close, placed time, and lag against the same ref in state and journal.</li><li>For MARKET RECOVERY, verify MT5 shows an open position, not a pending order; TP should be recalculated to 1R from actual fill and the original structure stop.</li><li>For ENTERED, verify the pending moved to a position and state moved from pending to active.</li><li>For CANCELLED or cancel_failed, verify MT5 broker state first; failed cancellation is retryable on later cycles.</li><li>For TAKE PROFIT / STOP LOSS / TRADE CLOSED, verify deal history and journal classification before acting on the label.</li></ul>
         </article>
 
       </div>
@@ -753,7 +753,7 @@
         <article class="ops-fact">
           <span>ORDER PLACED</span>
           <strong>Standalone card</strong>
-          <p>Ticket, market, entry/SL/TP, actual/target risk, size, spread, expiry, ref.</p>
+          <p>Ticket, market, signal close, placed time, lag, entry/SL/TP, actual/target risk, size, spread, window, broker backstop, ref.</p>
         </article>
 
 

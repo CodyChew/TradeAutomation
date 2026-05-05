@@ -914,6 +914,12 @@ still records signal, intent, rejection, order-check, and live lifecycle rows.
 Telegram uses compact plain-text cards, while raw retcodes, broker comments,
 exact floats, and diagnostics stay in JSONL.
 
+`ORDER PLACED` cards now show signal-close time, order-placement time, and
+placement lag in SGT. The journal stores the same timing fields as
+`signal_closed_time_utc`, `placed_time_utc`, `placement_lag_seconds`, and
+`latest_closed_candle_time_utc` so late-surfacing setups can be audited without
+changing strategy rules or MT5 send semantics.
+
 Live Telegram messages add real broker lifecycle alerts:
 
 - `ORDER PLACED`;

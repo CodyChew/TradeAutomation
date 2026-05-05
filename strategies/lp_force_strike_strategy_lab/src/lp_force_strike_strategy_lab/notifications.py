@@ -537,17 +537,22 @@ def _format_order_placed_card(event: NotificationEvent, *, max_field_value_lengt
     lines = [
         f"LPFS LIVE | {title}",
         f"{_market_context(event)} | {_format_order_type(_field(event, 'order_type', 'LIMIT'))} #{_field(event, 'order_ticket', 'n/a')}",
-        (
-            f"Plan: Entry {_format_event_price(event, 'entry')} | "
-            f"SL {_format_event_price(event, 'stop_loss')} | "
-            f"TP {_format_event_price(event, 'take_profit')}"
-        ),
-        (
-            f"Risk: {format_trader_percent(_field(event, 'actual_risk_pct'), decimals=4)} actual / "
-            f"{format_trader_percent(_field(event, 'target_risk_pct'), decimals=4)} target | "
-            f"Size {format_trader_volume(_field(event, 'volume'))} lots"
-        ),
     ]
+    _append_signal_timing(lines, event)
+    lines.extend(
+        [
+            (
+                f"Plan: Entry {_format_event_price(event, 'entry')} | "
+                f"SL {_format_event_price(event, 'stop_loss')} | "
+                f"TP {_format_event_price(event, 'take_profit')}"
+            ),
+            (
+                f"Risk: {format_trader_percent(_field(event, 'actual_risk_pct'), decimals=4)} actual / "
+                f"{format_trader_percent(_field(event, 'target_risk_pct'), decimals=4)} target | "
+                f"Size {format_trader_volume(_field(event, 'volume'))} lots"
+            ),
+        ]
+    )
     spread = _field(event, "spread_risk_pct")
     wait_bars = _field(event, "max_entry_wait_bars")
     backstop = _field(event, "broker_backstop_expiration_utc") or _field(event, "expiration_utc")
@@ -555,7 +560,7 @@ def _format_order_placed_card(event: NotificationEvent, *, max_field_value_lengt
         spread_text = "n/a" if not spread else format_trader_percent(spread, decimals=1)
         strategy_text = "n/a" if not wait_bars else f"{wait_bars} bars"
         backstop_text = "n/a" if not backstop else format_trader_timestamp(backstop)
-        lines.append(f"Spread: {spread_text} of risk | Strategy {strategy_text} | Backstop {backstop_text}")
+        lines.append(f"Spread: {spread_text} of risk | Window {strategy_text} | Broker backstop {backstop_text}")
     reason = _sentence_case(event.message)
     if reason:
         label = "Recovery" if event.kind == "order_adopted" else "Why"
@@ -589,6 +594,23 @@ def _format_position_opened_card(event: NotificationEvent, *, max_field_value_le
         lines.append(f"Opened: {format_trader_timestamp(opened)}")
     _append_signal_id(lines, event, max_field_value_length=max_field_value_length)
     return "\n".join(lines)
+
+
+def _append_signal_timing(lines: list[str], event: NotificationEvent) -> None:
+    signal_closed = _field(event, "signal_closed_time_utc")
+    placed = _field(event, "placed_time_utc")
+    lag = _field(event, "placement_lag_seconds")
+    if not (signal_closed or placed or lag):
+        return
+    parts = []
+    if signal_closed:
+        parts.append(f"closed {format_trader_timestamp(signal_closed)}")
+    if placed:
+        parts.append(f"Placed {format_trader_timestamp(placed)}")
+    if lag:
+        parts.append(f"Lag {_format_seconds(lag)}")
+    if parts:
+        lines.append(f"Signal: {' | '.join(parts)}")
 
 
 def _format_position_closed_card(event: NotificationEvent, *, max_field_value_length: int) -> str:

@@ -1697,6 +1697,38 @@ def _tracked_order_from_intent(intent: MT5OrderIntent, order_ticket: int, *, pri
     )
 
 
+def _order_signal_timing_fields(order: LiveTrackedOrder) -> dict[str, Any]:
+    fields: dict[str, Any] = {"placed_time_utc": order.placed_time_utc}
+    signal_closed = _signal_closed_time_utc(order.signal_time_utc, order.timeframe)
+    if signal_closed is not None:
+        closed_iso = signal_closed.isoformat()
+        fields["signal_closed_time_utc"] = closed_iso
+        fields["latest_closed_candle_time_utc"] = closed_iso
+    lag_seconds = _placement_lag_seconds(order.placed_time_utc, signal_closed)
+    if lag_seconds is not None:
+        fields["placement_lag_seconds"] = lag_seconds
+    return fields
+
+
+def _signal_closed_time_utc(signal_time_utc: Any, timeframe: str) -> pd.Timestamp | None:
+    if signal_time_utc in (None, ""):
+        return None
+    try:
+        return _as_utc_timestamp(signal_time_utc) + timeframe_delta(str(timeframe).upper())
+    except Exception:
+        return None
+
+
+def _placement_lag_seconds(placed_time_utc: Any, signal_closed_time_utc: pd.Timestamp | None) -> int | None:
+    if signal_closed_time_utc is None or placed_time_utc in (None, ""):
+        return None
+    try:
+        placed = _as_utc_timestamp(placed_time_utc)
+    except Exception:
+        return None
+    return int(max(0, (placed - signal_closed_time_utc).total_seconds()))
+
+
 def _tracked_position_from_pending(pending: LiveTrackedOrder, position: Any, config: LiveSendExecutorConfig) -> LiveTrackedPosition:
     return LiveTrackedPosition(
         signal_key=pending.signal_key,
@@ -2050,6 +2082,7 @@ def _order_sent_event(order: LiveTrackedOrder, outcome: LiveOrderSendOutcome, sp
             "target_risk_pct": order.target_risk_pct,
             "expiration_utc": order.expiration_time_utc,
             "signal_time_utc": order.signal_time_utc,
+            **_order_signal_timing_fields(order),
             "max_entry_wait_bars": order.max_entry_wait_bars,
             "strategy_expiry_mode": order.strategy_expiry_mode,
             "broker_backstop_expiration_utc": order.broker_backstop_expiration_time_utc,

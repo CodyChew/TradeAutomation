@@ -255,7 +255,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         (
             "After Telegram alert",
             [
-                "For ORDER PLACED, verify the ticket exists in MT5 and the same ref exists in state and journal.",
+                "For ORDER PLACED, verify the ticket exists in MT5 and compare the signal close, placed time, and lag against the same ref in state and journal.",
                 "For MARKET RECOVERY, verify MT5 shows an open position, not a pending order; TP should be recalculated to 1R from actual fill and the original structure stop.",
                 "For ENTERED, verify the pending moved to a position and state moved from pending to active.",
                 "For CANCELLED or cancel_failed, verify MT5 broker state first; failed cancellation is retryable on later cycles.",
@@ -662,7 +662,7 @@ Get-CimInstance Win32_Process |
       <h2 id="telegram-title">Telegram Alerts</h2>
       <div class="ops-grid">
         {_fact_grid([
-            ("ORDER PLACED", "Standalone card", "Ticket, market, entry/SL/TP, actual/target risk, size, spread, expiry, ref."),
+            ("ORDER PLACED", "Standalone card", "Ticket, market, signal close, placed time, lag, entry/SL/TP, actual/target risk, size, spread, window, broker backstop, ref."),
             ("MARKET RECOVERY", "Standalone card", "Position/deal, original entry, actual fill, original stop, recalculated TP, actual/target risk, size, spread, touch high/low/time, ref."),
             ("ENTERED", "Reply to order", "Fill time/price, position ID, volume, SL/TP, risk, ref."),
             ("TAKE PROFIT / STOP LOSS", "Reply to order", "Exit price/time, PnL, R, hold time, deal ticket, position ID, ref."),

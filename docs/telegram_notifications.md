@@ -116,8 +116,9 @@ Live lifecycle messages are compact trader cards. Raw retcodes, broker
 comments, exact floats, and diagnostic fields stay in the JSONL journal.
 
 - `order_sent`: `LPFS LIVE | ORDER PLACED`, market, order type/ticket,
-  entry/SL/TP, actual/target risk, lot size, spread as percent of risk, SGT
-  strategy bar window, broker backstop, setup reason, and signal ref.
+  signal-close time, order-placement time, placement lag, entry/SL/TP,
+  actual/target risk, lot size, spread as percent of risk, SGT strategy bar
+  window, broker backstop, setup reason, and signal ref.
 - `market_recovery_sent`: `LPFS LIVE | MARKET RECOVERY`, market, position/deal
   ID, original pending entry, actual executable fill, original structure SL,
   recalculated 1R TP, actual/target risk, lot size, spread as percent of
