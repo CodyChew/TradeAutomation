@@ -57,6 +57,7 @@ The current strategy guide and execution-readiness docs are:
 - `docs/strategy.html`
 - `docs/live_ops.html`
 - `docs/lpfs_lightsail_vps_runbook.md`
+- `docs/lpfs_new_mt5_account_validation.md`
 - `docs/mt5_execution_contract.md`
 - `docs/telegram_notifications.md`
 - `docs/dry_run_executor.md`

@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-05 SGT after proving Tailscale + SSH remote access to
-the LPFS Windows VPS and documenting the environment boundaries.
+Last updated: 2026-05-05 SGT after adding the local-only LPFS new MT5 account
+validation workflow.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -22,6 +22,8 @@ file, and the JSONL journal before making operational decisions.
    switch, heartbeat, status command, or Task Scheduler setup.
 8. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
+9. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+   account or broker feed.
 
 ## AI Agent Continuity Rules
 
@@ -126,6 +128,12 @@ historical processed/skipped signals for this baseline change.
 
 Live broker testing scales that ladder with `live_send.risk_bucket_scale=0.05`,
 so H4/H8 are `0.01%`, H12/D1 are `0.015%`, and W1 is `0.0375%`.
+
+New MT5 account validation is now documented as a local-only path. Use
+`docs/lpfs_new_mt5_account_validation.md`,
+`scripts/audit_lpfs_new_mt5_account.py`, and the new-account example configs
+before any dry-run/order-check work on a different account. Do not change the
+VPS MT5 login or restart `LPFS_Live` for this validation.
 
 ## Architecture Map
 

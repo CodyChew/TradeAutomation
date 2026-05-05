@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-05 local time after the LPFS handoff-first
-documentation cleanup.
+Last updated: 2026-05-05 local time after adding the local-only LPFS new MT5
+account validation workflow.
 
 ## Purpose
 
@@ -1151,7 +1151,12 @@ Expected next scope:
    re-arming the current latest-candle setups.
 5. Keep low-risk live validation running long enough to collect real broker
    lifecycle evidence before scaling risk or changing strategy rules.
-6. Local Phase 2 rehearsal passed on 2026-05-03. Amazon Lightsail VPS
+6. For any new MT5 account or broker feed, use the local-only validation path
+   in `../../docs/lpfs_new_mt5_account_validation.md`: audit account/symbol
+   specs, pull a separate dataset, rerun V22, compare to the current V22
+   baseline, then run dry-run/order-check only if the broker-data comparison is
+   acceptable. Do not change the VPS MT5 login for this work.
+7. Local Phase 2 rehearsal passed on 2026-05-03. Amazon Lightsail VPS
    deployment passed staged verification on 2026-05-04: repo at
    `C:\TradeAutomation`, runtime at `C:\TradeAutomationRuntime`, MT5 Python
    attach to the FTMO terminal works, state/journal match the two LPFS pending
@@ -1160,10 +1165,10 @@ Expected next scope:
    fix, and final at-logon task `LPFS_Live` is installed. By 2026-05-05 it is
    expected to run under `C:\TradeAutomationRuntime` when the kill switch is
    absent.
-7. If stop robustness becomes a priority, run a focused spread-buffer
+8. If stop robustness becomes a priority, run a focused spread-buffer
    validation by timeframe and symbol group. Do not change the live stop
    placement from no-buffer based on V16 alone.
-8. If discretionary review needs more context, surface LP-FS proximity as a
+9. If discretionary review needs more context, surface LP-FS proximity as a
    setup-quality label in dashboards/Telegram, not as a live trade filter.
 
 ## Phase 2 Production Hardening

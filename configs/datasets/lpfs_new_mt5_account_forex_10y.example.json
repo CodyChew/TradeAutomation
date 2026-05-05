@@ -1,0 +1,10 @@
+{
+  "dataset_name": "lpfs_new_mt5_account_forex_10y",
+  "source": "mt5",
+  "data_root": "data/raw/lpfs_new_mt5_account/forex",
+  "symbol_universe": "forex_major_cross_pairs",
+  "timeframes": ["H4", "H8", "H12", "D1", "W1"],
+  "history_years": 10,
+  "date_start_utc": null,
+  "date_end_utc": null
+}

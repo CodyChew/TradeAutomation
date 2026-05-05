@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-05 local time after the LPFS handoff-first
-documentation cleanup.
+Last updated: 2026-05-05 local time after adding the local-only LPFS new MT5
+account validation workflow.
 
 ## Purpose
 
@@ -24,8 +24,10 @@ source of truth for strategy research and live execution work.
    kill-switch controls, heartbeat, status checks, or Task Scheduler setup.
 8. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
-9. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
-10. `concepts/lp_levels_lab/PROJECT_STATE.md` and
+9. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+   account or broker feed.
+10. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
+11. `concepts/lp_levels_lab/PROJECT_STATE.md` and
    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
    concept behavior.
 

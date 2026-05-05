@@ -1,6 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-05-05 after the handoff-first documentation cleanup.
+Last updated: 2026-05-05 after adding the local-only new MT5 account
+validation workflow.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -34,6 +35,8 @@ operational decisions.
    access work.
 7. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before changing execution or notification code.
+8. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+   account or broker feed.
 
 ## Source-Of-Truth Matrix
 
@@ -98,3 +101,4 @@ Use one of these prompts to restart cleanly:
 - VPS read-only audit: `Read SESSION_HANDOFF.md and START_HERE.md, then run the lpfs-vps identity, git status, and Get-LpfsLiveStatus checks before making any operational conclusion.`
 - Live deployment planning: `Read START_HERE.md, docs/live_ops.html, and docs/lpfs_lightsail_vps_runbook.md, then produce a kill-switch-first VPS deploy plan before changing production.`
 - Second MT5 account planning: `Read START_HERE.md and docs/mt5_execution_contract.md, then plan a separate config/runtime/account boundary for another MT5 account without touching current VPS state.`
+- Second MT5 account validation: `Read START_HERE.md and docs/lpfs_new_mt5_account_validation.md, then audit the locally logged-in MT5 account before pulling data or running dry-run.`
