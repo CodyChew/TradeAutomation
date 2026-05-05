@@ -1,7 +1,8 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-05 local time after adding the local-only LPFS new MT5
-account validation workflow.
+Last updated: 2026-05-05 local time after running the local IC Markets Raw
+Spread LPFS validation through audit, data pull, V22 backtest, comparison, and
+dry-run.
 
 ## Purpose
 
@@ -109,6 +110,59 @@ Known data-quality interpretation:
   They loaded successfully and were not obvious performance outliers. Future
   experiments can use all 28 pairs, while keeping the gap caveat visible.
 - Latest live-ended bars are incomplete and are dropped in backtests.
+
+## Current Secondary MT5 Account Validation
+
+On 2026-05-05, a local-only IC Markets Raw Spread account validation was run
+from the local PC MT5 terminal. The VPS live account was not changed.
+
+Local ignored artifacts:
+
+- account audit:
+  `reports/mt5_account_validation/lpfs_new_account/20260505_155656`
+- broker dataset:
+  `data/raw/lpfs_new_mt5_account/forex`
+- V22 run:
+  `reports/strategies/lp_force_strike_experiment_v22_new_mt5_account/20260505_160405`
+- comparison:
+  `reports/strategies/lp_force_strike_experiment_v22_new_mt5_account/20260505_160405/comparison_to_current_v22`
+- dry-run config:
+  `config.lpfs_icmarkets_raw_spread.local.json`
+- dry-run journal/state:
+  `data/live/lpfs_icmarkets_raw_spread_dry_run_journal.jsonl`
+  and `data/live/lpfs_icmarkets_raw_spread_dry_run_state.json`
+
+Read-only audit result:
+
+- server: `ICMarketsSC-MT5-2`
+- currency: `USD`
+- symbols available/visible: `28/28`
+- timeframe probes: `140/140 OK`
+- volume min/step: `0.01/0.01` for all audited FX symbols
+- stop/freeze levels: `0/0` for all audited FX symbols
+
+Data pull result:
+
+- datasets pulled: `140`
+- failures: `0`
+- coverage starts around `2016-05-09` for H4/H8/H12/D1 and `2016-05-08`
+  for W1.
+
+V22 separated comparison against the current FTMO-backed baseline:
+
+- trades: `11,937` vs `11,834`
+- win rate: `59.09%` vs `58.37%`
+- total R: `2,010.6R` vs `1,487.5R`
+- average R: `0.1684R` vs `0.1257R`
+- profit factor: `1.406` vs `1.289`
+- max drawdown: `18.0R` vs `26.0R`
+
+First dry-run cycle:
+
+- frames processed: `140`
+- latest-bar setups rejected before broker check: `3`
+- broker `order_check` calls: `0`
+- reason: all three fresh setups rounded below the `0.01` minimum lot.
 
 ## Current LP Rules
 

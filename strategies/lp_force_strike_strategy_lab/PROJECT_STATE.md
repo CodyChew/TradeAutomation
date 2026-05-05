@@ -1,7 +1,8 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-05 local time after adding the local-only LPFS new MT5
-account validation workflow.
+Last updated: 2026-05-05 local time after running the local IC Markets Raw
+Spread LPFS validation through audit, data pull, V22 backtest, comparison, and
+dry-run.
 
 ## Purpose
 
@@ -118,6 +119,7 @@ V22 result:
   Strike signals were reselected to an earlier valid LP.
 - Overlap audit passed: zero duplicate trade keys, zero duplicate signal join
   keys, and zero missing trade-to-signal joins for both variants.
+
 - V15 bucket rerun: separated rule's most efficient row improved return/DD
   to 50.95 with lower reserved DD, but with materially lower efficient total
   return than current V15.
@@ -140,6 +142,55 @@ Research revalidation state after V22:
   same old signal-rule family.
 - V1-V8 remain historical context only and do not need rerun for this rule
   decision.
+
+## Current Secondary Account Check: IC Markets Raw Spread
+
+On 2026-05-05, a local-only IC Markets Raw Spread account validation was run
+without touching the VPS live account.
+
+Artifacts are intentionally ignored and local:
+
+- audit:
+  `../../reports/mt5_account_validation/lpfs_new_account/20260505_155656`
+- data:
+  `../../data/raw/lpfs_new_mt5_account/forex`
+- V22 report:
+  `../../reports/strategies/lp_force_strike_experiment_v22_new_mt5_account/20260505_160405`
+- comparison:
+  `../../reports/strategies/lp_force_strike_experiment_v22_new_mt5_account/20260505_160405/comparison_to_current_v22`
+- dry-run config:
+  `../../config.lpfs_icmarkets_raw_spread.local.json`
+
+Audit:
+
+- server: `ICMarketsSC-MT5-2`
+- account currency: `USD`
+- `28/28` FX symbols available and visible
+- `140/140` H4/H8/H12/D1/W1 candle probes OK
+- audited FX volume min/step: `0.01/0.01`
+- audited stop/freeze levels: `0/0`
+
+New-account data pull:
+
+- `140` datasets written under `data/raw/lpfs_new_mt5_account/forex`
+- `0` failures
+- H4/H8/H12/D1 coverage starts around `2016-05-09`; W1 starts around
+  `2016-05-08`.
+
+Accepted V22 separated variant compared with the current FTMO-backed V22
+baseline:
+
+- trades: `11,937` vs `11,834`
+- total R: `2,010.6R` vs `1,487.5R`
+- average R: `0.1684R` vs `0.1257R`
+- win rate: `59.09%` vs `58.37%`
+- profit factor: `1.406` vs `1.289`
+- max drawdown: `18.0R` vs `26.0R`
+
+First dry-run cycle on `config.lpfs_icmarkets_raw_spread.local.json` processed
+all `140` frames. It found three latest-bar setups, but all were rejected
+before broker check because raw volume rounded below the broker `0.01` minimum
+lot. Therefore there were `0` `order_check` calls and `0` live orders.
 
 ## Experiment V1
 

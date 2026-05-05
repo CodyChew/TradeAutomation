@@ -4,6 +4,10 @@ This workflow validates a new MT5 account as a separate broker-data
 environment before dry-run or live-send work. It is local-first and does not
 touch the current VPS live runner.
 
+Current naming convention: when a broker/account is identified, prefer a
+stable slug such as `icmarkets_raw_spread` for ignored local configs and
+journal/state files. Keep account numbers and credentials out of tracked docs.
+
 ## Safety Boundary
 
 - Log into the new account on the local PC MT5 terminal.
@@ -110,3 +114,12 @@ Then run dry-run only:
 ```
 
 This path calls `order_check` only and never sends orders.
+
+For the current IC Markets Raw Spread validation, the ignored local config was
+named:
+
+```text
+config.lpfs_icmarkets_raw_spread.local.json
+```
+
+Its journal/state paths use the same `lpfs_icmarkets_raw_spread` slug.
