@@ -26,10 +26,10 @@ and alerts at `tradingview/lp_force_strike.pine`. V10-V13 add portfolio-style
 research analytics. V14 adds account-risk sizing and drawdown views. V15 adds
 3-bucket risk-ladder sensitivity. V16 adds broker-side bid/ask trigger realism
 and spread-buffer research. V17 tests whether the Force Strike structure must
-be close to or touching the broken LP. V18 adds research-only TP-near exit
-experiments against the V16 no-buffer bid/ask control. The dry-run phase is explicitly
-broker-safe and does not send orders; the live-send phase can place real
-pending orders only when local live config is explicitly enabled.
+be close to or touching the broken LP. V18-V20 test TP-near close/protection
+ideas as research-only evidence. The dry-run phase is explicitly broker-safe
+and does not send orders; the live-send phase can place real pending orders
+only when local live config is explicitly enabled.
 
 ## Concept Dependencies
 
@@ -1291,11 +1291,77 @@ Decision status:
 Recommended follow-up:
 
 ```text
-Design a separate live TP-near protection experiment for lock_0p50r_pct_90. It
-must cover stop-modification timing, broker stop constraints, spread gating,
-order-modify failure handling, position reconciliation, Telegram lifecycle
-wording, same-bar conflict policy, kill-switch behavior, and VPS
-deployment/rollback. Do not implement it inside V19.
+Do not implement live TP-near protection from V19 alone. V20 must be reviewed
+first because it brackets live stop-modification timing with M30 replay.
+```
+
+## Experiment V20 Protection Realism
+
+Experiment V20 is configured by:
+
+```text
+../../configs/strategies/lp_force_strike_experiment_v20_protection_realism.json
+```
+
+Run command:
+
+```powershell
+.\venv\Scripts\python scripts\run_lp_force_strike_v20_protection_realism.py --config configs\strategies\lp_force_strike_experiment_v20_protection_realism.json --docs-output docs\v20.html
+```
+
+Full-universe run:
+
+- report folder:
+  `reports/strategies/lp_force_strike_experiment_v20_protection_realism/20260505_043723`
+- dashboard: `docs/v20.html`
+- scope: all `H4/H8/H12/D1/W1` LPFS datasets from
+  `configs/datasets/forex_major_crosses_10y.json`
+- replay timeframe: `M30`
+- result rows: `16,061` signals, `12,022` M30 replay control trades, and
+  `96,176` variant trade rows
+- artifacts include `trades.csv`, `summary_by_variant.csv`,
+  `old_vs_new_trade_delta.csv`, `protection_outcome_breakdown.csv`,
+  `protection_funnel.csv`, `symbol_timeframe_breakdown.csv`,
+  `year_breakdown.csv`, `changed_trade_samples.csv`,
+  `variant_decision_matrix.csv`, `run_summary.json`, and `dashboard.html`
+
+V20 keeps the V15 LPFS signal baseline but replays entries, exits, and
+stop-protection on M30 bid/ask candles. This matters because live checks every
+30 seconds, while historical backtest data only shows candle OHLC. V20 therefore
+brackets live behavior:
+
+- conservative stress: a `0.9R` touch can only lock the `0.5R` stop on a later
+  M30 candle; fast snapbacks are counted as missed protection and the trade
+  remains on the original baseline bracket;
+- optimistic upper bound: `lock_0p50r_pct_90_m30_same_assumed` assumes the live
+  30-second loop could modify the stop inside the same M30 candle after the
+  `0.9R` touch. This is not direct live evidence because intra-M30 ordering is
+  unknown.
+
+Decision status:
+
+- M30 replay control: `12,022` trades, `336.9R`, PF about `1.058`.
+- Same-M30 upper bound: `lock_0p50r_pct_90_m30_same_assumed` reached `512.9R`,
+  PF about `1.095`, and `+176.0R` versus control. It had `2,561` trigger
+  touches, `2,561` assumed activations, `427` saved-from-stop trades,
+  `747` sacrificed full-TP trades, and `206` same-bar-conflict rows.
+- Conservative later-M30 variants did not beat control:
+  `lock_0p50r_pct_90_m30_next` was `-53.0R` and
+  `lock_0p50r_pct_90_m30_delay1` was `-5.5R` versus control.
+- The correct live interpretation is bounded: missed modifications are
+  baseline-equivalent, but successful modifications can still sacrifice later
+  full TPs. Real 30-second live behavior is likely between the conservative and
+  optimistic V20 cases.
+- No live executor, VPS task, MT5 order, live state, live journal, Telegram
+  lifecycle behavior, or TradingView indicator has been changed.
+
+Recommended follow-up:
+
+```text
+Do not change live TP/SL handling yet. If TP-near protection remains a priority,
+collect M1/tick data or forward live attribution for 0.9R touches, stop-modify
+success, too-fast misses, and later trade outcomes. Only then design the live
+stop-modification lifecycle.
 ```
 
 ## Dashboard Interpretation UX
@@ -1307,8 +1373,8 @@ The dashboard interpretation metadata lives in:
 ```
 
 On 2026-04-30, V6-V15 were given a `decision_brief` section in that metadata.
-V16-V19 also have decision briefs for execution realism, LP-FS proximity,
-TP-near research, and TP-near robustness.
+V16-V20 also have decision briefs for execution realism, LP-FS proximity,
+TP-near research, TP-near robustness, and protection realism.
 The shared renderer now shows a prominent `Decision Brief` near the top of each
 page, before the tables. This preserves the concise chat-style interpretation
 the user found useful, for example the V11 bullets explaining why removing H4

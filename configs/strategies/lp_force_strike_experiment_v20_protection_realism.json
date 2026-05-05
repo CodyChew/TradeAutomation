@@ -1,0 +1,102 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v20_protection_realism",
+  "dataset_config": "configs/datasets/forex_major_crosses_10y.json",
+  "baseline_trades_path": "reports/strategies/lp_force_strike_experiment_v9_lp_pivot_strength/20260501_032404/trades.csv",
+  "v15_bucket_config": "configs/strategies/lp_force_strike_experiment_v15_bucket_sensitivity.json",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v20_protection_realism",
+  "symbols": null,
+  "excluded_symbols": [],
+  "timeframes": [
+    "H4",
+    "H8",
+    "H12",
+    "D1",
+    "W1"
+  ],
+  "replay_timeframe": "M30",
+  "pivot_strength": 3,
+  "max_bars_from_lp_break": 6,
+  "atr_period": 14,
+  "max_entry_wait_bars": 6,
+  "entry_model": "signal_zone_pullback",
+  "entry_zone": 0.5,
+  "stop_model": "fs_structure",
+  "exit_model": "single_target",
+  "target_r": 1.0,
+  "protection_variants": [
+    {
+      "variant_id": "control_bid_ask",
+      "mode": "control"
+    },
+    {
+      "variant_id": "lock_0p50r_pct_90_m30_next",
+      "mode": "lock_r_protect",
+      "threshold_r": 0.9,
+      "lock_r": 0.5,
+      "activation_delay_m30_bars": 0
+    },
+    {
+      "variant_id": "lock_0p50r_pct_90_m30_same_assumed",
+      "mode": "lock_r_protect",
+      "threshold_r": 0.9,
+      "lock_r": 0.5,
+      "activation_delay_m30_bars": 0,
+      "activation_model": "same_m30_assumed"
+    },
+    {
+      "variant_id": "lock_0p50r_pct_90_m30_delay1",
+      "mode": "lock_r_protect",
+      "threshold_r": 0.9,
+      "lock_r": 0.5,
+      "activation_delay_m30_bars": 1
+    },
+    {
+      "variant_id": "lock_0p50r_pct_90_m30_delay2",
+      "mode": "lock_r_protect",
+      "threshold_r": 0.9,
+      "lock_r": 0.5,
+      "activation_delay_m30_bars": 2
+    },
+    {
+      "variant_id": "lock_0p50r_pct_90_m30_minstop_0p5x",
+      "mode": "lock_r_protect",
+      "threshold_r": 0.9,
+      "lock_r": 0.5,
+      "activation_delay_m30_bars": 0,
+      "min_stop_distance_spread_mult": 0.5
+    },
+    {
+      "variant_id": "lock_0p50r_pct_90_m30_minstop_1x",
+      "mode": "lock_r_protect",
+      "threshold_r": 0.9,
+      "lock_r": 0.5,
+      "activation_delay_m30_bars": 0,
+      "min_stop_distance_spread_mult": 1.0
+    },
+    {
+      "variant_id": "lock_0p50r_pct_90_m30_retry_minstop_1x",
+      "mode": "lock_r_protect",
+      "threshold_r": 0.9,
+      "lock_r": 0.5,
+      "activation_delay_m30_bars": 0,
+      "min_stop_distance_spread_mult": 1.0,
+      "retry_rejected_modification": true
+    }
+  ],
+  "decision_criteria": {
+    "min_r_delta": 150.0,
+    "min_protection_activation_rate": 0.5,
+    "min_saved_to_sacrificed_r_ratio": 2.0,
+    "max_reserved_drawdown_pct": 10.0,
+    "max_reserved_open_risk_pct": 6.0,
+    "min_worst_month_pct": -5.0
+  },
+  "costs": {
+    "use_candle_spread": true,
+    "fallback_spread_points": 0.0,
+    "entry_slippage_points": 0.0,
+    "exit_slippage_points": 0.0,
+    "round_turn_commission_points": 0.0
+  },
+  "drop_incomplete_latest_bar": true
+}

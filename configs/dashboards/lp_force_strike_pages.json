@@ -540,6 +540,35 @@
         ],
         "next_step": "Read the V19 Decision Card and Follow-Up Recommendation after the run completes."
       }
+    },
+    {
+      "page": "v20.html",
+      "nav_label": "V20",
+      "index_order": -10,
+      "title": "V20 Protection Realism",
+      "status_label": "M30 replay study",
+      "status_kind": "active",
+      "question": "Does the V19 locked-profit idea still work once live stop-modification timing is bracketed with M30 replay?",
+      "setup": "Research-only lower-timeframe replay using the V15 LPFS signal baseline. H4/H8/H12/D1/W1 setups are replayed on M30 bid/ask candles to test lock-stop behavior at 0.9R with a 0.5R protected stop. Conservative variants only activate on a later M30 candle; the same-M30 assumed variant is an optimistic upper bound for the live 30-second loop.",
+      "how_to_read": "Start with the Decision Card and Protection Funnel. The funnel separates 0.9R trigger touches, successful stop activations, too-fast misses, broker min-stop-distance blocks, and the optimistic same-M30 upper bound.",
+      "conclusion": "V20 says the idea is timing-sensitive. Same-M30 assumed activation improves the M30 replay control, but conservative later-M30 activation does not. This is not enough to change live behavior without M1/tick or forward evidence.",
+      "action": "Use this page to decide whether a separate live stop-modification plan is justified. Do not change VPS, MT5 orders, live state, Telegram lifecycle, or production stop handling from V20 alone.",
+      "facts": [
+        ["Control", "336.9R"],
+        ["Upper Bound", "+176.0R"],
+        ["Next M30", "-53.0R"],
+        ["Delay 1", "-5.5R"]
+      ],
+      "decision_brief": {
+        "headline": "V20 result: TP-near protection needs finer timing evidence before live design.",
+        "key_results": [
+          "M30 replay control: 12,022 trades, 336.9R, PF about 1.058.",
+          "Same-M30 assumed upper bound: 512.9R, +176.0R versus control, but this relies on unknown intra-M30 ordering.",
+          "Conservative later-M30 activation did not beat control: m30_next was -53.0R and m30_delay1 was -5.5R.",
+          "Missed stop modifications are baseline-equivalent; successful modifications can still sacrifice later full TPs. Real 30-second live behavior needs M1/tick or forward attribution."
+        ],
+        "next_step": "Keep live TP/SL unchanged. If this remains a priority, collect M1/tick replay data or forward live attribution for 0.9R touches, stop-modify success, too-fast misses, and later outcomes."
+      }
     }
   ]
 }

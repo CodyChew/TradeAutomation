@@ -1,8 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-04 SGT after installing the Amazon Lightsail VPS
-production task, starting the VPS runner, and clarifying Windows process-count
-semantics.
+Last updated: 2026-05-05 SGT after LPFS V20 lower-timeframe
+protection-realism research.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -329,10 +328,11 @@ V17 LP-FS proximity result:
   structure to touch the selected LP. A future dashboard/live label can show
   LP-FS proximity as setup quality, but it is not a trade filter.
 
-V18/V19 TP-near research result:
+V18/V19/V20 TP-near research result:
 
 - V18 report: `docs/v18.html`.
 - V19 report: `docs/v19.html`.
+- V20 report: `docs/v20.html`.
 - V19 run folder:
   `reports/strategies/lp_force_strike_experiment_v19_tp_near_robustness/20260504_194519`.
 - V19 keeps the V15 LPFS strategy baseline and uses the V16 no-buffer bid/ask
@@ -357,12 +357,32 @@ V18/V19 TP-near research result:
 - V19 is still research-only. It did not change live executor behavior, VPS
   runtime, MT5 orders/state, Telegram lifecycle behavior, or TradingView
   indicators.
-- Next research/design task: create a separate live TP-near protection plan for
-  `lock_0p50r_pct_90`, covering stop-modification timing, broker stop
-  constraints, spread gating, order-modify failure handling, position
-  reconciliation, Telegram lifecycle wording, same-bar conflict policy,
-  kill-switch behavior, and VPS deployment/rollback. Do not implement that
-  inside V19.
+- V20 run folder:
+  `reports/strategies/lp_force_strike_experiment_v20_protection_realism/20260505_043723`.
+- V20 keeps the same H4/H8/H12/D1/W1 LPFS signal baseline but replays entry,
+  exit, and stop-protection behavior on M30 bid/ask candles.
+- V20 intentionally brackets live stop-modification timing. Default stress
+  variants do not assume instant stop modification: a `0.9R` touch only locks
+  the stop on a later M30 candle, and fast snapbacks are counted as missed. It
+  also includes `lock_0p50r_pct_90_m30_same_assumed` as an optimistic same-M30
+  upper bound for the live 30-second loop.
+- V20 M30 replay control: `12,022` trades, `336.9R`, PF about `1.058`.
+- Same-M30 upper bound: `lock_0p50r_pct_90_m30_same_assumed` produced
+  `512.9R`, PF about `1.095`, `+176.0R` versus control, `2,561` trigger
+  touches, `2,561` assumed activations, `427` saved-from-stop trades,
+  `747` sacrificed full-TP trades, and `206` same-bar conflicts. This is not
+  direct live evidence because intra-M30 ordering is unknown.
+- Conservative later-M30 variants were flat to negative. `m30_next` was
+  `-53.0R` versus control. `m30_delay1` was `331.4R`, PF about `1.058`,
+  `-5.5R` versus control, `1,043` activations, and `540` too-late rejections.
+- V20 is still research-only. It did not change live executor behavior, VPS
+  runtime, MT5 orders/state, Telegram lifecycle behavior, or TradingView
+  indicators.
+- Current TP-near conclusion: do not implement live stop protection from V19
+  alone. Real 30-second live behavior is likely between V20's pessimistic
+  later-M30 stress and its optimistic same-M30 upper bound. The next valid
+  evidence step is M1/tick replay or forward live attribution of `0.9R` touches,
+  modification success, and later outcome.
 
 A read-only sanity check over 720 recent detected setups showed:
 

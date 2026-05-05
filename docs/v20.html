@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LP + Force Strike V20 Protection Realism - by Cody</title>
+  <style>
+
+    :root {
+      --bg: #f3f6f8;
+      --panel: #ffffff;
+      --panel-soft: #f8fafb;
+      --ink: #17202a;
+      --muted: #5d6d7e;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --accent-2: #3f7f5f;
+      --good: #256f46;
+      --bad: #9f3333;
+      --warn: #8a5a00;
+      --focus: #f2c94c;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 Inter, Segoe UI, Roboto, Arial, sans-serif;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+    code { overflow-wrap: anywhere; }
+    .dashboard-header {
+      background: #17202a;
+      color: white;
+      padding: 28px max(18px, 5vw);
+      border-bottom: 4px solid #57a773;
+    }
+    .dashboard-header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 4vw, 30px);
+      letter-spacing: 0;
+    }
+    .dashboard-header p {
+      margin: 0;
+      color: #d8e0e8;
+      max-width: 1080px;
+      overflow-wrap: anywhere;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .page-nav {
+      margin-top: 18px;
+    }
+    .report-nav {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, .18);
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+    }
+    nav a:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .page-nav a.active {
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }
+    .report-nav a {
+      background: rgba(255, 255, 255, .03);
+      color: #edf4f7;
+    }
+    .archive-nav {
+      min-height: 34px;
+      position: relative;
+    }
+    .archive-nav summary {
+      cursor: pointer;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+      list-style: none;
+    }
+    .archive-nav summary::-webkit-details-marker {
+      display: none;
+    }
+    .archive-nav summary::after {
+      content: " +";
+      font-weight: 700;
+    }
+    .archive-nav[open] summary {
+      background: rgba(255, 255, 255, .16);
+    }
+    .archive-nav[open] summary::after {
+      content: " -";
+    }
+    .archive-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      max-width: min(680px, 100%);
+    }
+    .archive-links a {
+      font-size: 13px;
+      padding: 6px 9px;
+      min-height: 30px;
+    }
+    main {
+      padding: 24px max(18px, 5vw) 48px;
+    }
+    section {
+      margin: 0 0 22px;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(23, 32, 42, .05);
+      max-width: 100%;
+      overflow: visible;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 15px;
+      color: #34495e;
+      letter-spacing: 0;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi, .fact {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi-label, .fact span, .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .kpi-value, .kpi strong, .fact strong {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-note {
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 18px;
+    }
+    .note {
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+      margin-bottom: 14px;
+    }
+    .warning {
+      background: #fff8e8;
+      border-left-color: var(--warn);
+      color: #4d3b13;
+    }
+    .metric-glossary {
+      border-top: 4px solid #5c7f95;
+    }
+    .metric-glossary dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 10px;
+    }
+    .metric-glossary dl > div {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .metric-glossary dt {
+      margin: 0 0 5px;
+      font-weight: 700;
+    }
+    .metric-glossary dd {
+      margin: 0;
+      color: var(--muted);
+    }
+    .table-scroll, .scroll, .summary-comparison {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th, td {
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      box-shadow: 1px 0 0 var(--line);
+    }
+    th:first-child {
+      z-index: 3;
+    }
+    td:first-child {
+      background: var(--panel);
+      font-weight: 600;
+    }
+    th {
+      color: #3f4d5c;
+      background: #eef3f6;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tbody tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+    tbody tr:hover td {
+      background: #eef6f2;
+    }
+    .positive {
+      color: var(--good);
+      font-weight: 700;
+    }
+    .negative {
+      color: var(--bad);
+      font-weight: 700;
+    }
+    .neutral {
+      color: var(--muted);
+    }
+    footer {
+      color: var(--muted);
+      padding: 0 max(18px, 5vw) 28px;
+    }
+
+    @media (max-width: 760px) {
+      .dashboard-header {
+        padding: 22px 16px;
+      }
+      nav a {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+      .archive-nav {
+        flex: 1 1 100%;
+      }
+      .archive-nav summary {
+        text-align: center;
+      }
+      .archive-links a {
+        flex: 1 1 calc(25% - 8px);
+        text-align: center;
+      }
+      main {
+        padding: 16px 12px 34px;
+      }
+      section {
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 14px;
+      }
+      .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .kpi {
+        padding: 10px;
+      }
+      .kpi-value, .kpi strong, .fact strong {
+        font-size: 20px;
+      }
+      th, td {
+        padding: 6px 7px;
+        font-size: 12px;
+      }
+    }
+    @media (max-width: 480px) {
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+      .report-nav a {
+        flex-basis: calc(50% - 4px);
+      }
+    }
+
+
+    .experiment-summary {
+      border-top: 4px solid var(--accent);
+    }
+    .summary-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .summary-heading h2 {
+      margin-bottom: 0;
+    }
+    .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .status-badge {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      background: #f7f9fb;
+      color: var(--muted);
+    }
+    .status-active {
+      color: var(--good);
+      border-color: #b9dbc7;
+      background: #edf8f1;
+    }
+    .status-rejected {
+      color: var(--bad);
+      border-color: #e7bcbc;
+      background: #fff1f1;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+      gap: 12px;
+    }
+    .summary-grid div {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fbfc;
+      padding: 12px;
+    }
+    .summary-grid h3 {
+      margin: 0 0 6px;
+    }
+    .summary-grid p {
+      margin: 0;
+      color: var(--ink);
+    }
+    .conclusion-box {
+      margin-top: 14px;
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+    }
+    .decision-brief {
+      margin-top: 14px;
+      border: 1px solid #cbd8e4;
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 14px 16px;
+    }
+    .decision-brief h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--ink);
+    }
+    .decision-brief .brief-headline {
+      margin: 0 0 8px;
+      font-weight: 700;
+    }
+    .decision-brief ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .decision-brief li {
+      margin: 6px 0;
+    }
+    .decision-brief .brief-next {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+    .summary-comparison {
+      margin-top: 14px;
+      overflow-x: auto;
+    }
+    .comparison-table td:first-child,
+    .comparison-table th:first-child {
+      text-align: left;
+    }
+    @media (max-width: 760px) {
+      .summary-heading {
+        display: block;
+      }
+      .status-badge {
+        display: inline-block;
+        margin-top: 10px;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <header class="dashboard-header">
+    <h1>LP + Force Strike V20 Protection Realism - by Cody</h1>
+    <p>Research-only V20 lower-timeframe protection report. H4/H8/H12/D1/W1 LPFS signals are replayed through M30 bid/ask candles so a 0.9R touch only locks 0.5R when a later M30 candle could plausibly accept the stop modification.</p>
+    <nav class="page-nav" aria-label="Dashboard pages">
+      <a class="page-link" href="index.html">Home</a>
+      <a class="page-link" href="strategy.html">Strategy</a>
+      <a class="page-link" href="live_ops.html">Live Ops</a>
+      <a class="page-link" href="v13.html">V13</a>
+      <a class="page-link" href="v14.html">V14</a>
+      <a class="page-link" href="v15.html">V15</a>
+      <a class="page-link" href="v16.html">V16</a>
+      <a class="page-link" href="v17.html">V17</a>
+      <a class="page-link" href="v18.html">V18</a>
+      <a class="page-link" href="v19.html">V19</a>
+      <a class="page-link active" href="v20.html">V20</a>
+      <details class="archive-nav">
+        <summary>Archive V1-V12</summary>
+        <div class="archive-links">
+          <a class="page-link archive-link" href="v1.html">V1</a><a class="page-link archive-link" href="v2.html">V2</a><a class="page-link archive-link" href="v3.html">V3</a><a class="page-link archive-link" href="v4.html">V4</a><a class="page-link archive-link" href="v5.html">V5</a><a class="page-link archive-link" href="v6.html">V6</a><a class="page-link archive-link" href="v7.html">V7</a><a class="page-link archive-link" href="v8.html">V8</a><a class="page-link archive-link" href="v9.html">V9</a><a class="page-link archive-link" href="v10.html">V10</a><a class="page-link archive-link" href="v11.html">V11</a><a class="page-link archive-link" href="v12.html">V12</a>
+        </div>
+      </details>
+    </nav>
+
+    <nav class="report-nav" aria-label="Report sections">
+      <a href="#decision">Decision</a><a href="#ranking">Ranking</a><a href="#funnel">Funnel</a><a href="#robustness">Robustness</a><a href="#samples">Samples</a><a href="#follow-up">Follow-Up</a><a href="#rules">Rules</a>
+    </nav>
+
+  </header>
+
+  <main>
+
+    <section id="experiment-summary" class="experiment-summary">
+      <div class="summary-heading">
+        <div>
+          <div class="eyebrow">V20 Research Snapshot</div>
+          <h2>V20 Protection Realism</h2>
+        </div>
+        <span class="status-badge status-active">M30 replay study</span>
+      </div>
+
+      <div class="decision-brief">
+        <h3>Decision Brief</h3>
+        <p class="brief-headline">V20 result: use the Protection Funnel as the live-design gate.</p>
+        <ul><li>V20 keeps the same LP3, H4/H8/H12/D1/W1 LPFS signal population.</li><li>The replay searches M30 candles for the entry fill inside the same 6-bar higher-timeframe window.</li><li>The 0.9R trigger can only activate the locked stop on a later M30 candle, so fast snapbacks are not credited as protected.</li><li>Any live stop-modification behavior still needs a separate implementation and VPS deployment plan.</li></ul>
+        <p class="brief-next"><strong>Next:</strong> Read the V20 Decision Card, Protection Funnel, and changed-trade samples after the run completes.</p>
+      </div>
+
+      <div class="summary-grid">
+        <div><h3>What This Tests</h3><p>Does the V19 locked-profit idea still work when a 0.9R trigger can only move the stop on a later M30 candle?</p></div>
+        <div><h3>Setup Tested</h3><p>Research-only lower-timeframe replay using the V15 LPFS signal baseline. H4/H8/H12/D1/W1 setups are replayed on M30 bid/ask candles to test lock-stop behavior at 0.9R with a 0.5R protected stop. Fast trigger-to-retrace cases are counted as unprotected if the later M30 stop modification would be too late.</p></div>
+        <div><h3>How To Read This Page</h3><p>Start with the Decision Card and Protection Funnel. The funnel separates 0.9R trigger touches, successful stop activations, too-fast misses, and broker min-stop-distance blocks.</p></div>
+        <div><h3>Use / Do Not Use</h3><p>Use this page to decide whether a separate live stop-modification plan is justified. Do not change VPS, MT5 orders, live state, Telegram lifecycle, or production stop handling from V20 alone.</p></div>
+      </div>
+      <div class="conclusion-box"><strong>Conclusion:</strong> V20 is the live-design realism gate for stop protection. It does not change live behavior; it checks whether the 0.9R lock-stop idea survives lower-timeframe activation timing.</div>
+
+    </section>
+
+    <section id="decision">
+      <h2>Decision Card</h2>
+      <p class="callout"><strong>No V20 protection variant is strong enough for live design yet.</strong> Best raw variant is lock_0p50r_pct_90_m30_same_assumed at 176.0R versus M30 replay control, but it failed at least one gate or is only an upper-bound assumption.</p>
+      <div class="kpi-grid">
+        <div class="kpi"><span>Recommendation</span><strong>lock_0p50r_pct_90_m30_same_assumed</strong><small>FAIL V20 gate</small></div>
+        <div class="kpi"><span>R Delta vs M30 Control</span><strong class="positive">176.0</strong><small>same M30 replay path</small></div>
+        <div class="kpi"><span>Activation Rate</span><strong>100.0%</strong><small>activated / 0.9R trigger touches</small></div>
+        <div class="kpi"><span>Reserved DD / Worst Month</span><strong>19.33% / -4.45%</strong><small>V15 bucket sizing view</small></div>
+      </div>
+    </section>
+    <section id="ranking">
+      <h2>Variant Ranking</h2>
+      <p>Rows compare each stop-protection variant against the M30 replay control. A fast 0.9R touch that retreats before a later M30 modification is counted as unprotected.</p>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Family</th><th>Trades</th><th>R Delta</th><th>PF</th><th>PF Delta</th><th>Activation</th><th>Too Fast</th><th>Min Stop</th><th>Saved R</th><th>Sacrificed R</th><th>Return/DD</th><th>Candidate</th></tr></thead><tbody><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>same_m30_assumed_upper_bound</td><td>12,022</td><td class="positive">176.0</td><td>1.095</td><td>0.037</td><td>100.0%</td><td>0</td><td>0</td><td>640.5</td><td>-373.5</td><td>6.99</td><td>no</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>two_m30_bar_delay</td><td>12,022</td><td class="negative">-12.5</td><td>1.056</td><td>-0.001</td><td>28.3%</td><td>518</td><td>0</td><td>133.5</td><td>-134.5</td><td>3.59</td><td>no</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>one_m30_bar_delay</td><td>12,022</td><td class="negative">-5.5</td><td>1.058</td><td>0.000</td><td>40.7%</td><td>540</td><td>0</td><td>187.5</td><td>-180.0</td><td>3.50</td><td>no</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>broker_min_stop_stress</td><td>12,022</td><td class="negative">-50.5</td><td>1.051</td><td>-0.007</td><td>78.1%</td><td>498</td><td>63</td><td>270.0</td><td>-258.0</td><td>3.28</td><td>no</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>next_m30_bar_lock</td><td>12,022</td><td class="negative">-53.0</td><td>1.050</td><td>-0.007</td><td>80.6%</td><td>498</td><td>0</td><td>288.0</td><td>-274.0</td><td>3.24</td><td>no</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>broker_min_stop_stress</td><td>12,022</td><td class="negative">-54.0</td><td>1.050</td><td>-0.008</td><td>79.4%</td><td>498</td><td>29</td><td>277.5</td><td>-268.0</td><td>3.24</td><td>no</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>retry_after_rejection</td><td>12,022</td><td class="negative">-52.5</td><td>1.050</td><td>-0.007</td><td>78.8%</td><td>524</td><td>20</td><td>271.5</td><td>-260.0</td><td>3.22</td><td>no</td></tr></tbody></table></div>
+    </section>
+    <section id="funnel">
+      <h2>Protection Funnel</h2>
+      <p>This is the live-design realism check: trigger touches, successful stop activations, too-fast misses, and broker min-distance blocks.</p>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Triggered</th><th>Activated</th><th>Activation Rate</th><th>Too Fast</th><th>Min Stop</th><th>Lock-Stop Exits</th></tr></thead><tbody><tr><td>control_bid_ask</td><td>0</td><td>0</td><td>0.00</td><td>0</td><td>0</td><td>0</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>2561</td><td>2561</td><td>1.00</td><td>0</td><td>0</td><td>1177</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>2561</td><td>2063</td><td>0.81</td><td>498</td><td>0</td><td>741</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>2561</td><td>1043</td><td>0.41</td><td>540</td><td>0</td><td>486</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>2561</td><td>726</td><td>0.28</td><td>518</td><td>0</td><td>358</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>2561</td><td>2034</td><td>0.79</td><td>498</td><td>29</td><td>722</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>2561</td><td>2000</td><td>0.78</td><td>498</td><td>63</td><td>697</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>2561</td><td>2017</td><td>0.79</td><td>524</td><td>20</td><td>702</td></tr></tbody></table></div>
+    </section>
+    <section id="robustness">
+      <h2>Robustness</h2>
+      <h3>Symbol / Timeframe Winners And Losers</h3>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Symbol</th><th>TF</th><th>Trades</th><th>R Delta</th><th>PF</th></tr></thead><tbody><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>USDCAD</td><td>H4</td><td>236</td><td>16.00</td><td>1.39</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>USDCHF</td><td>H4</td><td>209</td><td>13.00</td><td>1.54</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>EURAUD</td><td>H4</td><td>240</td><td>11.50</td><td>1.33</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>GBPJPY</td><td>H4</td><td>196</td><td>11.00</td><td>0.97</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>AUDJPY</td><td>H4</td><td>205</td><td>9.50</td><td>0.93</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>AUDUSD</td><td>H4</td><td>225</td><td>9.00</td><td>1.23</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>CHFJPY</td><td>H4</td><td>228</td><td>9.00</td><td>1.03</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>GBPCHF</td><td>H4</td><td>256</td><td>9.00</td><td>1.23</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>GBPNZD</td><td>H4</td><td>230</td><td>8.50</td><td>1.26</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>CADCHF</td><td>H4</td><td>257</td><td>8.50</td><td>0.98</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>CHFJPY</td><td>H4</td><td>228</td><td>8.50</td><td>1.02</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>EURCHF</td><td>H4</td><td>273</td><td>8.00</td><td>1.12</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>EURGBP</td><td>H4</td><td>241</td><td>8.00</td><td>1.68</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>CHFJPY</td><td>H4</td><td>228</td><td>7.50</td><td>1.01</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>CHFJPY</td><td>H4</td><td>228</td><td>7.50</td><td>1.01</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>GBPAUD</td><td>H4</td><td>241</td><td>7.50</td><td>1.41</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>EURUSD</td><td>H4</td><td>225</td><td>7.00</td><td>0.91</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>EURCAD</td><td>H4</td><td>222</td><td>7.00</td><td>1.27</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>CHFJPY</td><td>H4</td><td>228</td><td>6.50</td><td>1.00</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>CHFJPY</td><td>H4</td><td>228</td><td>6.50</td><td>1.00</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>AUDNZD</td><td>H4</td><td>230</td><td>6.50</td><td>1.00</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>EURNZD</td><td>H4</td><td>216</td><td>6.00</td><td>1.15</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>CHFJPY</td><td>H4</td><td>228</td><td>6.00</td><td>1.00</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>EURJPY</td><td>H4</td><td>219</td><td>5.50</td><td>1.04</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>EURNZD</td><td>H8</td><td>83</td><td>5.00</td><td>0.90</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>GBPNZD</td><td>H8</td><td>100</td><td>5.00</td><td>0.98</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>AUDJPY</td><td>H4</td><td>205</td><td>4.50</td><td>0.88</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>NZDUSD</td><td>H8</td><td>83</td><td>4.50</td><td>0.89</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>EURJPY</td><td>H4</td><td>219</td><td>4.50</td><td>1.03</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>EURJPY</td><td>H4</td><td>219</td><td>4.50</td><td>1.03</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>EURJPY</td><td>H4</td><td>219</td><td>4.50</td><td>1.03</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>EURJPY</td><td>H4</td><td>219</td><td>4.50</td><td>1.03</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>USDJPY</td><td>H12</td><td>58</td><td>4.50</td><td>1.17</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>NZDJPY</td><td>H12</td><td>48</td><td>4.50</td><td>1.47</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>NZDJPY</td><td>H12</td><td>48</td><td>4.50</td><td>1.47</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>NZDJPY</td><td>H12</td><td>48</td><td>4.50</td><td>1.47</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>NZDJPY</td><td>H12</td><td>48</td><td>4.50</td><td>1.47</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>NZDJPY</td><td>H12</td><td>48</td><td>4.50</td><td>1.47</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>CADJPY</td><td>D1</td><td>33</td><td>4.00</td><td>0.94</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>CADJPY</td><td>D1</td><td>33</td><td>4.00</td><td>0.94</td></tr></tbody></table></div>
+      <h3>Year-By-Year Stability</h3>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Year</th><th>Trades</th><th>R Delta</th><th>Total R</th></tr></thead><tbody><tr><td>control_bid_ask</td><td>2016</td><td>730</td><td>0.00</td><td>2.00</td></tr><tr><td>control_bid_ask</td><td>2017</td><td>1246</td><td>0.00</td><td>12.00</td></tr><tr><td>control_bid_ask</td><td>2018</td><td>1151</td><td>0.00</td><td>33.00</td></tr><tr><td>control_bid_ask</td><td>2019</td><td>1204</td><td>0.00</td><td>-10.00</td></tr><tr><td>control_bid_ask</td><td>2020</td><td>1191</td><td>0.00</td><td>85.00</td></tr><tr><td>control_bid_ask</td><td>2021</td><td>1206</td><td>0.00</td><td>76.00</td></tr><tr><td>control_bid_ask</td><td>2022</td><td>1185</td><td>0.00</td><td>-3.00</td></tr><tr><td>control_bid_ask</td><td>2023</td><td>1221</td><td>0.00</td><td>-5.00</td></tr><tr><td>control_bid_ask</td><td>2024</td><td>1188</td><td>0.00</td><td>50.00</td></tr><tr><td>control_bid_ask</td><td>2025</td><td>1303</td><td>0.00</td><td>81.00</td></tr><tr><td>control_bid_ask</td><td>2026</td><td>397</td><td>0.00</td><td>15.94</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>2016</td><td>730</td><td>-0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>2017</td><td>1246</td><td>-2.50</td><td>9.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>2018</td><td>1151</td><td>-5.50</td><td>27.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>2019</td><td>1205</td><td>-2.50</td><td>-12.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>2020</td><td>1190</td><td>4.50</td><td>89.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>2021</td><td>1206</td><td>-6.00</td><td>70.00</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>2022</td><td>1186</td><td>8.00</td><td>5.00</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>2023</td><td>1220</td><td>10.00</td><td>5.00</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>2024</td><td>1189</td><td>-3.50</td><td>46.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>2025</td><td>1302</td><td>-5.00</td><td>76.00</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>2026</td><td>397</td><td>-2.50</td><td>13.44</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>2016</td><td>730</td><td>3.00</td><td>5.00</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>2017</td><td>1246</td><td>1.00</td><td>13.00</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>2018</td><td>1151</td><td>1.50</td><td>34.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>2019</td><td>1205</td><td>-0.50</td><td>-10.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>2020</td><td>1190</td><td>1.50</td><td>86.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>2021</td><td>1206</td><td>-10.50</td><td>65.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>2022</td><td>1185</td><td>-1.00</td><td>-4.00</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>2023</td><td>1221</td><td>4.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>2024</td><td>1189</td><td>-6.50</td><td>43.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>2025</td><td>1302</td><td>-3.50</td><td>77.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>2026</td><td>397</td><td>-2.00</td><td>13.94</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>2016</td><td>730</td><td>1.00</td><td>3.00</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>2017</td><td>1246</td><td>-10.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>2018</td><td>1151</td><td>-3.00</td><td>30.00</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>2019</td><td>1205</td><td>-0.00</td><td>-10.00</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>2020</td><td>1190</td><td>7.50</td><td>92.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>2021</td><td>1206</td><td>-15.00</td><td>61.00</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>2022</td><td>1186</td><td>-0.00</td><td>-3.00</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>2023</td><td>1220</td><td>-4.50</td><td>-9.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>2024</td><td>1189</td><td>-7.00</td><td>43.00</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>2025</td><td>1303</td><td>-14.50</td><td>66.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>2026</td><td>396</td><td>-8.00</td><td>7.94</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>2016</td><td>730</td><td>1.00</td><td>3.00</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>2017</td><td>1246</td><td>-9.50</td><td>2.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>2018</td><td>1151</td><td>-2.50</td><td>30.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>2019</td><td>1205</td><td>1.50</td><td>-8.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>2020</td><td>1190</td><td>6.50</td><td>91.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>2021</td><td>1206</td><td>-15.00</td><td>61.00</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>2022</td><td>1186</td><td>-0.00</td><td>-3.00</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>2023</td><td>1220</td><td>-3.50</td><td>-8.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>2024</td><td>1189</td><td>-7.00</td><td>43.00</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>2025</td><td>1303</td><td>-14.50</td><td>66.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>2026</td><td>396</td><td>-7.50</td><td>8.44</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>2016</td><td>730</td><td>2.00</td><td>4.00</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>2017</td><td>1246</td><td>-10.00</td><td>2.00</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>2018</td><td>1151</td><td>-4.00</td><td>29.00</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>2019</td><td>1205</td><td>0.50</td><td>-9.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>2020</td><td>1190</td><td>7.00</td><td>92.00</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>2021</td><td>1206</td><td>-14.50</td><td>61.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>2022</td><td>1186</td><td>1.00</td><td>-2.00</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>2023</td><td>1220</td><td>-5.00</td><td>-10.00</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>2024</td><td>1189</td><td>-8.50</td><td>41.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>2025</td><td>1303</td><td>-14.50</td><td>66.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>2026</td><td>396</td><td>-7.00</td><td>8.94</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>2016</td><td>730</td><td>0.50</td><td>2.50</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>2017</td><td>1246</td><td>-9.50</td><td>2.50</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>2018</td><td>1151</td><td>-3.50</td><td>29.50</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>2019</td><td>1205</td><td>0.50</td><td>-9.50</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>2020</td><td>1190</td><td>8.00</td><td>93.00</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>2021</td><td>1206</td><td>-15.00</td><td>61.00</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>2022</td><td>1186</td><td>-0.00</td><td>-3.00</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>2023</td><td>1220</td><td>-3.50</td><td>-8.50</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>2024</td><td>1189</td><td>-7.50</td><td>42.50</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>2025</td><td>1303</td><td>-15.00</td><td>66.00</td></tr><tr><td>lock_0p50r_pct_90_m30_retry_minstop_1x</td><td>2026</td><td>396</td><td>-7.50</td><td>8.44</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>2016</td><td>731</td><td>11.50</td><td>13.50</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>2017</td><td>1245</td><td>15.00</td><td>27.00</td></tr><tr><td>lock_0p50r_pct_90_m30_same_assumed</td><td>2018</td><td>1151</td><td>35.00</td><td>68.00</td></tr></tbody></table></div>
+    </section>
+    <section id="samples">
+      <h2>Changed-Trade Samples</h2>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Outcome</th><th>Symbol</th><th>TF</th><th>Side</th><th>Signal</th><th>Control Exit</th><th>Control R</th><th>Variant Exit</th><th>Variant R</th><th>Delta</th></tr></thead><tbody><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>4618</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>7223</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>11807</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>12756</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>13388</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H8</td><td>long</td><td>1168</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>saved_from_stop</td><td>AUDCAD</td><td>H8</td><td>long</td><td>4943</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H8</td><td>short</td><td>5700</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H8</td><td>long</td><td>6625</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>saved_from_stop</td><td>AUDCAD</td><td>H12</td><td>long</td><td>321</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>saved_from_stop</td><td>AUDCAD</td><td>W1</td><td>long</td><td>292</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>long</td><td>5704</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>short</td><td>9069</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>short</td><td>13372</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>saved_from_stop</td><td>AUDCHF</td><td>H8</td><td>short</td><td>3241</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay1</td><td>saved_from_stop</td><td>AUDCHF</td><td>H8</td><td>long</td><td>6652</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>4127</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>4618</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>7223</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>13388</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H8</td><td>short</td><td>5700</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H8</td><td>long</td><td>6625</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>saved_from_stop</td><td>AUDCAD</td><td>H12</td><td>short</td><td>2354</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H12</td><td>short</td><td>3861</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H12</td><td>long</td><td>4945</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>saved_from_stop</td><td>AUDCAD</td><td>W1</td><td>long</td><td>292</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>long</td><td>5704</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>saved_from_stop</td><td>AUDJPY</td><td>H4</td><td>long</td><td>2249</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>saved_from_stop</td><td>AUDJPY</td><td>H4</td><td>long</td><td>2318</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>saved_from_stop</td><td>AUDJPY</td><td>D1</td><td>short</td><td>1189</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>saved_from_stop</td><td>AUDNZD</td><td>H12</td><td>short</td><td>3806</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_delay2</td><td>saved_from_stop</td><td>AUDNZD</td><td>H12</td><td>long</td><td>3933</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>2661</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>4127</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>7223</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>7306</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>11807</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>11866</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>12336</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>12756</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>saved_from_stop</td><td>AUDCAD</td><td>H4</td><td>short</td><td>14770</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>saved_from_stop</td><td>AUDCAD</td><td>H12</td><td>long</td><td>321</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>saved_from_stop</td><td>AUDCAD</td><td>H12</td><td>short</td><td>2354</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>saved_from_stop</td><td>AUDCAD</td><td>W1</td><td>long</td><td>292</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>long</td><td>5704</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>short</td><td>9069</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>short</td><td>12542</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_0p5x</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>short</td><td>13372</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>2661</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>4127</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>7223</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>7306</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>11807</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>11866</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>12336</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>12756</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>saved_from_stop</td><td>AUDCAD</td><td>H4</td><td>short</td><td>14770</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>saved_from_stop</td><td>AUDCAD</td><td>H12</td><td>long</td><td>321</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>saved_from_stop</td><td>AUDCAD</td><td>H12</td><td>short</td><td>2354</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>saved_from_stop</td><td>AUDCAD</td><td>W1</td><td>long</td><td>292</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>long</td><td>5704</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>short</td><td>9069</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>short</td><td>12542</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_minstop_1x</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>short</td><td>13372</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>2661</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>4127</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>7223</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>7306</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>11807</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>long</td><td>11866</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>12336</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>sacrificed_full_tp</td><td>AUDCAD</td><td>H4</td><td>short</td><td>12756</td><td>target</td><td>1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>-0.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>saved_from_stop</td><td>AUDCAD</td><td>H4</td><td>short</td><td>14770</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>saved_from_stop</td><td>AUDCAD</td><td>H4</td><td>long</td><td>15413</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>saved_from_stop</td><td>AUDCAD</td><td>H12</td><td>long</td><td>321</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>saved_from_stop</td><td>AUDCAD</td><td>H12</td><td>short</td><td>2354</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>saved_from_stop</td><td>AUDCAD</td><td>W1</td><td>long</td><td>292</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>long</td><td>5704</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>short</td><td>9069</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr><tr><td>lock_0p50r_pct_90_m30_next</td><td>saved_from_stop</td><td>AUDCHF</td><td>H4</td><td>short</td><td>12542</td><td>stop</td><td>-1.00</td><td>tp_near_lock_stop</td><td>0.50</td><td>1.50</td></tr></tbody></table></div>
+    </section>
+    <section id="follow-up">
+      <h2>Follow-Up Recommendation</h2>
+      <p class="callout">Inspect activation misses and symbol/timeframe concentration before designing a live stop-modify rule.</p>
+    </section>
+    <section id="rules">
+      <h2>Rules Tested</h2>
+      <ul>
+        <li>Signal baseline stays V15/V13: LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, 6-bar entry window.</li>
+        <li>M30 replay finds the first bid/ask entry touch inside the same 6-bar higher-timeframe entry window.</li>
+        <li>The default stress variants never move the stop inside the same M30 candle; activation begins on a later M30 candle.</li>
+        <li>The same-M30 assumed variant is an optimistic upper bound for the live 30-second loop. It can show whether the idea deserves M1/tick validation, but it is not direct live evidence.</li>
+        <li>If price retreats too far before activation, the stop update is rejected as too late and the original bracket remains.</li>
+        <li>Optional min-stop-distance variants require current price to be at least a spread multiple away from the proposed 0.5R stop.</li>
+        <li>Same-bar stop/target conflict remains stop-first.</li>
+      </ul>
+    </section>
+
+    <section id="metric-glossary" class="metric-glossary" aria-labelledby="metric-glossary-title">
+      <h2 id="metric-glossary-title">Metric Glossary</h2>
+      <dl><div><dt>Realized DD</dt><dd>Closed-trade equity drawdown only. It ignores open trade risk until a position exits.</dd></div><div><dt>Risk-Reserved DD</dt><dd>Live-account stress drawdown that subtracts full open risk while positions are active.</dd></div><div><dt>Max Reserved Risk</dt><dd>Largest total open risk reserved at one time across accepted portfolio trades.</dd></div><div><dt>Worst Month</dt><dd>Largest calendar-month loss in account-percent terms for the tested schedule.</dd></div><div><dt>Return/DD</dt><dd>Total return divided by risk-reserved drawdown where available; higher is more efficient.</dd></div><div><dt>Avg R / PF</dt><dd>Average net R per trade and profit factor. Use both with trade count before trusting a row.</dd></div></dl>
+    </section>
+
+  </main>
+  <footer>Generated from <code>C:\Users\chewc\OneDrive\Desktop\TradeAutomation\reports\strategies\lp_force_strike_experiment_v20_protection_realism\20260505_043723</code>. Research-only; no live execution imports.</footer>
+</body>
+</html>

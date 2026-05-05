@@ -1,8 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-04 local time after LPFS Amazon Lightsail VPS
-production-task installation, go-live check, and Windows process-count
-clarification.
+Last updated: 2026-05-05 local time after LPFS V20 lower-timeframe
+protection-realism research.
 
 ## Purpose
 
@@ -160,6 +159,15 @@ Latest research decisions:
   live FS structure stops unchanged; spread buffers remain follow-up research.
 - V17 LP-FS proximity tightening did not beat current V15. Do not require the
   Force Strike structure to touch/cross the selected LP.
+- V19 hard reduced-TP testing rejected a simple `0.9R` take profit as too weak,
+  but found `lock_0p50r_pct_90` promising under higher-timeframe bid/ask
+  simulation.
+- V20 lower-timeframe replay brackets the live 30-second timing question. When
+  stop protection can only activate on a later M30 candle, variants were flat
+  to negative versus M30 control. Under an optimistic same-M30 activation
+  assumption, the idea improves but is only an upper bound. Keep live TP/SL
+  behavior unchanged until finer data or forward evidence confirms the live
+  timing.
 
 ## Latest Timeframe Comparison
 
@@ -208,6 +216,9 @@ Static dashboards exist at:
 - `docs/v15.html`: 3-bucket risk ladder sensitivity.
 - `docs/v16.html`: bid/ask execution realism and spread-buffer research.
 - `docs/v17.html`: LP-FS proximity tightening research.
+- `docs/v18.html`: TP-near exit research.
+- `docs/v19.html`: hard reduced-TP and TP-near robustness research.
+- `docs/v20.html`: M30 replay protection-realism research.
 - `docs/strategy.html`: current strategy guide for V13 mechanics + V15 risk
   buckets, including signal rules, backtest trade model, MT5-not-final status,
   edge cases, and deterministic inline SVG diagrams.
@@ -516,6 +527,22 @@ Live-send adapter facts:
   control, `390` saved-from-stop trades, `259` sacrificed full-TP trades, and
   `308` same-bar-conflict rows. No live behavior changed. The next TP-near step
   must be a separate live stop-protection design and VPS deployment plan.
+- V20 protection-realism has now been run as research-only evidence:
+  `docs/v20.html` and
+  `reports/strategies/lp_force_strike_experiment_v20_protection_realism/20260505_043723`.
+  It keeps the V15 signal baseline but replays entries/exits/protection on M30
+  bid/ask candles. It explicitly brackets live timing: default stress variants
+  only lock the stop on a later M30 candle, while
+  `lock_0p50r_pct_90_m30_same_assumed` is an optimistic upper bound for the
+  30-second live loop. M30 replay control produced `12,022` trades, `336.9R`,
+  PF about `1.058`. Same-M30 assumed produced `512.9R`, `+176.0R` versus
+  control, but that relies on unknown intra-M30 ordering and is not direct live
+  evidence. The practical later-M30 variants were flat to negative:
+  `lock_0p50r_pct_90_m30_next` was `-53.0R` and
+  `lock_0p50r_pct_90_m30_delay1` was `-5.5R` versus control. No live behavior
+  changed. Current TP-near conclusion: live behavior should remain unchanged;
+  the next valid evidence step is M1/tick replay or forward live attribution,
+  not immediate implementation.
 - Once a pending order is placed, spread widening does not auto-cancel it and
   does not currently trigger a dedicated Telegram alert.
 - Research gap: the historical baseline includes candle-spread cost drag, but
