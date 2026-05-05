@@ -372,6 +372,77 @@ commit `04e92c8` or newer and `LPFS_Live` must be intentionally restarted
 before both behaviors are active; an already running process keeps the old
 code.
 
+LP/FS separation deployment note:
+
+- current signal baseline requires `lp_pivot_index < fs_mother_index`;
+- the rule is controlled by `require_lp_pivot_before_fs_mother`, defaulting to
+  `true` for research, dry-run, and live-send paths;
+- V22 control remains reproducible by explicitly setting the flag `false`;
+- existing pending orders, active positions, live state, and journal files must
+  not be edited for this deployment;
+- existing historical processed/skipped signals remain processed because live
+  `processed_signal_keys` do not include LP pivot index.
+
+Use this exact VPS update sequence for the LP/FS separation baseline:
+
+```powershell
+cd C:\TradeAutomation
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60
+git status --short
+
+.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason "deploy LPFS V22 hard LP-FS separation"
+Start-Sleep -Seconds 90
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60
+```
+
+Expected paused state:
+
+- `kill_switch_active=True`;
+- `processes=0`;
+- existing MT5 pending orders and positions are not edited.
+
+If a runner remains active after the graceful wait:
+
+```powershell
+Stop-ScheduledTask -TaskName "LPFS_Live" -ErrorAction SilentlyContinue
+Get-CimInstance Win32_Process |
+    Where-Object { $_.CommandLine -match "run_lp_force_strike_live_executor" } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60
+```
+
+Then pull and run deployment checks:
+
+```powershell
+git pull
+.\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_signals strategies.lp_force_strike_strategy_lab.tests.test_dry_run_executor strategies.lp_force_strike_strategy_lab.tests.test_live_executor -v
+```
+
+Do not edit:
+
+```text
+C:\TradeAutomationRuntime\data\live\lpfs_live_state.json
+C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl
+MT5 orders
+MT5 positions
+```
+
+Resume only when ready:
+
+```powershell
+Remove-Item "C:\TradeAutomationRuntime\data\live\KILL_SWITCH" -ErrorAction SilentlyContinue
+Start-ScheduledTask -TaskName "LPFS_Live"
+Start-Sleep -Seconds 60
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60
+```
+
+Expected resumed state:
+
+- one logical LPFS live runner;
+- heartbeat updated after restart;
+- new future signals use hard LP/FS separation;
+- existing historical skipped/processed signals remain processed.
+
 If status shows suspicious duplicate runner entries, pause first and
 investigate afterward:
 

@@ -636,25 +636,25 @@ def _research_revalidation_matrix() -> pd.DataFrame:
             "research_branch": "V17 LP/FS proximity",
             "classification": "stale_until_rerun",
             "reason": "V17 studied the old signal universe that allowed LP pivot inside the FS formation.",
-            "next_action": "Rerun proximity only if V22 separation becomes a live candidate.",
+            "next_action": "Rerun proximity on the accepted V22 signal universe before using it for a new live-rule decision.",
         },
         {
             "research_branch": "V18/V19 TP-near exits",
             "classification": "stale_until_rerun",
             "reason": "The TP-near trade population came from the old baseline.",
-            "next_action": "Rerun TP-near after deciding whether separation is the new baseline.",
+            "next_action": "Rerun TP-near on the accepted V22 signal universe before using it for a live TP/SL decision.",
         },
         {
             "research_branch": "V20 protection realism",
             "classification": "stale_until_rerun",
             "reason": "Protection timing used old signal candidates.",
-            "next_action": "Rerun lower-timeframe protection only after a separated baseline is accepted.",
+            "next_action": "Rerun lower-timeframe protection on the accepted V22 signal universe.",
         },
         {
             "research_branch": "V21 crypto expansion",
             "classification": "stale_before_crypto_live_planning",
             "reason": "Crypto used the same signal-rule family and must be rechecked before crypto expansion decisions.",
-            "next_action": "Rerun crypto transfer with separation if crypto remains a priority.",
+            "next_action": "Rerun crypto transfer with the accepted V22 separation rule if crypto remains a priority.",
         },
         {
             "research_branch": "V1-V8 exploratory search history",
@@ -738,6 +738,7 @@ def _decision(summary: pd.DataFrame, criteria: dict[str, Any]) -> dict[str, Any]
     r_delta = float(separated["total_net_r_delta_vs_control"])
     pf_delta = separated.get("pf_delta_vs_control")
     win_delta = float(separated["win_rate_delta_vs_control"])
+    avg_r_delta = float(separated.get("avg_net_r_delta_vs_control", 0.0))
     return_dd_delta = None
     if separated.get("return_to_drawdown_r") is not None and control.get("return_to_drawdown_r") is not None:
         return_dd_delta = float(separated["return_to_drawdown_r"] - control["return_to_drawdown_r"])
@@ -745,9 +746,17 @@ def _decision(summary: pd.DataFrame, criteria: dict[str, Any]) -> dict[str, Any]
     r_drop_pct = 0.0
     if float(control["total_net_r"]) > 0 and r_delta < 0:
         r_drop_pct = abs(r_delta) / float(control["total_net_r"]) * 100.0
+    min_return_dd_delta = criteria.get("min_return_to_drawdown_delta")
+    passes_return_dd = (
+        True
+        if min_return_dd_delta is None
+        else return_dd_delta is None or return_dd_delta >= float(min_return_dd_delta)
+    )
     passes_quality = (
         (pf_delta is not None and float(pf_delta) >= float(criteria.get("min_profit_factor_delta", 0.0)))
-        and (return_dd_delta is None or return_dd_delta >= float(criteria.get("min_return_to_drawdown_delta", 0.0)))
+        and win_delta >= float(criteria.get("min_win_rate_delta", 0.0))
+        and avg_r_delta >= float(criteria.get("min_avg_net_r_delta", 0.0))
+        and passes_return_dd
     )
     passes_cost = (
         r_drop_pct <= float(criteria.get("max_total_net_r_drop_pct", 5.0))
@@ -758,9 +767,9 @@ def _decision(summary: pd.DataFrame, criteria: dict[str, Any]) -> dict[str, Any]
         headline = "The separation rule improved the current backtest."
         follow_up = "Next: review removed trades, then draft a separate production-change plan if the rule looks conceptually correct."
     elif passes_quality and passes_cost:
-        status = "design_valid_but_small_tradeoff"
-        headline = "The rule is conceptually cleaner and the tradeoff is small."
-        follow_up = "Next: inspect removed LP==mother examples before deciding whether design purity justifies the small performance change."
+        status = "accepted_quality_tradeoff"
+        headline = "Accept the hard LP-before-FS rule for implementation planning."
+        follow_up = "Next: deploy the hard rule intentionally, then rerun stale V17-V21 research on the accepted signal universe."
     elif r_delta < 0 and not passes_cost:
         status = "do_not_patch_live_yet"
         headline = "The rule weakens the current baseline too much for an immediate change."
@@ -835,6 +844,7 @@ def _html_report(
     separated_row = separated.iloc[0].to_dict() if not separated.empty else {}
     decision_badge_class = {
         "live_rule_candidate": "good",
+        "accepted_quality_tradeoff": "good",
         "design_valid_but_small_tradeoff": "warn",
         "mixed_result": "warn",
         "do_not_patch_live_yet": "bad",
@@ -885,7 +895,7 @@ def _html_report(
     <div class="metric-card"><span>Reserved DD</span><strong>{_fmt_pct_points(separated_row.get('bucket_efficient_reserved_max_drawdown_pct'), 2)}</strong></div>
     <div class="metric-card"><span>Return/DD</span><strong>{_fmt_num(separated_row.get('bucket_efficient_return_to_reserved_drawdown'))}</strong></div>
   </div>
-  <p class="muted">No production execution behavior is changed by V22. The current permissive signal behavior remains the default unless a separate implementation plan is approved.</p>
+  <p class="muted">V22 accepted the hard LP-before-FS rule as the next baseline. Deployment still requires the live runner to be intentionally updated and restarted; existing live state, pending orders, and positions are not edited by this report.</p>
 </section>
 <section id="comparison">
   <h2>Comparison Table</h2>
@@ -1118,6 +1128,7 @@ def _run(
         revalidation=revalidation,
         run_summary=run_summary,
     )
+    html_report = "\n".join(line.rstrip() for line in html_report.splitlines()) + "\n"
     (run_dir / "dashboard.html").write_text(html_report, encoding="utf-8")
     docs_target = docs_output
     if docs_target is None and config.get("docs_output_path"):

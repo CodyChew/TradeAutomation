@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-05 SGT after LPFS V20 lower-timeframe
-protection-realism research.
+Last updated: 2026-05-05 SGT after accepting LPFS V22 hard LP/FS separation as
+the new signal baseline.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -23,9 +23,11 @@ file, and the JSONL journal before making operational decisions.
 ## Current Project Focus
 
 The active work is the LP + Force Strike strategy lab. The strategy baseline is
-V13 mechanics with V15 risk buckets:
+V13 mechanics with V15 risk buckets and V22 LP/FS separation:
 
 - LP3, `take_all`, H4/H8/H12/D1/W1.
+- Selected LP pivot must be before the Force Strike mother bar
+  (`lp_pivot_index < fs_mother_index`).
 - 0.5 signal-candle pullback entry.
 - Force Strike structure stop.
 - 1R target.
@@ -35,6 +37,10 @@ V13 mechanics with V15 risk buckets:
   The MT5 order also carries a conservative broker backstop in case the runner
   stops.
 - V15 unscaled risk buckets: H4/H8 `0.20%`, H12/D1 `0.30%`, W1 `0.75%`.
+
+The legacy override `require_lp_pivot_before_fs_mother=false` exists only for
+reproducible comparison such as V22 control. Do not edit live state or rearm
+historical processed/skipped signals for this baseline change.
 
 Live broker testing scales that ladder with `live_send.risk_bucket_scale=0.05`,
 so H4/H8 are `0.01%`, H12/D1 are `0.015%`, and W1 is `0.0375%`.
@@ -327,6 +333,9 @@ V17 LP-FS proximity result:
 - Decision: keep current V15 unchanged. Do not require the Force Strike
   structure to touch the selected LP. A future dashboard/live label can show
   LP-FS proximity as setup quality, but it is not a trade filter.
+- Staleness note after V22: V17 studied the old signal universe. Rerun it on
+  the separated signal baseline before using it for any new live-design
+  decision.
 
 V18/V19/V20 TP-near research result:
 
@@ -335,8 +344,8 @@ V18/V19/V20 TP-near research result:
 - V20 report: `docs/v20.html`.
 - V19 run folder:
   `reports/strategies/lp_force_strike_experiment_v19_tp_near_robustness/20260504_194519`.
-- V19 keeps the V15 LPFS strategy baseline and uses the V16 no-buffer bid/ask
-  simulator as the control environment.
+- V19 keeps the old V15 LPFS strategy baseline and uses the V16 no-buffer
+  bid/ask simulator as the control environment.
 - V19 close variants now use hard reduced-TP semantics: `close_pct_90` exits at
   `0.9R` once touched and does not get upgraded to full `1R` later.
 - V19 full-universe scope: all `H4/H8/H12/D1/W1` LPFS datasets from
@@ -383,6 +392,9 @@ V18/V19/V20 TP-near research result:
   later-M30 stress and its optimistic same-M30 upper bound. The next valid
   evidence step is M1/tick replay or forward live attribution of `0.9R` touches,
   modification success, and later outcome.
+- Staleness note after V22: V18/V19/V20 used the old signal universe. Rerun
+  TP-near/protection research on the separated baseline before using those
+  dashboards for a live TP/SL design.
 
 A read-only sanity check over 720 recent detected setups showed:
 
@@ -498,11 +510,11 @@ file whenever Telegram reports a placement, cancellation, fill, stop, target,
 or runner error. Telegram is useful for signal/runner monitoring, but MT5 is
 the broker source of truth.
 
-Do not change signal rules, stops, targets, spread threshold, risk buckets, or
-pending expiration as part of Phase 2. V16 and V17 support keeping current V15
-live behavior unchanged while operations are hardened. Corrected V19 marks
-`lock_0p50r_pct_90` as a research-only live-design candidate, but no TP-near
-live behavior has been implemented or deployed.
+Do not change stops, targets, spread threshold, risk buckets, or pending
+expiration as part of Phase 2. The one accepted signal-rule change is V22 hard
+LP/FS separation. Corrected V19 marks `lock_0p50r_pct_90` as a research-only
+live-design candidate, but no TP-near live behavior has been implemented or
+deployed, and that branch is stale until rerun on the V22 signal universe.
 
 ## Verification Commands
 
@@ -530,10 +542,11 @@ Full strict gate:
 .\venv\Scripts\python scripts\run_core_coverage.py
 ```
 
-Latest full strict result on 2026-05-05 after V19:
+Latest full strict result on 2026-05-05 after V22 baseline implementation:
 
-- `333` unittest cases across the scoped core labs.
-- `100.00%` line and branch coverage.
+- `274` LPFS unittest discovery cases.
+- Core coverage ran all scoped concept/shared/LPFS tests and reported
+  `100.00%` line and branch coverage across the measured modules.
 
 Latest selector revalidation on 2026-05-01:
 

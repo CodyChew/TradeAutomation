@@ -289,6 +289,7 @@ class DryRunExecutorTests(unittest.TestCase):
                             "max_spread_points": "15",
                             "max_lots_per_order": "0.5",
                             "risk_bucket_scale": "0.1",
+                            "require_lp_pivot_before_fs_mother": False,
                         },
                     }
                 ),
@@ -318,6 +319,7 @@ class DryRunExecutorTests(unittest.TestCase):
             self.assertEqual(settings.executor.max_spread_points, 15.0)
             self.assertEqual(settings.executor.max_lots_per_order, 0.5)
             self.assertEqual(settings.executor.risk_bucket_scale, 0.1)
+            self.assertFalse(settings.executor.require_lp_pivot_before_fs_mother)
             self.assertTrue(Path(settings.executor.journal_path).is_absolute())
             self.assertNotIn("secret", str(settings.safe_dict()).lower())
 
@@ -333,6 +335,7 @@ class DryRunExecutorTests(unittest.TestCase):
             self.assertEqual(env_settings.local.mt5_server, "3")
             self.assertFalse(env_settings.local.use_existing_terminal_session)
             self.assertEqual(env_settings.executor.symbols, ("EURUSD",))
+            self.assertTrue(env_settings.executor.require_lp_pivot_before_fs_mother)
 
     def test_load_settings_accepts_powershell_utf8_bom_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -703,8 +706,14 @@ class DryRunExecutorTests(unittest.TestCase):
             dry_run_module,
             "detect_lp_force_strike_signals",
             return_value=[old_signal, latest_signal],
-        ):
-            setups = default_setup_provider(frame, "EURUSD", "H4", DryRunExecutorConfig())
+        ) as detector:
+            setups = default_setup_provider(
+                frame,
+                "EURUSD",
+                "H4",
+                DryRunExecutorConfig(require_lp_pivot_before_fs_mother=False),
+            )
+        self.assertEqual(detector.call_args.kwargs["require_lp_pivot_before_fs_mother"], False)
         self.assertEqual(len(setups), 1)
         setup = setups[0]
         self.assertIsInstance(setup, TradeSetup)
@@ -979,6 +988,7 @@ class DryRunExecutorTests(unittest.TestCase):
         payload = example_path.read_text(encoding="utf-8")
 
         self.assertIn("YOUR_DEMO_MT5_LOGIN", payload)
+        self.assertIn('"require_lp_pivot_before_fs_mother": true', payload)
         self.assertNotRegex(payload, r"\d{6,}:[A-Za-z0-9_-]{20,}")
         self.assertNotIn("secret", payload.lower())
 

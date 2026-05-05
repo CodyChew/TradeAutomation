@@ -83,6 +83,7 @@ class LiveSendExecutorConfig:
     strategy_magic: int = 131500
     pivot_strength: int = 3
     max_bars_from_lp_break: int = 6
+    require_lp_pivot_before_fs_mother: bool = True
     max_entry_wait_bars: int = 6
     max_spread_risk_fraction: float = 0.10
     market_recovery_mode: str = "better_than_entry_only"
@@ -364,6 +365,13 @@ def load_live_send_settings(path: str | Path = "config.local.json", *, env: dict
         strategy_magic=int(live_payload.get("strategy_magic", dry_executor.strategy_magic)),
         pivot_strength=int(live_payload.get("pivot_strength", dry_executor.pivot_strength)),
         max_bars_from_lp_break=int(live_payload.get("max_bars_from_lp_break", dry_executor.max_bars_from_lp_break)),
+        require_lp_pivot_before_fs_mother=_optional_bool(
+            live_payload.get(
+                "require_lp_pivot_before_fs_mother",
+                dry_executor.require_lp_pivot_before_fs_mother,
+            ),
+            default=True,
+        ),
         max_entry_wait_bars=int(live_payload.get("max_entry_wait_bars", dry_executor.max_entry_wait_bars)),
         max_spread_risk_fraction=float(live_payload.get("max_spread_risk_fraction", 0.10)),
         market_recovery_mode=str(live_payload.get("market_recovery_mode", "better_than_entry_only")),
@@ -2542,6 +2550,14 @@ def _optional_float(value: Any) -> float | None:
     return float(value)
 
 
+def _optional_bool(value: Any, *, default: bool) -> bool:
+    if value in (None, ""):
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 def _resolve_local_path(base_dir: Path, raw_path: str | Path) -> Path:
     path = Path(raw_path)
     if path.is_absolute():
@@ -2567,5 +2583,6 @@ def _dry_compatible_config(config: LiveSendExecutorConfig) -> Any:
         strategy_magic=config.strategy_magic,
         pivot_strength=config.pivot_strength,
         max_bars_from_lp_break=config.max_bars_from_lp_break,
+        require_lp_pivot_before_fs_mother=config.require_lp_pivot_before_fs_mother,
         max_entry_wait_bars=config.max_entry_wait_bars,
     )

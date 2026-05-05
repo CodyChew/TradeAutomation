@@ -55,6 +55,7 @@ var array<int> activeLowBars = array.new<int>()
 
 var array<int> trapSides = array.new<int>()
 var array<float> trapLpPrices = array.new<float>()
+var array<int> trapPivotBars = array.new<int>()
 var array<int> trapBreakBars = array.new<int>()
 var array<int> trapBreakTimes = array.new<int>()
 
@@ -122,11 +123,13 @@ f_prune_trap_windows(int maxBarsFromBreak, int maxWindows) =>
             if barsFromBreak > maxBarsFromBreak
                 array.remove(trapSides, idx)
                 array.remove(trapLpPrices, idx)
+                array.remove(trapPivotBars, idx)
                 array.remove(trapBreakBars, idx)
                 array.remove(trapBreakTimes, idx)
     while array.size(trapSides) > maxWindows
         array.shift(trapSides)
         array.shift(trapLpPrices)
+        array.shift(trapPivotBars)
         array.shift(trapBreakBars)
         array.shift(trapBreakTimes)
 
@@ -205,6 +208,7 @@ bool supportBreakFound = false
 float supportBreakPrice = na
 int supportBreakTime = na
 int supportBreakBar = na
+int supportBreakPivotBar = na
 int lowCountBeforeBreak = array.size(activeLowLines)
 if lowCountBeforeBreak > 0
     for stepIndex = 0 to lowCountBeforeBreak - 1
@@ -218,6 +222,7 @@ if lowCountBeforeBreak > 0
                 supportBreakPrice := price
                 supportBreakTime := time
                 supportBreakBar := bar_index
+                supportBreakPivotBar := array.get(activeLowBars, idx)
             line.delete(array.get(activeLowLines, idx))
             array.remove(activeLowLines, idx)
             array.remove(activeLowPrices, idx)
@@ -228,6 +233,7 @@ bool resistanceBreakFound = false
 float resistanceBreakPrice = na
 int resistanceBreakTime = na
 int resistanceBreakBar = na
+int resistanceBreakPivotBar = na
 int highCountBeforeBreak = array.size(activeHighLines)
 if highCountBeforeBreak > 0
     for stepIndex = 0 to highCountBeforeBreak - 1
@@ -241,6 +247,7 @@ if highCountBeforeBreak > 0
                 resistanceBreakPrice := price
                 resistanceBreakTime := time
                 resistanceBreakBar := bar_index
+                resistanceBreakPivotBar := array.get(activeHighBars, idx)
             line.delete(array.get(activeHighLines, idx))
             array.remove(activeHighLines, idx)
             array.remove(activeHighPrices, idx)
@@ -250,12 +257,14 @@ if highCountBeforeBreak > 0
 if supportBreakFound
     array.push(trapSides, 1)
     array.push(trapLpPrices, supportBreakPrice)
+    array.push(trapPivotBars, supportBreakPivotBar)
     array.push(trapBreakBars, supportBreakBar)
     array.push(trapBreakTimes, supportBreakTime)
 
 if resistanceBreakFound
     array.push(trapSides, -1)
     array.push(trapLpPrices, resistanceBreakPrice)
+    array.push(trapPivotBars, resistanceBreakPivotBar)
     array.push(trapBreakBars, resistanceBreakBar)
     array.push(trapBreakTimes, resistanceBreakTime)
 
@@ -345,15 +354,18 @@ int selectedBreakTime = na
 int windowCount = array.size(trapSides)
 
 if rawSignal and closeConfirmed and windowCount > 0
+    int fsMotherBar = bar_index - foundMotherOff
     for idx = 0 to windowCount - 1
         int trapSide = array.get(trapSides, idx)
         float lpPrice = array.get(trapLpPrices, idx)
+        int pivotBar = array.get(trapPivotBars, idx)
         int breakBar = array.get(trapBreakBars, idx)
         int barsFromBreak = bar_index - breakBar + 1
         bool sideMatches = trapSide == foundSide
         bool insideBreakWindow = barsFromBreak >= 1 and barsFromBreak <= maxBarsFromLpBreak
+        bool pivotBeforeMother = pivotBar < fsMotherBar
         bool closeValidSide = foundSide > 0 ? close >= lpPrice : close <= lpPrice
-        if sideMatches and insideBreakWindow and closeValidSide
+        if sideMatches and insideBreakWindow and pivotBeforeMother and closeValidSide
             bool betterWindow = na(selectedWindowIndex)
             if not betterWindow
                 if foundSide > 0
@@ -433,6 +445,7 @@ if lpfsSignal
 
     array.remove(trapSides, selectedWindowIndex)
     array.remove(trapLpPrices, selectedWindowIndex)
+    array.remove(trapPivotBars, selectedWindowIndex)
     array.remove(trapBreakBars, selectedWindowIndex)
     array.remove(trapBreakTimes, selectedWindowIndex)
 

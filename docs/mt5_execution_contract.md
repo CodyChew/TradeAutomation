@@ -8,6 +8,8 @@ explicit live-send config is enabled, `order_send`.
 Current basis:
 
 - Strategy mechanics: V13 LP3 take-all.
+- Signal-quality guard: V22 hard LP/FS separation, requiring the selected LP
+  pivot index to be before the Force Strike mother index.
 - Trade model: 0.5 signal-candle pullback, Force Strike structure stop, 1R
   target, fixed 6-bar pullback wait.
 - Risk buckets: V15 most-efficient practical row.
@@ -20,6 +22,13 @@ The dry-run and live-send executors can scale this ladder for broker testing wit
 sizing `H4/H8` at `0.02%`, `H12/D1` at `0.03%`, and `W1` at `0.075%`.
 The current real-account live-test default is `0.05`, sizing `H4/H8` at
 `0.01%`, `H12/D1` at `0.015%`, and `W1` at `0.0375%`.
+
+The current detector default is `require_lp_pivot_before_fs_mother=true`. This
+means new setups are emitted only when `lp_pivot_index < fs_mother_index`.
+LP==mother and LP-inside-FS candidates are treated as invalid/self-referential
+and are not sent. The legacy override `false` exists only for reproducible
+research comparison. Deploying this rule does not edit existing pending orders,
+active positions, historical journal rows, or processed signal keys.
 
 ## Order Intent
 
@@ -248,7 +257,7 @@ It adds:
   widening does not auto-cancel it and does not currently emit a dedicated
   Telegram alert;
 - weekly-open spread behavior is expected to be more conservative than the
-  historical V15 baseline. If spread or not-better recovery WAITING cards
+  historical V15/V22 baseline. If spread or not-better recovery WAITING cards
   cluster only around poor-liquidity windows, keep the current `0.10` gate. If
   they persist during normal liquid hours, measure the divergence with a live
   gate attribution report before changing the live rule;
@@ -259,6 +268,9 @@ It adds:
 - V17 tested whether the Force Strike structure must touch the broken LP.
   Strict-touch and ATR-gap filters did not beat the current V15 row, so live
   order intent does not require FS structure touch;
+- V22 accepted hard LP/FS separation. The selected LP pivot must be before the
+  Force Strike mother bar for all new signals unless a legacy comparison config
+  explicitly disables `require_lp_pivot_before_fs_mother`;
 - broker-side SL, TP, expiration, magic number, and compact comment on every
   pending order;
 - atomically written, restart-safe local state for processed signals, pending

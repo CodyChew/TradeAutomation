@@ -367,6 +367,7 @@ class LiveExecutorTests(unittest.TestCase):
                             "risk_bucket_scale": 0.05,
                             "max_open_risk_pct": 0.65,
                             "max_spread_risk_fraction": 0.1,
+                            "require_lp_pivot_before_fs_mother": False,
                             "journal_path": str(Path(tmpdir) / "absolute_journal.jsonl"),
                             "state_path": "live/state.json",
                         },
@@ -382,6 +383,8 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(settings.executor.max_lots_per_order, 0.5)
             self.assertEqual(settings.executor.market_recovery_mode, "better_than_entry_only")
             self.assertEqual(settings.executor.market_recovery_deviation_points, 0)
+            self.assertFalse(settings.executor.require_lp_pivot_before_fs_mother)
+            self.assertFalse(live_module._dry_compatible_config(settings.executor).require_lp_pivot_before_fs_mother)
             self.assertNotIn("'token'", str(settings.safe_dict()))
             validate_live_send_settings(settings)
 
@@ -402,6 +405,9 @@ class LiveExecutorTests(unittest.TestCase):
 
             fallback = load_live_send_settings(Path(tmpdir) / "missing.json", env={"MT5_EXPECTED_LOGIN": "1", "MT5_EXPECTED_SERVER": "Real"})
             self.assertEqual(fallback.executor.risk_bucket_scale, 0.05)
+            self.assertTrue(fallback.executor.require_lp_pivot_before_fs_mother)
+            self.assertTrue(live_module._optional_bool(None, default=True))
+            self.assertFalse(live_module._optional_bool("off", default=True))
             with self.assertRaisesRegex(LocalConfigError, "execution_mode"):
                 validate_live_send_settings(fallback)
 

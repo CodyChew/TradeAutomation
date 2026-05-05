@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Current Strategy Guide: V13 Mechanics + V15 Risk Buckets</title>
+  <title>Current Strategy Guide: V13 Mechanics + V15 Risk Buckets + V22 LP/FS Separation</title>
   <style>
 
     :root {
@@ -554,7 +554,7 @@
 <body>
 
   <header class="dashboard-header">
-    <h1>Current Strategy Guide: V13 Mechanics + V15 Risk Buckets</h1>
+    <h1>Current Strategy Guide: V13 Mechanics + V15 Risk Buckets + V22 LP/FS Separation</h1>
     <p>Static guide for the current LP + Force Strike research baseline. Signal rules and backtest assumptions are tested research behavior; guarded MT5 live-send behavior is documented separately in Live Ops.</p>
     <nav class="page-nav" aria-label="Dashboard pages">
       <a class="page-link" href="index.html">Home</a>
@@ -588,9 +588,9 @@
     <section id="strategy-contract" class="guide-hero" aria-labelledby="strategy-contract-title">
       <div class="eyebrow">Current Baseline In One Screen</div>
       <h2 id="strategy-contract-title">Trade Mechanics Contract</h2>
-      <p>Use this as the current LPFS decision contract: LP3 on H4/H8/H12/D1/W1, LP break, raw Force Strike confirmation, 0.5 signal-candle pullback, FS structure stop, 1R target, 6-bar waits, and V15 risk buckets.</p>
+      <p>Use this as the current LPFS decision contract: LP3 on H4/H8/H12/D1/W1, LP break, selected LP pivot before FS mother, raw Force Strike confirmation, 0.5 signal-candle pullback, FS structure stop, 1R target, 6-bar waits, and V15 risk buckets.</p>
       <div class="contract-strip">
-        <div class="fact"><span>LP pivot</span><strong>LP3 take-all</strong></div><div class="fact"><span>Timeframes</span><strong>H4/H8/H12/D1/W1</strong></div><div class="fact"><span>Setup</span><strong>LP break + raw Force Strike</strong></div><div class="fact"><span>Entry</span><strong>0.5 signal-candle pullback</strong></div><div class="fact"><span>Stop</span><strong>FS structure stop</strong></div><div class="fact"><span>Target</span><strong>1R target</strong></div><div class="fact"><span>Signal window</span><strong>6 bars from LP break</strong></div><div class="fact"><span>Pending wait</span><strong>6 actual closed bars</strong></div><div class="fact"><span>Risk buckets</span><strong>V15 0.20 / 0.30 / 0.75</strong></div><div class="fact"><span>Live expiry</span><strong>Broker backstop only</strong></div>
+        <div class="fact"><span>LP pivot</span><strong>LP3 take-all</strong></div><div class="fact"><span>Timeframes</span><strong>H4/H8/H12/D1/W1</strong></div><div class="fact"><span>Setup</span><strong>LP break + raw Force Strike</strong></div><div class="fact"><span>LP/FS separation</span><strong>LP before FS mother</strong></div><div class="fact"><span>Entry</span><strong>0.5 signal-candle pullback</strong></div><div class="fact"><span>Stop</span><strong>FS structure stop</strong></div><div class="fact"><span>Target</span><strong>1R target</strong></div><div class="fact"><span>Signal window</span><strong>6 bars from LP break</strong></div><div class="fact"><span>Pending wait</span><strong>6 actual closed bars</strong></div><div class="fact"><span>Risk buckets</span><strong>V15 0.20 / 0.30 / 0.75</strong></div><div class="fact"><span>Live expiry</span><strong>Broker backstop only</strong></div>
       </div>
     </section>
 
@@ -598,7 +598,7 @@
       <h2 id="trade-mechanics-title">Trade Mechanics</h2>
       <p class="callout">The mechanics are ordered as signal formation, pending entry, stop/target, expiry/cancel conditions, then sizing. The pending wait is counted by actual closed bars, so weekend time does not consume the setup window.</p>
       <div class="mechanics-flow">
-        <article class="mechanic-card"><h3>Signal formation</h3><p>A wick break through the selected LP3 support or resistance opens a trap window. Raw Force Strike must close back on the correct side of that LP by bar 6.</p></article><article class="mechanic-card"><h3>Pending entry</h3><p>After confirmation, the trade waits at the 0.5 signal-candle pullback. The backtest and live contract both treat the wait as bars, not weekend wall-clock time.</p></article><article class="mechanic-card"><h3>Stop and target</h3><p>Stop is the full Force Strike structure stop. Target is fixed at 1R from entry-to-stop distance so every result is measured on the same R basis.</p></article><article class="mechanic-card"><h3>Expiry / cancel</h3><p>Strategy expiry is after 6 actual closed bars from the signal candle. Broker expiry is only a conservative emergency backstop in MT5 live execution.</p></article><article class="mechanic-card"><h3>Sizing</h3><p>V15 risk buckets are H4/H8 0.20%, H12/D1 0.30%, and W1 0.75% for the research row; live default scale can be smaller in local config.</p></article>
+        <article class="mechanic-card"><h3>Signal formation</h3><p>A wick break through the selected LP3 support or resistance opens a trap window. The selected LP pivot must be before the Force Strike mother bar, and raw Force Strike must close back on the correct side of that LP by bar 6.</p></article><article class="mechanic-card"><h3>Pending entry</h3><p>After confirmation, the trade waits at the 0.5 signal-candle pullback. The backtest and live contract both treat the wait as bars, not weekend wall-clock time.</p></article><article class="mechanic-card"><h3>Stop and target</h3><p>Stop is the full Force Strike structure stop. Target is fixed at 1R from entry-to-stop distance so every result is measured on the same R basis.</p></article><article class="mechanic-card"><h3>Expiry / cancel</h3><p>Strategy expiry is after 6 actual closed bars from the signal candle. Broker expiry is only a conservative emergency backstop in MT5 live execution.</p></article><article class="mechanic-card"><h3>Sizing</h3><p>V15 risk buckets are H4/H8 0.20%, H12/D1 0.30%, and W1 0.75% for the research row; live default scale can be smaller in local config.</p></article>
       </div>
     </section>
 
@@ -613,6 +613,7 @@
         <table class="data-table contract-table">
           <thead><tr><th>Rule</th><th>Contract</th></tr></thead>
           <tbody><tr><td>Wrong-side close</td><td>A bullish setup must close at or above selected support; a bearish setup must close at or below selected resistance.</td></tr>
+<tr><td>LP/FS overlap</td><td>The selected LP pivot must be before the Force Strike mother bar. LP==mother or LP-inside-FS selections are rejected by default.</td></tr>
 <tr><td>Expired signal</td><td>The LP break candle is bar 1. A first Force Strike confirmation on bar 7 is ignored.</td></tr>
 <tr><td>Expired pending</td><td>The pending entry is cancelled only after the configured number of actual closed bars has passed after the signal candle.</td></tr>
 <tr><td>Missed entry</td><td>If price already touched the planned entry before live placement, no late pending order is sent.</td></tr>
@@ -865,6 +866,13 @@
 
         <article class="event-card">
           <span class="event-label">Rejected</span>
+          <h3>LP/FS overlap</h3>
+          <p>The selected LP pivot cannot be the Force Strike mother bar or any bar inside the Force Strike formation.</p>
+        </article>
+
+
+        <article class="event-card">
+          <span class="event-label">Rejected</span>
           <h3>Pullback not reached</h3>
           <p>A valid signal still produces no trade if the 0.5 pullback entry is not touched inside the fixed 6-bar pullback wait.</p>
         </article>
@@ -958,6 +966,13 @@
       <h3>V15 Buckets</h3>
       <p>Bucket sensitivity selected the current first account-constraint row and the higher-return growth contrast.</p>
       <a class="button" href="v15.html">Open V15</a>
+    </article>
+
+
+    <article class="trail-card">
+      <h3>V22 Separation</h3>
+      <p>Hard LP-before-FS separation was accepted as the current signal-quality baseline after improving PF, win rate, and average R.</p>
+      <a class="button" href="v22.html">Open V22</a>
     </article>
 
       </div>

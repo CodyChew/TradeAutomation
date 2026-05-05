@@ -218,42 +218,42 @@ class LPForceStrikeSignalTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             detect_lp_force_strike_signals(_frame([]), "M30", max_bars_from_lp_break=0)
 
-    def test_default_detector_allows_lp_pivot_as_force_strike_mother(self) -> None:
+    def test_default_detector_rejects_lp_pivot_as_force_strike_mother(self) -> None:
         signals = detect_lp_force_strike_signals(
             _frame(_bearish_lp_mother_overlap_rows()),
             "M30",
             pivot_strength=2,
+        )
+
+        self.assertEqual(signals, [])
+
+    def test_explicit_legacy_policy_allows_lp_pivot_as_force_strike_mother(self) -> None:
+        signals = detect_lp_force_strike_signals(
+            _frame(_bearish_lp_mother_overlap_rows()),
+            "M30",
+            pivot_strength=2,
+            require_lp_pivot_before_fs_mother=False,
         )
 
         self.assertEqual(len(signals), 1)
         self.assertEqual(signals[0].lp_pivot_index, signals[0].fs_mother_index)
 
-    def test_separation_policy_rejects_lp_pivot_as_force_strike_mother(self) -> None:
-        signals = detect_lp_force_strike_signals(
-            _frame(_bearish_lp_mother_overlap_rows()),
-            "M30",
-            pivot_strength=2,
-            require_lp_pivot_before_fs_mother=True,
-        )
-
-        self.assertEqual(signals, [])
-
-    def test_usdchf_like_lp_mother_overlap_rejected_only_when_separation_enabled(self) -> None:
-        current = detect_lp_force_strike_signals(
+    def test_usdchf_like_lp_mother_overlap_rejected_by_default_but_available_to_legacy_control(self) -> None:
+        default = detect_lp_force_strike_signals(
             _frame(_bearish_lp_mother_overlap_rows()),
             "M30",
             pivot_strength=2,
         )
-        separated = detect_lp_force_strike_signals(
+        legacy = detect_lp_force_strike_signals(
             _frame(_bearish_lp_mother_overlap_rows()),
             "M30",
             pivot_strength=2,
-            require_lp_pivot_before_fs_mother=True,
+            require_lp_pivot_before_fs_mother=False,
         )
 
-        self.assertEqual(len(current), 1)
-        self.assertEqual(current[0].lp_pivot_index, current[0].fs_mother_index)
-        self.assertEqual(separated, [])
+        self.assertEqual(default, [])
+        self.assertEqual(len(legacy), 1)
+        self.assertEqual(legacy[0].lp_pivot_index, legacy[0].fs_mother_index)
 
     def test_separation_policy_rejects_lp_pivot_inside_force_strike_formation(self) -> None:
         window = _TrapWindow("bearish", "force_top", _lp_break("resistance", 10.0, 8))
@@ -306,6 +306,19 @@ class LPForceStrikeSignalTests(unittest.TestCase):
                 signal_close=9.0,
                 max_bars_from_lp_break=6,
                 require_lp_pivot_before_fs_mother=True,
+            )
+        )
+
+    def test_window_match_rejects_force_strike_outside_break_window(self) -> None:
+        window = _TrapWindow("bearish", "force_top", _lp_break("resistance", 10.0, 8))
+
+        self.assertFalse(
+            _window_matches_pattern(
+                window,
+                _pattern(mother_index=4, signal_index=19),
+                signal_close=9.0,
+                max_bars_from_lp_break=6,
+                require_lp_pivot_before_fs_mother=False,
             )
         )
 

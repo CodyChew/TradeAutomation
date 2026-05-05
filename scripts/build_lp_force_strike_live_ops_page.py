@@ -366,14 +366,15 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
 
     signal_rows = [
         ["1", "Closed-candle scan", "Signals are based on completed candles, not the forming candle."],
-        ["2", "Duplicate key check", "Same symbol, timeframe, direction, LP setup, and signal close time is processed once."],
-        ["3", "Missed-entry recovery", "If price already touched the planned entry after the signal, default-on recovery may send a market order only at a better executable price."],
-        ["4", "Actual-bar expiry", "Strategy expiry is after 6 actual MT5 bars from the signal candle; weekend gaps pause the count."],
-        ["5", "Spread gate", "Current spread must be no more than 10% of entry-to-stop risk distance."],
-        ["6", "Risk sizing", "MT5 order_calc_profit sizes the order, floors to volume_step, caps by broker/local max, and rejects below volume_min."],
-        ["7", "Recovery path guard", "For market recovery, original stop and original 1R target must not have traded after the signal before recovery."],
-        ["8", "Broker validation", "order_check must pass before any live send; pending requests carry the conservative broker backstop."],
-        ["9", "Final send", "Pending sends place TRADE_ACTION_PENDING. Recovery sends TRADE_ACTION_DEAL with zero slippage by default."],
+        ["2", "LP/FS separation", "The selected LP pivot must be before the Force Strike mother; LP==mother and LP-inside-FS candidates are not emitted under the current baseline."],
+        ["3", "Duplicate key check", "Same symbol, timeframe, direction, LP setup, and signal close time is processed once."],
+        ["4", "Missed-entry recovery", "If price already touched the planned entry after the signal, default-on recovery may send a market order only at a better executable price."],
+        ["5", "Actual-bar expiry", "Strategy expiry is after 6 actual MT5 bars from the signal candle; weekend gaps pause the count."],
+        ["6", "Spread gate", "Current spread must be no more than 10% of entry-to-stop risk distance."],
+        ["7", "Risk sizing", "MT5 order_calc_profit sizes the order, floors to volume_step, caps by broker/local max, and rejects below volume_min."],
+        ["8", "Recovery path guard", "For market recovery, original stop and original 1R target must not have traded after the signal before recovery."],
+        ["9", "Broker validation", "order_check must pass before any live send; pending requests carry the conservative broker backstop."],
+        ["10", "Final send", "Pending sends place TRADE_ACTION_PENDING. Recovery sends TRADE_ACTION_DEAL with zero slippage by default."],
     ]
 
     commands = [

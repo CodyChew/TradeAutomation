@@ -3,11 +3,17 @@
 This document covers the MT5 dry-run executor and the guarded live-send
 executor for the current LP + Force Strike baseline.
 
+The current baseline is V13 mechanics plus V15 risk buckets plus V22 hard
+LP/FS separation. New dry-run and live-send detections require the selected LP
+pivot to be before the Force Strike mother bar by default
+(`require_lp_pivot_before_fs_mother=true`). Set that flag `false` only for a
+controlled legacy comparison.
+
 The dry-run executor:
 
 - it connects to MT5;
 - it pulls recent closed candles;
-- it detects LP + Force Strike setups;
+- it detects LP + Force Strike setups under the hard LP-before-FS baseline;
 - it converts tested setups through `execution_contract.py`;
 - it calls MT5 `order_check`;
 - it writes local audit/state files;

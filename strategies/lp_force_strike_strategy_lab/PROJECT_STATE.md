@@ -1,8 +1,8 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-05 local time after adding V22 LP/Force-Strike separation
-research, publishing the dashboard, and documenting which prior research branches
-need rerun if the separated signal rule becomes the accepted baseline.
+Last updated: 2026-05-05 local time after accepting V22 LP/Force-Strike
+separation as the new LPFS baseline and wiring the hard rule through research,
+dry-run, live-send config, docs, tests, and TradingView visuals.
 
 ## Purpose
 
@@ -30,10 +30,10 @@ and spread-buffer research. V17 tests whether the Force Strike structure must
 be close to or touching the broken LP. V18-V20 test TP-near close/protection
 ideas as research-only evidence. V21 tests BTC/ETH crypto expansion on current
 broker-history data, with SOL only as short-history exploratory evidence. V22
-tests the design rule that the selected LP pivot must be before the Force Strike
-mother bar, without changing current live behavior. The dry-run phase is
-explicitly broker-safe and does not send orders; the live-send phase can place
-real pending orders only when local live config is explicitly enabled.
+accepted the hard design rule that the selected LP pivot must be before the
+Force Strike mother bar. The dry-run phase is explicitly broker-safe and does
+not send orders; the live-send phase can place real pending orders only when
+local live config is explicitly enabled.
 
 ## Concept Dependencies
 
@@ -69,11 +69,13 @@ consistent across strategy labs.
 - Current V15 live/research logic does not require the Force Strike structure
   itself to touch the selected LP. V17 tested strict-touch and ATR-gap filters
   and rejected them as trade filters for now.
-- Current production/live behavior still permits the selected LP pivot to be the
-  Force Strike mother bar. V22 adds a default-off research flag,
-  `require_lp_pivot_before_fs_mother`, to test the cleaner rule
-  `lp_pivot_index < fs_mother_index`; this flag is not enabled in shared/live
-  paths unless a separate implementation plan changes that later.
+- Current shared/research/dry-run/live-send baseline requires the selected LP
+  pivot to be before the Force Strike mother bar:
+  `lp_pivot_index < fs_mother_index`.
+- The explicit legacy override is `require_lp_pivot_before_fs_mother=false`;
+  use it only for reproducible historical comparison such as V22 control.
+- Existing live `processed_signal_keys` do not include LP pivot index. Do not
+  edit live state or rearm old skipped/processed signals for this rule change.
 
 On 2026-05-01, this selector was revalidated by regenerating V9 and rerunning
 V10-V15 from the new V9 trade source. Old/new V9 `signals.csv` and `trades.csv`
@@ -88,7 +90,7 @@ V22 was added on 2026-05-05 as a research-only full FX rerun:
 - runner:
   `../../scripts/run_lp_force_strike_v22_lp_fs_separation.py`
 - report folder:
-  `../../reports/strategies/lp_force_strike_experiment_v22_lp_fs_separation/20260505_101348`
+  `../../reports/strategies/lp_force_strike_experiment_v22_lp_fs_separation/20260505_111005`
 - published dashboard:
   `../../docs/v22.html`
 
@@ -97,7 +99,8 @@ Force Strike mother bar or otherwise inside the Force Strike formation?
 
 V22 variants:
 
-- `control_current`: current V15 signal rules.
+- `control_current`: explicit legacy V15 signal rules
+  (`require_lp_pivot_before_fs_mother=false`).
 - `exclude_lp_pivot_inside_fs`: require `lp_pivot_index < fs_mother_index`.
 
 V22 result:
@@ -118,18 +121,17 @@ V22 result:
   PF 1.294, and return/DD 60.29; this improves PF/return-DD versus V16 control
   but still gives up raw total R.
 
-Decision: mixed evidence. Do not patch live behavior from V22 alone. The rule is
-conceptually cleaner, and quality metrics improved, but raw total R and current
-raw return/DD weakened. Next work should inspect the removed/reselected examples
-by symbol/timeframe/year before deciding whether to keep current permissive
-behavior, refine the rule, or draft a separate production-change plan.
+Decision: accepted quality tradeoff. The hard LP-before-FS rule is now the
+baseline even though raw total R drops, because it removes invalid/self-
+referential LP==mother setups while improving PF, win rate, and average R. The
+9.05% trade-count drop and -24.7R raw R drop are accepted costs.
 
 Research revalidation state after V22:
 
 - Rerun already included in V22 for this decision: V9-style full signal/trade
   generation, V15 risk bucket sensitivity, and V16 bid/ask execution realism.
-- Stale until rerun on the accepted signal universe: V17 LP/FS proximity,
-  V18/V19 TP-near exits, V20 protection realism.
+- Stale until rerun on the accepted separated signal universe: V17 LP/FS
+  proximity, V18/V19 TP-near exits, V20 protection realism.
 - V21 crypto expansion is stale before crypto live planning because it used the
   same old signal-rule family.
 - V1-V8 remain historical context only and do not need rerun for this rule

@@ -44,7 +44,8 @@
   ],
   "decision_criteria": {
     "min_profit_factor_delta": 0.0,
-    "min_return_to_drawdown_delta": 0.0,
+    "min_win_rate_delta": 0.0,
+    "min_avg_net_r_delta": 0.0,
     "max_total_net_r_drop_pct": 5.0,
     "max_trade_count_cut_pct": 20.0
   }

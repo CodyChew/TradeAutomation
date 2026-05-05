@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -376,7 +376,7 @@
 <main>
 <section id="decision">
   <h2>Decision Card</h2>
-  <p class="callout"><span class="badge warn">MIXED RESULT</span> <strong>The rule has mixed evidence.</strong> Separated variant changed total R by -24.7, PF by 0.025, win rate by 0.42pp, and removed 9.1% of trades.</p>
+  <p class="callout"><span class="badge good">ACCEPTED QUALITY TRADEOFF</span> <strong>Accept the hard LP-before-FS rule for implementation planning.</strong> Separated variant changed total R by -24.7, PF by 0.025, win rate by 0.42pp, and removed 9.1% of trades.</p>
   <div class="metric-grid">
     <div class="metric-card"><span>Trade Delta</span><strong>-1,178</strong></div>
     <div class="metric-card"><span>Total R Delta</span><strong class="bad">-24.74</strong></div>
@@ -385,7 +385,7 @@
     <div class="metric-card"><span>Reserved DD</span><strong>5.08%</strong></div>
     <div class="metric-card"><span>Return/DD</span><strong>50.95</strong></div>
   </div>
-  <p class="muted">No production execution behavior is changed by V22. The current permissive signal behavior remains the default unless a separate implementation plan is approved.</p>
+  <p class="muted">V22 accepted the hard LP-before-FS rule as the next baseline. Deployment still requires the live runner to be intentionally updated and restarted; existing live state, pending orders, and positions are not edited by this report.</p>
 </section>
 <section id="comparison">
   <h2>Comparison Table</h2>
@@ -421,12 +421,12 @@
 </section>
 <section id="revalidation">
   <h2>Research Revalidation Matrix</h2>
-  <div class="table-scroll"><table class="data-table"><thead><tr><th>research_branch</th><th>classification</th><th>reason</th><th>next_action</th></tr></thead><tbody><tr><td>V9 full signal/trade generation</td><td>rerun_in_v22</td><td>V22 reruns the full 10-year signal and trade population for current vs separation variants.</td><td>Use V22 comparison before any signal-rule decision.</td></tr><tr><td>V15 risk bucket sensitivity</td><td>rerun_in_v22</td><td>V22 reruns bucket schedules on the separated trade population.</td><td>Compare bucket_sensitivity_by_variant.csv before changing risk assumptions.</td></tr><tr><td>V16 bid/ask execution realism</td><td>rerun_in_v22</td><td>V22 reruns no-buffer bid/ask control for both signal populations.</td><td>Use execution_realism_by_variant.csv as the current execution-realism check.</td></tr><tr><td>V17 LP/FS proximity</td><td>stale_until_rerun</td><td>V17 studied the old signal universe that allowed LP pivot inside the FS formation.</td><td>Rerun proximity only if V22 separation becomes a live candidate.</td></tr><tr><td>V18/V19 TP-near exits</td><td>stale_until_rerun</td><td>The TP-near trade population came from the old baseline.</td><td>Rerun TP-near after deciding whether separation is the new baseline.</td></tr><tr><td>V20 protection realism</td><td>stale_until_rerun</td><td>Protection timing used old signal candidates.</td><td>Rerun lower-timeframe protection only after a separated baseline is accepted.</td></tr><tr><td>V21 crypto expansion</td><td>stale_before_crypto_live_planning</td><td>Crypto used the same signal-rule family and must be rechecked before crypto expansion decisions.</td><td>Rerun crypto transfer with separation if crypto remains a priority.</td></tr><tr><td>V1-V8 exploratory search history</td><td>historical_context_only</td><td>These explain the path to the baseline but are not current live-decision gates.</td><td>No rerun needed for the V22 rule decision.</td></tr></tbody></table></div>
+  <div class="table-scroll"><table class="data-table"><thead><tr><th>research_branch</th><th>classification</th><th>reason</th><th>next_action</th></tr></thead><tbody><tr><td>V9 full signal/trade generation</td><td>rerun_in_v22</td><td>V22 reruns the full 10-year signal and trade population for current vs separation variants.</td><td>Use V22 comparison before any signal-rule decision.</td></tr><tr><td>V15 risk bucket sensitivity</td><td>rerun_in_v22</td><td>V22 reruns bucket schedules on the separated trade population.</td><td>Compare bucket_sensitivity_by_variant.csv before changing risk assumptions.</td></tr><tr><td>V16 bid/ask execution realism</td><td>rerun_in_v22</td><td>V22 reruns no-buffer bid/ask control for both signal populations.</td><td>Use execution_realism_by_variant.csv as the current execution-realism check.</td></tr><tr><td>V17 LP/FS proximity</td><td>stale_until_rerun</td><td>V17 studied the old signal universe that allowed LP pivot inside the FS formation.</td><td>Rerun proximity on the accepted V22 signal universe before using it for a new live-rule decision.</td></tr><tr><td>V18/V19 TP-near exits</td><td>stale_until_rerun</td><td>The TP-near trade population came from the old baseline.</td><td>Rerun TP-near on the accepted V22 signal universe before using it for a live TP/SL decision.</td></tr><tr><td>V20 protection realism</td><td>stale_until_rerun</td><td>Protection timing used old signal candidates.</td><td>Rerun lower-timeframe protection on the accepted V22 signal universe.</td></tr><tr><td>V21 crypto expansion</td><td>stale_before_crypto_live_planning</td><td>Crypto used the same signal-rule family and must be rechecked before crypto expansion decisions.</td><td>Rerun crypto transfer with the accepted V22 separation rule if crypto remains a priority.</td></tr><tr><td>V1-V8 exploratory search history</td><td>historical_context_only</td><td>These explain the path to the baseline but are not current live-decision gates.</td><td>No rerun needed for the V22 rule decision.</td></tr></tbody></table></div>
 </section>
 <section id="follow-up">
   <h2>Follow-Up Section</h2>
-  <p class="callout"><strong>Next: inspect symbol/timeframe/year concentration before any implementation decision.</strong></p>
-  <p class="muted">Artifacts live under <code>C:\Users\chewc\OneDrive\Desktop\TradeAutomation\reports\strategies\lp_force_strike_experiment_v22_lp_fs_separation\20260505_101348</code>. Datasets: 280; failed: 0; trades: 24,846; signals: 30,665.</p>
+  <p class="callout"><strong>Next: deploy the hard rule intentionally, then rerun stale V17-V21 research on the accepted signal universe.</strong></p>
+  <p class="muted">Artifacts live under <code>C:\Users\chewc\OneDrive\Desktop\TradeAutomation\reports\strategies\lp_force_strike_experiment_v22_lp_fs_separation\20260505_111005</code>. Datasets: 280; failed: 0; trades: 24,846; signals: 30,665.</p>
 </section>
 
     <section id="metric-glossary" class="metric-glossary" aria-labelledby="metric-glossary-title">
@@ -435,6 +435,6 @@
     </section>
 
 </main>
-<footer>Generated from <code>C:\Users\chewc\OneDrive\Desktop\TradeAutomation\reports\strategies\lp_force_strike_experiment_v22_lp_fs_separation\20260505_101348</code>. Research-only evidence; production changes require a separate plan.</footer>
+<footer>Generated from <code>C:\Users\chewc\OneDrive\Desktop\TradeAutomation\reports\strategies\lp_force_strike_experiment_v22_lp_fs_separation\20260505_111005</code>. Research-only evidence; production changes require a separate plan.</footer>
 </body>
 </html>

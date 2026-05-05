@@ -83,12 +83,13 @@ class DashboardPagesTests(unittest.TestCase):
         html = (DOCS_ROOT / "strategy.html").read_text(encoding="utf-8")
         lower_html = html.lower()
 
-        self.assertIn("Current Strategy Guide: V13 Mechanics + V15 Risk Buckets", html)
+        self.assertIn("Current Strategy Guide: V13 Mechanics + V15 Risk Buckets + V22 LP/FS Separation", html)
         self.assertIn("Trade Mechanics Contract", html)
         self.assertIn("Current Baseline In One Screen", html)
         self.assertIn("LP3 take-all", html)
         self.assertIn("H4/H8/H12/D1/W1", html)
         self.assertIn("LP break + raw Force Strike", html)
+        self.assertIn("LP pivot before FS mother", html)
         self.assertIn("Signal formation", html)
         self.assertIn("Pending entry", html)
         self.assertIn("Stop and target", html)
@@ -108,6 +109,7 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("same-bar stop-first", lower_html)
         self.assertIn("bar 7", html)
         self.assertIn("wrong-side close", lower_html)
+        self.assertIn("lp/fs overlap", lower_html)
         self.assertIn("Gap-through stop or target", html)
         self.assertIn("Missing or zero ATR", html)
         self.assertIn("Risk-reserved DD can exceed realized DD", html)
@@ -138,6 +140,8 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Send Gates", html)
         self.assertIn("Reconciliation Gates", html)
         self.assertIn("Strategy expiry is after 6 actual MT5 bars from the signal candle", html)
+        self.assertIn("LP/FS separation", html)
+        self.assertIn("selected LP pivot must be before the Force Strike mother", html)
         self.assertIn("Broker expiry is only a conservative emergency backstop", html)
         self.assertIn("Spread Policy", html)
         self.assertIn("Retryable WAITING", html)
@@ -325,6 +329,15 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Removed Trade Samples", html)
         self.assertIn("lp_mother_trade_keys_reselected", html)
         self.assertIn("V18/V19 TP-near exits", html)
+        self.assertIn("ACCEPTED QUALITY TRADEOFF", html)
+        self.assertIn("Accept the hard LP-before-FS rule", html)
+
+    def test_tradingview_indicator_contains_lp_before_mother_guard(self) -> None:
+        source = (WORKSPACE_ROOT / "strategies" / "lp_force_strike_strategy_lab" / "tradingview" / "lp_force_strike.pine").read_text(encoding="utf-8")
+
+        self.assertIn("trapPivotBars", source)
+        self.assertIn("pivotBeforeMother", source)
+        self.assertIn("pivotBar < fsMotherBar", source)
 
     def test_risk_dashboard_drawdown_meanings_and_values_are_preserved(self) -> None:
         v14_html = (DOCS_ROOT / "v14.html").read_text(encoding="utf-8")

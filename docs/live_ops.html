@@ -572,14 +572,15 @@
       <table>
         <thead><tr><th>Step</th><th>Gate</th><th>Meaning</th></tr></thead>
         <tbody><tr><td>1</td><td>Closed-candle scan</td><td>Signals are based on completed candles, not the forming candle.</td></tr>
-<tr><td>2</td><td>Duplicate key check</td><td>Same symbol, timeframe, direction, LP setup, and signal close time is processed once.</td></tr>
-<tr><td>3</td><td>Missed-entry recovery</td><td>If price already touched the planned entry after the signal, default-on recovery may send a market order only at a better executable price.</td></tr>
-<tr><td>4</td><td>Actual-bar expiry</td><td>Strategy expiry is after 6 actual MT5 bars from the signal candle; weekend gaps pause the count.</td></tr>
-<tr><td>5</td><td>Spread gate</td><td>Current spread must be no more than 10% of entry-to-stop risk distance.</td></tr>
-<tr><td>6</td><td>Risk sizing</td><td>MT5 order_calc_profit sizes the order, floors to volume_step, caps by broker/local max, and rejects below volume_min.</td></tr>
-<tr><td>7</td><td>Recovery path guard</td><td>For market recovery, original stop and original 1R target must not have traded after the signal before recovery.</td></tr>
-<tr><td>8</td><td>Broker validation</td><td>order_check must pass before any live send; pending requests carry the conservative broker backstop.</td></tr>
-<tr><td>9</td><td>Final send</td><td>Pending sends place TRADE_ACTION_PENDING. Recovery sends TRADE_ACTION_DEAL with zero slippage by default.</td></tr></tbody>
+<tr><td>2</td><td>LP/FS separation</td><td>The selected LP pivot must be before the Force Strike mother; LP==mother and LP-inside-FS candidates are not emitted under the current baseline.</td></tr>
+<tr><td>3</td><td>Duplicate key check</td><td>Same symbol, timeframe, direction, LP setup, and signal close time is processed once.</td></tr>
+<tr><td>4</td><td>Missed-entry recovery</td><td>If price already touched the planned entry after the signal, default-on recovery may send a market order only at a better executable price.</td></tr>
+<tr><td>5</td><td>Actual-bar expiry</td><td>Strategy expiry is after 6 actual MT5 bars from the signal candle; weekend gaps pause the count.</td></tr>
+<tr><td>6</td><td>Spread gate</td><td>Current spread must be no more than 10% of entry-to-stop risk distance.</td></tr>
+<tr><td>7</td><td>Risk sizing</td><td>MT5 order_calc_profit sizes the order, floors to volume_step, caps by broker/local max, and rejects below volume_min.</td></tr>
+<tr><td>8</td><td>Recovery path guard</td><td>For market recovery, original stop and original 1R target must not have traded after the signal before recovery.</td></tr>
+<tr><td>9</td><td>Broker validation</td><td>order_check must pass before any live send; pending requests carry the conservative broker backstop.</td></tr>
+<tr><td>10</td><td>Final send</td><td>Pending sends place TRADE_ACTION_PENDING. Recovery sends TRADE_ACTION_DEAL with zero slippage by default.</td></tr></tbody>
       </table>
     </div>
 

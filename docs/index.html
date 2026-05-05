@@ -575,10 +575,10 @@
 
     <section id="current-baseline" class="card featured">
       <div class="status status-active">Active baseline</div>
-      <h2>Current Baseline: LP3 take-all with V15 risk buckets</h2>
-      <p>The strategy baseline remains V13: LP3 take-all across H4/H8/H12/D1/W1 with 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait. V15 bucket sensitivity moves the first account-constraint candidate to H4/H8 0.20%, H12/D1 0.30%, and W1 0.75%; the higher-return growth row is H4/H8 0.25%, H12/D1 0.30%, and W1 0.60%.</p>
+      <h2>Current Baseline: LP3 take-all with V15 risk buckets and V22 LP/FS separation</h2>
+      <p>The strategy baseline is now V13 mechanics plus V15 risk buckets plus V22 hard LP/FS separation: LP3 take-all across H4/H8/H12/D1/W1 with the selected LP pivot required before the Force Strike mother bar, 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait. V15 bucket sensitivity moves the first account-constraint candidate to H4/H8 0.20%, H12/D1 0.30%, and W1 0.75%; the higher-return growth row is H4/H8 0.25%, H12/D1 0.30%, and W1 0.60%.</p>
       <div class="facts">
-        <div class="fact"><span>Risk Ladder</span><strong>0.20 / 0.30 / 0.75</strong></div><div class="fact"><span>Return</span><strong>383.2%</strong></div><div class="fact"><span>Reserved DD</span><strong>7.9%</strong></div><div class="fact"><span>Growth Row</span><strong>421.8%</strong></div>
+        <div class="fact"><span>Signal Rule</span><strong>LP before FS mother</strong></div><div class="fact"><span>Risk Ladder</span><strong>0.20 / 0.30 / 0.75</strong></div><div class="fact"><span>Return</span><strong>383.2%</strong></div><div class="fact"><span>Reserved DD</span><strong>7.9%</strong></div>
       </div>
       <a class="button" href="v15.html">Open Bucket Sensitivity</a>
     </section>
@@ -586,9 +586,9 @@
     <section id="strategy-guide" class="card featured">
       <div class="status status-active">Strategy guide</div>
       <h2>Current Strategy Guide</h2>
-      <p>Plain-English V13 mechanics plus V15 risk buckets, with signal rules, backtest trade simulation assumptions, MT5 execution status, and negative-event handling.</p>
+      <p>Plain-English V13 mechanics plus V15 risk buckets and the V22 LP/FS separation rule, with signal rules, backtest trade simulation assumptions, MT5 execution status, and negative-event handling.</p>
       <div class="facts">
-        <div class="fact"><span>Basis</span><strong>V13 + V15</strong></div>
+        <div class="fact"><span>Basis</span><strong>V13 + V15 + V22</strong></div>
         <div class="fact"><span>Execution</span><strong>Research + guarded live-send</strong></div>
       </div>
       <a class="button" href="strategy.html">Open Strategy Guide</a>
@@ -613,15 +613,15 @@
     <section class="card">
       <div class="status status-active">Signal-rule audit</div>
       <h2>V22 LP-FS Separation</h2>
-      <p>V22 is the evidence gate for LP/Force-Strike separation. It does not change production behavior by itself; it shows whether the cleaner design rule improves or weakens the current V15/V16 baseline.</p>
+      <p>V22 accepts hard LP/Force-Strike separation as the next baseline. PF, win rate, and average R improved; the lower raw R is accepted as the cost of removing invalid/self-referential setups.</p>
       <div class="facts">
-        <div class="fact"><span>Decision</span><strong>Mixed</strong></div><div class="fact"><span>R Delta</span><strong>-24.7R</strong></div><div class="fact"><span>PF Delta</span><strong>+0.025</strong></div><div class="fact"><span>LP==Mother</span><strong>1,603 control trades</strong></div>
+        <div class="fact"><span>Decision</span><strong>Accepted</strong></div><div class="fact"><span>R Delta</span><strong>-24.7R</strong></div><div class="fact"><span>PF Delta</span><strong>+0.025</strong></div><div class="fact"><span>Trade Drop</span><strong>9.05%</strong></div>
       </div>
       <a class="button" href="v22.html">Open V22 Dashboard</a>
     </section>
 
     <section class="card">
-      <div class="status status-active">Crypto expansion study</div>
+      <div class="status status-neutral">Stale after V22</div>
       <h2>V21 Crypto BTC/ETH Broker-History</h2>
       <p>V21 is a transfer test, not a live change. It must prove BTC/ETH edge and tradeability separately from the FX strategy before crypto can be considered for live support.</p>
       <div class="facts">
@@ -631,7 +631,7 @@
     </section>
 
     <section class="card">
-      <div class="status status-active">M30 replay study</div>
+      <div class="status status-neutral">Stale after V22</div>
       <h2>V20 Protection Realism</h2>
       <p>V20 says the idea is timing-sensitive. Same-M30 assumed activation improves the M30 replay control, but conservative later-M30 activation does not. This is not enough to change live behavior without M1/tick or forward evidence.</p>
       <div class="facts">
@@ -641,7 +641,7 @@
     </section>
 
     <section class="card">
-      <div class="status status-active">Robustness study</div>
+      <div class="status status-neutral">Stale after V22</div>
       <h2>V19 TP-Near Robustness</h2>
       <p>V19 is the decision dashboard for TP-near robustness. It does not change live behavior; it decides whether the TP-near idea should move to a separate live-design experiment.</p>
       <div class="facts">
@@ -651,7 +651,7 @@
     </section>
 
     <section class="card">
-      <div class="status status-active">TP-near study</div>
+      <div class="status status-neutral">Stale after V22</div>
       <h2>V18 TP-Near Exit Research</h2>
       <p>The TP-near idea has promise but is not a live-rule change yet. The 90% immediate-close variant materially improved the research control, mainly by saving trades from later stops, while still sacrificing some full TPs.</p>
       <div class="facts">
@@ -661,7 +661,7 @@
     </section>
 
     <section class="card">
-      <div class="status status-active">Proximity study</div>
+      <div class="status status-neutral">Stale after V22</div>
       <h2>V17 LP-FS Proximity Tightening</h2>
       <p>Current V15 remains better than the tested proximity filters. Strict touch improved average R and PF slightly, but it removed 654 trades, gave up about 41.0R, and did not beat V15 on bucket return/DD efficiency.</p>
       <div class="facts">

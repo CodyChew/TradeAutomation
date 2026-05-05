@@ -129,6 +129,7 @@ class DryRunExecutorConfig:
     strategy_magic: int = 131500
     pivot_strength: int = 3
     max_bars_from_lp_break: int = 6
+    require_lp_pivot_before_fs_mother: bool = True
     max_entry_wait_bars: int = 6
 
 
@@ -244,6 +245,10 @@ def load_dry_run_settings(
         strategy_magic=int(dry_run_payload.get("strategy_magic", 131500)),
         pivot_strength=int(dry_run_payload.get("pivot_strength", 3)),
         max_bars_from_lp_break=int(dry_run_payload.get("max_bars_from_lp_break", 6)),
+        require_lp_pivot_before_fs_mother=_optional_bool(
+            dry_run_payload.get("require_lp_pivot_before_fs_mother"),
+            default=True,
+        ),
         max_entry_wait_bars=int(dry_run_payload.get("max_entry_wait_bars", 6)),
     )
     return DryRunSettings(local=local, executor=executor)
@@ -651,6 +656,7 @@ def default_setup_provider(
         timeframe,
         pivot_strength=config.pivot_strength,
         max_bars_from_lp_break=config.max_bars_from_lp_break,
+        require_lp_pivot_before_fs_mother=config.require_lp_pivot_before_fs_mother,
     )
     latest_signals = [signal for signal in signals if int(signal.fs_signal_index) == latest_closed_index]
     candidate = build_current_v15_candidate()

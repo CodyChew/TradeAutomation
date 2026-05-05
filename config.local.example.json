@@ -30,6 +30,7 @@
     "strategy_magic": 131500,
     "pivot_strength": 3,
     "max_bars_from_lp_break": 6,
+    "require_lp_pivot_before_fs_mother": true,
     "max_entry_wait_bars": 6
   },
   "live_send": {
@@ -50,6 +51,7 @@
     "strategy_magic": 131500,
     "pivot_strength": 3,
     "max_bars_from_lp_break": 6,
+    "require_lp_pivot_before_fs_mother": true,
     "max_entry_wait_bars": 6,
     "max_spread_risk_fraction": 0.1,
     "market_recovery_mode": "better_than_entry_only",

@@ -3,14 +3,14 @@
     "title": "TradeAutomation Research Dashboards",
     "intro": "Versioned static dashboards for LP + Force Strike experiments. Use stable version pages for comparison instead of overwriting old analysis.",
     "current_baseline": {
-      "title": "Current Baseline: LP3 take-all with V15 risk buckets",
-      "description": "The strategy baseline remains V13: LP3 take-all across H4/H8/H12/D1/W1 with 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait. V15 bucket sensitivity moves the first account-constraint candidate to H4/H8 0.20%, H12/D1 0.30%, and W1 0.75%; the higher-return growth row is H4/H8 0.25%, H12/D1 0.30%, and W1 0.60%.",
+      "title": "Current Baseline: LP3 take-all with V15 risk buckets and V22 LP/FS separation",
+      "description": "The strategy baseline is now V13 mechanics plus V15 risk buckets plus V22 hard LP/FS separation: LP3 take-all across H4/H8/H12/D1/W1 with the selected LP pivot required before the Force Strike mother bar, 0.5 signal-candle pullback, FS structure stop, single 1R target, and fixed 6-bar pullback wait. V15 bucket sensitivity moves the first account-constraint candidate to H4/H8 0.20%, H12/D1 0.30%, and W1 0.75%; the higher-return growth row is H4/H8 0.25%, H12/D1 0.30%, and W1 0.60%.",
       "status_label": "Active baseline",
       "facts": [
+        ["Signal Rule", "LP before FS mother"],
         ["Risk Ladder", "0.20 / 0.30 / 0.75"],
         ["Return", "383.2%"],
-        ["Reserved DD", "7.9%"],
-        ["Growth Row", "421.8%"]
+        ["Reserved DD", "7.9%"]
       ],
       "button_href": "v15.html",
       "button_label": "Open Bucket Sensitivity"
@@ -459,13 +459,13 @@
       "nav_label": "V17",
       "index_order": -7,
       "title": "V17 LP-FS Proximity Tightening",
-      "status_label": "Proximity study",
-      "status_kind": "active",
+      "status_label": "Stale after V22",
+      "status_kind": "neutral",
       "question": "Do LP + Force Strike trades perform better when the Force Strike structure touches or forms close to the broken LP?",
       "setup": "Research-only filter study using the current V15 OHLC trade rows: LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, fixed 6-bar signal window, and fixed 6-bar pullback wait.",
       "how_to_read": "Start with Decision Read, then compare raw R, V15 bucket sensitivity, quality buckets, and strict-touch symbol/timeframe concentration before changing live behavior.",
       "conclusion": "Current V15 remains better than the tested proximity filters. Strict touch improved average R and PF slightly, but it removed 654 trades, gave up about 41.0R, and did not beat V15 on bucket return/DD efficiency.",
-      "action": "Keep live signal rules unchanged. Use proximity as a future setup-quality label if desired, but do not require Force Strike structure to touch the LP.",
+      "action": "Historical read only until rerun on the V22 separated signal universe. Do not use this old-population result for a new live signal-rule decision.",
       "facts": [
         ["Baseline", "V15 OHLC"],
         ["Strict Touch", "12,358 trades"],
@@ -488,13 +488,13 @@
       "nav_label": "V18",
       "index_order": -8,
       "title": "V18 TP-Near Exit Research",
-      "status_label": "TP-near study",
-      "status_kind": "active",
+      "status_label": "Stale after V22",
+      "status_kind": "neutral",
       "question": "Should LPFS close or protect trades when bid/ask price gets very close to the 1R target before the full target is filled?",
       "setup": "Research-only TP-near exit study using the V16 bid/ask simulator as the control environment. The trade model stays LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, fixed 6-bar signal window, and fixed 6-bar pullback wait. Variants test immediate close, breakeven protect, and locked-profit protect at percent-to-target and spread-multiple thresholds.",
       "how_to_read": "Start with Decision Read, then compare each TP-near variant against the no-buffer bid/ask control and canonical V15. Use the outcome breakdown to separate saved stops from sacrificed full TPs before considering any live change.",
       "conclusion": "The TP-near idea has promise but is not a live-rule change yet. The 90% immediate-close variant materially improved the research control, mainly by saving trades from later stops, while still sacrificing some full TPs.",
-      "action": "Keep live behavior unchanged. Review the changed-trade samples and robustness by symbol/timeframe before deciding whether TP-near close or protect logic deserves a separate live-change plan.",
+      "action": "Historical read only until rerun on the V22 separated signal universe. Do not use this old-population result for a new TP-near live-design decision.",
       "facts": [
         ["Control", "1,535.2R"],
         ["Best Variant", "close_pct_90"],
@@ -517,13 +517,13 @@
       "nav_label": "V19",
       "index_order": -9,
       "title": "V19 TP-Near Robustness",
-      "status_label": "Robustness study",
-      "status_kind": "active",
+      "status_label": "Stale after V22",
+      "status_kind": "neutral",
       "question": "Does a live-equivalent hard reduced-TP rule survive conservative fill haircuts, delayed activation, symbol/timeframe concentration checks, and year-by-year stability checks?",
       "setup": "Research-only robustness rerun using the V15 LPFS baseline and V16 no-buffer bid/ask control. The strategy model stays LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, and fixed 6-bar windows. V19 close variants now treat the percent threshold as the actual effective TP, such as 0.9R instead of 1R; they do not get upgraded to full 1R after the threshold is touched. Protect variants remain separate.",
       "how_to_read": "Start with the Decision Card, then use the ranking, symbol/timeframe, year, stress, and changed-trade sample sections to see whether a TP-near variant deserves a later live-design plan.",
       "conclusion": "V19 is the decision dashboard for TP-near robustness. It does not change live behavior; it decides whether the TP-near idea should move to a separate live-design experiment.",
-      "action": "Use this page to decide the next follow-up. Do not change VPS, MT5 orders, live state, Telegram lifecycle, or production TP handling from V19 alone.",
+      "action": "Historical read only until rerun on the V22 separated signal universe. Do not change VPS, MT5 orders, live state, Telegram lifecycle, or production TP handling from V19 alone.",
       "facts": [
         ["Baseline", "V15 LPFS"],
         ["Control", "V16 bid/ask"],
@@ -546,13 +546,13 @@
       "nav_label": "V20",
       "index_order": -10,
       "title": "V20 Protection Realism",
-      "status_label": "M30 replay study",
-      "status_kind": "active",
+      "status_label": "Stale after V22",
+      "status_kind": "neutral",
       "question": "Does the V19 locked-profit idea still work once live stop-modification timing is bracketed with M30 replay?",
       "setup": "Research-only lower-timeframe replay using the V15 LPFS signal baseline. H4/H8/H12/D1/W1 setups are replayed on M30 bid/ask candles to test lock-stop behavior at 0.9R with a 0.5R protected stop. Conservative variants only activate on a later M30 candle; the same-M30 assumed variant is an optimistic upper bound for the live 30-second loop.",
       "how_to_read": "Start with the Decision Card and Protection Funnel. The funnel separates 0.9R trigger touches, successful stop activations, too-fast misses, broker min-stop-distance blocks, and the optimistic same-M30 upper bound.",
       "conclusion": "V20 says the idea is timing-sensitive. Same-M30 assumed activation improves the M30 replay control, but conservative later-M30 activation does not. This is not enough to change live behavior without M1/tick or forward evidence.",
-      "action": "Use this page to decide whether a separate live stop-modification plan is justified. Do not change VPS, MT5 orders, live state, Telegram lifecycle, or production stop handling from V20 alone.",
+      "action": "Historical read only until rerun on the V22 separated signal universe. Do not change VPS, MT5 orders, live state, Telegram lifecycle, or production stop handling from V20 alone.",
       "facts": [
         ["Control", "336.9R"],
         ["Upper Bound", "+176.0R"],
@@ -575,13 +575,13 @@
       "nav_label": "V21",
       "index_order": -11,
       "title": "V21 Crypto BTC/ETH Broker-History",
-      "status_label": "Crypto expansion study",
-      "status_kind": "active",
+      "status_label": "Stale after V22",
+      "status_kind": "neutral",
       "question": "Does the unchanged LPFS baseline transfer to BTCUSD and ETHUSD on the current broker feed, after bid/ask realism, spread pressure, and min-lot sizeability checks?",
       "setup": "Research-only crypto expansion test using current-broker MT5 data. BTCUSD and ETHUSD are the decision set; SOLUSD is displayed only as short-history exploratory evidence. The strategy model stays LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, and fixed 6-bar windows.",
       "how_to_read": "Start with the Decision Card. Then check Symbol Verdicts, Timeframe Breakdown, Execution Feasibility, and Spread Risk before considering any crypto live-design plan.",
       "conclusion": "V21 is a transfer test, not a live change. It must prove BTC/ETH edge and tradeability separately from the FX strategy before crypto can be considered for live support.",
-      "action": "Keep FX live unchanged. If V21 is promising, create a separate crypto live-design plan with isolated config, risk caps, and demo-only dry-run validation.",
+      "action": "Historical read only until rerun on the V22 separated signal universe. Keep FX live unchanged and do not use V21 alone for crypto live support.",
       "facts": [
         ["Decision Set", "BTCUSD / ETHUSD"],
         ["SOL", "Exploratory only"],
@@ -609,23 +609,23 @@
       "question": "Should LPFS reject setups where the selected LP pivot bar is the Force Strike mother bar or otherwise inside the Force Strike formation?",
       "setup": "Research-only full 10-year FX rerun of the current V15 signal rules versus a separated rule that requires lp_pivot_index < fs_mother_index. The trade model remains LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, and fixed 6-bar windows.",
       "how_to_read": "Start with the Decision Card and Comparison Table. Then check the overlap audit to confirm clean joins, the removed trade samples to inspect LP==mother cases, and the revalidation matrix to know which prior studies are stale.",
-      "conclusion": "V22 is the evidence gate for LP/Force-Strike separation. It does not change production behavior by itself; it shows whether the cleaner design rule improves or weakens the current V15/V16 baseline.",
-      "action": "Use V22 before changing signal rules. If separation becomes the accepted baseline, rerun the stale V17-V21 branches before using them for future live-design decisions.",
+      "conclusion": "V22 accepts hard LP/Force-Strike separation as the next baseline. PF, win rate, and average R improved; the lower raw R is accepted as the cost of removing invalid/self-referential setups.",
+      "action": "Use the hard LP-before-FS rule for new baseline signal generation. Keep V22 control explicitly legacy for reproducible comparison, and rerun stale V17-V21 branches before using them for future live-design decisions.",
       "facts": [
-        ["Decision", "Mixed"],
+        ["Decision", "Accepted"],
         ["R Delta", "-24.7R"],
         ["PF Delta", "+0.025"],
-        ["LP==Mother", "1,603 control trades"]
+        ["Trade Drop", "9.05%"]
       ],
       "decision_brief": {
-        "headline": "V22 result: mixed evidence; do not patch production from this alone.",
+        "headline": "V22 result: accept hard LP-before-FS separation as the next baseline.",
         "key_results": [
           "Current control: 13,012 trades, 1,512.3R, 58.0% win rate, PF 1.265.",
           "Separated rule: 11,834 trades, 1,487.5R, 58.4% win rate, PF 1.289.",
-          "The rule removed 1,295 old LP==mother trade keys and reselected 308 same Force Strike signals to an earlier LP; overlap audit had zero duplicate keys and zero missing joins.",
-          "Bid/ask realism improved PF and return/DD for the separated population, but raw R still fell by 28.0R versus V16 control."
+          "The rule drops 1,178 trades, or 9.05%, and gives up 24.7R raw total R. That is accepted because it removes self-referential LP==mother setups while improving win rate, PF, and average R.",
+          "The rule removed 1,295 old LP==mother trade keys and reselected 308 same Force Strike signals to an earlier LP; overlap audit had zero duplicate keys and zero missing joins."
         ],
-        "next_step": "Inspect symbol/timeframe/year concentration and removed trade samples before deciding whether design purity justifies a signal-rule change."
+        "next_step": "Deploy the hard rule intentionally, then rerun stale V17-V21 research on the accepted signal universe before using those branches for future live-design decisions."
       }
     }
   ]

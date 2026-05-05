@@ -543,7 +543,7 @@ def run_lp_force_strike_experiment_on_frame(
     entry_wait_mode: EntryWaitMode = "fixed_bars",
     entry_wait_same_bar_priority: EntryWaitSameBarPriority = "entry",
     costs: CostConfig | None = None,
-    require_lp_pivot_before_fs_mother: bool = False,
+    require_lp_pivot_before_fs_mother: bool = True,
 ) -> LPForceStrikeExperimentResult:
     """Run all configured trade-model candidates for one symbol/timeframe."""
 

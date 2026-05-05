@@ -44,6 +44,13 @@ class V22LPFSSeparationReportTests(unittest.TestCase):
         self.assertEqual(config["pivot_strength"], 3)
         self.assertEqual(config["timeframes"], ["H4", "H8", "H12", "D1", "W1"])
         self.assertEqual(config["docs_output_path"], "docs/v22.html")
+        self.assertEqual(config["decision_criteria"]["min_profit_factor_delta"], 0.0)
+        self.assertEqual(config["decision_criteria"]["min_win_rate_delta"], 0.0)
+        self.assertEqual(config["decision_criteria"]["min_avg_net_r_delta"], 0.0)
+        self.assertNotIn("min_return_to_drawdown_delta", config["decision_criteria"])
+        variants = {variant["variant_id"]: variant for variant in config["variants"]}
+        self.assertFalse(variants["control_current"]["require_lp_pivot_before_fs_mother"])
+        self.assertTrue(variants["exclude_lp_pivot_inside_fs"]["require_lp_pivot_before_fs_mother"])
 
     def test_revalidation_matrix_classifies_required_branches(self) -> None:
         matrix = v22._research_revalidation_matrix()
@@ -110,6 +117,55 @@ class V22LPFSSeparationReportTests(unittest.TestCase):
 
         self.assertEqual(lookup[("control_current", "duplicate_signal_join_keys")], 1)
         self.assertEqual(lookup[("exclude_lp_pivot_inside_fs", "missing_trade_to_signal_joins")], 1)
+
+    def test_decision_accepts_quality_tradeoff_when_quality_improves(self) -> None:
+        summary = pd.DataFrame(
+            [
+                {
+                    "separation_variant_id": "control_current",
+                    "trades": 13012,
+                    "win_rate": 0.5800,
+                    "win_rate_delta_vs_control": 0.0,
+                    "profit_factor": 1.265,
+                    "pf_delta_vs_control": 0.0,
+                    "total_net_r": 1512.3,
+                    "total_net_r_delta_vs_control": 0.0,
+                    "avg_net_r": 0.1162,
+                    "avg_net_r_delta_vs_control": 0.0,
+                    "bucket_efficient_return_to_reserved_drawdown": 48.56,
+                    "return_to_drawdown_r": 48.56,
+                },
+                {
+                    "separation_variant_id": "exclude_lp_pivot_inside_fs",
+                    "trades": 11834,
+                    "win_rate": 0.5842,
+                    "win_rate_delta_vs_control": 0.0042,
+                    "profit_factor": 1.289,
+                    "pf_delta_vs_control": 0.024,
+                    "total_net_r": 1487.5,
+                    "total_net_r_delta_vs_control": -24.8,
+                    "avg_net_r": 0.1257,
+                    "avg_net_r_delta_vs_control": 0.0095,
+                    "bucket_efficient_return_to_reserved_drawdown": 50.95,
+                    "return_to_drawdown_r": 50.95,
+                },
+            ]
+        )
+        decision = v22._decision(
+            summary,
+            {
+                "min_profit_factor_delta": 0.0,
+                "min_win_rate_delta": 0.0,
+                "min_avg_net_r_delta": 0.0,
+                "max_trade_count_cut_pct": 20.0,
+                "max_total_net_r_drop_pct": 5.0,
+            },
+        )
+
+        self.assertEqual(decision["status"], "accepted_quality_tradeoff")
+        self.assertTrue(decision["passes_quality"])
+        self.assertTrue(decision["passes_cost"])
+        self.assertIn("Accept the hard LP-before-FS rule", decision["headline"])
 
     def test_html_report_contains_required_sections(self) -> None:
         comparison = pd.DataFrame(
@@ -228,10 +284,10 @@ class V22LPFSSeparationReportTests(unittest.TestCase):
             ]
         )
         decision = {
-            "status": "design_valid_but_small_tradeoff",
-            "headline": "The rule is conceptually cleaner.",
-            "detail": "Small tradeoff.",
-            "follow_up": "Inspect removed trades.",
+            "status": "accepted_quality_tradeoff",
+            "headline": "Accept the hard LP-before-FS rule.",
+            "detail": "Quality improved and the smaller trade population is an accepted cost.",
+            "follow_up": "Rerun stale branches on the accepted signal universe.",
         }
 
         html = v22._html_report(
@@ -263,6 +319,8 @@ class V22LPFSSeparationReportTests(unittest.TestCase):
             "Research Revalidation Matrix",
             "Follow-Up Section",
             "Removed Trade Samples",
+            "ACCEPTED QUALITY TRADEOFF",
+            "Accept the hard LP-before-FS rule",
         ]:
             with self.subTest(text=text):
                 self.assertIn(text, html)

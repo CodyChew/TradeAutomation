@@ -16,7 +16,7 @@ from lp_force_strike_dashboard_metadata import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = REPO_ROOT / "docs" / "strategy.html"
 
-TITLE = "Current Strategy Guide: V13 Mechanics + V15 Risk Buckets"
+TITLE = "Current Strategy Guide: V13 Mechanics + V15 Risk Buckets + V22 LP/FS Separation"
 
 
 def _escape(value: Any) -> str:
@@ -454,6 +454,10 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
             "If multiple LP break windows are still valid, bullish chooses the lowest support and bearish chooses the highest resistance. Equal-price ties use the latest break.",
         ),
         (
+            "LP pivot before FS mother",
+            "The selected LP pivot bar must be before the Force Strike mother bar. LP==mother and LP-inside-FS selections are rejected by default after V22.",
+        ),
+        (
             "Raw Force Strike confirms the setup",
             "A bullish confirmation must close at or above the selected support. A bearish confirmation must close at or below the selected resistance.",
         ),
@@ -487,6 +491,7 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
     negative_events = [
         ("Expired", "Force Strike after bar 6", "A raw Force Strike close that first appears on bar 7 or later is outside the fixed signal window and is ignored."),
         ("Invalid", "Wrong-side close", "For a bullish setup, a close below the selected LP does not confirm. For a bearish setup, a close above the selected LP does not confirm."),
+        ("Rejected", "LP/FS overlap", "The selected LP pivot cannot be the Force Strike mother bar or any bar inside the Force Strike formation."),
         ("Rejected", "Pullback not reached", "A valid signal still produces no trade if the 0.5 pullback entry is not touched inside the fixed 6-bar pullback wait."),
         ("Rejected", "No next candle after signal", "A signal on the final available candle cannot be tested for pullback entry and is rejected."),
         ("Rejected", "Bad stop or pullback geometry", "Stop equals entry, stop on the wrong side, and invalid pullback ranges are rejected before the result set is built."),
@@ -502,6 +507,7 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
         ("LP pivot", "LP3 take-all"),
         ("Timeframes", "H4/H8/H12/D1/W1"),
         ("Setup", "LP break + raw Force Strike"),
+        ("LP/FS separation", "LP before FS mother"),
         ("Entry", "0.5 signal-candle pullback"),
         ("Stop", "FS structure stop"),
         ("Target", "1R target"),
@@ -513,7 +519,7 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
     mechanic_steps = [
         (
             "Signal formation",
-            "A wick break through the selected LP3 support or resistance opens a trap window. Raw Force Strike must close back on the correct side of that LP by bar 6.",
+            "A wick break through the selected LP3 support or resistance opens a trap window. The selected LP pivot must be before the Force Strike mother bar, and raw Force Strike must close back on the correct side of that LP by bar 6.",
         ),
         (
             "Pending entry",
@@ -534,6 +540,7 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
     ]
     correctness_rows = [
         ["Wrong-side close", "A bullish setup must close at or above selected support; a bearish setup must close at or below selected resistance."],
+        ["LP/FS overlap", "The selected LP pivot must be before the Force Strike mother bar. LP==mother or LP-inside-FS selections are rejected by default."],
         ["Expired signal", "The LP break candle is bar 1. A first Force Strike confirmation on bar 7 is ignored."],
         ["Expired pending", "The pending entry is cancelled only after the configured number of actual closed bars has passed after the signal candle."],
         ["Missed entry", "If price already touched the planned entry before live placement, no late pending order is sent."],
@@ -578,7 +585,7 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
     <section id="strategy-contract" class="guide-hero" aria-labelledby="strategy-contract-title">
       <div class="eyebrow">Current Baseline In One Screen</div>
       <h2 id="strategy-contract-title">Trade Mechanics Contract</h2>
-      <p>Use this as the current LPFS decision contract: LP3 on H4/H8/H12/D1/W1, LP break, raw Force Strike confirmation, 0.5 signal-candle pullback, FS structure stop, 1R target, 6-bar waits, and V15 risk buckets.</p>
+      <p>Use this as the current LPFS decision contract: LP3 on H4/H8/H12/D1/W1, LP break, selected LP pivot before FS mother, raw Force Strike confirmation, 0.5 signal-candle pullback, FS structure stop, 1R target, 6-bar waits, and V15 risk buckets.</p>
       <div class="contract-strip">
         {"".join(f'<div class="fact"><span>{_escape(label)}</span><strong>{_escape(value)}</strong></div>' for label, value in contract_facts)}
       </div>
@@ -682,6 +689,7 @@ def build_strategy_page(output: Path = DEFAULT_OUTPUT) -> Path:
         {_research_link("v13.html", "V13 Mechanics", "Relaxed portfolio selection set the current LP3 take-all mechanics across H4, H8, H12, D1, and W1.")}
         {_research_link("v14.html", "V14 Drawdown", "Risk sizing added realized drawdown versus risk-reserved drawdown accounting and practical exposure checks.")}
         {_research_link("v15.html", "V15 Buckets", "Bucket sensitivity selected the current first account-constraint row and the higher-return growth contrast.")}
+        {_research_link("v22.html", "V22 Separation", "Hard LP-before-FS separation was accepted as the current signal-quality baseline after improving PF, win rate, and average R.")}
       </div>
     </section>
 

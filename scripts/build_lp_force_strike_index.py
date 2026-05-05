@@ -67,9 +67,9 @@ def _strategy_card() -> str:
     <section id="strategy-guide" class="card featured">
       <div class="status status-active">Strategy guide</div>
       <h2>Current Strategy Guide</h2>
-      <p>Plain-English V13 mechanics plus V15 risk buckets, with signal rules, backtest trade simulation assumptions, MT5 execution status, and negative-event handling.</p>
+      <p>Plain-English V13 mechanics plus V15 risk buckets and the V22 LP/FS separation rule, with signal rules, backtest trade simulation assumptions, MT5 execution status, and negative-event handling.</p>
       <div class="facts">
-        <div class="fact"><span>Basis</span><strong>V13 + V15</strong></div>
+        <div class="fact"><span>Basis</span><strong>V13 + V15 + V22</strong></div>
         <div class="fact"><span>Execution</span><strong>Research + guarded live-send</strong></div>
       </div>
       <a class="button" href="strategy.html">Open Strategy Guide</a>

@@ -39,10 +39,12 @@ Static research dashboards are published from `docs/`:
 - Local entry point: `docs/index.html`
 - GitHub Pages: `https://codychew.github.io/TradeAutomation/`
 
-The current LP + Force Strike research baseline is V13: LP3 take-all across
-H4/H8/H12/D1/W1, using the 0.5 signal-candle pullback, full Force Strike
-structure stop, single 1R target, and fixed 6-bar pullback wait. V15 is the
-current risk-sizing read: the first account-constraint candidate is H4/H8
+The current LP + Force Strike research baseline is V13 mechanics plus V15 risk
+buckets plus V22 LP/FS separation: LP3 take-all across H4/H8/H12/D1/W1, with
+the selected LP pivot required before the Force Strike mother bar, using the
+0.5 signal-candle pullback, full Force Strike structure stop, single 1R target,
+and fixed 6-bar pullback wait. V15 is the current risk-sizing read: the first
+account-constraint candidate is H4/H8
 `0.20%`, H12/D1 `0.30%`, and W1 `0.75%`; the growth contrast is H4/H8
 `0.25%`, H12/D1 `0.30%`, and W1 `0.60%`. Open `docs/index.html` or the GitHub
 Pages link for the latest dashboard.
