@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-04 local time after installing the Amazon Lightsail VPS
-production task and leaving it paused by kill switch.
+Last updated: 2026-05-05 local time after adding V21 crypto research, publishing
+the dashboard, and fixing live market-recovery broker filling-mode handling.
 
 ## Purpose
 
@@ -1036,8 +1036,9 @@ Expected next scope:
    `C:\TradeAutomationRuntime\data\live\lpfs_live_state.json`,
    `lpfs_live_journal.jsonl`, Telegram lifecycle cards, and the latest log.
    MT5 remains broker truth; Telegram is only a monitoring channel.
-2. Verify the VPS repo is at `f7881f3` or newer before assuming
-   worse-than-entry market recovery is retryable WAITING in production.
+2. Verify the VPS repo is at `04e92c8` or newer before assuming
+   worse-than-entry market recovery is retryable WAITING and broker
+   filling-mode fallback is active in production.
 3. Do not run a local PC live runner against the same account while
    `LPFS_Live` is running on the VPS.
 4. If a user manually deletes a pending order, let the next reconciliation

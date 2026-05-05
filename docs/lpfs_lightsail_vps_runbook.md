@@ -345,6 +345,11 @@ Market-recovery operator note:
   signal key is not marked processed and no MT5 order is sent;
 - the original structure stop is kept, TP is recalculated to 1R from the actual
   fill, and spread must still be no more than 10% of actual fill-to-stop risk;
+- market recovery uses a market `TRADE_ACTION_DEAL` request, not a new pending
+  limit. It selects broker-supported `type_filling` modes from symbol metadata;
+  if MT5 returns invalid/unsupported filling mode on `order_check`, the runner
+  tries the next fill mode and sends with the exact request that passed
+  `order_check`;
 - path safety is checked from the first actual entry touch onward. Stop/target
   movement after that touch makes late recovery ineligible; same-bar ambiguity
   remains conservative;
@@ -360,11 +365,12 @@ Market-recovery operator note:
 - rollback is local config only: set `live_send.market_recovery_mode` to
   `"disabled"` and restart the runner intentionally.
 
-Deployment note: market recovery retry was verified locally on 2026-05-05 with
-the focused live executor/notification tests, full LPFS discovery (`215`
-tests), and core coverage at `100.00%`. The VPS must pull/update the repo and
-restart `LPFS_Live` before this behavior is active on the VPS; an already
-running process keeps the old code.
+Deployment note: market recovery retry and the broker filling-mode fallback
+were verified locally on 2026-05-05 with focused live executor tests, full LPFS
+discovery (`260` tests), and core coverage at `100.00%`. The VPS must be at
+commit `04e92c8` or newer and `LPFS_Live` must be intentionally restarted
+before both behaviors are active; an already running process keeps the old
+code.
 
 If status shows suspicious duplicate runner entries, pause first and
 investigate afterward:
