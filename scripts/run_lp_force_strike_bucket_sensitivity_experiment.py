@@ -383,9 +383,9 @@ def _html_report(
         f"{_fmt_pct_value(filters.get('min_worst_month_pct'))}."
     )
     growth_row = recommended.copy()
-    growth_row["schedule_label"] = "Highest-return practical row"
+    growth_row["schedule_label"] = "Growth alternative - highest-return practical row"
     efficient_row = efficient.copy()
-    efficient_row["schedule_label"] = "Most-efficient practical row"
+    efficient_row["schedule_label"] = "ADOPTED DECISION - most-efficient practical row"
 
     return f"""<!doctype html>
 <html lang="en">
@@ -460,7 +460,7 @@ def _html_report(
       current_page=current_page,
       section_links=[
           ("#experiment-summary", "Snapshot"),
-          ("#recommendation", "Recommendation"),
+          ("#recommendation", "Decision"),
           ("#metric-glossary", "Glossary"),
           ("#practical", "Practical Rows"),
           ("#efficiency", "Efficiency"),
@@ -474,21 +474,26 @@ def _html_report(
     {experiment_summary_html(page_metadata)}
     {metric_glossary_html()}
     <section id="recommendation">
-      <h2>Recommendation Card</h2>
+      <h2>Decision Card</h2>
       <div class="kpis">
-        {_kpi("Top-Return H4/H8", _fmt_pct_value(recommended["lower_risk_pct"]), "lower-timeframe bucket")}
-        {_kpi("Top-Return H12/D1", _fmt_pct_value(recommended["middle_risk_pct"]), "middle bucket")}
-        {_kpi("Top-Return W1", _fmt_pct_value(recommended["w1_risk_pct"]), "weekly bucket")}
-        {_kpi("Top Return", _fmt_pct_value(recommended["total_return_pct"]), "account percent")}
-        {_kpi("Risk-Reserved DD", _fmt_pct_value(recommended["reserved_max_drawdown_pct"]), "full open risk reserved")}
+        {_kpi("Adopted H4/H8", _fmt_pct_value(efficient["lower_risk_pct"]), "efficiency-first bucket")}
+        {_kpi("Adopted H12/D1", _fmt_pct_value(efficient["middle_risk_pct"]), "efficiency-first bucket")}
+        {_kpi("Adopted W1", _fmt_pct_value(efficient["w1_risk_pct"]), "efficiency-first bucket")}
+        {_kpi("Adopted Return", _fmt_pct_value(efficient["total_return_pct"]), "account percent")}
+        {_kpi("Adopted Reserved DD", _fmt_pct_value(efficient["reserved_max_drawdown_pct"]), "full open risk reserved")}
+        {_kpi("Adopted Return/DD", _fmt_num(efficient["return_to_reserved_drawdown"], 2), "primary objective")}
+        {_kpi("Growth H4/H8", _fmt_pct_value(recommended["lower_risk_pct"]), "higher-return alternative")}
+        {_kpi("Growth Return", _fmt_pct_value(recommended["total_return_pct"]), "higher stress")}
+        {_kpi("Growth Reserved DD", _fmt_pct_value(recommended["reserved_max_drawdown_pct"]), "near the practical limit")}
         {_kpi("Practical Rows", f"{len(practical)}/{len(summary)}", "grid rows passing filters")}
       </div>
+      <div class="note">Final decision prioritizes return per risk-reserved drawdown and drawdown breathing room. The adopted bucket is H4/H8 0.20%, H12/D1 0.30%, W1 0.75%. The 0.25% H4/H8 row is the growth alternative, not the default.</div>
       <div class="note">{_escape(filter_note)}</div>
-      {_comparison_table([growth_row, efficient_row, baseline])}
+      {_comparison_table([efficient_row, growth_row, baseline])}
     </section>
     <section id="practical">
       <h2>Practical Return Leaderboard</h2>
-      <div class="note">Rows are sorted by total return after applying the practical filters. Use this section to choose the next default ladder.</div>
+      <div class="note">Rows are sorted by total return after applying the practical filters. Use this section to inspect growth alternatives; the final default is still the efficiency-first row in the Decision Card.</div>
       {_leaderboard_table(practical, limit=20) if not practical.empty else "<p>No rows passed the configured practical filters.</p>"}
     </section>
     <section id="efficiency">
@@ -513,12 +518,12 @@ def _html_report(
       {_leaderboard_table(summary, limit=64)}
     </section>
     <section id="timeframes">
-      <h2>Recommended Ladder Timeframe Contribution</h2>
-      {_contribution_table(timeframe_rows, "timeframe", str(recommended["schedule_id"]))}
+      <h2>Adopted Ladder Timeframe Contribution</h2>
+      {_contribution_table(timeframe_rows, "timeframe", str(efficient["schedule_id"]))}
     </section>
     <section id="tickers">
-      <h2>Recommended Ladder Ticker Contribution</h2>
-      {_contribution_table(ticker_rows, "symbol", str(recommended["schedule_id"]))}
+      <h2>Adopted Ladder Ticker Contribution</h2>
+      {_contribution_table(ticker_rows, "symbol", str(efficient["schedule_id"]))}
     </section>
   </main>
   <footer>Generated from existing LP3 take-all trade rows. No MT5 data pull or signal rerun was performed.</footer>

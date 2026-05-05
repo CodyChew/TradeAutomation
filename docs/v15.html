@@ -237,6 +237,45 @@
       background: rgba(255, 255, 255, .03);
       color: #edf4f7;
     }
+    .archive-nav {
+      min-height: 34px;
+      position: relative;
+    }
+    .archive-nav summary {
+      cursor: pointer;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+      list-style: none;
+    }
+    .archive-nav summary::-webkit-details-marker {
+      display: none;
+    }
+    .archive-nav summary::after {
+      content: " +";
+      font-weight: 700;
+    }
+    .archive-nav[open] summary {
+      background: rgba(255, 255, 255, .16);
+    }
+    .archive-nav[open] summary::after {
+      content: " -";
+    }
+    .archive-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      max-width: min(680px, 100%);
+    }
+    .archive-links a {
+      font-size: 13px;
+      padding: 6px 9px;
+      min-height: 30px;
+    }
     main {
       padding: 24px max(18px, 5vw) 48px;
     }
@@ -400,6 +439,16 @@
         flex: 1 1 auto;
         text-align: center;
       }
+      .archive-nav {
+        flex: 1 1 100%;
+      }
+      .archive-nav summary {
+        text-align: center;
+      }
+      .archive-links a {
+        flex: 1 1 calc(25% - 8px);
+        text-align: center;
+      }
       main {
         padding: 16px 12px 34px;
       }
@@ -482,7 +531,7 @@
     </nav>
 
     <nav class="report-nav" aria-label="Report sections">
-      <a href="#experiment-summary">Snapshot</a><a href="#recommendation">Recommendation</a><a href="#metric-glossary">Glossary</a><a href="#practical">Practical Rows</a><a href="#efficiency">Efficiency</a><a href="#bucket-effects">Buckets</a><a href="#heatmap">Heatmap</a><a href="#all-grid">All Rows</a><a href="#timeframes">Timeframes</a>
+      <a href="#experiment-summary">Snapshot</a><a href="#recommendation">Decision</a><a href="#metric-glossary">Glossary</a><a href="#practical">Practical Rows</a><a href="#efficiency">Efficiency</a><a href="#bucket-effects">Buckets</a><a href="#heatmap">Heatmap</a><a href="#all-grid">All Rows</a><a href="#timeframes">Timeframes</a>
     </nav>
 
   </header>
@@ -500,18 +549,18 @@
 
       <div class="decision-brief">
         <h3>Decision Brief</h3>
-        <p class="brief-headline">V15 result: higher H4/H8 risk helped, but use the efficient bucket row before account constraints.</p>
-        <ul><li>V15 tested 64 ladders across H4/H8 0.10-0.25%, H12/D1 0.20-0.50%, and W1 0.30-0.75%.</li><li>Most-efficient practical row: H4/H8 0.20%, H12/D1 0.30%, W1 0.75%, total +383.2%, risk-reserved DD 7.9%, max open risk 5.75%, worst month -3.22%.</li><li>Highest-return practical row: H4/H8 0.25%, H12/D1 0.30%, W1 0.60%, total +421.8%, risk-reserved DD 9.7%, max open risk 5.95%, worst month -4.05%.</li><li>V14 tight H12-D1 baseline was H4/H8 0.15%, H12/D1 0.30%, W1 0.45%, total +324.2%, risk-reserved DD 7.9%, max open risk 5.1%.</li><li>H12/D1 above 0.30% did not pass the practical filters, while H4/H8 at 0.25% is useful but sits at the top of the tested lower-timeframe range.</li></ul>
-        <p class="brief-next"><strong>Next:</strong> Run account-level constraints using H4/H8 0.20%, H12/D1 0.30%, W1 0.75% as the first candidate, with 0.25/0.30/0.60 as the growth alternative.</p>
+        <p class="brief-headline">V15 decision: adopt the efficient 0.20 / 0.30 / 0.75 bucket; treat 0.25 / 0.30 / 0.60 as growth-only.</p>
+        <ul><li>V15 tested 64 ladders across H4/H8 0.10-0.25%, H12/D1 0.20-0.50%, and W1 0.30-0.75%.</li><li>Adopted default: H4/H8 0.20%, H12/D1 0.30%, W1 0.75%, total +383.2%, risk-reserved DD 7.9%, max open risk 5.75%, worst month -3.22%, best practical return/DD.</li><li>Growth alternative only: H4/H8 0.25%, H12/D1 0.30%, W1 0.60%, total +421.8%, risk-reserved DD 9.7%, max open risk 5.95%, worst month -4.05%.</li><li>V14 tight H12-D1 baseline was H4/H8 0.15%, H12/D1 0.30%, W1 0.45%, total +324.2%, risk-reserved DD 7.9%, max open risk 5.1%.</li><li>H12/D1 above 0.30% did not pass the practical filters, while H4/H8 at 0.25% is useful but sits at the top of the tested lower-timeframe range.</li></ul>
+        <p class="brief-next"><strong>Next:</strong> Use H4/H8 0.20%, H12/D1 0.30%, W1 0.75% as the default bucket. Consider 0.25/0.30/0.60 only after an explicit growth-risk decision.</p>
       </div>
 
       <div class="summary-grid">
         <div><h3>What This Tests</h3><p>Which 3-bucket account-risk ladder is strongest when H4/H8, H12/D1, and W1 risk are varied separately?</p></div>
         <div><h3>Setup Tested</h3><p>Existing V9 trade rows only. The strategy model stays fixed: LP3, all H4/H8/H12/D1/W1, take-all handling, 0.5 signal-candle pullback, full Force Strike structure stop, single 1R target, and fixed 6-bar pullback wait. V15 tests 64 bucket ladders.</p></div>
-        <div><h3>How To Read This Page</h3><p>Start with the Decision Brief and Recommendation Card. Practical rows require risk-reserved DD at or below 10%, max reserved open risk at or below 6%, and worst month no worse than -5%. Then compare the highest-return practical row against the most-efficient practical row.</p></div>
-        <div><h3>Use / Do Not Use</h3><p>Use the most-efficient practical row for the next account-constraint test. Keep the highest-return practical row as the growth alternative, and do not increase H12/D1 above 0.30% without a separate drawdown tolerance decision.</p></div>
+        <div><h3>How To Read This Page</h3><p>Start with the Decision Brief and Decision Card. Practical rows require risk-reserved DD at or below 10%, max reserved open risk at or below 6%, and worst month no worse than -5%. The final default prioritizes return/DD and drawdown breathing room; the highest-return practical row is shown separately as a growth alternative.</p></div>
+        <div><h3>Use / Do Not Use</h3><p>Use the most-efficient practical row as the default risk bucket. Keep the highest-return practical row as the growth alternative, and do not increase H12/D1 above 0.30% without a separate drawdown tolerance decision.</p></div>
       </div>
-      <div class="conclusion-box"><strong>Conclusion:</strong> Upweighting H4/H8 helped materially, but the cleanest next account-constraint candidate is the most-efficient practical row: H4/H8 0.20%, H12/D1 0.30%, and W1 0.75%. The highest-return practical row, H4/H8 0.25%, H12/D1 0.30%, and W1 0.60%, is a growth-tilted alternative near the open-risk limit.</div>
+      <div class="conclusion-box"><strong>Conclusion:</strong> Upweighting H4/H8 helped materially, but the adopted bucket decision is the most-efficient practical row: H4/H8 0.20%, H12/D1 0.30%, and W1 0.75%. The highest-return practical row, H4/H8 0.25%, H12/D1 0.30%, and W1 0.60%, is a growth-tilted alternative near the open-risk limit, not the default.</div>
 
     </section>
 
@@ -522,41 +571,69 @@
     </section>
 
     <section id="recommendation">
-      <h2>Recommendation Card</h2>
+      <h2>Decision Card</h2>
       <div class="kpis">
 
     <div class="kpi">
-      <div class="kpi-label">Top-Return H4/H8</div>
-      <div class="kpi-value">0.25%</div>
-      <div class="kpi-note">lower-timeframe bucket</div>
+      <div class="kpi-label">Adopted H4/H8</div>
+      <div class="kpi-value">0.20%</div>
+      <div class="kpi-note">efficiency-first bucket</div>
     </div>
 
 
     <div class="kpi">
-      <div class="kpi-label">Top-Return H12/D1</div>
+      <div class="kpi-label">Adopted H12/D1</div>
       <div class="kpi-value">0.30%</div>
-      <div class="kpi-note">middle bucket</div>
+      <div class="kpi-note">efficiency-first bucket</div>
     </div>
 
 
     <div class="kpi">
-      <div class="kpi-label">Top-Return W1</div>
-      <div class="kpi-value">0.60%</div>
-      <div class="kpi-note">weekly bucket</div>
+      <div class="kpi-label">Adopted W1</div>
+      <div class="kpi-value">0.75%</div>
+      <div class="kpi-note">efficiency-first bucket</div>
     </div>
 
 
     <div class="kpi">
-      <div class="kpi-label">Top Return</div>
-      <div class="kpi-value">421.82%</div>
+      <div class="kpi-label">Adopted Return</div>
+      <div class="kpi-value">383.17%</div>
       <div class="kpi-note">account percent</div>
     </div>
 
 
     <div class="kpi">
-      <div class="kpi-label">Risk-Reserved DD</div>
-      <div class="kpi-value">9.72%</div>
+      <div class="kpi-label">Adopted Reserved DD</div>
+      <div class="kpi-value">7.89%</div>
       <div class="kpi-note">full open risk reserved</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Adopted Return/DD</div>
+      <div class="kpi-value">48.56</div>
+      <div class="kpi-note">primary objective</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Growth H4/H8</div>
+      <div class="kpi-value">0.25%</div>
+      <div class="kpi-note">higher-return alternative</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Growth Return</div>
+      <div class="kpi-value">421.82%</div>
+      <div class="kpi-note">higher stress</div>
+    </div>
+
+
+    <div class="kpi">
+      <div class="kpi-label">Growth Reserved DD</div>
+      <div class="kpi-value">9.72%</div>
+      <div class="kpi-note">near the practical limit</div>
     </div>
 
 
@@ -567,12 +644,13 @@
     </div>
 
       </div>
+      <div class="note">Final decision prioritizes return per risk-reserved drawdown and drawdown breathing room. The adopted bucket is H4/H8 0.20%, H12/D1 0.30%, W1 0.75%. The 0.25% H4/H8 row is the growth alternative, not the default.</div>
       <div class="note">Practical rows require risk-reserved DD &lt;= 10.00%, max open risk &lt;= 6.00%, and worst month &gt;= -5.00%.</div>
-      <div class="table-scroll"><table class="data-table"><thead><tr><th>Schedule</th><th>H4/H8</th><th>H12/D1</th><th>W1</th><th>Total Return</th><th>Realized DD</th><th>Reserved DD</th><th>Max Open Risk</th><th>Worst Month</th><th>Return/DD</th></tr></thead><tbody><tr><td>Highest-return practical row</td><td>0.25%</td><td>0.30%</td><td>0.60%</td><td class="positive">421.82%</td><td>8.22%</td><td>9.72%</td><td>5.95%</td><td class="negative">-4.05%</td><td>43.38</td></tr><tr><td>Most-efficient practical row</td><td>0.20%</td><td>0.30%</td><td>0.75%</td><td class="positive">383.17%</td><td>6.57%</td><td>7.89%</td><td>5.75%</td><td class="negative">-3.22%</td><td>48.56</td></tr><tr><td>V14 tight H12-D1 basket</td><td>0.15%</td><td>0.30%</td><td>0.45%</td><td class="positive">324.18%</td><td>5.90%</td><td>7.86%</td><td>5.10%</td><td class="negative">-3.03%</td><td>41.23</td></tr></tbody></table></div>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Schedule</th><th>H4/H8</th><th>H12/D1</th><th>W1</th><th>Total Return</th><th>Realized DD</th><th>Reserved DD</th><th>Max Open Risk</th><th>Worst Month</th><th>Return/DD</th></tr></thead><tbody><tr><td>ADOPTED DECISION - most-efficient practical row</td><td>0.20%</td><td>0.30%</td><td>0.75%</td><td class="positive">383.17%</td><td>6.57%</td><td>7.89%</td><td>5.75%</td><td class="negative">-3.22%</td><td>48.56</td></tr><tr><td>Growth alternative - highest-return practical row</td><td>0.25%</td><td>0.30%</td><td>0.60%</td><td class="positive">421.82%</td><td>8.22%</td><td>9.72%</td><td>5.95%</td><td class="negative">-4.05%</td><td>43.38</td></tr><tr><td>V14 tight H12-D1 basket</td><td>0.15%</td><td>0.30%</td><td>0.45%</td><td class="positive">324.18%</td><td>5.90%</td><td>7.86%</td><td>5.10%</td><td class="negative">-3.03%</td><td>41.23</td></tr></tbody></table></div>
     </section>
     <section id="practical">
       <h2>Practical Return Leaderboard</h2>
-      <div class="note">Rows are sorted by total return after applying the practical filters. Use this section to choose the next default ladder.</div>
+      <div class="note">Rows are sorted by total return after applying the practical filters. Use this section to inspect growth alternatives; the final default is still the efficiency-first row in the Decision Card.</div>
       <div class="table-scroll"><table class="data-table"><thead><tr><th>H4/H8</th><th>H12/D1</th><th>W1</th><th>Total Return</th><th>Realized DD</th><th>Reserved DD</th><th>Max Open Risk</th><th>Worst Month</th><th>Return/DD</th><th>Practical</th></tr></thead><tbody><tr><td>0.25%</td><td>0.30%</td><td>0.60%</td><td class="positive">421.82%</td><td>8.22%</td><td>9.72%</td><td>5.95%</td><td class="negative">-4.05%</td><td>43.38</td><td>Yes</td></tr><tr><td>0.25%</td><td>0.30%</td><td>0.45%</td><td class="positive">415.04%</td><td>8.36%</td><td>9.87%</td><td>5.80%</td><td class="negative">-4.04%</td><td>42.04</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.30%</td><td>0.75%</td><td class="positive">383.17%</td><td>6.57%</td><td>7.89%</td><td>5.75%</td><td class="negative">-3.22%</td><td>48.56</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.30%</td><td>0.60%</td><td class="positive">376.39%</td><td>6.72%</td><td>8.04%</td><td>5.60%</td><td class="negative">-3.21%</td><td>46.82</td><td>Yes</td></tr><tr><td>0.25%</td><td>0.20%</td><td>0.75%</td><td class="positive">372.74%</td><td>7.66%</td><td>9.70%</td><td>4.90%</td><td class="negative">-4.59%</td><td>38.43</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.30%</td><td>0.45%</td><td class="positive">369.61%</td><td>6.87%</td><td>8.19%</td><td>5.45%</td><td class="negative">-3.21%</td><td>45.15</td><td>Yes</td></tr><tr><td>0.25%</td><td>0.20%</td><td>0.60%</td><td class="positive">365.96%</td><td>7.81%</td><td>9.24%</td><td>4.75%</td><td class="negative">-4.13%</td><td>39.60</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.30%</td><td>0.30%</td><td class="positive">362.83%</td><td>7.01%</td><td>8.33%</td><td>5.30%</td><td class="negative">-3.20%</td><td>43.54</td><td>Yes</td></tr><tr><td>0.25%</td><td>0.20%</td><td>0.45%</td><td class="positive">359.18%</td><td>7.96%</td><td>9.24%</td><td>4.60%</td><td class="negative">-4.12%</td><td>38.85</td><td>Yes</td></tr><tr><td>0.25%</td><td>0.20%</td><td>0.30%</td><td class="positive">352.40%</td><td>8.10%</td><td>9.39%</td><td>4.45%</td><td class="negative">-4.12%</td><td>37.52</td><td>Yes</td></tr><tr><td>0.15%</td><td>0.30%</td><td>0.75%</td><td class="positive">337.74%</td><td>6.21%</td><td>8.47%</td><td>5.40%</td><td class="negative">-3.03%</td><td>39.86</td><td>Yes</td></tr><tr><td>0.15%</td><td>0.30%</td><td>0.60%</td><td class="positive">330.96%</td><td>6.06%</td><td>8.17%</td><td>5.25%</td><td class="negative">-3.03%</td><td>40.52</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.20%</td><td>0.75%</td><td class="positive">327.31%</td><td>6.13%</td><td>7.91%</td><td>4.55%</td><td class="negative">-3.63%</td><td>41.38</td><td>Yes</td></tr><tr><td>0.15%</td><td>0.30%</td><td>0.45%</td><td class="positive">324.18%</td><td>5.90%</td><td>7.86%</td><td>5.10%</td><td class="negative">-3.03%</td><td>41.23</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.20%</td><td>0.60%</td><td class="positive">320.54%</td><td>6.28%</td><td>7.41%</td><td>4.40%</td><td class="negative">-3.26%</td><td>43.26</td><td>Yes</td></tr><tr><td>0.15%</td><td>0.30%</td><td>0.30%</td><td class="positive">317.40%</td><td>5.75%</td><td>7.56%</td><td>4.95%</td><td class="negative">-3.03%</td><td>42.00</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.20%</td><td>0.45%</td><td class="positive">313.76%</td><td>6.43%</td><td>7.56%</td><td>4.25%</td><td class="negative">-3.25%</td><td>41.51</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.20%</td><td>0.30%</td><td class="positive">306.98%</td><td>6.57%</td><td>7.71%</td><td>4.10%</td><td class="negative">-3.25%</td><td>39.84</td><td>Yes</td></tr><tr><td>0.10%</td><td>0.30%</td><td>0.75%</td><td class="positive">292.31%</td><td>6.51%</td><td>9.10%</td><td>5.05%</td><td class="negative">-2.93%</td><td>32.11</td><td>Yes</td></tr><tr><td>0.10%</td><td>0.30%</td><td>0.60%</td><td class="positive">285.53%</td><td>6.35%</td><td>8.80%</td><td>4.90%</td><td class="negative">-2.93%</td><td>32.45</td><td>Yes</td></tr></tbody></table></div>
     </section>
     <section id="efficiency">
@@ -597,12 +675,12 @@
       <div class="table-scroll"><table class="data-table"><thead><tr><th>H4/H8</th><th>H12/D1</th><th>W1</th><th>Total Return</th><th>Realized DD</th><th>Reserved DD</th><th>Max Open Risk</th><th>Worst Month</th><th>Return/DD</th><th>Practical</th></tr></thead><tbody><tr><td>0.25%</td><td>0.30%</td><td>0.60%</td><td class="positive">421.82%</td><td>8.22%</td><td>9.72%</td><td>5.95%</td><td class="negative">-4.05%</td><td>43.38</td><td>Yes</td></tr><tr><td>0.25%</td><td>0.30%</td><td>0.45%</td><td class="positive">415.04%</td><td>8.36%</td><td>9.87%</td><td>5.80%</td><td class="negative">-4.04%</td><td>42.04</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.30%</td><td>0.75%</td><td class="positive">383.17%</td><td>6.57%</td><td>7.89%</td><td>5.75%</td><td class="negative">-3.22%</td><td>48.56</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.30%</td><td>0.60%</td><td class="positive">376.39%</td><td>6.72%</td><td>8.04%</td><td>5.60%</td><td class="negative">-3.21%</td><td>46.82</td><td>Yes</td></tr><tr><td>0.25%</td><td>0.20%</td><td>0.75%</td><td class="positive">372.74%</td><td>7.66%</td><td>9.70%</td><td>4.90%</td><td class="negative">-4.59%</td><td>38.43</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.30%</td><td>0.45%</td><td class="positive">369.61%</td><td>6.87%</td><td>8.19%</td><td>5.45%</td><td class="negative">-3.21%</td><td>45.15</td><td>Yes</td></tr><tr><td>0.25%</td><td>0.20%</td><td>0.60%</td><td class="positive">365.96%</td><td>7.81%</td><td>9.24%</td><td>4.75%</td><td class="negative">-4.13%</td><td>39.60</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.30%</td><td>0.30%</td><td class="positive">362.83%</td><td>7.01%</td><td>8.33%</td><td>5.30%</td><td class="negative">-3.20%</td><td>43.54</td><td>Yes</td></tr><tr><td>0.25%</td><td>0.20%</td><td>0.45%</td><td class="positive">359.18%</td><td>7.96%</td><td>9.24%</td><td>4.60%</td><td class="negative">-4.12%</td><td>38.85</td><td>Yes</td></tr><tr><td>0.25%</td><td>0.20%</td><td>0.30%</td><td class="positive">352.40%</td><td>8.10%</td><td>9.39%</td><td>4.45%</td><td class="negative">-4.12%</td><td>37.52</td><td>Yes</td></tr><tr><td>0.15%</td><td>0.30%</td><td>0.75%</td><td class="positive">337.74%</td><td>6.21%</td><td>8.47%</td><td>5.40%</td><td class="negative">-3.03%</td><td>39.86</td><td>Yes</td></tr><tr><td>0.15%</td><td>0.30%</td><td>0.60%</td><td class="positive">330.96%</td><td>6.06%</td><td>8.17%</td><td>5.25%</td><td class="negative">-3.03%</td><td>40.52</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.20%</td><td>0.75%</td><td class="positive">327.31%</td><td>6.13%</td><td>7.91%</td><td>4.55%</td><td class="negative">-3.63%</td><td>41.38</td><td>Yes</td></tr><tr><td>0.15%</td><td>0.30%</td><td>0.45%</td><td class="positive">324.18%</td><td>5.90%</td><td>7.86%</td><td>5.10%</td><td class="negative">-3.03%</td><td>41.23</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.20%</td><td>0.60%</td><td class="positive">320.54%</td><td>6.28%</td><td>7.41%</td><td>4.40%</td><td class="negative">-3.26%</td><td>43.26</td><td>Yes</td></tr><tr><td>0.15%</td><td>0.30%</td><td>0.30%</td><td class="positive">317.40%</td><td>5.75%</td><td>7.56%</td><td>4.95%</td><td class="negative">-3.03%</td><td>42.00</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.20%</td><td>0.45%</td><td class="positive">313.76%</td><td>6.43%</td><td>7.56%</td><td>4.25%</td><td class="negative">-3.25%</td><td>41.51</td><td>Yes</td></tr><tr><td>0.20%</td><td>0.20%</td><td>0.30%</td><td class="positive">306.98%</td><td>6.57%</td><td>7.71%</td><td>4.10%</td><td class="negative">-3.25%</td><td>39.84</td><td>Yes</td></tr><tr><td>0.10%</td><td>0.30%</td><td>0.75%</td><td class="positive">292.31%</td><td>6.51%</td><td>9.10%</td><td>5.05%</td><td class="negative">-2.93%</td><td>32.11</td><td>Yes</td></tr><tr><td>0.10%</td><td>0.30%</td><td>0.60%</td><td class="positive">285.53%</td><td>6.35%</td><td>8.80%</td><td>4.90%</td><td class="negative">-2.93%</td><td>32.45</td><td>Yes</td></tr><tr><td>0.15%</td><td>0.20%</td><td>0.75%</td><td class="positive">281.89%</td><td>4.63%</td><td>6.29%</td><td>4.20%</td><td class="negative">-2.67%</td><td>44.82</td><td>Yes</td></tr><tr><td>0.10%</td><td>0.30%</td><td>0.45%</td><td class="positive">278.75%</td><td>6.20%</td><td>8.49%</td><td>4.75%</td><td class="negative">-2.93%</td><td>32.82</td><td>Yes</td></tr><tr><td>0.15%</td><td>0.20%</td><td>0.60%</td><td class="positive">275.11%</td><td>4.78%</td><td>5.72%</td><td>4.05%</td><td class="negative">-2.43%</td><td>48.06</td><td>Yes</td></tr><tr><td>0.10%</td><td>0.30%</td><td>0.30%</td><td class="positive">271.97%</td><td>6.04%</td><td>8.19%</td><td>4.60%</td><td class="negative">-2.93%</td><td>33.22</td><td>Yes</td></tr><tr><td>0.15%</td><td>0.20%</td><td>0.45%</td><td class="positive">268.33%</td><td>4.93%</td><td>5.87%</td><td>3.90%</td><td class="negative">-2.42%</td><td>45.70</td><td>Yes</td></tr><tr><td>0.15%</td><td>0.20%</td><td>0.30%</td><td class="positive">261.55%</td><td>5.08%</td><td>6.02%</td><td>3.75%</td><td class="negative">-2.42%</td><td>43.45</td><td>Yes</td></tr><tr><td>0.10%</td><td>0.20%</td><td>0.75%</td><td class="positive">236.46%</td><td>4.39%</td><td>6.21%</td><td>3.95%</td><td class="negative">-2.02%</td><td>38.10</td><td>Yes</td></tr><tr><td>0.10%</td><td>0.20%</td><td>0.60%</td><td class="positive">229.68%</td><td>4.24%</td><td>5.85%</td><td>3.70%</td><td class="negative">-2.02%</td><td>39.24</td><td>Yes</td></tr><tr><td>0.10%</td><td>0.20%</td><td>0.45%</td><td class="positive">222.90%</td><td>4.09%</td><td>5.55%</td><td>3.55%</td><td class="negative">-2.02%</td><td>40.18</td><td>Yes</td></tr><tr><td>0.10%</td><td>0.20%</td><td>0.30%</td><td class="positive">216.12%</td><td>3.94%</td><td>5.24%</td><td>3.40%</td><td class="negative">-2.02%</td><td>41.23</td><td>Yes</td></tr><tr><td>0.25%</td><td>0.50%</td><td>0.75%</td><td class="positive">540.30%</td><td>9.84%</td><td>13.10%</td><td>8.50%</td><td class="negative">-5.04%</td><td>41.23</td><td>No</td></tr><tr><td>0.25%</td><td>0.50%</td><td>0.60%</td><td class="positive">533.52%</td><td>9.69%</td><td>12.80%</td><td>8.35%</td><td class="negative">-5.04%</td><td>41.69</td><td>No</td></tr><tr><td>0.25%</td><td>0.50%</td><td>0.45%</td><td class="positive">526.74%</td><td>9.53%</td><td>12.49%</td><td>8.20%</td><td class="negative">-5.04%</td><td>42.16</td><td>No</td></tr><tr><td>0.25%</td><td>0.50%</td><td>0.30%</td><td class="positive">519.96%</td><td>9.53%</td><td>12.19%</td><td>8.05%</td><td class="negative">-5.04%</td><td>42.66</td><td>No</td></tr><tr><td>0.20%</td><td>0.50%</td><td>0.75%</td><td class="positive">494.87%</td><td>9.84%</td><td>13.73%</td><td>8.15%</td><td class="negative">-4.94%</td><td>36.03</td><td>No</td></tr><tr><td>0.20%</td><td>0.50%</td><td>0.60%</td><td class="positive">488.09%</td><td>9.69%</td><td>13.43%</td><td>8.00%</td><td class="negative">-4.94%</td><td>36.35</td><td>No</td></tr><tr><td>0.25%</td><td>0.40%</td><td>0.75%</td><td class="positive">484.45%</td><td>8.51%</td><td>10.20%</td><td>7.30%</td><td class="negative">-4.14%</td><td>47.47</td><td>No</td></tr><tr><td>0.20%</td><td>0.50%</td><td>0.45%</td><td class="positive">481.31%</td><td>9.53%</td><td>13.12%</td><td>7.85%</td><td class="negative">-4.94%</td><td>36.68</td><td>No</td></tr><tr><td>0.25%</td><td>0.40%</td><td>0.60%</td><td class="positive">477.67%</td><td>8.66%</td><td>10.35%</td><td>7.15%</td><td class="negative">-4.14%</td><td>46.14</td><td>No</td></tr><tr><td>0.20%</td><td>0.50%</td><td>0.30%</td><td class="positive">474.53%</td><td>9.38%</td><td>12.82%</td><td>7.70%</td><td class="negative">-4.94%</td><td>37.02</td><td>No</td></tr><tr><td>0.25%</td><td>0.40%</td><td>0.45%</td><td class="positive">470.89%</td><td>8.80%</td><td>10.50%</td><td>7.00%</td><td class="negative">-4.14%</td><td>44.84</td><td>No</td></tr><tr><td>0.25%</td><td>0.40%</td><td>0.30%</td><td class="positive">464.11%</td><td>8.95%</td><td>10.65%</td><td>6.85%</td><td class="negative">-4.14%</td><td>43.59</td><td>No</td></tr><tr><td>0.15%</td><td>0.50%</td><td>0.75%</td><td class="positive">449.44%</td><td>10.59%</td><td>14.36%</td><td>7.80%</td><td class="negative">-4.84%</td><td>31.29</td><td>No</td></tr><tr><td>0.15%</td><td>0.50%</td><td>0.60%</td><td class="positive">442.66%</td><td>10.43%</td><td>14.06%</td><td>7.65%</td><td class="negative">-4.84%</td><td>31.49</td><td>No</td></tr><tr><td>0.20%</td><td>0.40%</td><td>0.75%</td><td class="positive">439.02%</td><td>8.03%</td><td>10.79%</td><td>6.95%</td><td class="negative">-4.04%</td><td>40.69</td><td>No</td></tr><tr><td>0.15%</td><td>0.50%</td><td>0.45%</td><td class="positive">435.88%</td><td>10.28%</td><td>13.75%</td><td>7.50%</td><td class="negative">-4.84%</td><td>31.69</td><td>No</td></tr><tr><td>0.20%</td><td>0.40%</td><td>0.60%</td><td class="positive">432.24%</td><td>7.87%</td><td>10.48%</td><td>6.80%</td><td class="negative">-4.04%</td><td>41.23</td><td>No</td></tr><tr><td>0.15%</td><td>0.50%</td><td>0.30%</td><td class="positive">429.10%</td><td>10.12%</td><td>13.45%</td><td>7.35%</td><td class="negative">-4.84%</td><td>31.91</td><td>No</td></tr><tr><td>0.25%</td><td>0.30%</td><td>0.75%</td><td class="positive">428.59%</td><td>8.07%</td><td>9.58%</td><td>6.10%</td><td class="negative">-4.05%</td><td>44.75</td><td>No</td></tr><tr><td>0.20%</td><td>0.40%</td><td>0.45%</td><td class="positive">425.46%</td><td>7.72%</td><td>10.18%</td><td>6.65%</td><td class="negative">-4.04%</td><td>41.80</td><td>No</td></tr><tr><td>0.20%</td><td>0.40%</td><td>0.30%</td><td class="positive">418.68%</td><td>7.63%</td><td>9.87%</td><td>6.50%</td><td class="negative">-4.04%</td><td>42.41</td><td>No</td></tr><tr><td>0.25%</td><td>0.30%</td><td>0.30%</td><td class="positive">408.26%</td><td>8.51%</td><td>10.02%</td><td>5.65%</td><td class="negative">-4.03%</td><td>40.74</td><td>No</td></tr><tr><td>0.10%</td><td>0.50%</td><td>0.75%</td><td class="positive">404.01%</td><td>11.37%</td><td>14.99%</td><td>7.45%</td><td class="negative">-4.74%</td><td>26.94</td><td>No</td></tr><tr><td>0.10%</td><td>0.50%</td><td>0.60%</td><td class="positive">397.23%</td><td>11.22%</td><td>14.69%</td><td>7.30%</td><td class="negative">-4.74%</td><td>27.04</td><td>No</td></tr><tr><td>0.15%</td><td>0.40%</td><td>0.75%</td><td class="positive">393.59%</td><td>8.16%</td><td>11.42%</td><td>6.60%</td><td class="negative">-3.93%</td><td>34.47</td><td>No</td></tr><tr><td>0.10%</td><td>0.50%</td><td>0.45%</td><td class="positive">390.45%</td><td>11.06%</td><td>14.38%</td><td>7.15%</td><td class="negative">-4.74%</td><td>27.15</td><td>No</td></tr><tr><td>0.15%</td><td>0.40%</td><td>0.60%</td><td class="positive">386.81%</td><td>8.00%</td><td>11.11%</td><td>6.45%</td><td class="negative">-3.93%</td><td>34.81</td><td>No</td></tr><tr><td>0.10%</td><td>0.50%</td><td>0.30%</td><td class="positive">383.67%</td><td>10.91%</td><td>14.08%</td><td>7.00%</td><td class="negative">-4.74%</td><td>27.25</td><td>No</td></tr><tr><td>0.15%</td><td>0.40%</td><td>0.45%</td><td class="positive">380.03%</td><td>7.85%</td><td>10.81%</td><td>6.30%</td><td class="negative">-3.93%</td><td>35.16</td><td>No</td></tr><tr><td>0.15%</td><td>0.40%</td><td>0.30%</td><td class="positive">373.25%</td><td>7.69%</td><td>10.50%</td><td>6.15%</td><td class="negative">-3.93%</td><td>35.54</td><td>No</td></tr><tr><td>0.10%</td><td>0.40%</td><td>0.75%</td><td class="positive">348.16%</td><td>8.94%</td><td>12.05%</td><td>6.25%</td><td class="negative">-3.83%</td><td>28.90</td><td>No</td></tr><tr><td>0.10%</td><td>0.40%</td><td>0.60%</td><td class="positive">341.38%</td><td>8.78%</td><td>11.74%</td><td>6.10%</td><td class="negative">-3.83%</td><td>29.07</td><td>No</td></tr><tr><td>0.10%</td><td>0.40%</td><td>0.45%</td><td class="positive">334.60%</td><td>8.63%</td><td>11.44%</td><td>5.95%</td><td class="negative">-3.83%</td><td>29.25</td><td>No</td></tr><tr><td>0.10%</td><td>0.40%</td><td>0.30%</td><td class="positive">327.82%</td><td>8.47%</td><td>11.13%</td><td>5.80%</td><td class="negative">-3.83%</td><td>29.45</td><td>No</td></tr></tbody></table></div>
     </section>
     <section id="timeframes">
-      <h2>Recommended Ladder Timeframe Contribution</h2>
-      <div class="table-scroll"><table class="data-table"><thead><tr><th>Timeframe</th><th>Trades</th><th>Total Return</th><th>Avg Return</th><th>Win Rate</th><th>PF</th><th>Return Share</th></tr></thead><tbody><tr><td>H4</td><td>6,617</td><td class="positive">144.19%</td><td>0.02%</td><td>57.2%</td><td>1.19</td><td>34.2%</td></tr><tr><td>H12</td><td>2,135</td><td class="positive">108.48%</td><td>0.05%</td><td>59.9%</td><td>1.41</td><td>25.7%</td></tr><tr><td>H8</td><td>3,075</td><td class="positive">82.96%</td><td>0.03%</td><td>57.1%</td><td>1.24</td><td>19.7%</td></tr><tr><td>D1</td><td>994</td><td class="positive">59.07%</td><td>0.06%</td><td>60.8%</td><td>1.50</td><td>14.0%</td></tr><tr><td>W1</td><td>191</td><td class="positive">27.12%</td><td>0.14%</td><td>62.3%</td><td>1.62</td><td>6.4%</td></tr></tbody></table></div>
+      <h2>Adopted Ladder Timeframe Contribution</h2>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Timeframe</th><th>Trades</th><th>Total Return</th><th>Avg Return</th><th>Win Rate</th><th>PF</th><th>Return Share</th></tr></thead><tbody><tr><td>H4</td><td>6,617</td><td class="positive">115.35%</td><td>0.02%</td><td>57.2%</td><td>1.19</td><td>30.1%</td></tr><tr><td>H12</td><td>2,135</td><td class="positive">108.48%</td><td>0.05%</td><td>59.9%</td><td>1.41</td><td>28.3%</td></tr><tr><td>H8</td><td>3,075</td><td class="positive">66.36%</td><td>0.02%</td><td>57.1%</td><td>1.24</td><td>17.3%</td></tr><tr><td>D1</td><td>994</td><td class="positive">59.07%</td><td>0.06%</td><td>60.8%</td><td>1.50</td><td>15.4%</td></tr><tr><td>W1</td><td>191</td><td class="positive">33.90%</td><td>0.18%</td><td>62.3%</td><td>1.62</td><td>8.8%</td></tr></tbody></table></div>
     </section>
     <section id="tickers">
-      <h2>Recommended Ladder Ticker Contribution</h2>
-      <div class="table-scroll"><table class="data-table"><thead><tr><th>Symbol</th><th>Trades</th><th>Total Return</th><th>Avg Return</th><th>Win Rate</th><th>PF</th><th>Return Share</th></tr></thead><tbody><tr><td>EURAUD</td><td>500</td><td class="positive">28.92%</td><td>0.06%</td><td>62.2%</td><td>1.56</td><td>6.9%</td></tr><tr><td>EURGBP</td><td>520</td><td class="positive">27.87%</td><td>0.05%</td><td>61.5%</td><td>1.50</td><td>6.6%</td></tr><tr><td>EURCHF</td><td>582</td><td class="positive">21.86%</td><td>0.04%</td><td>58.6%</td><td>1.33</td><td>5.2%</td></tr><tr><td>EURJPY</td><td>441</td><td class="positive">21.16%</td><td>0.05%</td><td>59.9%</td><td>1.44</td><td>5.0%</td></tr><tr><td>NZDCHF</td><td>463</td><td class="positive">20.92%</td><td>0.05%</td><td>63.5%</td><td>1.42</td><td>5.0%</td></tr><tr><td>GBPAUD</td><td>467</td><td class="positive">20.81%</td><td>0.04%</td><td>60.2%</td><td>1.40</td><td>4.9%</td></tr><tr><td>AUDUSD</td><td>450</td><td class="positive">19.07%</td><td>0.04%</td><td>59.6%</td><td>1.38</td><td>4.5%</td></tr><tr><td>EURNZD</td><td>460</td><td class="positive">18.03%</td><td>0.04%</td><td>59.3%</td><td>1.35</td><td>4.3%</td></tr><tr><td>USDJPY</td><td>399</td><td class="positive">16.32%</td><td>0.04%</td><td>58.1%</td><td>1.36</td><td>3.9%</td></tr><tr><td>GBPCHF</td><td>510</td><td class="positive">16.21%</td><td>0.03%</td><td>57.6%</td><td>1.28</td><td>3.8%</td></tr><tr><td>AUDJPY</td><td>418</td><td class="positive">15.45%</td><td>0.04%</td><td>57.9%</td><td>1.32</td><td>3.7%</td></tr><tr><td>GBPNZD</td><td>474</td><td class="positive">15.37%</td><td>0.03%</td><td>57.0%</td><td>1.28</td><td>3.6%</td></tr><tr><td>AUDNZD</td><td>472</td><td class="positive">15.22%</td><td>0.03%</td><td>60.2%</td><td>1.28</td><td>3.6%</td></tr><tr><td>GBPUSD</td><td>371</td><td class="positive">14.97%</td><td>0.04%</td><td>58.2%</td><td>1.35</td><td>3.5%</td></tr><tr><td>NZDJPY</td><td>408</td><td class="positive">14.89%</td><td>0.04%</td><td>58.3%</td><td>1.32</td><td>3.5%</td></tr><tr><td>AUDCHF</td><td>480</td><td class="positive">14.45%</td><td>0.03%</td><td>58.1%</td><td>1.26</td><td>3.4%</td></tr><tr><td>USDCHF</td><td>458</td><td class="positive">13.58%</td><td>0.03%</td><td>56.8%</td><td>1.25</td><td>3.2%</td></tr><tr><td>NZDCAD</td><td>423</td><td class="positive">13.32%</td><td>0.03%</td><td>58.2%</td><td>1.27</td><td>3.2%</td></tr><tr><td>EURCAD</td><td>524</td><td class="positive">13.07%</td><td>0.02%</td><td>56.5%</td><td>1.21</td><td>3.1%</td></tr><tr><td>CADJPY</td><td>432</td><td class="positive">12.67%</td><td>0.03%</td><td>57.2%</td><td>1.25</td><td>3.0%</td></tr><tr><td>AUDCAD</td><td>465</td><td class="positive">12.39%</td><td>0.03%</td><td>57.8%</td><td>1.22</td><td>2.9%</td></tr><tr><td>CHFJPY</td><td>466</td><td class="positive">11.39%</td><td>0.02%</td><td>56.2%</td><td>1.20</td><td>2.7%</td></tr><tr><td>GBPJPY</td><td>392</td><td class="positive">9.94%</td><td>0.03%</td><td>55.6%</td><td>1.21</td><td>2.4%</td></tr><tr><td>CADCHF</td><td>530</td><td class="positive">9.60%</td><td>0.02%</td><td>57.7%</td><td>1.15</td><td>2.3%</td></tr><tr><td>NZDUSD</td><td>408</td><td class="positive">8.37%</td><td>0.02%</td><td>55.6%</td><td>1.16</td><td>2.0%</td></tr><tr><td>USDCAD</td><td>522</td><td class="positive">7.67%</td><td>0.01%</td><td>54.0%</td><td>1.12</td><td>1.8%</td></tr><tr><td>EURUSD</td><td>465</td><td class="positive">5.29%</td><td>0.01%</td><td>53.8%</td><td>1.09</td><td>1.3%</td></tr><tr><td>GBPCAD</td><td>512</td><td class="positive">3.02%</td><td>0.01%</td><td>52.9%</td><td>1.05</td><td>0.7%</td></tr></tbody></table></div>
+      <h2>Adopted Ladder Ticker Contribution</h2>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Symbol</th><th>Trades</th><th>Total Return</th><th>Avg Return</th><th>Win Rate</th><th>PF</th><th>Return Share</th></tr></thead><tbody><tr><td>EURAUD</td><td>500</td><td class="positive">25.53%</td><td>0.05%</td><td>62.2%</td><td>1.57</td><td>6.7%</td></tr><tr><td>EURGBP</td><td>520</td><td class="positive">23.99%</td><td>0.05%</td><td>61.5%</td><td>1.49</td><td>6.3%</td></tr><tr><td>EURCHF</td><td>582</td><td class="positive">20.63%</td><td>0.04%</td><td>58.6%</td><td>1.37</td><td>5.4%</td></tr><tr><td>EURJPY</td><td>441</td><td class="positive">18.94%</td><td>0.04%</td><td>59.9%</td><td>1.45</td><td>4.9%</td></tr><tr><td>NZDCHF</td><td>463</td><td class="positive">17.92%</td><td>0.04%</td><td>63.5%</td><td>1.41</td><td>4.7%</td></tr><tr><td>GBPAUD</td><td>467</td><td class="positive">17.52%</td><td>0.04%</td><td>60.2%</td><td>1.39</td><td>4.6%</td></tr><tr><td>EURNZD</td><td>460</td><td class="positive">17.27%</td><td>0.04%</td><td>59.3%</td><td>1.39</td><td>4.5%</td></tr><tr><td>AUDUSD</td><td>450</td><td class="positive">16.02%</td><td>0.04%</td><td>59.6%</td><td>1.36</td><td>4.2%</td></tr><tr><td>GBPCHF</td><td>510</td><td class="positive">15.56%</td><td>0.03%</td><td>57.6%</td><td>1.31</td><td>4.1%</td></tr><tr><td>USDJPY</td><td>399</td><td class="positive">14.89%</td><td>0.04%</td><td>58.1%</td><td>1.39</td><td>3.9%</td></tr><tr><td>AUDJPY</td><td>418</td><td class="positive">14.81%</td><td>0.04%</td><td>57.9%</td><td>1.36</td><td>3.9%</td></tr><tr><td>AUDCHF</td><td>480</td><td class="positive">14.51%</td><td>0.03%</td><td>58.1%</td><td>1.31</td><td>3.8%</td></tr><tr><td>NZDJPY</td><td>408</td><td class="positive">14.29%</td><td>0.04%</td><td>58.3%</td><td>1.36</td><td>3.7%</td></tr><tr><td>GBPNZD</td><td>474</td><td class="positive">14.26%</td><td>0.03%</td><td>57.0%</td><td>1.30</td><td>3.7%</td></tr><tr><td>GBPUSD</td><td>371</td><td class="positive">13.85%</td><td>0.04%</td><td>58.2%</td><td>1.37</td><td>3.6%</td></tr><tr><td>AUDNZD</td><td>472</td><td class="positive">13.49%</td><td>0.03%</td><td>60.2%</td><td>1.29</td><td>3.5%</td></tr><tr><td>NZDCAD</td><td>423</td><td class="positive">12.71%</td><td>0.03%</td><td>58.2%</td><td>1.31</td><td>3.3%</td></tr><tr><td>USDCHF</td><td>458</td><td class="positive">11.73%</td><td>0.03%</td><td>56.8%</td><td>1.25</td><td>3.1%</td></tr><tr><td>CADJPY</td><td>432</td><td class="positive">11.50%</td><td>0.03%</td><td>57.2%</td><td>1.26</td><td>3.0%</td></tr><tr><td>AUDCAD</td><td>465</td><td class="positive">11.40%</td><td>0.02%</td><td>57.8%</td><td>1.23</td><td>3.0%</td></tr><tr><td>EURCAD</td><td>524</td><td class="positive">11.22%</td><td>0.02%</td><td>56.5%</td><td>1.20</td><td>2.9%</td></tr><tr><td>GBPJPY</td><td>392</td><td class="positive">10.17%</td><td>0.03%</td><td>55.6%</td><td>1.25</td><td>2.7%</td></tr><tr><td>CHFJPY</td><td>466</td><td class="positive">9.95%</td><td>0.02%</td><td>56.2%</td><td>1.21</td><td>2.6%</td></tr><tr><td>CADCHF</td><td>530</td><td class="positive">8.86%</td><td>0.02%</td><td>57.7%</td><td>1.16</td><td>2.3%</td></tr><tr><td>NZDUSD</td><td>408</td><td class="positive">7.92%</td><td>0.02%</td><td>55.6%</td><td>1.18</td><td>2.1%</td></tr><tr><td>USDCAD</td><td>522</td><td class="positive">6.00%</td><td>0.01%</td><td>54.0%</td><td>1.10</td><td>1.6%</td></tr><tr><td>EURUSD</td><td>465</td><td class="positive">5.22%</td><td>0.01%</td><td>53.8%</td><td>1.10</td><td>1.4%</td></tr><tr><td>GBPCAD</td><td>512</td><td class="positive">3.01%</td><td>0.01%</td><td>52.9%</td><td>1.05</td><td>0.8%</td></tr></tbody></table></div>
     </section>
   </main>
   <footer>Generated from existing LP3 take-all trade rows. No MT5 data pull or signal rerun was performed.</footer>

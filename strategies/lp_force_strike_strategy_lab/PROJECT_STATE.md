@@ -899,13 +899,13 @@ Main result:
 | Row | H4/H8 | H12/D1 | W1 | Total return | Reserved DD | Max open risk | Worst month |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | V14 tight baseline | 0.15% | 0.30% | 0.45% | 324.2% | 7.9% | 5.1% | -3.03% |
-| Most-efficient practical | 0.20% | 0.30% | 0.75% | 383.2% | 7.9% | 5.75% | -3.22% |
-| Highest-return practical | 0.25% | 0.30% | 0.60% | 421.8% | 9.7% | 5.95% | -4.05% |
+| Adopted / most-efficient practical | 0.20% | 0.30% | 0.75% | 383.2% | 7.9% | 5.75% | -3.22% |
+| Growth alternative / highest-return practical | 0.25% | 0.30% | 0.60% | 421.8% | 9.7% | 5.95% | -4.05% |
 
 Current conclusion:
 
-- Use the most-efficient practical row as the first account-constraint
-  candidate: H4/H8 `0.20%`, H12/D1 `0.30%`, W1 `0.75%`.
+- Use the most-efficient practical row as the adopted/default bucket:
+  H4/H8 `0.20%`, H12/D1 `0.30%`, W1 `0.75%`.
 - Keep H4/H8 `0.25%`, H12/D1 `0.30%`, W1 `0.60%` as the growth alternative.
 - H4/H8 upweighting helped materially, but H4/H8 `0.25%` sits at the top of
   the tested lower-timeframe range and near the open-risk limit.
