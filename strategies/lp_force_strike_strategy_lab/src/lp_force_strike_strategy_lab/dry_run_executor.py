@@ -122,6 +122,8 @@ class DryRunExecutorConfig:
     state_path: str = "data/live/lpfs_dry_run_state.json"
     max_spread_points: float | None = None
     max_lots_per_order: float | None = None
+    max_risk_pct_per_trade: float = 0.75
+    risk_buckets_pct: dict[str, float] | None = None
     risk_bucket_scale: float = 1.0
     max_open_risk_pct: float = 6.0
     max_same_symbol_stack: int = 4
@@ -238,6 +240,8 @@ def load_dry_run_settings(
         state_path=str(_resolve_local_path(base_dir, dry_run_payload.get("state_path", "data/live/lpfs_dry_run_state.json"))),
         max_spread_points=_optional_float(dry_run_payload.get("max_spread_points")),
         max_lots_per_order=_optional_float(dry_run_payload.get("max_lots_per_order")),
+        max_risk_pct_per_trade=float(dry_run_payload.get("max_risk_pct_per_trade", 0.75)),
+        risk_buckets_pct=_optional_risk_buckets(dry_run_payload.get("risk_buckets_pct")),
         risk_bucket_scale=float(dry_run_payload.get("risk_bucket_scale", 1.0)),
         max_open_risk_pct=float(dry_run_payload.get("max_open_risk_pct", 6.0)),
         max_same_symbol_stack=int(dry_run_payload.get("max_same_symbol_stack", 4)),
@@ -526,6 +530,7 @@ def market_snapshot_from_mt5(mt5_module: Any, symbol: str, *, broker_timezone: s
 
 def execution_safety_from_config(config: DryRunExecutorConfig) -> ExecutionSafetyLimits:
     return ExecutionSafetyLimits(
+        max_risk_pct_per_trade=config.max_risk_pct_per_trade,
         max_open_risk_pct=config.max_open_risk_pct,
         max_lots_per_order=config.max_lots_per_order,
         max_same_symbol_stack=config.max_same_symbol_stack,
@@ -536,12 +541,21 @@ def execution_safety_from_config(config: DryRunExecutorConfig) -> ExecutionSafet
 
 
 def risk_buckets_from_config(config: DryRunExecutorConfig) -> dict[str, float]:
-    """Return V15 risk buckets scaled for dry-run sizing tests."""
+    """Return configured risk buckets scaled for dry-run sizing tests."""
 
     scale = float(config.risk_bucket_scale)
     if scale <= 0:
         raise ValueError("risk_bucket_scale must be positive.")
-    return {timeframe: risk_pct * scale for timeframe, risk_pct in V15_EFFICIENT_RISK_BUCKET_PCT.items()}
+    buckets = dict(V15_EFFICIENT_RISK_BUCKET_PCT)
+    if config.risk_buckets_pct:
+        unknown = sorted(set(config.risk_buckets_pct) - set(buckets))
+        if unknown:
+            raise ValueError(f"risk_buckets_pct contains unsupported timeframe(s): {', '.join(unknown)}.")
+        for timeframe, risk_pct in config.risk_buckets_pct.items():
+            if risk_pct <= 0:
+                raise ValueError("risk_buckets_pct values must be positive.")
+            buckets[timeframe] = risk_pct
+    return {timeframe: risk_pct * scale for timeframe, risk_pct in buckets.items()}
 
 
 def build_order_check_request(mt5_module: Any, intent: MT5OrderIntent) -> dict[str, Any]:
@@ -979,6 +993,14 @@ def _optional_float(value: Any) -> float | None:
     if value in (None, ""):
         return None
     return float(value)
+
+
+def _optional_risk_buckets(value: Any) -> dict[str, float] | None:
+    if value in (None, ""):
+        return None
+    if not isinstance(value, dict):
+        raise LocalConfigError("risk_buckets_pct must be an object keyed by timeframe.")
+    return {str(timeframe).upper(): float(risk_pct) for timeframe, risk_pct in value.items()}
 
 
 def _optional_bool(value: Any, *, default: bool) -> bool:

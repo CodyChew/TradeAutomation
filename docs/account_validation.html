@@ -534,7 +534,8 @@
 
     <section id="risk-buckets" aria-labelledby="risk-buckets-title">
       <h2 id="risk-buckets-title">Risk Bucket Study</h2>
-      <p class="note">The same V15 64-row H4/H8, H12/D1, and W1 risk grid was rerun on commission-adjusted R streams. The current adopted live row remains <code>0.20% / 0.30% / 0.75%</code>; the growth alternative remains <code>0.25% / 0.30% / 0.60%</code>.</p>
+      <p class="note">The same V15 64-row H4/H8, H12/D1, and W1 risk grid was rerun on commission-adjusted R streams. The current FTMO live reference remains <code>0.20% / 0.30% / 0.75%</code>. For ICMarketsSC-MT5-2, the analysis recommendation is the separate growth-practical bucket <code>0.25% / 0.30% / 0.75%</code>.</p>
+      <p class="note warning">The per-trade cap is an execution guardrail, not a backtest signal rule. It defaults to <code>0.75%</code>; the ignored IC local dry-run config raises <code>max_risk_pct_per_trade</code> to <code>1.50%</code> only for scale-2 order-check validation.</p>
 
       <div class="table-scroll">
         <table class="data-table risk-table">
@@ -545,7 +546,19 @@
         </table>
       </div>
 
-      <p class="source-note">Interpretation: IC Markets keeps the same adopted row structurally intact after commission and improves the current row from 305.10% to 386.84% total return while reducing reserved DD from 11.23% to 7.23%. The IC highest-return practical row is 0.25% / 0.30% / 0.75%, at 433.93% return and 9.55% reserved DD.</p>
+      <h3>IC decision candidates</h3>
+
+      <div class="table-scroll">
+        <table class="data-table risk-decision-table">
+          <thead><tr><th>Decision</th><th>IC Buckets</th><th>IC Return</th><th>IC Reserved DD</th><th>Max Open Risk</th><th>Worst Month</th><th>Reserved Underwater</th><th>Use</th></tr></thead>
+          <tbody><tr><td>Adopted FTMO-style reference</td><td>0.20% / 0.30% / 0.75%</td><td>386.84%</td><td>7.23%</td><td>5.45%</td><td>-3.58%</td><td>143 days</td><td>Keeps the current live bucket shape; smoother IC drawdown and highest return/DD among growth-relevant rows.</td></tr>
+<tr><td>IC growth practical</td><td>0.25% / 0.30% / 0.75%</td><td>433.93%</td><td>9.55%</td><td>5.80%</td><td>-4.46%</td><td>153 days</td><td>Recommended for ICMarketsSC-MT5-2 when growth is acceptable: best practical return, under 10% reserved DD, under 6% max open risk.</td></tr>
+<tr><td>Conservative efficiency</td><td>0.15% / 0.30% / 0.30%</td><td>318.08%</td><td>5.57%</td><td>4.65%</td><td>-2.69%</td><td>105 days</td><td>Best return/DD and shortest underwater period, but gives up too much growth for the stated IC account objective.</td></tr>
+<tr><td>Lower-W1 growth alternative</td><td>0.25% / 0.30% / 0.60%</td><td>426.70%</td><td>9.55%</td><td>5.65%</td><td>-4.46%</td><td>154 days</td><td>Nearly the same drawdown as the IC recommendation but lower return, so keep it as a fallback if W1 exposure needs trimming.</td></tr></tbody>
+        </table>
+      </div>
+
+      <p class="source-note">Interpretation: IC Markets keeps the FTMO-style row structurally intact after commission and improves that row from 305.10% to 386.84% total return while reducing reserved DD from 11.23% to 7.23%. Because the IC account can accept more growth, the recommended IC analysis bucket is 0.25% / 0.30% / 0.75%: 433.93% return, 9.55% reserved DD, 5.80% max open risk, -4.46% worst month, and 153 reserved underwater days. More aggressive H12/D1 0.40% or 0.50% rows are not recommended because they breach the 6% practical max-open-risk cap.</p>
     </section>
 
     <section id="cost-model" aria-labelledby="cost-model-title">
@@ -563,13 +576,13 @@
       <div class="split-grid">
         <article class="fact">
           <span>Current dry-run evidence</span>
-          <strong>0 order_check calls</strong>
-          <p class="source-note">First IC cycle saw three latest-bar setups, all rejected before broker check because raw volume rounded below the 0.01 lot minimum. No live orders were sent.</p>
+          <strong>3 order_check passes</strong>
+          <p class="source-note">Latest scale-2 IC dry-run saw AUDCHF H8, GBPCAD H12, and NZDCHF W1 setups. All three created pending intents and passed MT5 order_check.</p>
         </article>
         <article class="fact">
-          <span>Required next validation</span>
-          <strong>Order-check feasibility</strong>
-          <p class="source-note">Commission and bucket studies are complete enough for analysis. The next execution gate is local dry-run/order-check only, still with the VPS account untouched.</p>
+          <span>Local smoke live-send</span>
+          <strong>sent, canceled, clean</strong>
+          <p class="source-note">A one-cycle local IC smoke test sent AUDCHF H8 ticket 4419969921, then the user manually canceled it. MT5 and smoke state now show 0 pending orders and 0 positions.</p>
         </article>
       </div>
     </section>
@@ -578,8 +591,8 @@
       <h2 id="next-actions-title">Next Actions Before Any New-Account Execution</h2>
       <ol>
         <li>Review the commission-adjusted symbol/timeframe contribution files before interpreting the portfolio-level IC improvement as robust.</li>
-        <li>Rerun local dry-run/order-check with the ignored IC config. Keep <code>LIVE_SEND</code> disabled and keep the VPS live account unchanged.</li>
-        <li>If order checks are clean, plan a separate runtime/config/account boundary before any future live-send discussion.</li>
+        <li>Keep the local IC account in manual smoke-test mode only unless a separate runtime plan is approved.</li>
+        <li>Plan a separate runtime/config/account boundary before any continuous IC live-send discussion.</li>
       </ol>
       <ul class="source-list">
         <li><a href="lpfs_new_mt5_account_validation.md">New MT5 account validation workflow</a></li>
@@ -595,6 +608,6 @@
     </section>
 
   </main>
-  <footer>Generated 2026-05-05 16:57 UTC. Official commission schedules can change; refresh source links before trading decisions.</footer>
+  <footer>Generated 2026-05-05 18:05 UTC. Official commission schedules can change; refresh source links before trading decisions.</footer>
 </body>
 </html>

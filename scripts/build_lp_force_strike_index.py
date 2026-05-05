@@ -127,10 +127,10 @@ def _account_validation_card() -> str:
     <section id="account-validation" class="card featured">
       <div class="status status-active">Broker validation</div>
       <h2>IC Markets Account Validation</h2>
-      <p>Local-only IC Markets Raw Spread account audit, new broker-data V22 rerun, FTMO-vs-IC comparison, and commission caveat before any dry-run or live-send planning.</p>
+      <p>Local IC Markets Raw Spread account audit, new broker-data V22 rerun, FTMO-vs-IC commission comparison, separate IC growth-practical bucket recommendation, and one completed local smoke live-send that was manually canceled cleanly.</p>
       <div class="facts">
-        <div class="fact"><span>Account</span><strong>IC Raw Spread MT5</strong></div>
-        <div class="fact"><span>Cost caveat</span><strong>Spread-aware, commission-free</strong></div>
+        <div class="fact"><span>Account</span><strong>ICMarketsSC-MT5-2</strong></div>
+        <div class="fact"><span>Smoke status</span><strong>0 orders / 0 positions</strong></div>
       </div>
       <a class="button" href="account_validation.html">Open Account Validation</a>
     </section>

@@ -320,6 +320,59 @@ def _risk_bucket_rows(rows: list[dict[str, Any]]) -> list[list[str]]:
     ]
 
 
+def _risk_bucket_detail_schedule(row: dict[str, Any]) -> str:
+    return " / ".join(
+        [
+            _fmt_plain_pct(row.get("lower_risk_pct"), 2),
+            _fmt_plain_pct(row.get("middle_risk_pct"), 2),
+            _fmt_plain_pct(row.get("w1_risk_pct"), 2),
+        ]
+    )
+
+
+def _risk_bucket_decision_rows(account_rows: dict[str, Any]) -> list[list[str]]:
+    candidates = [
+        (
+            "Adopted FTMO-style reference",
+            "adopted_live_row",
+            "Keeps the current live bucket shape; smoother IC drawdown and highest return/DD among growth-relevant rows.",
+        ),
+        (
+            "IC growth practical",
+            "highest_return_practical_row",
+            "Recommended for ICMarketsSC-MT5-2 when growth is acceptable: best practical return, under 10% reserved DD, under 6% max open risk.",
+        ),
+        (
+            "Conservative efficiency",
+            "most_efficient_practical_row",
+            "Best return/DD and shortest underwater period, but gives up too much growth for the stated IC account objective.",
+        ),
+        (
+            "Lower-W1 growth alternative",
+            "growth_alternative",
+            "Nearly the same drawdown as the IC recommendation but lower return, so keep it as a fallback if W1 exposure needs trimming.",
+        ),
+    ]
+    rows: list[list[str]] = []
+    for label, key, decision in candidates:
+        row = account_rows.get(key)
+        if not isinstance(row, dict):
+            continue
+        rows.append(
+            [
+                _escape(label),
+                _escape(_risk_bucket_detail_schedule(row)),
+                _fmt_plain_pct(row.get("total_return_pct")),
+                _fmt_plain_pct(row.get("reserved_max_drawdown_pct")),
+                _fmt_plain_pct(row.get("max_reserved_open_risk_pct")),
+                _fmt_plain_pct(row.get("worst_month_pct")),
+                f"{_fmt_number(row.get('reserved_longest_underwater_days'), 0)} days",
+                _escape(decision),
+            ]
+        )
+    return rows
+
+
 def build_account_validation_page(output: Path = DEFAULT_OUTPUT) -> Path:
     audit_dir = _latest_dir(AUDIT_ROOT)
     new_run_dir = _latest_new_account_run()
@@ -348,7 +401,9 @@ def build_account_validation_page(output: Path = DEFAULT_OUTPUT) -> Path:
     coverage = _coverage_summary(dataset_pull)
     metrics = _metric_map(comparison)
     commission_metrics = _metric_rows_map(commission_sensitivity.get("comparison", []))
-    risk_comparison_rows = _risk_bucket_rows(commission_sensitivity.get("risk_bucket_study", {}).get("comparison", []))
+    risk_study = commission_sensitivity.get("risk_bucket_study", {})
+    risk_comparison_rows = _risk_bucket_rows(risk_study.get("comparison", []))
+    risk_decision_rows = _risk_bucket_decision_rows(risk_study.get("new_account", {}))
     new_costs = _costs(NEW_ACCOUNT_CONFIG)
     baseline_costs = _costs(BASELINE_CONFIG)
     generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
@@ -522,9 +577,12 @@ def build_account_validation_page(output: Path = DEFAULT_OUTPUT) -> Path:
 
     <section id="risk-buckets" aria-labelledby="risk-buckets-title">
       <h2 id="risk-buckets-title">Risk Bucket Study</h2>
-      <p class="note">The same V15 64-row H4/H8, H12/D1, and W1 risk grid was rerun on commission-adjusted R streams. The current adopted live row remains <code>0.20% / 0.30% / 0.75%</code>; the growth alternative remains <code>0.25% / 0.30% / 0.60%</code>.</p>
+      <p class="note">The same V15 64-row H4/H8, H12/D1, and W1 risk grid was rerun on commission-adjusted R streams. The current FTMO live reference remains <code>0.20% / 0.30% / 0.75%</code>. For ICMarketsSC-MT5-2, the analysis recommendation is the separate growth-practical bucket <code>0.25% / 0.30% / 0.75%</code>.</p>
+      <p class="note warning">The per-trade cap is an execution guardrail, not a backtest signal rule. It defaults to <code>0.75%</code>; the ignored IC local dry-run config raises <code>max_risk_pct_per_trade</code> to <code>1.50%</code> only for scale-2 order-check validation.</p>
       {_table(["Row", "FTMO Buckets", "IC Buckets", "FTMO Return", "IC Return", "FTMO Reserved DD", "IC Reserved DD", "FTMO Return/DD", "IC Return/DD"], risk_comparison_rows, class_name="data-table risk-table")}
-      <p class="source-note">Interpretation: IC Markets keeps the same adopted row structurally intact after commission and improves the current row from 305.10% to 386.84% total return while reducing reserved DD from 11.23% to 7.23%. The IC highest-return practical row is 0.25% / 0.30% / 0.75%, at 433.93% return and 9.55% reserved DD.</p>
+      <h3>IC decision candidates</h3>
+      {_table(["Decision", "IC Buckets", "IC Return", "IC Reserved DD", "Max Open Risk", "Worst Month", "Reserved Underwater", "Use"], risk_decision_rows, class_name="data-table risk-decision-table")}
+      <p class="source-note">Interpretation: IC Markets keeps the FTMO-style row structurally intact after commission and improves that row from 305.10% to 386.84% total return while reducing reserved DD from 11.23% to 7.23%. Because the IC account can accept more growth, the recommended IC analysis bucket is 0.25% / 0.30% / 0.75%: 433.93% return, 9.55% reserved DD, 5.80% max open risk, -4.46% worst month, and 153 reserved underwater days. More aggressive H12/D1 0.40% or 0.50% rows are not recommended because they breach the 6% practical max-open-risk cap.</p>
     </section>
 
     <section id="cost-model" aria-labelledby="cost-model-title">
@@ -534,13 +592,13 @@ def build_account_validation_page(output: Path = DEFAULT_OUTPUT) -> Path:
       <div class="split-grid">
         <article class="fact">
           <span>Current dry-run evidence</span>
-          <strong>0 order_check calls</strong>
-          <p class="source-note">First IC cycle saw three latest-bar setups, all rejected before broker check because raw volume rounded below the 0.01 lot minimum. No live orders were sent.</p>
+          <strong>3 order_check passes</strong>
+          <p class="source-note">Latest scale-2 IC dry-run saw AUDCHF H8, GBPCAD H12, and NZDCHF W1 setups. All three created pending intents and passed MT5 order_check.</p>
         </article>
         <article class="fact">
-          <span>Required next validation</span>
-          <strong>Order-check feasibility</strong>
-          <p class="source-note">Commission and bucket studies are complete enough for analysis. The next execution gate is local dry-run/order-check only, still with the VPS account untouched.</p>
+          <span>Local smoke live-send</span>
+          <strong>sent, canceled, clean</strong>
+          <p class="source-note">A one-cycle local IC smoke test sent AUDCHF H8 ticket 4419969921, then the user manually canceled it. MT5 and smoke state now show 0 pending orders and 0 positions.</p>
         </article>
       </div>
     </section>
@@ -549,8 +607,8 @@ def build_account_validation_page(output: Path = DEFAULT_OUTPUT) -> Path:
       <h2 id="next-actions-title">Next Actions Before Any New-Account Execution</h2>
       <ol>
         <li>Review the commission-adjusted symbol/timeframe contribution files before interpreting the portfolio-level IC improvement as robust.</li>
-        <li>Rerun local dry-run/order-check with the ignored IC config. Keep <code>LIVE_SEND</code> disabled and keep the VPS live account unchanged.</li>
-        <li>If order checks are clean, plan a separate runtime/config/account boundary before any future live-send discussion.</li>
+        <li>Keep the local IC account in manual smoke-test mode only unless a separate runtime plan is approved.</li>
+        <li>Plan a separate runtime/config/account boundary before any continuous IC live-send discussion.</li>
       </ol>
       <ul class="source-list">
         <li><a href="lpfs_new_mt5_account_validation.md">New MT5 account validation workflow</a></li>

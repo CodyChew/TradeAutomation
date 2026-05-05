@@ -288,6 +288,8 @@ class DryRunExecutorTests(unittest.TestCase):
                             "state_path": "data/live/state.json",
                             "max_spread_points": "15",
                             "max_lots_per_order": "0.5",
+                            "max_risk_pct_per_trade": "1.5",
+                            "risk_buckets_pct": {"h4": "0.25", "H8": 0.25},
                             "risk_bucket_scale": "0.1",
                             "require_lp_pivot_before_fs_mother": False,
                         },
@@ -318,6 +320,8 @@ class DryRunExecutorTests(unittest.TestCase):
             self.assertEqual(settings.executor.timeframes, ("H4",))
             self.assertEqual(settings.executor.max_spread_points, 15.0)
             self.assertEqual(settings.executor.max_lots_per_order, 0.5)
+            self.assertEqual(settings.executor.max_risk_pct_per_trade, 1.5)
+            self.assertEqual(settings.executor.risk_buckets_pct, {"H4": 0.25, "H8": 0.25})
             self.assertEqual(settings.executor.risk_bucket_scale, 0.1)
             self.assertFalse(settings.executor.require_lp_pivot_before_fs_mother)
             self.assertTrue(Path(settings.executor.journal_path).is_absolute())
@@ -817,6 +821,7 @@ class DryRunExecutorTests(unittest.TestCase):
             DryRunExecutorConfig(
                 max_spread_points=12,
                 max_lots_per_order=0.5,
+                max_risk_pct_per_trade=1.5,
                 risk_bucket_scale=0.1,
                 max_open_risk_pct=5,
                 max_same_symbol_stack=2,
@@ -826,6 +831,7 @@ class DryRunExecutorTests(unittest.TestCase):
         )
         self.assertEqual(safety.max_spread_points, 12)
         self.assertEqual(safety.max_lots_per_order, 0.5)
+        self.assertEqual(safety.max_risk_pct_per_trade, 1.5)
         self.assertEqual(safety.max_open_risk_pct, 5)
         self.assertEqual(safety.max_same_symbol_stack, 2)
         self.assertEqual(safety.max_concurrent_strategy_trades, 3)
@@ -836,8 +842,19 @@ class DryRunExecutorTests(unittest.TestCase):
         self.assertAlmostEqual(scaled_buckets["H12"], 0.03)
         self.assertAlmostEqual(scaled_buckets["D1"], 0.03)
         self.assertAlmostEqual(scaled_buckets["W1"], 0.075)
+        override_buckets = risk_buckets_from_config(
+            DryRunExecutorConfig(risk_buckets_pct={"H4": 0.25, "H8": 0.25}, risk_bucket_scale=0.5)
+        )
+        self.assertAlmostEqual(override_buckets["H4"], 0.125)
+        self.assertAlmostEqual(override_buckets["H8"], 0.125)
+        self.assertAlmostEqual(override_buckets["H12"], 0.15)
+        self.assertAlmostEqual(override_buckets["W1"], 0.375)
         with self.assertRaisesRegex(ValueError, "risk_bucket_scale"):
             risk_buckets_from_config(DryRunExecutorConfig(risk_bucket_scale=0.0))
+        with self.assertRaisesRegex(ValueError, "unsupported timeframe"):
+            risk_buckets_from_config(DryRunExecutorConfig(risk_buckets_pct={"M30": 0.10}))
+        with self.assertRaisesRegex(ValueError, "risk_buckets_pct values"):
+            risk_buckets_from_config(DryRunExecutorConfig(risk_buckets_pct={"H4": 0.0}))
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.local.json"
@@ -1047,6 +1064,7 @@ def replace_config_path(
         state_path=config.state_path,
         max_spread_points=config.max_spread_points,
         max_lots_per_order=config.max_lots_per_order,
+        max_risk_pct_per_trade=config.max_risk_pct_per_trade,
         risk_bucket_scale=config.risk_bucket_scale if risk_bucket_scale is None else risk_bucket_scale,
         max_open_risk_pct=config.max_open_risk_pct,
         max_same_symbol_stack=config.max_same_symbol_stack,

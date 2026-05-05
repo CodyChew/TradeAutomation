@@ -1,5 +1,24 @@
 {
   "experiment_name": "lp_force_strike_experiment_v22_new_mt5_account",
+  "account_profile": {
+    "slug": "icmarkets_raw_spread",
+    "server": "ICMarketsSC-MT5-2",
+    "commission_adjusted_recommendation": "IC growth practical",
+    "recommended_risk_buckets_pct": {
+      "H4": 0.25,
+      "H8": 0.25,
+      "H12": 0.30,
+      "D1": 0.30,
+      "W1": 0.75
+    },
+    "ftmo_live_reference_risk_buckets_pct": {
+      "H4": 0.20,
+      "H8": 0.20,
+      "H12": 0.30,
+      "D1": 0.30,
+      "W1": 0.75
+    }
+  },
   "dataset_config": "configs/datasets/lpfs_new_mt5_account_forex_10y.example.json",
   "v15_bucket_config": "configs/strategies/lp_force_strike_experiment_v15_bucket_sensitivity.json",
   "report_root": "reports/strategies/lp_force_strike_experiment_v22_new_mt5_account",

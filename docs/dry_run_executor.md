@@ -71,6 +71,8 @@ Optional local fields:
 - `dry_run.history_bars`
 - `dry_run.max_spread_points`
 - `dry_run.max_lots_per_order`
+- `dry_run.max_risk_pct_per_trade`
+- `dry_run.risk_buckets_pct`
 - `dry_run.risk_bucket_scale`
 - `dry_run.max_open_risk_pct`
 - `dry_run.max_same_symbol_stack`
@@ -102,6 +104,28 @@ Broker volume steps and minimum lot rules can make actual risk slightly lower
 than the scaled target, or reject very wide setups if rounded volume falls
 below broker minimum.
 
+For account-specific analysis, `risk_buckets_pct` can override the base bucket
+shape before `risk_bucket_scale` is applied. The IC Markets Raw Spread
+validation uses:
+
+```json
+"risk_buckets_pct": {
+  "H4": 0.25,
+  "H8": 0.25,
+  "H12": 0.30,
+  "D1": 0.30,
+  "W1": 0.75
+}
+```
+
+That is a separate IC analysis recommendation. The current FTMO live/default
+bucket remains `H4/H8 0.20%`, `H12/D1 0.30%`, and `W1 0.75%`.
+
+`dry_run.max_risk_pct_per_trade` defaults to `0.75`. It is an execution
+guardrail only. Raising it in an ignored account-specific local config lets a
+new broker account test higher scaled buckets without changing the strategy
+detector or the FTMO/VPS live defaults.
+
 The live-send adapter has a separate `live_send` config block. It is fail-closed
 unless all explicit live flags are set:
 
@@ -110,7 +134,15 @@ unless all explicit live flags are set:
   "execution_mode": "LIVE_SEND",
   "live_send_enabled": true,
   "real_money_ack": "I_UNDERSTAND_THIS_SENDS_REAL_ORDERS",
+  "risk_buckets_pct": {
+    "H4": 0.20,
+    "H8": 0.20,
+    "H12": 0.30,
+    "D1": 0.30,
+    "W1": 0.75
+  },
   "risk_bucket_scale": 0.05,
+  "max_risk_pct_per_trade": 0.75,
   "max_open_risk_pct": 0.65,
   "max_spread_risk_fraction": 0.1
 }
@@ -270,8 +302,10 @@ For detected setups, the runner:
   requiring the future pullback candle to exist yet;
 - builds the V15 candidate setup: 0.5 signal-candle pullback, Force Strike
   structure stop, 1R target, fixed 6-bar wait;
-- uses V15 risk buckets from `execution_contract.py`;
-- applies optional `risk_bucket_scale` before lot sizing;
+- uses V15 risk buckets from `execution_contract.py`, unless the local config
+  provides a per-timeframe `risk_buckets_pct` override;
+- applies optional `risk_bucket_scale` to the selected bucket shape before lot
+  sizing;
 - live-send blocks a setup when current spread is more than
   `max_spread_risk_fraction` of the entry-to-stop distance. This spread-only
   block does not mark the exact signal as processed, so a later cycle can place

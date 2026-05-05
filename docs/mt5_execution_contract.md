@@ -17,11 +17,24 @@ Current basis:
   - H12/D1: 0.30% account risk.
   - W1: 0.75% account risk.
 
-The dry-run and live-send executors can scale this ladder for broker testing with
-`risk_bucket_scale`. A scale of `0.1` keeps the same V15 proportions while
-sizing `H4/H8` at `0.02%`, `H12/D1` at `0.03%`, and `W1` at `0.075%`.
-The current real-account live-test default is `0.05`, sizing `H4/H8` at
-`0.01%`, `H12/D1` at `0.015%`, and `W1` at `0.0375%`.
+The dry-run and live-send executors can override this base ladder with
+`risk_buckets_pct`, then scale the selected ladder with `risk_bucket_scale`. A
+scale of `0.1` on the FTMO-style V15 ladder sizes `H4/H8` at `0.02%`,
+`H12/D1` at `0.03%`, and `W1` at `0.075%`. The current real-account live-test
+default is `0.05`, sizing the FTMO-style V15 ladder at `H4/H8 0.01%`,
+`H12/D1 0.015%`, and `W1 0.0375%`.
+
+Account-specific bucket overrides are analysis decisions, not signal-rule
+changes. The ICMarketsSC-MT5-2 validation currently recommends
+`H4/H8 0.25%`, `H12/D1 0.30%`, and `W1 0.75%` for growth-practical analysis,
+but that remains dry-run/order-check only until a separate live-send plan is
+approved.
+
+`max_risk_pct_per_trade` is an execution guardrail, not a backtest signal rule.
+It defaults to `0.75`, matching the highest current V15 W1 bucket. Separate
+ignored account configs may raise it for validation, for example to allow an
+IC scale-2 dry-run where W1 targets `1.50%`. Keep the FTMO/VPS live config at
+its approved cap unless a separate live-send decision explicitly changes it.
 
 The current detector default is `require_lp_pivot_before_fs_mother=true`. This
 means new setups are emitted only when `lp_pivot_index < fs_mother_index`.

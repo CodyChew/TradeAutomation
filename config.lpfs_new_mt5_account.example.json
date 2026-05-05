@@ -1,4 +1,24 @@
 {
+  "account_profile": {
+    "slug": "icmarkets_raw_spread",
+    "server": "ICMarketsSC-MT5-2",
+    "analysis_recommended_bucket": "IC growth practical",
+    "analysis_recommended_risk_buckets_pct": {
+      "H4": 0.25,
+      "H8": 0.25,
+      "H12": 0.30,
+      "D1": 0.30,
+      "W1": 0.75
+    },
+    "ftmo_live_reference_risk_buckets_pct": {
+      "H4": 0.20,
+      "H8": 0.20,
+      "H12": 0.30,
+      "D1": 0.30,
+      "W1": 0.75
+    },
+    "status": "analysis_only_until_local_order_check_passes"
+  },
   "mt5": {
     "use_existing_terminal_session": true,
     "expected_login": "NEW_ACCOUNT_MT5_LOGIN",
@@ -52,7 +72,15 @@
     "state_path": "data/live/lpfs_new_mt5_account_dry_run_state.json",
     "max_spread_points": null,
     "max_lots_per_order": null,
-    "risk_bucket_scale": 0.1,
+    "max_risk_pct_per_trade": 0.75,
+    "risk_buckets_pct": {
+      "H4": 0.25,
+      "H8": 0.25,
+      "H12": 0.30,
+      "D1": 0.30,
+      "W1": 0.75
+    },
+    "risk_bucket_scale": 1.0,
     "max_open_risk_pct": 6.0,
     "max_same_symbol_stack": 4,
     "max_concurrent_strategy_trades": 17,
@@ -73,6 +101,14 @@
     "journal_path": "data/live/lpfs_new_mt5_account_live_journal.jsonl",
     "state_path": "data/live/lpfs_new_mt5_account_live_state.json",
     "max_lots_per_order": null,
+    "max_risk_pct_per_trade": 0.75,
+    "risk_buckets_pct": {
+      "H4": 0.25,
+      "H8": 0.25,
+      "H12": 0.30,
+      "D1": 0.30,
+      "W1": 0.75
+    },
     "risk_bucket_scale": 0.05,
     "max_open_risk_pct": 0.65,
     "max_same_symbol_stack": 4,

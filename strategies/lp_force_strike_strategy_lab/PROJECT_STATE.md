@@ -224,17 +224,60 @@ Risk-bucket study on commission-adjusted R:
 - Growth alternative `H4/H8 0.25% / H12/D1 0.30% / W1 0.60%`: IC `426.70%`
   total return and `9.55%` reserved DD; FTMO baseline `327.20%` and
   `10.82%` reserved DD.
-- IC highest-return practical row: `H4/H8 0.25% / H12/D1 0.30% / W1 0.75%`,
-  `433.93%` total return, `9.55%` reserved DD.
+- IC recommended growth-practical row:
+  `H4/H8 0.25% / H12/D1 0.30% / W1 0.75%`, `433.93%` total return,
+  `9.55%` reserved DD, `5.80%` max open risk, `-4.46%` worst month, and
+  about `153` reserved underwater days.
 
 Interpretation: IC Markets Raw Spread remains similar or stronger than the
 current adopted live strategy after explicit commission and bucket revalidation.
-This is still analysis only; it is not approval for new-account `LIVE_SEND`.
+The FTMO live/default bucket remains `0.20% / 0.30% / 0.75%`; the separate IC
+analysis recommendation is `0.25% / 0.30% / 0.75%` because the account can
+accept more growth while staying below the `10%` reserved DD and `6%` max-open
+risk practical caps. This is still analysis only; it is not approval for
+new-account `LIVE_SEND`.
 
-First dry-run cycle on `config.lpfs_icmarkets_raw_spread.local.json` processed
-all `140` frames. It found three latest-bar setups, but all were rejected
-before broker check because raw volume rounded below the broker `0.01` minimum
-lot. Therefore there were `0` `order_check` calls and `0` live orders.
+Config support:
+
+- `config.lpfs_new_mt5_account.example.json` now documents the IC bucket shape
+  under `risk_buckets_pct`.
+- `risk_bucket_scale` still multiplies that bucket shape. The local dry-run can
+  test scaled bucket sizing; live-send remains
+  disabled and separately scaled unless a future live plan explicitly changes
+  it.
+- `max_risk_pct_per_trade` is now config-specific and defaults to `0.75`. The
+  ignored IC dry-run config raises it to `1.5` for scale-2 validation only.
+
+Dry-run evidence on `config.lpfs_icmarkets_raw_spread.local.json`:
+
+- The ignored local config now uses the IC analysis bucket shape
+  `0.25% / 0.30% / 0.75%` through `risk_buckets_pct`.
+- Latest dry-run with `dry_run.risk_bucket_scale=2.0` processed all `140`
+  frames, with effective targets of `H4/H8 0.50%`, `H12/D1 0.60%`, and
+  `W1 1.50%`.
+- Latest-bar setups detected: `AUDCHF H8`, `GBPCAD H12`, and `NZDCHF W1`.
+- All three created pending intents and passed MT5 `order_check`.
+- Actual rounded risk: `AUDCHF H8 0.399898%` at `0.03` lots,
+  `GBPCAD H12 0.591292%` at `0.04` lots, and `NZDCHF W1 1.354304%` at
+  `0.05` lots.
+- Live-send remains disabled, so there were `0` live orders.
+
+Local IC live-send smoke test:
+
+- A separate ignored smoke config,
+  `config.lpfs_icmarkets_raw_spread.live_smoke.local.json`, enabled
+  `LIVE_SEND` for one local IC cycle only.
+- Pre-send verification confirmed `ICMarketsSC-MT5-2` and `0` existing
+  strategy orders/positions. The account login remains in the ignored local
+  config / active MT5 terminal, not committed docs.
+- The one-cycle smoke run sent one `AUDCHF H8` `BUY_LIMIT`, ticket
+  `4419969921`, volume `0.03`, entry `0.56107`, stop `0.55951`, target
+  `0.56264`; two other setups were blocked by market recovery.
+- The user manually canceled ticket `4419969921`.
+- MT5 verification and local smoke-state reconciliation now show `0` pending
+  orders and `0` positions.
+- The VPS FTMO live runner was not changed or restarted for this local IC
+  smoke test.
 
 ## Experiment V1
 

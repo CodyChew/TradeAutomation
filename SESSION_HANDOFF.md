@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-05 SGT after adding the local-only LPFS new MT5 account
-validation workflow.
+Last updated: 2026-05-06 SGT after the local IC one-cycle live-send smoke test
+was sent, manually canceled, and reconciled cleanly.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -80,7 +80,7 @@ agents should start remote work with `ssh lpfs-vps hostname`, `ssh lpfs-vps
 whoami`, VPS `git status`, and the LPFS status packet before drawing
 operational conclusions.
 
-## 2026-05-05 Wrap-Up / Git State
+## 2026-05-06 Wrap-Up / Git State
 
 - Local tracked docs now include the LPFS handoff-first cleanup:
   `strategies/lp_force_strike_strategy_lab/START_HERE.md`, refreshed
@@ -93,6 +93,15 @@ operational conclusions.
   spread gates, pending expiry, live state schema, or TradingView behavior.
 - The preferred production baseline is `main`. Verify both local and VPS repo
   state with `git status --short --branch` before deploy or audit work.
+- Local IC smoke test evidence now exists: ignored
+  `config.lpfs_icmarkets_raw_spread.live_smoke.local.json` sent one local IC
+  `AUDCHF H8` pending order (`4419969921`), the user manually canceled it, and
+  both MT5 and the local smoke state returned to `0` pending orders and
+  `0` positions.
+- The VPS FTMO runner was checked after this smoke test and remained active:
+  `LPFS_Live` parent/child process shape, fresh heartbeat, runtime root
+  `C:\TradeAutomationRuntime`, `frames_processed=140`, and clean VPS repo
+  `main...origin/main`.
 - Docs-only changes do not require restarting `LPFS_Live`. If the user wants
   the docs available on the VPS checkout, use a pull-only update after proving
   identity and status:
@@ -132,8 +141,9 @@ so H4/H8 are `0.01%`, H12/D1 are `0.015%`, and W1 is `0.0375%`.
 New MT5 account validation is now documented as a local-only path. Use
 `docs/lpfs_new_mt5_account_validation.md`,
 `scripts/audit_lpfs_new_mt5_account.py`, and the new-account example configs
-before any dry-run/order-check work on a different account. Do not change the
-VPS MT5 login or restart `LPFS_Live` for this validation.
+before any dry-run/order-check work on a different account. The local IC smoke
+test does not authorize continuous IC live-send. Do not change the VPS MT5
+login or restart `LPFS_Live` for this validation.
 
 ## Architecture Map
 

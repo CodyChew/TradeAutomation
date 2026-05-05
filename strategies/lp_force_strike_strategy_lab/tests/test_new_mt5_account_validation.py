@@ -43,6 +43,10 @@ class LPFSNewMT5AccountValidationTests(unittest.TestCase):
 
         self.assertEqual(config["dataset_config"], "configs/datasets/lpfs_new_mt5_account_forex_10y.example.json")
         self.assertEqual(config["report_root"], "reports/strategies/lp_force_strike_experiment_v22_new_mt5_account")
+        self.assertEqual(config["account_profile"]["slug"], "icmarkets_raw_spread")
+        self.assertEqual(config["account_profile"]["server"], "ICMarketsSC-MT5-2")
+        self.assertEqual(config["account_profile"]["recommended_risk_buckets_pct"]["H4"], 0.25)
+        self.assertEqual(config["account_profile"]["ftmo_live_reference_risk_buckets_pct"]["H4"], 0.20)
         self.assertIsNone(config["docs_output_path"])
         self.assertEqual(config["pivot_strength"], 3)
         self.assertEqual(config["max_bars_from_lp_break"], 6)
@@ -63,6 +67,12 @@ class LPFSNewMT5AccountValidationTests(unittest.TestCase):
         self.assertEqual(config["live_send"]["real_money_ack"], "")
         self.assertEqual(config["dry_run"]["timeframes"], ["H4", "H8", "H12", "D1", "W1"])
         self.assertTrue(config["dry_run"]["require_lp_pivot_before_fs_mother"])
+        self.assertEqual(config["account_profile"]["analysis_recommended_bucket"], "IC growth practical")
+        self.assertEqual(config["dry_run"]["risk_buckets_pct"]["H4"], 0.25)
+        self.assertEqual(config["dry_run"]["risk_buckets_pct"]["W1"], 0.75)
+        self.assertEqual(config["dry_run"]["risk_bucket_scale"], 1.0)
+        self.assertEqual(config["live_send"]["risk_buckets_pct"]["H4"], 0.25)
+        self.assertEqual(config["live_send"]["risk_bucket_scale"], 0.05)
         self.assertIn("lpfs_new_mt5_account", config["dry_run"]["journal_path"])
         self.assertIn("lpfs_new_mt5_account", config["live_send"]["state_path"])
 

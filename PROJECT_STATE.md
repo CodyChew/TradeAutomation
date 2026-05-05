@@ -1,8 +1,8 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-05 local time after running the local IC Markets Raw
-Spread LPFS validation through audit, data pull, V22 backtest, comparison, and
-dry-run.
+Last updated: 2026-05-06 local time after the local IC Markets Raw Spread
+LPFS validation, scale-2 order-check pass, one-cycle live-send smoke test,
+manual cancellation, and clean reconciliation.
 
 ## Purpose
 
@@ -157,12 +157,16 @@ V22 separated comparison against the current FTMO-backed baseline:
 - profit factor: `1.406` vs `1.289`
 - max drawdown: `18.0R` vs `26.0R`
 
-First dry-run cycle:
+Current local IC validation status:
 
-- frames processed: `140`
-- latest-bar setups rejected before broker check: `3`
-- broker `order_check` calls: `0`
-- reason: all three fresh setups rounded below the `0.01` minimum lot.
+- scale-2 dry-run frames processed: `140`
+- current fresh setups: `AUDCHF H8`, `GBPCAD H12`, `NZDCHF W1`
+- broker `order_check` calls: `3`, all passed
+- one-cycle live-send smoke test sent one `AUDCHF H8` `BUY_LIMIT`, ticket
+  `4419969921`
+- the user manually canceled ticket `4419969921`
+- MT5 and local smoke state reconciled to `0` pending orders and `0` positions
+- VPS FTMO live runner and VPS MT5 login were not changed
 
 ## Current LP Rules
 

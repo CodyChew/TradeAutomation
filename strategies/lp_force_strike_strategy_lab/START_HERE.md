@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-05-05 after adding the local-only new MT5 account
-validation workflow.
+Last updated: 2026-05-06 after the local IC one-cycle live-send smoke test was
+sent, manually canceled, and reconciled cleanly.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -11,6 +11,13 @@ operational decisions.
 ## Current Status
 
 - Strategy baseline: V13 mechanics + V15 risk buckets + V22 LP/FS separation.
+- FTMO live/default bucket: H4/H8 `0.20%`, H12/D1 `0.30%`, W1 `0.75%`.
+- ICMarketsSC-MT5-2 analysis bucket: H4/H8 `0.25%`, H12/D1 `0.30%`,
+  W1 `0.75%`.
+- IC local validation status: scale-2 order-check passed for the current local
+  signals; one local smoke live-send placed `AUDCHF H8` ticket `4419969921`,
+  the user manually canceled it, and broker/local smoke state returned to `0`
+  pending orders and `0` positions.
 - Required LP/FS rule: selected LP pivot must be before the Force Strike mother
   bar (`lp_pivot_index < fs_mother_index`).
 - Execution state: guarded MT5 live-send path exists and can place real orders
@@ -48,6 +55,7 @@ operational decisions.
 | Live runtime state | `C:\TradeAutomationRuntime\data\live` on the VPS | Contains state, journal, heartbeat, logs, and kill switch. |
 | Remote VPS access | `docs/lpfs_lightsail_vps_runbook.md` | Tailscale + OpenSSH is preferred over public SSH/RDP exposure. |
 | Account and secrets | ignored `config.local.json` and local OS/user secrets | Never commit MT5 passwords, Telegram tokens, SSH private keys, or account credentials. |
+| IC account validation | `docs/account_validation.html`, `docs/lpfs_new_mt5_account_validation.md`, and `config.lpfs_new_mt5_account.example.json` | Local-only validation and smoke testing; do not touch VPS live account. |
 | Dashboard HTML | builder scripts in `scripts/` | Edit builders, then regenerate HTML; do not make HTML-only dashboard changes. |
 
 ## Environment Boundaries
@@ -83,7 +91,9 @@ If the command target is `C:\TradeAutomation` or
 
 ## Live-Run Safety Rules
 
-- Do not run a local LPFS live runner while `LPFS_Live` is active on the VPS.
+- Do not run a local LPFS live runner while `LPFS_Live` is active on the VPS
+  unless the user explicitly approves a separate local-account smoke test with
+  its own ignored config, state, journal, and reconciliation plan.
 - Do not edit live state, journal rows, MT5 orders, MT5 positions, or deal
   history unless the user explicitly approves a separate operator plan.
 - Use the kill switch before approved deploy, restart, or emergency pause work.

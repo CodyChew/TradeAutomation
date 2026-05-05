@@ -364,6 +364,8 @@ class LiveExecutorTests(unittest.TestCase):
                             "real_money_ack": LIVE_SEND_ACK,
                             "symbols": ["EURUSD"],
                             "max_lots_per_order": "0.5",
+                            "max_risk_pct_per_trade": "1.5",
+                            "risk_buckets_pct": {"H4": 0.25, "H8": 0.25},
                             "risk_bucket_scale": 0.05,
                             "max_open_risk_pct": 0.65,
                             "max_spread_risk_fraction": 0.1,
@@ -381,6 +383,8 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(settings.executor.timeframes, ("H4",))
             self.assertTrue(Path(settings.executor.journal_path).is_absolute())
             self.assertEqual(settings.executor.max_lots_per_order, 0.5)
+            self.assertEqual(settings.executor.max_risk_pct_per_trade, 1.5)
+            self.assertEqual(settings.executor.risk_buckets_pct, {"H4": 0.25, "H8": 0.25})
             self.assertEqual(settings.executor.market_recovery_mode, "better_than_entry_only")
             self.assertEqual(settings.executor.market_recovery_deviation_points, 0)
             self.assertFalse(settings.executor.require_lp_pivot_before_fs_mother)
@@ -473,15 +477,20 @@ class LiveExecutorTests(unittest.TestCase):
             path.write_text(json.dumps(old_payload), encoding="utf-8")
             self.assertEqual(load_live_state(path).telegram_message_ids, {})
 
-            config = _config(tmpdir, max_lots_per_order=0.5)
+            config = _config(tmpdir, max_lots_per_order=0.5, risk_buckets_pct={"H4": 0.25})
             safety = live_execution_safety_from_config(config)
             self.assertEqual(safety.max_open_risk_pct, 0.65)
             self.assertEqual(safety.max_lots_per_order, 0.5)
+            self.assertEqual(safety.max_risk_pct_per_trade, 0.75)
             buckets = live_risk_buckets_from_config(config)
-            self.assertAlmostEqual(buckets["H4"], 0.01)
+            self.assertAlmostEqual(buckets["H4"], 0.0125)
             self.assertAlmostEqual(buckets["W1"], 0.0375)
             with self.assertRaisesRegex(ValueError, "risk_bucket_scale"):
                 live_risk_buckets_from_config(_config(tmpdir, risk_bucket_scale=0))
+            with self.assertRaisesRegex(ValueError, "unsupported timeframe"):
+                live_risk_buckets_from_config(_config(tmpdir, risk_buckets_pct={"M30": 0.10}))
+            with self.assertRaisesRegex(ValueError, "risk_buckets_pct values"):
+                live_risk_buckets_from_config(_config(tmpdir, risk_buckets_pct={"H4": 0.0}))
 
     def test_atomic_live_state_save_preserves_previous_file_on_replace_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

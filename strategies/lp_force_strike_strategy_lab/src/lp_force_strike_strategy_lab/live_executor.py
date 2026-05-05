@@ -76,6 +76,8 @@ class LiveSendExecutorConfig:
     journal_path: str = "data/live/lpfs_live_journal.jsonl"
     state_path: str = "data/live/lpfs_live_state.json"
     max_lots_per_order: float | None = None
+    max_risk_pct_per_trade: float = 0.75
+    risk_buckets_pct: dict[str, float] | None = None
     risk_bucket_scale: float = 0.05
     max_open_risk_pct: float = 0.65
     max_same_symbol_stack: int = 4
@@ -356,6 +358,10 @@ def load_live_send_settings(path: str | Path = "config.local.json", *, env: dict
         journal_path=str(_resolve_local_path(base_dir, live_payload.get("journal_path", "data/live/lpfs_live_journal.jsonl"))),
         state_path=str(_resolve_local_path(base_dir, live_payload.get("state_path", "data/live/lpfs_live_state.json"))),
         max_lots_per_order=_optional_float(live_payload.get("max_lots_per_order", dry_executor.max_lots_per_order)),
+        max_risk_pct_per_trade=float(
+            live_payload.get("max_risk_pct_per_trade", dry_executor.max_risk_pct_per_trade)
+        ),
+        risk_buckets_pct=_optional_risk_buckets(live_payload.get("risk_buckets_pct", dry_executor.risk_buckets_pct)),
         risk_bucket_scale=float(live_payload.get("risk_bucket_scale", 0.05)),
         max_open_risk_pct=float(live_payload.get("max_open_risk_pct", 0.65)),
         max_same_symbol_stack=int(live_payload.get("max_same_symbol_stack", dry_executor.max_same_symbol_stack)),
@@ -453,6 +459,7 @@ def live_execution_safety_from_config(config: LiveSendExecutorConfig) -> Executi
     """Return live-send guardrails."""
 
     return ExecutionSafetyLimits(
+        max_risk_pct_per_trade=config.max_risk_pct_per_trade,
         max_open_risk_pct=config.max_open_risk_pct,
         max_lots_per_order=config.max_lots_per_order,
         max_same_symbol_stack=config.max_same_symbol_stack,
@@ -467,7 +474,16 @@ def live_risk_buckets_from_config(config: LiveSendExecutorConfig) -> dict[str, f
 
     if config.risk_bucket_scale <= 0:
         raise ValueError("risk_bucket_scale must be positive.")
-    return {timeframe: risk_pct * config.risk_bucket_scale for timeframe, risk_pct in V15_EFFICIENT_RISK_BUCKET_PCT.items()}
+    buckets = dict(V15_EFFICIENT_RISK_BUCKET_PCT)
+    if config.risk_buckets_pct:
+        unknown = sorted(set(config.risk_buckets_pct) - set(buckets))
+        if unknown:
+            raise ValueError(f"risk_buckets_pct contains unsupported timeframe(s): {', '.join(unknown)}.")
+        for timeframe, risk_pct in config.risk_buckets_pct.items():
+            if risk_pct <= 0:
+                raise ValueError("risk_buckets_pct values must be positive.")
+            buckets[timeframe] = risk_pct
+    return {timeframe: risk_pct * config.risk_bucket_scale for timeframe, risk_pct in buckets.items()}
 
 
 def dynamic_spread_gate(
@@ -2583,6 +2599,14 @@ def _optional_float(value: Any) -> float | None:
     return float(value)
 
 
+def _optional_risk_buckets(value: Any) -> dict[str, float] | None:
+    if value in (None, ""):
+        return None
+    if not isinstance(value, dict):
+        raise LocalConfigError("risk_buckets_pct must be an object keyed by timeframe.")
+    return {str(timeframe).upper(): float(risk_pct) for timeframe, risk_pct in value.items()}
+
+
 def _optional_bool(value: Any, *, default: bool) -> bool:
     if value in (None, ""):
         return default
@@ -2609,6 +2633,8 @@ def _dry_compatible_config(config: LiveSendExecutorConfig) -> Any:
         journal_path=config.journal_path,
         state_path=config.state_path,
         max_lots_per_order=config.max_lots_per_order,
+        max_risk_pct_per_trade=config.max_risk_pct_per_trade,
+        risk_buckets_pct=config.risk_buckets_pct,
         risk_bucket_scale=config.risk_bucket_scale,
         max_open_risk_pct=config.max_open_risk_pct,
         max_same_symbol_stack=config.max_same_symbol_stack,

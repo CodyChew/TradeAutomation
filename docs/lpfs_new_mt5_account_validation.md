@@ -138,15 +138,27 @@ variant:
   higher (`0.0402R` average per trade vs `0.0292R` on the FTMO baseline).
 
 The same script reruns the V15 64-row H4/H8, H12/D1, and W1 bucket grid on the
-commission-adjusted R stream. Current key rows:
+commission-adjusted R stream. The current FTMO live reference remains
+`0.20% / 0.30% / 0.75%`; the IC Markets Raw Spread analysis recommendation is
+a separate growth-practical row, `0.25% / 0.30% / 0.75%`.
+
+Current key rows:
 
 - Adopted live row `0.20% / 0.30% / 0.75%`: IC `386.84%` total return,
   `7.23%` reserved DD, return/DD `53.53`; FTMO baseline `305.10%`,
   `11.23%` reserved DD, return/DD `27.18`.
 - Growth alternative `0.25% / 0.30% / 0.60%`: IC `426.70%` total return,
   `9.55%` reserved DD; FTMO baseline `327.20%`, `10.82%` reserved DD.
-- IC highest-return practical row: `0.25% / 0.30% / 0.75%`, `433.93%`
-  return, `9.55%` reserved DD.
+- IC recommended growth-practical row: `0.25% / 0.30% / 0.75%`,
+  `433.93%` return, `9.55%` reserved DD, `5.80%` max open risk, `-4.46%`
+  worst month, and about `153` reserved underwater days.
+
+Decision: if the IC account can accept more growth, prefer
+`0.25% / 0.30% / 0.75%`. It gives more return than
+`0.25% / 0.30% / 0.60%` with effectively the same reserved DD and worst month.
+Do not promote the higher H12/D1 `0.40%` or `0.50%` rows without a separate
+exposure decision because those rows breach the `6%` max-open-risk practical
+cap.
 
 Interpretation: the IC account shows similar or stronger bucket behavior than
 the current adopted live strategy after explicit commission. This is still
@@ -176,6 +188,59 @@ Then run dry-run only:
 ```
 
 This path calls `order_check` only and never sends orders.
+
+The committed new-account example config now supports a per-timeframe
+`risk_buckets_pct` override. For the IC Markets Raw Spread validation it is set
+to the analysis recommendation:
+
+```json
+"risk_buckets_pct": {
+  "H4": 0.25,
+  "H8": 0.25,
+  "H12": 0.30,
+  "D1": 0.30,
+  "W1": 0.75
+}
+```
+
+`risk_bucket_scale` still multiplies this bucket shape. Use dry-run/order-check
+to test the full IC bucket shape locally; keep `live_send.live_send_enabled`
+false until a separate live-send plan is approved.
+
+The per-trade max-risk cap is now config-specific. The default remains
+`max_risk_pct_per_trade=0.75`; the ignored local IC dry-run config may raise it
+to `1.5` when testing `risk_bucket_scale=2.0` so W1 signals are checked at the
+intended `1.50%` target rather than rejected by the generic guardrail.
+
+Latest local dry-run evidence after switching the ignored IC config to scale-2
+IC bucket validation:
+
+- `140` frames processed.
+- Latest-bar setups detected: `AUDCHF H8`, `GBPCAD H12`, and `NZDCHF W1`.
+- Effective targets were `H4/H8 0.50%`, `H12/D1 0.60%`, and `W1 1.50%`.
+- The ignored IC config sets `dry_run.max_risk_pct_per_trade=1.5`, so the W1
+  scale-2 signal is checked instead of blocked by the default `0.75` cap.
+- All three created pending intents and passed MT5 `order_check`.
+- Rounded actual risks were `AUDCHF H8 0.399898%` at `0.03` lots,
+  `GBPCAD H12 0.591292%` at `0.04` lots, and `NZDCHF W1 1.354304%` at
+  `0.05` lots.
+- Live orders sent: `0`.
+
+Local one-cycle live-send smoke evidence:
+
+- Config used: ignored `config.lpfs_icmarkets_raw_spread.live_smoke.local.json`.
+- Account verified before send: `ICMarketsSC-MT5-2`; account login remains in
+  the ignored local config / active MT5 terminal, not committed docs.
+- Existing IC strategy orders/positions before send: `0/0`.
+- One-cycle smoke runner processed `140` frames.
+- Sent one pending order: `AUDCHF H8` `BUY_LIMIT`, ticket `4419969921`,
+  volume `0.03`, entry `0.56107`, stop `0.55951`, target `0.56264`.
+- Two setups (`GBPCAD H12`, `NZDCHF W1`) were blocked by market recovery
+  because current executable price was worse than the original entry.
+- The user manually canceled ticket `4419969921`.
+- Reconciliation confirmed broker state and local smoke state both returned to
+  `0` pending orders and `0` positions.
+- The VPS FTMO runner and VPS MT5 account were not changed.
 
 For the current IC Markets Raw Spread validation, the ignored local config was
 named:
