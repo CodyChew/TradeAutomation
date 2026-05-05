@@ -1,6 +1,6 @@
 # LPFS Amazon Lightsail VPS Runbook
 
-Last updated: 2026-05-04.
+Last updated: 2026-05-05.
 
 This runbook moves the existing Python + MT5 live runner to Amazon Lightsail
 without rewriting strategy logic. The exact strategy behavior remains owned by
@@ -22,6 +22,147 @@ Future live-operation checks, deployment verification, and incident debugging
 should be performed from the VPS first. The local repo remains the development
 workspace unless changes are explicitly pushed/pulled to the VPS and
 `LPFS_Live` is intentionally restarted.
+
+## Remote Maintenance Access
+
+The preferred remote-maintenance path is Tailscale plus OpenSSH over the
+private tailnet, not public SSH/RDP exposure.
+
+Current proven access model:
+
+- Local development PC: `cy-desktop`, Tailscale IP `100.105.200.52`.
+- Local repo path: `C:\Users\chewc\OneDrive\Desktop\TradeAutomation`.
+- VPS host: `EC2AMAZ-ON6FOF2`, Tailscale IP `100.115.34.38`.
+- VPS SSH user: `Administrator`.
+- Local SSH alias: `lpfs-vps`.
+- Local SSH key: `~\.ssh\lpfs_vps_ed25519`.
+- VPS OpenSSH service: `sshd`.
+- VPS firewall rule: `OpenSSH-Tailscale-Only`, inbound TCP `22` from
+  `100.64.0.0/10`.
+
+Use the alias for read-only operator checks:
+
+```powershell
+ssh lpfs-vps hostname
+ssh lpfs-vps whoami
+ssh lpfs-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 40 -LogLines 80"
+ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch"
+```
+
+The remote access path has been verified from the local PC to the VPS over
+Tailscale. The status script returned a running heartbeat and the expected
+Windows parent/child process shape.
+
+### Environment Boundaries
+
+Future agents and operators must differentiate environments explicitly:
+
+- Local commands are run from the OneDrive workspace and are for development,
+  tests, commits, pushes, docs, and local inspection.
+- VPS commands are run through `ssh lpfs-vps ...` and affect the production
+  checkout or production runtime only when the command targets
+  `C:\TradeAutomation` or `C:\TradeAutomationRuntime`.
+- The VPS runtime root is the production source for live heartbeat, state,
+  journal, logs, kill switch, and scheduled task behavior.
+- MT5 on the VPS remains the broker source of truth for orders and positions.
+- Do not run a local LPFS live runner while the VPS runner is active.
+- Do not mutate the VPS kill switch, scheduled task, repo checkout, live state,
+  journal, MT5 orders, or MT5 positions unless the user has explicitly approved
+  that operation.
+
+Start any remote session by proving identity before analysis:
+
+```powershell
+ssh lpfs-vps hostname
+ssh lpfs-vps whoami
+ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch"
+```
+
+Then gather the production status packet:
+
+```powershell
+ssh lpfs-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 40 -LogLines 80"
+```
+
+### Remote Access Setup
+
+Local setup:
+
+1. Install and log into Tailscale on the local PC.
+2. Confirm local Tailscale identity:
+
+   ```powershell
+   & "$env:ProgramFiles\Tailscale\tailscale.exe" status
+   & "$env:ProgramFiles\Tailscale\tailscale.exe" ip -4
+   ```
+
+3. Create or keep the local SSH key at `~\.ssh\lpfs_vps_ed25519`.
+4. Add this local SSH config entry:
+
+   ```sshconfig
+   Host lpfs-vps
+     HostName 100.115.34.38
+     User Administrator
+     IdentityFile ~/.ssh/lpfs_vps_ed25519
+     IdentitiesOnly yes
+     StrictHostKeyChecking accept-new
+   ```
+
+VPS setup:
+
+1. Install and log into Tailscale on the VPS with the same tailnet account.
+2. Confirm VPS Tailscale identity:
+
+   ```powershell
+   & "$env:ProgramFiles\Tailscale\tailscale.exe" status
+   & "$env:ProgramFiles\Tailscale\tailscale.exe" ip -4
+   hostname
+   ```
+
+3. Enable OpenSSH Server:
+
+   ```powershell
+   Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+   Start-Service sshd
+   Set-Service sshd -StartupType Automatic
+   ```
+
+4. Restrict SSH to Tailscale:
+
+   ```powershell
+   New-NetFirewallRule `
+     -Name "OpenSSH-Tailscale-Only" `
+     -DisplayName "OpenSSH Server - Tailscale Only" `
+     -Enabled True `
+     -Direction Inbound `
+     -Protocol TCP `
+     -Action Allow `
+     -LocalPort 22 `
+     -RemoteAddress 100.64.0.0/10
+   ```
+
+5. Install the local public key into
+   `C:\ProgramData\ssh\administrators_authorized_keys` because the SSH user is
+   an Administrator.
+
+### Remote Access Teardown
+
+Normal end-of-session teardown is simply to exit SSH sessions. Leave Tailscale
+and `sshd` running if future remote audits are desired.
+
+For a stricter teardown:
+
+```powershell
+Stop-Service sshd
+Set-Service sshd -StartupType Manual
+Disable-NetFirewallRule -Name "OpenSSH-Tailscale-Only"
+```
+
+For complete access revocation, also remove or rotate
+`C:\ProgramData\ssh\administrators_authorized_keys` and disable/remove the VPS
+device from the Tailscale admin console. If using RDP for MT5 review, disconnect
+the RDP session instead of signing out so the interactive MT5 terminal remains
+open.
 
 Official references:
 

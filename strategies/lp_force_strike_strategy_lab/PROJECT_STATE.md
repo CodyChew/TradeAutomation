@@ -1011,6 +1011,11 @@ written.
   runtime `C:\TradeAutomationRuntime`, scheduled task `LPFS_Live`, and the VPS
   MT5 terminal. Local OneDrive is development only until changes are explicitly
   pushed/pulled to the VPS and the task is intentionally restarted.
+- Remote VPS maintenance is available through Tailscale + OpenSSH:
+  `ssh lpfs-vps ...` from the local PC reaches VPS host `EC2AMAZ-ON6FOF2`
+  (`100.115.34.38`) as `Administrator`. Use it first for read-only status
+  packets and repo checks. Environment boundary: local OneDrive is development;
+  VPS `C:\TradeAutomation` plus `C:\TradeAutomationRuntime` is production.
 - Low-risk defaults: `risk_bucket_scale=0.05`, `max_open_risk_pct=0.65`,
   full V15 stack caps, and `max_spread_risk_fraction=0.1`.
 - Scaled risk ladder: H4/H8 `0.01%`, H12/D1 `0.015%`, W1 `0.0375%`.

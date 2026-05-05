@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-05 SGT after making LPFS manual trade summaries
-metric-only by default with `--days` / `--weeks` lookbacks.
+Last updated: 2026-05-05 SGT after proving Tailscale + SSH remote access to
+the LPFS Windows VPS and documenting the environment boundaries.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -38,6 +38,42 @@ file, and the JSONL journal before making operational decisions.
   user wants the docs available on the VPS checkout.
 - Never instruct future agents to edit VPS live state, journal, MT5 orders, or
   MT5 positions unless the user explicitly approves a separate operator plan.
+
+## Remote VPS Access
+
+Tailscale + OpenSSH is now the preferred remote-maintenance path for read-only
+LPFS VPS audits and approved cleanup.
+
+- Local development PC: `cy-desktop`, Tailscale IP `100.105.200.52`.
+- Local repo path: `C:\Users\chewc\OneDrive\Desktop\TradeAutomation`.
+- Local SSH alias: `lpfs-vps`.
+- Local SSH key: `~\.ssh\lpfs_vps_ed25519`.
+- VPS host: `EC2AMAZ-ON6FOF2`, Tailscale IP `100.115.34.38`.
+- VPS SSH user: `Administrator`.
+- VPS repo path: `C:\TradeAutomation`.
+- VPS runtime root: `C:\TradeAutomationRuntime`.
+- VPS OpenSSH service: `sshd`.
+- VPS firewall rule: `OpenSSH-Tailscale-Only`, inbound TCP `22` from
+  `100.64.0.0/10`.
+
+Verified remote commands:
+
+```powershell
+ssh lpfs-vps hostname
+ssh lpfs-vps whoami
+ssh lpfs-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 40 -LogLines 80"
+ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch"
+```
+
+The remote status packet verified a running heartbeat, the expected Windows
+parent/child process shape, `C:\TradeAutomationRuntime` as runtime root, and
+`main...origin/main` as the VPS repo state.
+
+Environment boundary rule: local OneDrive is development; VPS
+`C:\TradeAutomation` plus `C:\TradeAutomationRuntime` is production. Future
+agents should start remote work with `ssh lpfs-vps hostname`, `ssh lpfs-vps
+whoami`, VPS `git status`, and the LPFS status packet before drawing
+operational conclusions.
 
 ## 2026-05-05 Wrap-Up / Git State
 
