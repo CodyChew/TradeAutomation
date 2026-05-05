@@ -31,11 +31,11 @@ class DashboardPagesTests(unittest.TestCase):
                 self.assertTrue(page[field], f"missing {field} for v{version}")
 
     def test_every_generated_dashboard_links_to_all_pages(self) -> None:
-        expected_links = ['href="index.html"', 'href="strategy.html"', 'href="live_ops.html"'] + [
+        expected_links = ['href="index.html"', 'href="strategy.html"', 'href="live_ops.html"', 'href="account_validation.html"'] + [
             f'href="v{version}.html"' for version in range(1, LATEST_VERSION + 1)
         ]
 
-        for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html"] + [
+        for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html", DOCS_ROOT / "account_validation.html"] + [
             DOCS_ROOT / f"v{version}.html" for version in range(1, LATEST_VERSION + 1)
         ]:
             html = path.read_text(encoding="utf-8")
@@ -43,7 +43,7 @@ class DashboardPagesTests(unittest.TestCase):
                 self.assertIn(link, html, f"{path.name} missing {link}")
 
     def test_generated_dashboards_use_shared_static_chrome(self) -> None:
-        paths = [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html"] + [
+        paths = [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html", DOCS_ROOT / "account_validation.html"] + [
             DOCS_ROOT / f"v{version}.html" for version in range(1, LATEST_VERSION + 1)
         ]
 
@@ -53,7 +53,7 @@ class DashboardPagesTests(unittest.TestCase):
             self.assertIn('class="report-nav"', html, f"{path.name} missing section navigation")
             self.assertNotIn("<script", html.lower(), f"{path.name} should remain CSS-only")
 
-        for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html"] + [
+        for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "account_validation.html"] + [
             DOCS_ROOT / f"v{version}.html" for version in range(1, LATEST_VERSION + 1)
         ]:
             html = path.read_text(encoding="utf-8")
@@ -66,7 +66,7 @@ class DashboardPagesTests(unittest.TestCase):
             self.assertIn('class="data-table', html, f"v{version}.html missing data-table class")
 
     def test_current_dashboards_archive_v1_to_v12_navigation(self) -> None:
-        for path in (DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html"):
+        for path in (DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html", DOCS_ROOT / "account_validation.html"):
             html = path.read_text(encoding="utf-8")
             self.assertIn("Archive V1-V12", html)
             self.assertIn('class="archive-nav"', html)
@@ -78,6 +78,30 @@ class DashboardPagesTests(unittest.TestCase):
             self.assertIn('href="v19.html"', html)
             self.assertIn('href="v20.html"', html)
             self.assertNotIn("<script", html.lower())
+
+    def test_account_validation_page_shows_ic_markets_and_commission_context(self) -> None:
+        html = (DOCS_ROOT / "account_validation.html").read_text(encoding="utf-8")
+
+        self.assertIn("LPFS Account Validation", html)
+        self.assertIn("IC Markets Raw Spread", html)
+        self.assertIn("ICMarketsSC-MT5-2", html)
+        self.assertIn("28/28", html)
+        self.assertIn("140/140", html)
+        self.assertIn("V22 LP/FS Separation", html)
+        self.assertIn("FTMO Forex", html)
+        self.assertIn("$2.50", html)
+        self.assertIn("$5.00", html)
+        self.assertIn("IC Markets Raw Spread MetaTrader", html)
+        self.assertIn("$3.50", html)
+        self.assertIn("$7.00", html)
+        self.assertIn("round_turn_commission_points", html)
+        self.assertIn("<td>0.0</td>", html)
+        self.assertIn("included candle spreads but did not include explicit commission", html)
+        self.assertIn("0 order_check calls", html)
+        self.assertIn("Commission sensitivity", html)
+        self.assertIn("href=\"strategy.html\"", html)
+        self.assertIn("href=\"live_ops.html\"", html)
+        self.assertNotIn("<script", html.lower())
 
     def test_strategy_page_explains_current_strategy_and_limits(self) -> None:
         html = (DOCS_ROOT / "strategy.html").read_text(encoding="utf-8")

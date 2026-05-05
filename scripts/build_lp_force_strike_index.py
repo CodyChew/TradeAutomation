@@ -122,6 +122,21 @@ def _live_ops_card() -> str:
     """
 
 
+def _account_validation_card() -> str:
+    return """
+    <section id="account-validation" class="card featured">
+      <div class="status status-active">Broker validation</div>
+      <h2>IC Markets Account Validation</h2>
+      <p>Local-only IC Markets Raw Spread account audit, new broker-data V22 rerun, FTMO-vs-IC comparison, and commission caveat before any dry-run or live-send planning.</p>
+      <div class="facts">
+        <div class="fact"><span>Account</span><strong>IC Raw Spread MT5</strong></div>
+        <div class="fact"><span>Cost caveat</span><strong>Spread-aware, commission-free</strong></div>
+      </div>
+      <a class="button" href="account_validation.html">Open Account Validation</a>
+    </section>
+    """
+
+
 def _section_heading(title: str, body: str) -> str:
     return f"""
     <section class="section-heading">
@@ -167,6 +182,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
         _baseline_card(home),
         _strategy_card(),
         _live_ops_card(),
+        _account_validation_card(),
         _section_heading(
             "Current Research Pages",
             "These are the current research snapshots that still feed the active LPFS strategy contract.",

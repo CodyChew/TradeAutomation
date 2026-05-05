@@ -148,6 +148,10 @@ Research revalidation state after V22:
 On 2026-05-05, a local-only IC Markets Raw Spread account validation was run
 without touching the VPS live account.
 
+Dashboard entry:
+
+- `../../docs/account_validation.html`
+
 Artifacts are intentionally ignored and local:
 
 - audit:
@@ -186,6 +190,14 @@ baseline:
 - win rate: `59.09%` vs `58.37%`
 - profit factor: `1.406` vs `1.289`
 - max drawdown: `18.0R` vs `26.0R`
+
+Cost caveat: this comparison included candle spreads but did not include
+explicit commission or slippage (`round_turn_commission_points=0.0` in both
+the current V22 baseline and IC rerun configs). Official source checks showed
+FTMO Forex at `$2.50` per lot per side (`$5.00` round turn per lot) and IC
+Markets Raw Spread MetaTrader at `$3.50` per lot per side (`$7.00` round turn
+per lot). Run commission sensitivity before treating this as a net
+profitability answer for the IC account.
 
 First dry-run cycle on `config.lpfs_icmarkets_raw_spread.local.json` processed
 all `140` frames. It found three latest-bar setups, but all were rejected

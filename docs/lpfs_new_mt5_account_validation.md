@@ -8,6 +8,16 @@ Current naming convention: when a broker/account is identified, prefer a
 stable slug such as `icmarkets_raw_spread` for ignored local configs and
 journal/state files. Keep account numbers and credentials out of tracked docs.
 
+Dashboard view:
+
+```text
+docs/account_validation.html
+```
+
+This generated page is the first visual summary for the current IC Markets Raw
+Spread validation. It shows the account audit, V22 comparison, official
+FTMO-vs-IC commission comparison, and the current cost-model caveat.
+
 ## Safety Boundary
 
 - Log into the new account on the local PC MT5 terminal.
@@ -89,6 +99,18 @@ Review:
 Large changes in trade count, PF, average R, total R, drawdown, or specific
 symbol/timeframe contribution mean the broker feed is materially different and
 needs review before dry-run.
+
+Cost caveat: the current V22 baseline and the current IC Markets rerun both use
+candle spread data with `round_turn_commission_points=0.0` and zero explicit
+slippage. That makes the first comparison useful for broker-candle behavior,
+but it is not a net profitability answer for a commissioned raw-spread account.
+Before promoting a new account, rerun a commission-aware sensitivity pass.
+
+As of the latest dashboard-source check, official broker pages showed:
+
+- FTMO Forex: `$2.50` per lot per side, `$5.00` round turn per lot.
+- IC Markets Raw Spread MetaTrader: `$3.50` per lot per side, `$7.00` round
+  turn per lot.
 
 ## 5. Dry-Run / Order-Check Only
 
