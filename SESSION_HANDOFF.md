@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-05 SGT after adding LPFS order-placement timing telemetry
-and AI-agent VPS completion guidance.
+Last updated: 2026-05-05 SGT session wrap-up after merging LPFS
+order-placement timing telemetry into `main` and documenting VPS handoff.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -38,6 +38,42 @@ file, and the JSONL journal before making operational decisions.
   user wants the docs available on the VPS checkout.
 - Never instruct future agents to edit VPS live state, journal, MT5 orders, or
   MT5 positions unless the user explicitly approves a separate operator plan.
+
+## 2026-05-05 Wrap-Up / Git State
+
+- The LPFS order-placement timing telemetry branch
+  `lpfs-order-placed-timing-telemetry` has been fast-forward merged into
+  `main` locally. After pushing this handoff, future local work should branch
+  from `main`.
+- The telemetry change is observability-only: Telegram `ORDER PLACED` cards and
+  journal rows now expose signal-close time, placement time, and placement lag.
+  It did not change LPFS signal selection, MT5 order-send semantics, sizing,
+  spread gates, pending expiry, live state schema, or TradingView behavior.
+- The VPS may still be checked out on `lpfs-order-placed-timing-telemetry`
+  until the operator intentionally switches it back to `main`. Verify the VPS
+  branch with `git branch` before assuming which checkout is live.
+- Once the pushed `main` is available on the VPS, the preferred production
+  baseline is `main`; do not continue new work from the old telemetry branch.
+- Safe VPS switch-over path:
+
+```powershell
+cd C:\TradeAutomation
+
+.\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntime -Reason "switch VPS to main after LPFS telemetry merge"
+Start-Sleep -Seconds 90
+
+git fetch origin
+git checkout main
+git pull --ff-only origin main
+
+.\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_notifications strategies.lp_force_strike_strategy_lab.tests.test_live_executor -v
+
+Remove-Item "C:\TradeAutomationRuntime\data\live\KILL_SWITCH" -ErrorAction SilentlyContinue
+Start-ScheduledTask -TaskName "LPFS_Live"
+Start-Sleep -Seconds 60
+
+.\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 40 -LogLines 80
+```
 
 ## Current Project Focus
 

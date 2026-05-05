@@ -1,8 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-05 local time after accepting V22 LP/Force-Strike
-separation as the new LPFS baseline and wiring the hard rule through research,
-dry-run, live-send config, docs, tests, and TradingView visuals.
+Last updated: 2026-05-05 local time after merging LPFS order-placement timing
+telemetry into `main` and documenting the VPS handoff path.
 
 ## Purpose
 
@@ -957,6 +956,20 @@ orders/positions, and Telegram lifecycle cards. For docs-only changes that do
 not affect runtime, state clearly that no VPS runner restart is required.
 External assistant memory may be read-only, so keep this file and
 `../../SESSION_HANDOFF.md` updated for continuity.
+
+Session wrap-up / branch state as of 2026-05-05:
+
+- `lpfs-order-placed-timing-telemetry` was fast-forward merged into `main`
+  locally. After the corresponding push, `main` is again the intended
+  canonical branch for future LPFS work.
+- The VPS can remain running while this repo-local merge is prepared, but it
+  will not use the merged `main` checkout until the operator pauses with the
+  kill switch, checks out/pulls `main`, runs focused checks, and restarts
+  `LPFS_Live`.
+- The timing telemetry is observability-only. It adds signal-close time,
+  order-placement time, and placement lag to `ORDER PLACED` Telegram cards and
+  live journal rows; it does not change signal rules, order-send behavior,
+  sizing, spread gates, expiry, live state schema, or TradingView visuals.
 
 Current local run scope is the full V15 universe: 28 major/cross pairs across
 `H4/H8/H12/D1/W1`, or 140 checks per cycle. The current FTMO-style terminal
