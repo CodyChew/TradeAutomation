@@ -18,8 +18,9 @@ for src_root in [
     if str(src_root) not in sys.path:
         sys.path.insert(0, str(src_root))
 
+from force_strike_pattern_lab import ForceStrikePattern
 from lp_force_strike_strategy_lab import detect_lp_force_strike_signals
-from lp_force_strike_strategy_lab.signals import _TrapWindow, _select_matching_window
+from lp_force_strike_strategy_lab.signals import _TrapWindow, _select_matching_window, _window_matches_pattern
 from lp_levels_lab import LPBreakEvent
 
 
@@ -71,6 +72,20 @@ def _bearish_multiple_resistance_rows(signal_close: float = 11.0) -> list[dict]:
     ]
 
 
+def _bearish_lp_mother_overlap_rows() -> list[dict]:
+    return [
+        {"high": 8.0, "low": 5.0, "close": 6.0},
+        {"high": 8.5, "low": 5.5, "close": 6.5},
+        {"high": 9.2, "low": 6.0, "close": 7.0},
+        {"high": 9.4, "low": 6.5, "close": 7.5},
+        {"high": 10.0, "low": 8.0, "close": 9.8},
+        {"high": 9.8, "low": 8.4, "close": 9.0},
+        {"high": 9.7, "low": 8.5, "close": 9.2},
+        {"high": 9.8, "low": 8.6, "close": 9.4},
+        {"high": 10.2, "low": 8.5, "close": 8.9},
+    ]
+
+
 def _lp_break(side: str, price: float, break_index: int) -> LPBreakEvent:
     break_time = pd.Timestamp("2026-01-01T00:00:00Z") + pd.Timedelta(hours=break_index)
     return LPBreakEvent(
@@ -82,6 +97,24 @@ def _lp_break(side: str, price: float, break_index: int) -> LPBreakEvent:
         confirmed_time_utc=break_time - pd.Timedelta(hours=1),
         break_index=break_index,
         break_time_utc=break_time,
+    )
+
+
+def _pattern(*, mother_index: int, signal_index: int) -> ForceStrikePattern:
+    times = pd.date_range("2026-01-01 00:00:00+00:00", periods=20, freq="h", tz="UTC")
+    return ForceStrikePattern(
+        side="bearish",
+        direction=-1,
+        mother_index=mother_index,
+        signal_index=signal_index,
+        mother_time_utc=times[mother_index],
+        signal_time_utc=times[signal_index],
+        mother_high=10.0,
+        mother_low=8.0,
+        structure_high=10.2,
+        structure_low=8.0,
+        total_bars=signal_index - mother_index + 1,
+        breakout_side="above_mother_high",
     )
 
 
@@ -184,6 +217,97 @@ class LPForceStrikeSignalTests(unittest.TestCase):
     def test_validates_max_bars_from_lp_break(self) -> None:
         with self.assertRaises(ValueError):
             detect_lp_force_strike_signals(_frame([]), "M30", max_bars_from_lp_break=0)
+
+    def test_default_detector_allows_lp_pivot_as_force_strike_mother(self) -> None:
+        signals = detect_lp_force_strike_signals(
+            _frame(_bearish_lp_mother_overlap_rows()),
+            "M30",
+            pivot_strength=2,
+        )
+
+        self.assertEqual(len(signals), 1)
+        self.assertEqual(signals[0].lp_pivot_index, signals[0].fs_mother_index)
+
+    def test_separation_policy_rejects_lp_pivot_as_force_strike_mother(self) -> None:
+        signals = detect_lp_force_strike_signals(
+            _frame(_bearish_lp_mother_overlap_rows()),
+            "M30",
+            pivot_strength=2,
+            require_lp_pivot_before_fs_mother=True,
+        )
+
+        self.assertEqual(signals, [])
+
+    def test_usdchf_like_lp_mother_overlap_rejected_only_when_separation_enabled(self) -> None:
+        current = detect_lp_force_strike_signals(
+            _frame(_bearish_lp_mother_overlap_rows()),
+            "M30",
+            pivot_strength=2,
+        )
+        separated = detect_lp_force_strike_signals(
+            _frame(_bearish_lp_mother_overlap_rows()),
+            "M30",
+            pivot_strength=2,
+            require_lp_pivot_before_fs_mother=True,
+        )
+
+        self.assertEqual(len(current), 1)
+        self.assertEqual(current[0].lp_pivot_index, current[0].fs_mother_index)
+        self.assertEqual(separated, [])
+
+    def test_separation_policy_rejects_lp_pivot_inside_force_strike_formation(self) -> None:
+        window = _TrapWindow("bearish", "force_top", _lp_break("resistance", 10.0, 8))
+        inside_pivot = _TrapWindow(
+            window.side,
+            window.scenario,
+            LPBreakEvent(
+                side=window.lp_event.side,
+                price=window.lp_event.price,
+                pivot_index=6,
+                pivot_time_utc=window.lp_event.pivot_time_utc,
+                confirmed_index=7,
+                confirmed_time_utc=window.lp_event.confirmed_time_utc,
+                break_index=window.lp_event.break_index,
+                break_time_utc=window.lp_event.break_time_utc,
+            ),
+        )
+
+        self.assertFalse(
+            _window_matches_pattern(
+                inside_pivot,
+                _pattern(mother_index=4, signal_index=8),
+                signal_close=9.0,
+                max_bars_from_lp_break=6,
+                require_lp_pivot_before_fs_mother=True,
+            )
+        )
+
+    def test_separation_policy_accepts_lp_pivot_before_force_strike_mother(self) -> None:
+        event = _lp_break("resistance", 10.0, 8)
+        window = _TrapWindow(
+            "bearish",
+            "force_top",
+            LPBreakEvent(
+                side=event.side,
+                price=event.price,
+                pivot_index=3,
+                pivot_time_utc=event.pivot_time_utc,
+                confirmed_index=event.confirmed_index,
+                confirmed_time_utc=event.confirmed_time_utc,
+                break_index=event.break_index,
+                break_time_utc=event.break_time_utc,
+            ),
+        )
+
+        self.assertTrue(
+            _window_matches_pattern(
+                window,
+                _pattern(mother_index=4, signal_index=8),
+                signal_close=9.0,
+                max_bars_from_lp_break=6,
+                require_lp_pivot_before_fs_mother=True,
+            )
+        )
 
 
 if __name__ == "__main__":

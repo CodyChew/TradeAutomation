@@ -1,0 +1,51 @@
+{
+  "experiment_name": "lp_force_strike_experiment_v22_lp_fs_separation",
+  "dataset_config": "configs/datasets/forex_major_crosses_10y.json",
+  "v15_bucket_config": "configs/strategies/lp_force_strike_experiment_v15_bucket_sensitivity.json",
+  "report_root": "reports/strategies/lp_force_strike_experiment_v22_lp_fs_separation",
+  "docs_output_path": "docs/v22.html",
+  "symbols": null,
+  "excluded_symbols": [],
+  "timeframes": [
+    "H4",
+    "H8",
+    "H12",
+    "D1",
+    "W1"
+  ],
+  "pivot_strength": 3,
+  "max_bars_from_lp_break": 6,
+  "atr_period": 14,
+  "max_entry_wait_bars": 6,
+  "entry_model": "signal_zone_pullback",
+  "entry_zone": 0.5,
+  "stop_model": "fs_structure",
+  "exit_model": "single_target",
+  "target_r": 1.0,
+  "costs": {
+    "use_candle_spread": true,
+    "fallback_spread_points": 0.0,
+    "entry_slippage_points": 0.0,
+    "exit_slippage_points": 0.0,
+    "round_turn_commission_points": 0.0
+  },
+  "drop_incomplete_latest_bar": true,
+  "variants": [
+    {
+      "variant_id": "control_current",
+      "label": "Current V15 signal rules",
+      "require_lp_pivot_before_fs_mother": false
+    },
+    {
+      "variant_id": "exclude_lp_pivot_inside_fs",
+      "label": "Require LP pivot before FS mother",
+      "require_lp_pivot_before_fs_mother": true
+    }
+  ],
+  "decision_criteria": {
+    "min_profit_factor_delta": 0.0,
+    "min_return_to_drawdown_delta": 0.0,
+    "max_total_net_r_drop_pct": 5.0,
+    "max_trade_count_cut_pct": 20.0
+  }
+}

@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LP + Force Strike V22 LP-FS Separation - by Cody</title>
+  <style>
+
+    :root {
+      --bg: #f3f6f8;
+      --panel: #ffffff;
+      --panel-soft: #f8fafb;
+      --ink: #17202a;
+      --muted: #5d6d7e;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --accent-2: #3f7f5f;
+      --good: #256f46;
+      --bad: #9f3333;
+      --warn: #8a5a00;
+      --focus: #f2c94c;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 Inter, Segoe UI, Roboto, Arial, sans-serif;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+    code { overflow-wrap: anywhere; }
+    .dashboard-header {
+      background: #17202a;
+      color: white;
+      padding: 28px max(18px, 5vw);
+      border-bottom: 4px solid #57a773;
+    }
+    .dashboard-header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 4vw, 30px);
+      letter-spacing: 0;
+    }
+    .dashboard-header p {
+      margin: 0;
+      color: #d8e0e8;
+      max-width: 1080px;
+      overflow-wrap: anywhere;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .page-nav {
+      margin-top: 18px;
+    }
+    .report-nav {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, .18);
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+    }
+    nav a:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .page-nav a.active {
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }
+    .report-nav a {
+      background: rgba(255, 255, 255, .03);
+      color: #edf4f7;
+    }
+    .archive-nav {
+      min-height: 34px;
+      position: relative;
+    }
+    .archive-nav summary {
+      cursor: pointer;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+      list-style: none;
+    }
+    .archive-nav summary::-webkit-details-marker {
+      display: none;
+    }
+    .archive-nav summary::after {
+      content: " +";
+      font-weight: 700;
+    }
+    .archive-nav[open] summary {
+      background: rgba(255, 255, 255, .16);
+    }
+    .archive-nav[open] summary::after {
+      content: " -";
+    }
+    .archive-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      max-width: min(680px, 100%);
+    }
+    .archive-links a {
+      font-size: 13px;
+      padding: 6px 9px;
+      min-height: 30px;
+    }
+    main {
+      padding: 24px max(18px, 5vw) 48px;
+    }
+    section {
+      margin: 0 0 22px;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(23, 32, 42, .05);
+      max-width: 100%;
+      overflow: visible;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 15px;
+      color: #34495e;
+      letter-spacing: 0;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi, .fact {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi-label, .fact span, .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .kpi-value, .kpi strong, .fact strong {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-note {
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 18px;
+    }
+    .note {
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+      margin-bottom: 14px;
+    }
+    .warning {
+      background: #fff8e8;
+      border-left-color: var(--warn);
+      color: #4d3b13;
+    }
+    .metric-glossary {
+      border-top: 4px solid #5c7f95;
+    }
+    .metric-glossary dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 10px;
+    }
+    .metric-glossary dl > div {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .metric-glossary dt {
+      margin: 0 0 5px;
+      font-weight: 700;
+    }
+    .metric-glossary dd {
+      margin: 0;
+      color: var(--muted);
+    }
+    .table-scroll, .scroll, .summary-comparison {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th, td {
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      box-shadow: 1px 0 0 var(--line);
+    }
+    th:first-child {
+      z-index: 3;
+    }
+    td:first-child {
+      background: var(--panel);
+      font-weight: 600;
+    }
+    th {
+      color: #3f4d5c;
+      background: #eef3f6;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tbody tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+    tbody tr:hover td {
+      background: #eef6f2;
+    }
+    .positive {
+      color: var(--good);
+      font-weight: 700;
+    }
+    .negative {
+      color: var(--bad);
+      font-weight: 700;
+    }
+    .neutral {
+      color: var(--muted);
+    }
+    footer {
+      color: var(--muted);
+      padding: 0 max(18px, 5vw) 28px;
+    }
+
+    @media (max-width: 760px) {
+      .dashboard-header {
+        padding: 22px 16px;
+      }
+      nav a {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+      .archive-nav {
+        flex: 1 1 100%;
+      }
+      .archive-nav summary {
+        text-align: center;
+      }
+      .archive-links a {
+        flex: 1 1 calc(25% - 8px);
+        text-align: center;
+      }
+      main {
+        padding: 16px 12px 34px;
+      }
+      section {
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 14px;
+      }
+      .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .kpi {
+        padding: 10px;
+      }
+      .kpi-value, .kpi strong, .fact strong {
+        font-size: 20px;
+      }
+      th, td {
+        padding: 6px 7px;
+        font-size: 12px;
+      }
+    }
+    @media (max-width: 480px) {
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+      .report-nav a {
+        flex-basis: calc(50% - 4px);
+      }
+    }
+
+    .badge { display:inline-block; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:700; }
+    .badge.good { background:#dcfce7; color:#166534; }
+    .badge.warn { background:#fef3c7; color:#92400e; }
+    .badge.bad { background:#fee2e2; color:#991b1b; }
+    .badge.neutral { background:#e5e7eb; color:#374151; }
+  </style>
+</head>
+<body>
+
+  <header class="dashboard-header">
+    <h1>LP + Force Strike V22 LP-FS Separation - by Cody</h1>
+    <p>Research-only full 10-year test of requiring the LP pivot bar to be before the Force Strike mother bar.</p>
+    <nav class="page-nav" aria-label="Dashboard pages">
+      <a class="page-link" href="index.html">Home</a>
+      <a class="page-link" href="strategy.html">Strategy</a>
+      <a class="page-link" href="live_ops.html">Live Ops</a>
+      <a class="page-link" href="v13.html">V13</a>
+      <a class="page-link" href="v14.html">V14</a>
+      <a class="page-link" href="v15.html">V15</a>
+      <a class="page-link" href="v16.html">V16</a>
+      <a class="page-link" href="v17.html">V17</a>
+      <a class="page-link" href="v18.html">V18</a>
+      <a class="page-link" href="v19.html">V19</a>
+      <a class="page-link" href="v20.html">V20</a>
+      <a class="page-link" href="v21.html">V21</a>
+      <a class="page-link active" href="v22.html">V22</a>
+      <details class="archive-nav">
+        <summary>Archive V1-V12</summary>
+        <div class="archive-links">
+          <a class="page-link archive-link" href="v1.html">V1</a><a class="page-link archive-link" href="v2.html">V2</a><a class="page-link archive-link" href="v3.html">V3</a><a class="page-link archive-link" href="v4.html">V4</a><a class="page-link archive-link" href="v5.html">V5</a><a class="page-link archive-link" href="v6.html">V6</a><a class="page-link archive-link" href="v7.html">V7</a><a class="page-link archive-link" href="v8.html">V8</a><a class="page-link archive-link" href="v9.html">V9</a><a class="page-link archive-link" href="v10.html">V10</a><a class="page-link archive-link" href="v11.html">V11</a><a class="page-link archive-link" href="v12.html">V12</a>
+        </div>
+      </details>
+    </nav>
+
+    <nav class="report-nav" aria-label="Report sections">
+      <a href="#decision">Decision</a><a href="#comparison">Comparison</a><a href="#audit">Overlap Audit</a><a href="#bucket">V15 Rerun</a><a href="#execution">V16 Rerun</a><a href="#breakdowns">Breakdowns</a><a href="#revalidation">Revalidation</a><a href="#follow-up">Follow-Up</a>
+    </nav>
+
+  </header>
+
+<main>
+<section id="decision">
+  <h2>Decision Card</h2>
+  <p class="callout"><span class="badge warn">MIXED RESULT</span> <strong>The rule has mixed evidence.</strong> Separated variant changed total R by -24.7, PF by 0.025, win rate by 0.42pp, and removed 9.1% of trades.</p>
+  <div class="metric-grid">
+    <div class="metric-card"><span>Trade Delta</span><strong>-1,178</strong></div>
+    <div class="metric-card"><span>Total R Delta</span><strong class="bad">-24.74</strong></div>
+    <div class="metric-card"><span>PF Delta</span><strong class="good">0.025</strong></div>
+    <div class="metric-card"><span>Win Rate Delta</span><strong>0.42%</strong></div>
+    <div class="metric-card"><span>Reserved DD</span><strong>5.08%</strong></div>
+    <div class="metric-card"><span>Return/DD</span><strong>50.95</strong></div>
+  </div>
+  <p class="muted">No production execution behavior is changed by V22. The current permissive signal behavior remains the default unless a separate implementation plan is approved.</p>
+</section>
+<section id="comparison">
+  <h2>Comparison Table</h2>
+  <div class="table-scroll"><table class="data-table"><thead><tr><th>separation_variant_id</th><th>separation_variant_label</th><th>trades</th><th>trade_delta_vs_control</th><th>win_rate</th><th>win_rate_delta_vs_control</th><th>profit_factor</th><th>pf_delta_vs_control</th><th>total_net_r</th><th>total_net_r_delta_vs_control</th><th>avg_net_r</th><th>avg_net_r_delta_vs_control</th><th>target_exits</th><th>stop_exits</th><th>same_bar_stop_exits</th><th>bucket_efficient_reserved_max_drawdown_pct</th><th>bucket_efficient_return_to_reserved_drawdown</th><th>bucket_efficient_worst_month_pct</th><th>control_lp_mother_trade_keys</th><th>lp_mother_trades_removed</th><th>lp_mother_trade_keys_reselected</th></tr></thead><tbody><tr><td>control_current</td><td>Current V15 signal rules</td><td>13012</td><td>0</td><td>0.5795</td><td>0.0000</td><td>1.26</td><td>0.0000</td><td>1,512.28</td><td>0.0000</td><td>0.1162</td><td>0.0000</td><td>7541</td><td>3664</td><td>1805</td><td>7.89</td><td>48.56</td><td>-3.22</td><td>0</td><td>0</td><td>0</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>Require LP pivot before FS mother</td><td>11834</td><td>-1178</td><td>0.5837</td><td>0.0042</td><td>1.29</td><td>0.0247</td><td>1,487.55</td><td>-24.74</td><td>0.1257</td><td>0.0095</td><td>6908</td><td>3337</td><td>1587</td><td>5.08</td><td>50.95</td><td>-2.25</td><td>1603</td><td>1295</td><td>308</td></tr></tbody></table></div>
+</section>
+<section id="audit">
+  <h2>Overlap Audit</h2>
+  <p class="callout">Duplicate join keys and missing trade-to-signal joins must be zero before reading the trade deltas.</p>
+  <div class="table-scroll"><table class="data-table"><thead><tr><th>separation_variant_id</th><th>audit_check</th><th>count</th><th>status</th></tr></thead><tbody><tr><td>control_current</td><td>duplicate_trade_keys</td><td>0</td><td>pass</td></tr><tr><td>control_current</td><td>duplicate_signal_join_keys</td><td>0</td><td>pass</td></tr><tr><td>control_current</td><td>missing_trade_to_signal_joins</td><td>0</td><td>pass</td></tr><tr><td>control_current</td><td>lp_is_fs_mother_trades</td><td>1603</td><td>info</td></tr><tr><td>control_current</td><td>lp_inside_fs_formation_trades</td><td>1603</td><td>info</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>duplicate_trade_keys</td><td>0</td><td>pass</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>duplicate_signal_join_keys</td><td>0</td><td>pass</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>missing_trade_to_signal_joins</td><td>0</td><td>pass</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>lp_is_fs_mother_trades</td><td>0</td><td>info</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>lp_inside_fs_formation_trades</td><td>0</td><td>info</td></tr></tbody></table></div>
+</section>
+<section id="bucket">
+  <h2>V15 Bucket Sensitivity Rerun</h2>
+  <div class="table-scroll"><table class="data-table"><thead><tr><th>separation_variant_id</th><th>trades</th><th>efficient_schedule_id</th><th>efficient_total_return_pct</th><th>efficient_reserved_max_drawdown_pct</th><th>efficient_worst_month_pct</th><th>efficient_return_to_reserved_drawdown</th></tr></thead><tbody><tr><td>control_current</td><td>13012</td><td>bucket_ltf0p20_h12_d10p30_w10p75</td><td>383.17</td><td>7.89</td><td>-3.22</td><td>48.56</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>11834</td><td>bucket_ltf0p15_h12_d10p20_w10p30</td><td>258.59</td><td>5.08</td><td>-2.25</td><td>50.95</td></tr></tbody></table></div>
+</section>
+<section id="execution">
+  <h2>V16 Bid/Ask Execution Realism</h2>
+  <div class="table-scroll"><table class="data-table"><thead><tr><th>separation_variant_id</th><th>execution_variant_id</th><th>trades</th><th>win_rate</th><th>total_net_r</th><th>avg_net_r</th><th>profit_factor</th><th>max_drawdown_r</th><th>return_to_drawdown_r</th></tr></thead><tbody><tr><td>control_current</td><td>bid_ask_buffer_0x</td><td>12917</td><td>0.5594</td><td>1,535.23</td><td>0.1189</td><td>1.27</td><td>28.00</td><td>54.83</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>bid_ask_buffer_0x</td><td>11749</td><td>0.5641</td><td>1,507.23</td><td>0.1283</td><td>1.29</td><td>25.00</td><td>60.29</td></tr></tbody></table></div>
+</section>
+<section id="breakdowns">
+  <h2>Symbol Breakdown</h2>
+  <div class="table-scroll"><table class="data-table"><thead><tr><th>separation_variant_id</th><th>symbol</th><th>trades</th><th>win_rate</th><th>total_net_r</th><th>avg_net_r</th><th>profit_factor</th><th>return_to_drawdown_r</th></tr></thead><tbody><tr><td>control_current</td><td>EURAUD</td><td>500</td><td>0.6220</td><td>107.22</td><td>0.2144</td><td>1.55</td><td>13.20</td></tr><tr><td>control_current</td><td>EURGBP</td><td>520</td><td>0.6154</td><td>105.32</td><td>0.2025</td><td>1.51</td><td>8.86</td></tr><tr><td>control_current</td><td>GBPAUD</td><td>467</td><td>0.6017</td><td>80.86</td><td>0.1731</td><td>1.42</td><td>8.50</td></tr><tr><td>control_current</td><td>NZDCHF</td><td>463</td><td>0.6350</td><td>80.05</td><td>0.1729</td><td>1.43</td><td>5.01</td></tr><tr><td>control_current</td><td>EURJPY</td><td>441</td><td>0.5986</td><td>76.92</td><td>0.1744</td><td>1.42</td><td>10.22</td></tr><tr><td>control_current</td><td>AUDUSD</td><td>450</td><td>0.5956</td><td>75.22</td><td>0.1672</td><td>1.40</td><td>4.11</td></tr><tr><td>control_current</td><td>EURCHF</td><td>582</td><td>0.5859</td><td>75.00</td><td>0.1289</td><td>1.30</td><td>3.33</td></tr><tr><td>control_current</td><td>EURNZD</td><td>460</td><td>0.5935</td><td>60.64</td><td>0.1318</td><td>1.31</td><td>3.23</td></tr><tr><td>control_current</td><td>USDJPY</td><td>399</td><td>0.5815</td><td>57.66</td><td>0.1445</td><td>1.34</td><td>4.55</td></tr><tr><td>control_current</td><td>AUDNZD</td><td>472</td><td>0.6017</td><td>57.06</td><td>0.1209</td><td>1.28</td><td>3.14</td></tr><tr><td>control_current</td><td>GBPUSD</td><td>371</td><td>0.5822</td><td>54.11</td><td>0.1459</td><td>1.34</td><td>5.40</td></tr><tr><td>control_current</td><td>GBPNZD</td><td>474</td><td>0.5696</td><td>53.93</td><td>0.1138</td><td>1.26</td><td>4.03</td></tr><tr><td>control_current</td><td>GBPCHF</td><td>510</td><td>0.5765</td><td>53.72</td><td>0.1053</td><td>1.24</td><td>5.53</td></tr><tr><td>control_current</td><td>AUDJPY</td><td>418</td><td>0.5789</td><td>51.61</td><td>0.1235</td><td>1.28</td><td>2.09</td></tr><tr><td>control_current</td><td>USDCHF</td><td>458</td><td>0.5677</td><td>51.44</td><td>0.1123</td><td>1.25</td><td>4.26</td></tr><tr><td>control_current</td><td>EURCAD</td><td>524</td><td>0.5649</td><td>49.75</td><td>0.0949</td><td>1.21</td><td>4.30</td></tr><tr><td>control_current</td><td>NZDJPY</td><td>408</td><td>0.5833</td><td>48.66</td><td>0.1193</td><td>1.27</td><td>3.35</td></tr><tr><td>control_current</td><td>AUDCHF</td><td>480</td><td>0.5813</td><td>46.52</td><td>0.0969</td><td>1.22</td><td>2.67</td></tr><tr><td>control_current</td><td>NZDCAD</td><td>423</td><td>0.5816</td><td>45.44</td><td>0.1074</td><td>1.24</td><td>3.27</td></tr><tr><td>control_current</td><td>CADJPY</td><td>432</td><td>0.5718</td><td>45.14</td><td>0.1045</td><td>1.23</td><td>5.25</td></tr><tr><td>control_current</td><td>AUDCAD</td><td>465</td><td>0.5785</td><td>43.18</td><td>0.0929</td><td>1.21</td><td>3.39</td></tr><tr><td>control_current</td><td>CHFJPY</td><td>466</td><td>0.5622</td><td>40.82</td><td>0.0876</td><td>1.19</td><td>2.59</td></tr><tr><td>control_current</td><td>CADCHF</td><td>530</td><td>0.5774</td><td>32.55</td><td>0.0614</td><td>1.13</td><td>2.30</td></tr><tr><td>control_current</td><td>USDCAD</td><td>522</td><td>0.5402</td><td>32.16</td><td>0.0616</td><td>1.13</td><td>1.48</td></tr><tr><td>control_current</td><td>GBPJPY</td><td>392</td><td>0.5561</td><td>30.88</td><td>0.0788</td><td>1.17</td><td>1.89</td></tr><tr><td>control_current</td><td>NZDUSD</td><td>408</td><td>0.5564</td><td>27.91</td><td>0.0684</td><td>1.15</td><td>1.90</td></tr><tr><td>control_current</td><td>EURUSD</td><td>465</td><td>0.5376</td><td>17.38</td><td>0.0374</td><td>1.08</td><td>0.6825</td></tr><tr><td>control_current</td><td>GBPCAD</td><td>512</td><td>0.5293</td><td>11.16</td><td>0.0218</td><td>1.04</td><td>0.5523</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>EURAUD</td><td>465</td><td>0.6323</td><td>109.87</td><td>0.2363</td><td>1.62</td><td>12.14</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>EURGBP</td><td>471</td><td>0.6157</td><td>95.58</td><td>0.2029</td><td>1.51</td><td>11.31</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>EURJPY</td><td>406</td><td>0.6059</td><td>77.20</td><td>0.1902</td><td>1.47</td><td>11.37</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>GBPAUD</td><td>444</td><td>0.6014</td><td>76.36</td><td>0.1720</td><td>1.42</td><td>8.99</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>EURCHF</td><td>519</td><td>0.5915</td><td>74.88</td><td>0.1443</td><td>1.34</td><td>5.01</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>AUDUSD</td><td>420</td><td>0.5952</td><td>70.13</td><td>0.1670</td><td>1.40</td><td>4.62</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>NZDCHF</td><td>428</td><td>0.6238</td><td>66.42</td><td>0.1552</td><td>1.37</td><td>4.15</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>USDJPY</td><td>370</td><td>0.5919</td><td>61.22</td><td>0.1655</td><td>1.40</td><td>5.25</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>GBPCHF</td><td>466</td><td>0.5858</td><td>59.32</td><td>0.1273</td><td>1.29</td><td>4.57</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>USDCHF</td><td>410</td><td>0.5805</td><td>56.77</td><td>0.1385</td><td>1.32</td><td>8.30</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>AUDCAD</td><td>434</td><td>0.5945</td><td>54.78</td><td>0.1262</td><td>1.29</td><td>5.45</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>NZDJPY</td><td>372</td><td>0.5941</td><td>52.18</td><td>0.1403</td><td>1.33</td><td>4.15</td></tr></tbody></table></div>
+  <h2>Timeframe Breakdown</h2>
+  <div class="table-scroll"><table class="data-table"><thead><tr><th>separation_variant_id</th><th>timeframe</th><th>trades</th><th>win_rate</th><th>total_net_r</th><th>avg_net_r</th><th>profit_factor</th><th>return_to_drawdown_r</th></tr></thead><tbody><tr><td>control_current</td><td>D1</td><td>994</td><td>0.6076</td><td>196.91</td><td>0.1981</td><td>1.50</td><td>25.89</td></tr><tr><td>control_current</td><td>H12</td><td>2135</td><td>0.5986</td><td>361.61</td><td>0.1694</td><td>1.41</td><td>26.79</td></tr><tr><td>control_current</td><td>H4</td><td>6617</td><td>0.5717</td><td>576.75</td><td>0.0872</td><td>1.19</td><td>22.28</td></tr><tr><td>control_current</td><td>H8</td><td>3075</td><td>0.5714</td><td>331.82</td><td>0.1079</td><td>1.24</td><td>11.81</td></tr><tr><td>control_current</td><td>W1</td><td>191</td><td>0.6230</td><td>45.20</td><td>0.2366</td><td>1.62</td><td>6.32</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>D1</td><td>932</td><td>0.6148</td><td>198.26</td><td>0.2127</td><td>1.54</td><td>26.08</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>H12</td><td>1992</td><td>0.6069</td><td>371.99</td><td>0.1867</td><td>1.46</td><td>31.16</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>H4</td><td>5881</td><td>0.5732</td><td>535.53</td><td>0.0911</td><td>1.20</td><td>19.93</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>H8</td><td>2851</td><td>0.5759</td><td>335.43</td><td>0.1177</td><td>1.27</td><td>15.42</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>W1</td><td>178</td><td>0.6348</td><td>46.33</td><td>0.2603</td><td>1.71</td><td>7.54</td></tr></tbody></table></div>
+  <h2>Symbol-Timeframe Breakdown</h2>
+  <div class="table-scroll"><table class="data-table"><thead><tr><th>separation_variant_id</th><th>symbol</th><th>timeframe</th><th>trades</th><th>total_net_r</th><th>avg_net_r</th><th>profit_factor</th></tr></thead><tbody><tr><td>exclude_lp_pivot_inside_fs</td><td>EURAUD</td><td>H4</td><td>229</td><td>54.61</td><td>0.2385</td><td>1.63</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>GBPAUD</td><td>H4</td><td>236</td><td>48.79</td><td>0.2068</td><td>1.53</td></tr><tr><td>control_current</td><td>GBPAUD</td><td>H4</td><td>248</td><td>48.66</td><td>0.1962</td><td>1.49</td></tr><tr><td>control_current</td><td>EURAUD</td><td>H4</td><td>254</td><td>46.26</td><td>0.1821</td><td>1.45</td></tr><tr><td>control_current</td><td>EURGBP</td><td>H8</td><td>131</td><td>42.27</td><td>0.3227</td><td>1.96</td></tr><tr><td>control_current</td><td>USDJPY</td><td>H4</td><td>217</td><td>41.79</td><td>0.1926</td><td>1.48</td></tr><tr><td>control_current</td><td>USDCAD</td><td>H4</td><td>248</td><td>39.53</td><td>0.1594</td><td>1.38</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>USDJPY</td><td>H4</td><td>200</td><td>39.21</td><td>0.1960</td><td>1.49</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>NZDJPY</td><td>H4</td><td>207</td><td>38.99</td><td>0.1883</td><td>1.47</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>EURGBP</td><td>H8</td><td>123</td><td>38.40</td><td>0.3122</td><td>1.92</td></tr><tr><td>control_current</td><td>EURGBP</td><td>H4</td><td>252</td><td>37.98</td><td>0.1507</td><td>1.36</td></tr><tr><td>control_current</td><td>NZDJPY</td><td>H4</td><td>230</td><td>36.91</td><td>0.1605</td><td>1.39</td></tr><tr><td>control_current</td><td>AUDUSD</td><td>H4</td><td>232</td><td>36.61</td><td>0.1578</td><td>1.38</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>AUDUSD</td><td>H4</td><td>217</td><td>36.25</td><td>0.1670</td><td>1.40</td></tr><tr><td>control_current</td><td>NZDCHF</td><td>H4</td><td>257</td><td>35.48</td><td>0.1381</td><td>1.32</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>USDCAD</td><td>H4</td><td>206</td><td>35.25</td><td>0.1711</td><td>1.41</td></tr><tr><td>control_current</td><td>EURJPY</td><td>H4</td><td>232</td><td>34.87</td><td>0.1503</td><td>1.36</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>EURJPY</td><td>H4</td><td>206</td><td>33.95</td><td>0.1648</td><td>1.40</td></tr><tr><td>control_current</td><td>AUDNZD</td><td>H8</td><td>112</td><td>32.98</td><td>0.2944</td><td>1.85</td></tr><tr><td>control_current</td><td>EURNZD</td><td>H4</td><td>235</td><td>31.68</td><td>0.1348</td><td>1.32</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>AUDNZD</td><td>H8</td><td>96</td><td>29.47</td><td>0.3070</td><td>1.90</td></tr><tr><td>control_current</td><td>GBPUSD</td><td>H12</td><td>72</td><td>29.16</td><td>0.4050</td><td>2.38</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>EURNZD</td><td>H4</td><td>223</td><td>28.58</td><td>0.1282</td><td>1.30</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>NZDCHF</td><td>H4</td><td>236</td><td>28.45</td><td>0.1206</td><td>1.27</td></tr><tr><td>control_current</td><td>CHFJPY</td><td>H4</td><td>244</td><td>28.35</td><td>0.1162</td><td>1.26</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>EURGBP</td><td>H4</td><td>219</td><td>27.99</td><td>0.1278</td><td>1.29</td></tr><tr><td>control_current</td><td>EURCHF</td><td>H8</td><td>149</td><td>27.47</td><td>0.1843</td><td>1.46</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>GBPUSD</td><td>H12</td><td>69</td><td>26.18</td><td>0.3794</td><td>2.24</td></tr><tr><td>control_current</td><td>EURAUD</td><td>H12</td><td>88</td><td>26.03</td><td>0.2958</td><td>1.85</td></tr><tr><td>control_current</td><td>AUDCHF</td><td>H12</td><td>71</td><td>25.95</td><td>0.3656</td><td>2.17</td></tr><tr><td>control_current</td><td>EURCAD</td><td>H4</td><td>229</td><td>25.58</td><td>0.1117</td><td>1.25</td></tr><tr><td>control_current</td><td>EURAUD</td><td>H8</td><td>113</td><td>24.50</td><td>0.2168</td><td>1.56</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>EURCHF</td><td>H8</td><td>135</td><td>24.46</td><td>0.1812</td><td>1.45</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>AUDCHF</td><td>H12</td><td>67</td><td>24.24</td><td>0.3618</td><td>2.15</td></tr><tr><td>control_current</td><td>NZDCHF</td><td>H8</td><td>90</td><td>22.61</td><td>0.2512</td><td>1.71</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>EURAUD</td><td>H8</td><td>109</td><td>22.59</td><td>0.2073</td><td>1.53</td></tr><tr><td>control_current</td><td>NZDCAD</td><td>H12</td><td>67</td><td>22.51</td><td>0.3360</td><td>2.04</td></tr><tr><td>control_current</td><td>AUDNZD</td><td>H12</td><td>79</td><td>22.43</td><td>0.2839</td><td>1.81</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>EURAUD</td><td>H12</td><td>82</td><td>22.25</td><td>0.2713</td><td>1.75</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>USDCHF</td><td>H4</td><td>188</td><td>21.81</td><td>0.1160</td><td>1.26</td></tr></tbody></table></div>
+  <h2>Year Breakdown</h2>
+  <div class="table-scroll"><table class="data-table"><thead><tr><th>separation_variant_id</th><th>exit_year</th><th>trades</th><th>win_rate</th><th>total_net_r</th><th>avg_net_r</th><th>profit_factor</th></tr></thead><tbody><tr><td>control_current</td><td>2016</td><td>792</td><td>0.5770</td><td>42.33</td><td>0.0534</td><td>1.11</td></tr><tr><td>control_current</td><td>2017</td><td>1355</td><td>0.5734</td><td>92.28</td><td>0.0681</td><td>1.15</td></tr><tr><td>control_current</td><td>2018</td><td>1252</td><td>0.5974</td><td>183.37</td><td>0.1465</td><td>1.35</td></tr><tr><td>control_current</td><td>2019</td><td>1308</td><td>0.5657</td><td>62.08</td><td>0.0475</td><td>1.10</td></tr><tr><td>control_current</td><td>2020</td><td>1291</td><td>0.5864</td><td>211.56</td><td>0.1639</td><td>1.39</td></tr><tr><td>control_current</td><td>2021</td><td>1308</td><td>0.5979</td><td>240.68</td><td>0.1840</td><td>1.45</td></tr><tr><td>control_current</td><td>2022</td><td>1263</td><td>0.5432</td><td>95.75</td><td>0.0758</td><td>1.16</td></tr><tr><td>control_current</td><td>2023</td><td>1309</td><td>0.5539</td><td>108.73</td><td>0.0831</td><td>1.18</td></tr><tr><td>control_current</td><td>2024</td><td>1272</td><td>0.5810</td><td>153.38</td><td>0.1206</td><td>1.28</td></tr><tr><td>control_current</td><td>2025</td><td>1433</td><td>0.6106</td><td>256.68</td><td>0.1791</td><td>1.44</td></tr><tr><td>control_current</td><td>2026</td><td>429</td><td>0.5944</td><td>65.44</td><td>0.1526</td><td>1.36</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>2016</td><td>706</td><td>0.5779</td><td>39.98</td><td>0.0566</td><td>1.12</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>2017</td><td>1223</td><td>0.5724</td><td>82.76</td><td>0.0677</td><td>1.15</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>2018</td><td>1106</td><td>0.6013</td><td>173.58</td><td>0.1569</td><td>1.38</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>2019</td><td>1199</td><td>0.5705</td><td>69.37</td><td>0.0579</td><td>1.12</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>2020</td><td>1182</td><td>0.5888</td><td>200.17</td><td>0.1694</td><td>1.41</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>2021</td><td>1206</td><td>0.5995</td><td>226.21</td><td>0.1876</td><td>1.46</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>2022</td><td>1145</td><td>0.5502</td><td>103.53</td><td>0.0904</td><td>1.20</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>2023</td><td>1194</td><td>0.5637</td><td>123.20</td><td>0.1032</td><td>1.23</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>2024</td><td>1164</td><td>0.5911</td><td>164.15</td><td>0.1410</td><td>1.33</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>2025</td><td>1322</td><td>0.6120</td><td>241.51</td><td>0.1827</td><td>1.45</td></tr><tr><td>exclude_lp_pivot_inside_fs</td><td>2026</td><td>387</td><td>0.5995</td><td>63.09</td><td>0.1630</td><td>1.39</td></tr></tbody></table></div>
+</section>
+<section id="removed">
+  <h2>Removed Trade Samples</h2>
+  <p class="callout">These are the largest-impact trades removed by requiring the LP pivot to be before the Force Strike mother.</p>
+  <div class="table-scroll"><table class="data-table"><thead><tr><th>symbol</th><th>timeframe</th><th>side</th><th>signal_index</th><th>control_exit_reason</th><th>control_net_r</th><th>lp_pivot_index</th><th>fs_mother_index</th><th>fs_signal_index</th><th>lp_is_fs_mother</th><th>lp_inside_fs_formation</th></tr></thead><tbody><tr><td>NZDCHF</td><td>H4</td><td>short</td><td>5361</td><td>same_bar_stop_priority</td><td>-1.53</td><td>5357</td><td>5357</td><td>5361</td><td>True</td><td>True</td></tr><tr><td>CADCHF</td><td>H4</td><td>long</td><td>3666</td><td>same_bar_stop_priority</td><td>-1.50</td><td>3662</td><td>3662</td><td>3666</td><td>True</td><td>True</td></tr><tr><td>EURCHF</td><td>H4</td><td>short</td><td>4085</td><td>same_bar_stop_priority</td><td>-1.47</td><td>4081</td><td>4081</td><td>4085</td><td>True</td><td>True</td></tr><tr><td>AUDCHF</td><td>H4</td><td>short</td><td>1764</td><td>same_bar_stop_priority</td><td>-1.40</td><td>1760</td><td>1760</td><td>1764</td><td>True</td><td>True</td></tr><tr><td>GBPCHF</td><td>H8</td><td>long</td><td>672</td><td>same_bar_stop_priority</td><td>-1.40</td><td>667</td><td>667</td><td>672</td><td>True</td><td>True</td></tr><tr><td>GBPJPY</td><td>H4</td><td>short</td><td>1800</td><td>stop</td><td>-1.39</td><td>1795</td><td>1795</td><td>1800</td><td>True</td><td>True</td></tr><tr><td>AUDCAD</td><td>H4</td><td>long</td><td>1625</td><td>same_bar_stop_priority</td><td>-1.39</td><td>1620</td><td>1620</td><td>1625</td><td>True</td><td>True</td></tr><tr><td>NZDCHF</td><td>H4</td><td>long</td><td>1383</td><td>stop</td><td>-1.38</td><td>1378</td><td>1378</td><td>1383</td><td>True</td><td>True</td></tr><tr><td>CADCHF</td><td>H4</td><td>short</td><td>12695</td><td>stop</td><td>-1.37</td><td>12691</td><td>12691</td><td>12695</td><td>True</td><td>True</td></tr><tr><td>AUDCAD</td><td>H12</td><td>short</td><td>198</td><td>stop</td><td>-1.34</td><td>193</td><td>193</td><td>198</td><td>True</td><td>True</td></tr><tr><td>CADCHF</td><td>H8</td><td>short</td><td>2330</td><td>same_bar_stop_priority</td><td>-1.33</td><td>2326</td><td>2326</td><td>2330</td><td>True</td><td>True</td></tr><tr><td>AUDNZD</td><td>H4</td><td>long</td><td>5683</td><td>stop</td><td>-1.32</td><td>5678</td><td>5678</td><td>5683</td><td>True</td><td>True</td></tr><tr><td>EURCHF</td><td>H4</td><td>short</td><td>4229</td><td>same_bar_stop_priority</td><td>-1.32</td><td>4224</td><td>4224</td><td>4229</td><td>True</td><td>True</td></tr><tr><td>CADCHF</td><td>H4</td><td>long</td><td>92</td><td>stop</td><td>-1.30</td><td>88</td><td>88</td><td>92</td><td>True</td><td>True</td></tr><tr><td>AUDNZD</td><td>H12</td><td>long</td><td>1641</td><td>same_bar_stop_priority</td><td>-1.30</td><td>1637</td><td>1637</td><td>1641</td><td>True</td><td>True</td></tr><tr><td>AUDCAD</td><td>H4</td><td>short</td><td>303</td><td>stop</td><td>-1.29</td><td>298</td><td>298</td><td>303</td><td>True</td><td>True</td></tr><tr><td>GBPJPY</td><td>H4</td><td>long</td><td>4624</td><td>stop</td><td>-1.28</td><td>4619</td><td>4619</td><td>4624</td><td>True</td><td>True</td></tr><tr><td>AUDCHF</td><td>H4</td><td>long</td><td>767</td><td>stop</td><td>-1.28</td><td>762</td><td>762</td><td>767</td><td>True</td><td>True</td></tr><tr><td>NZDCAD</td><td>H4</td><td>long</td><td>3591</td><td>same_bar_stop_priority</td><td>-1.27</td><td>3587</td><td>3587</td><td>3591</td><td>True</td><td>True</td></tr><tr><td>EURUSD</td><td>H4</td><td>short</td><td>9198</td><td>same_bar_stop_priority</td><td>-1.26</td><td>9194</td><td>9194</td><td>9198</td><td>True</td><td>True</td></tr><tr><td>EURUSD</td><td>H4</td><td>long</td><td>7986</td><td>stop</td><td>-1.26</td><td>7982</td><td>7982</td><td>7986</td><td>True</td><td>True</td></tr><tr><td>AUDCHF</td><td>H4</td><td>short</td><td>1819</td><td>stop</td><td>-1.26</td><td>1815</td><td>1815</td><td>1819</td><td>True</td><td>True</td></tr><tr><td>EURUSD</td><td>H4</td><td>long</td><td>7048</td><td>same_bar_stop_priority</td><td>-1.25</td><td>7043</td><td>7043</td><td>7048</td><td>True</td><td>True</td></tr><tr><td>USDCAD</td><td>H4</td><td>long</td><td>4840</td><td>same_bar_stop_priority</td><td>-1.25</td><td>4836</td><td>4836</td><td>4840</td><td>True</td><td>True</td></tr><tr><td>EURCHF</td><td>H4</td><td>short</td><td>26</td><td>same_bar_stop_priority</td><td>-1.25</td><td>22</td><td>22</td><td>26</td><td>True</td><td>True</td></tr></tbody></table></div>
+</section>
+<section id="revalidation">
+  <h2>Research Revalidation Matrix</h2>
+  <div class="table-scroll"><table class="data-table"><thead><tr><th>research_branch</th><th>classification</th><th>reason</th><th>next_action</th></tr></thead><tbody><tr><td>V9 full signal/trade generation</td><td>rerun_in_v22</td><td>V22 reruns the full 10-year signal and trade population for current vs separation variants.</td><td>Use V22 comparison before any signal-rule decision.</td></tr><tr><td>V15 risk bucket sensitivity</td><td>rerun_in_v22</td><td>V22 reruns bucket schedules on the separated trade population.</td><td>Compare bucket_sensitivity_by_variant.csv before changing risk assumptions.</td></tr><tr><td>V16 bid/ask execution realism</td><td>rerun_in_v22</td><td>V22 reruns no-buffer bid/ask control for both signal populations.</td><td>Use execution_realism_by_variant.csv as the current execution-realism check.</td></tr><tr><td>V17 LP/FS proximity</td><td>stale_until_rerun</td><td>V17 studied the old signal universe that allowed LP pivot inside the FS formation.</td><td>Rerun proximity only if V22 separation becomes a live candidate.</td></tr><tr><td>V18/V19 TP-near exits</td><td>stale_until_rerun</td><td>The TP-near trade population came from the old baseline.</td><td>Rerun TP-near after deciding whether separation is the new baseline.</td></tr><tr><td>V20 protection realism</td><td>stale_until_rerun</td><td>Protection timing used old signal candidates.</td><td>Rerun lower-timeframe protection only after a separated baseline is accepted.</td></tr><tr><td>V21 crypto expansion</td><td>stale_before_crypto_live_planning</td><td>Crypto used the same signal-rule family and must be rechecked before crypto expansion decisions.</td><td>Rerun crypto transfer with separation if crypto remains a priority.</td></tr><tr><td>V1-V8 exploratory search history</td><td>historical_context_only</td><td>These explain the path to the baseline but are not current live-decision gates.</td><td>No rerun needed for the V22 rule decision.</td></tr></tbody></table></div>
+</section>
+<section id="follow-up">
+  <h2>Follow-Up Section</h2>
+  <p class="callout"><strong>Next: inspect symbol/timeframe/year concentration before any implementation decision.</strong></p>
+  <p class="muted">Artifacts live under <code>C:\Users\chewc\OneDrive\Desktop\TradeAutomation\reports\strategies\lp_force_strike_experiment_v22_lp_fs_separation\20260505_101348</code>. Datasets: 280; failed: 0; trades: 24,846; signals: 30,665.</p>
+</section>
+
+    <section id="metric-glossary" class="metric-glossary" aria-labelledby="metric-glossary-title">
+      <h2 id="metric-glossary-title">Metric Glossary</h2>
+      <dl><div><dt>Realized DD</dt><dd>Closed-trade equity drawdown only. It ignores open trade risk until a position exits.</dd></div><div><dt>Risk-Reserved DD</dt><dd>Live-account stress drawdown that subtracts full open risk while positions are active.</dd></div><div><dt>Max Reserved Risk</dt><dd>Largest total open risk reserved at one time across accepted portfolio trades.</dd></div><div><dt>Worst Month</dt><dd>Largest calendar-month loss in account-percent terms for the tested schedule.</dd></div><div><dt>Return/DD</dt><dd>Total return divided by risk-reserved drawdown where available; higher is more efficient.</dd></div><div><dt>Avg R / PF</dt><dd>Average net R per trade and profit factor. Use both with trade count before trusting a row.</dd></div></dl>
+    </section>
+
+</main>
+<footer>Generated from <code>C:\Users\chewc\OneDrive\Desktop\TradeAutomation\reports\strategies\lp_force_strike_experiment_v22_lp_fs_separation\20260505_101348</code>. Research-only evidence; production changes require a separate plan.</footer>
+</body>
+</html>

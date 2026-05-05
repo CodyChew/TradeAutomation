@@ -151,6 +151,7 @@ def run_lp_force_strike_execution_realism_on_frame(
     atr_period: int = 14,
     max_entry_wait_bars: int = 6,
     costs: CostConfig | None = None,
+    require_lp_pivot_before_fs_mother: bool = False,
 ) -> LPForceStrikeExperimentResult:
     """Run bid/ask execution-realism variants for one symbol/timeframe frame."""
 
@@ -163,6 +164,7 @@ def run_lp_force_strike_execution_realism_on_frame(
         timeframe,
         pivot_strength=pivot_strength,
         max_bars_from_lp_break=max_bars_from_lp_break,
+        require_lp_pivot_before_fs_mother=require_lp_pivot_before_fs_mother,
     )
     trades: list[TradeRecord] = []
     skipped: list[SkippedTrade] = []

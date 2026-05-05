@@ -16,6 +16,7 @@ from lp_force_strike_dashboard_metadata import load_dashboard_metadata  # noqa: 
 
 
 DOCS_ROOT = WORKSPACE_ROOT / "docs"
+LATEST_VERSION = 22
 
 
 class DashboardPagesTests(unittest.TestCase):
@@ -23,19 +24,19 @@ class DashboardPagesTests(unittest.TestCase):
         metadata = load_dashboard_metadata()
         pages = {page["page"]: page for page in metadata["pages"]}
 
-        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, 22)})
-        for version in range(1, 22):
+        self.assertEqual(set(pages), {f"v{version}.html" for version in range(1, LATEST_VERSION + 1)})
+        for version in range(1, LATEST_VERSION + 1):
             page = pages[f"v{version}.html"]
             for field in ("title", "question", "setup", "how_to_read", "conclusion", "action", "status_label"):
                 self.assertTrue(page[field], f"missing {field} for v{version}")
 
     def test_every_generated_dashboard_links_to_all_pages(self) -> None:
         expected_links = ['href="index.html"', 'href="strategy.html"', 'href="live_ops.html"'] + [
-            f'href="v{version}.html"' for version in range(1, 22)
+            f'href="v{version}.html"' for version in range(1, LATEST_VERSION + 1)
         ]
 
         for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html"] + [
-            DOCS_ROOT / f"v{version}.html" for version in range(1, 22)
+            DOCS_ROOT / f"v{version}.html" for version in range(1, LATEST_VERSION + 1)
         ]:
             html = path.read_text(encoding="utf-8")
             for link in expected_links:
@@ -43,7 +44,7 @@ class DashboardPagesTests(unittest.TestCase):
 
     def test_generated_dashboards_use_shared_static_chrome(self) -> None:
         paths = [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html", DOCS_ROOT / "live_ops.html"] + [
-            DOCS_ROOT / f"v{version}.html" for version in range(1, 22)
+            DOCS_ROOT / f"v{version}.html" for version in range(1, LATEST_VERSION + 1)
         ]
 
         for path in paths:
@@ -53,13 +54,13 @@ class DashboardPagesTests(unittest.TestCase):
             self.assertNotIn("<script", html.lower(), f"{path.name} should remain CSS-only")
 
         for path in [DOCS_ROOT / "index.html", DOCS_ROOT / "strategy.html"] + [
-            DOCS_ROOT / f"v{version}.html" for version in range(1, 22)
+            DOCS_ROOT / f"v{version}.html" for version in range(1, LATEST_VERSION + 1)
         ]:
             html = path.read_text(encoding="utf-8")
             self.assertIn('id="metric-glossary"', html, f"{path.name} missing metric glossary")
             self.assertIn("Risk-Reserved DD", html, f"{path.name} missing risk-reserved DD definition")
 
-        for version in range(1, 22):
+        for version in range(1, LATEST_VERSION + 1):
             html = (DOCS_ROOT / f"v{version}.html").read_text(encoding="utf-8")
             self.assertIn('class="table-scroll"', html, f"v{version}.html missing table scroll wrapper")
             self.assertIn('class="data-table', html, f"v{version}.html missing data-table class")
@@ -311,6 +312,19 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("saved_from_stop", html)
         self.assertIn("sacrificed_full_tp", html)
         self.assertIn("Research-only; no MT5 live calls", html)
+
+    def test_v22_dashboard_shows_separation_sections(self) -> None:
+        html = (DOCS_ROOT / "v22.html").read_text(encoding="utf-8")
+
+        self.assertIn("Decision Card", html)
+        self.assertIn("Comparison Table", html)
+        self.assertIn("Overlap Audit", html)
+        self.assertIn("V15 Bucket Sensitivity Rerun", html)
+        self.assertIn("V16 Bid/Ask Execution Realism", html)
+        self.assertIn("Research Revalidation Matrix", html)
+        self.assertIn("Removed Trade Samples", html)
+        self.assertIn("lp_mother_trade_keys_reselected", html)
+        self.assertIn("V18/V19 TP-near exits", html)
 
     def test_risk_dashboard_drawdown_meanings_and_values_are_preserved(self) -> None:
         v14_html = (DOCS_ROOT / "v14.html").read_text(encoding="utf-8")

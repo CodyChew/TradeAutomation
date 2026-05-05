@@ -598,6 +598,35 @@
         ],
         "next_step": "Read the V21 dashboard. If it is research-only or rejected, do not add crypto live support."
       }
+    },
+    {
+      "page": "v22.html",
+      "nav_label": "V22",
+      "index_order": -12,
+      "title": "V22 LP-FS Separation",
+      "status_label": "Signal-rule audit",
+      "status_kind": "active",
+      "question": "Should LPFS reject setups where the selected LP pivot bar is the Force Strike mother bar or otherwise inside the Force Strike formation?",
+      "setup": "Research-only full 10-year FX rerun of the current V15 signal rules versus a separated rule that requires lp_pivot_index < fs_mother_index. The trade model remains LP3, H4/H8/H12/D1/W1, 0.5 signal-candle pullback, FS structure stop, 1R target, and fixed 6-bar windows.",
+      "how_to_read": "Start with the Decision Card and Comparison Table. Then check the overlap audit to confirm clean joins, the removed trade samples to inspect LP==mother cases, and the revalidation matrix to know which prior studies are stale.",
+      "conclusion": "V22 is the evidence gate for LP/Force-Strike separation. It does not change production behavior by itself; it shows whether the cleaner design rule improves or weakens the current V15/V16 baseline.",
+      "action": "Use V22 before changing signal rules. If separation becomes the accepted baseline, rerun the stale V17-V21 branches before using them for future live-design decisions.",
+      "facts": [
+        ["Decision", "Mixed"],
+        ["R Delta", "-24.7R"],
+        ["PF Delta", "+0.025"],
+        ["LP==Mother", "1,603 control trades"]
+      ],
+      "decision_brief": {
+        "headline": "V22 result: mixed evidence; do not patch production from this alone.",
+        "key_results": [
+          "Current control: 13,012 trades, 1,512.3R, 58.0% win rate, PF 1.265.",
+          "Separated rule: 11,834 trades, 1,487.5R, 58.4% win rate, PF 1.289.",
+          "The rule removed 1,295 old LP==mother trade keys and reselected 308 same Force Strike signals to an earlier LP; overlap audit had zero duplicate keys and zero missing joins.",
+          "Bid/ask realism improved PF and return/DD for the separated population, but raw R still fell by 28.0R versus V16 control."
+        ],
+        "next_step": "Inspect symbol/timeframe/year concentration and removed trade samples before deciding whether design purity justifies a signal-rule change."
+      }
     }
   ]
 }

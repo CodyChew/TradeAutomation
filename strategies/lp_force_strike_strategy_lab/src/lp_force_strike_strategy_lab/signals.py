@@ -79,8 +79,11 @@ def _window_matches_pattern(
     *,
     signal_close: float,
     max_bars_from_lp_break: int,
+    require_lp_pivot_before_fs_mother: bool = False,
 ) -> bool:
     if window.side != pattern.side:
+        return False
+    if require_lp_pivot_before_fs_mother and window.lp_event.pivot_index >= pattern.mother_index:
         return False
     bars_from_break = pattern.signal_index - window.lp_event.break_index + 1
     if bars_from_break < 1 or bars_from_break > max_bars_from_lp_break:
@@ -125,6 +128,7 @@ def detect_lp_force_strike_signals(
     *,
     pivot_strength: int = 3,
     max_bars_from_lp_break: int = 6,
+    require_lp_pivot_before_fs_mother: bool = False,
 ) -> list[LPForceStrikeSignal]:
     """Detect LP trap signals confirmed by raw Force Strike patterns."""
 
@@ -164,6 +168,7 @@ def detect_lp_force_strike_signals(
                 pattern,
                 signal_close=signal_close,
                 max_bars_from_lp_break=max_bars_from_lp_break,
+                require_lp_pivot_before_fs_mother=require_lp_pivot_before_fs_mother,
             )
         ]
         if not matches:
