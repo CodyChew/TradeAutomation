@@ -491,18 +491,18 @@
 
       <div class="decision-brief">
         <h3>Decision Brief</h3>
-        <p class="brief-headline">V20 result: use the Protection Funnel as the live-design gate.</p>
-        <ul><li>V20 keeps the same LP3, H4/H8/H12/D1/W1 LPFS signal population.</li><li>The replay searches M30 candles for the entry fill inside the same 6-bar higher-timeframe window.</li><li>The 0.9R trigger can only activate the locked stop on a later M30 candle, so fast snapbacks are not credited as protected.</li><li>Any live stop-modification behavior still needs a separate implementation and VPS deployment plan.</li></ul>
-        <p class="brief-next"><strong>Next:</strong> Read the V20 Decision Card, Protection Funnel, and changed-trade samples after the run completes.</p>
+        <p class="brief-headline">V20 result: TP-near protection needs finer timing evidence before live design.</p>
+        <ul><li>M30 replay control: 12,022 trades, 336.9R, PF about 1.058.</li><li>Same-M30 assumed upper bound: 512.9R, +176.0R versus control, but this relies on unknown intra-M30 ordering.</li><li>Conservative later-M30 activation did not beat control: m30_next was -53.0R and m30_delay1 was -5.5R.</li><li>Missed stop modifications are baseline-equivalent; successful modifications can still sacrifice later full TPs. Real 30-second live behavior needs M1/tick or forward attribution.</li></ul>
+        <p class="brief-next"><strong>Next:</strong> Keep live TP/SL unchanged. If this remains a priority, collect M1/tick replay data or forward live attribution for 0.9R touches, stop-modify success, too-fast misses, and later outcomes.</p>
       </div>
 
       <div class="summary-grid">
-        <div><h3>What This Tests</h3><p>Does the V19 locked-profit idea still work when a 0.9R trigger can only move the stop on a later M30 candle?</p></div>
-        <div><h3>Setup Tested</h3><p>Research-only lower-timeframe replay using the V15 LPFS signal baseline. H4/H8/H12/D1/W1 setups are replayed on M30 bid/ask candles to test lock-stop behavior at 0.9R with a 0.5R protected stop. Fast trigger-to-retrace cases are counted as unprotected if the later M30 stop modification would be too late.</p></div>
-        <div><h3>How To Read This Page</h3><p>Start with the Decision Card and Protection Funnel. The funnel separates 0.9R trigger touches, successful stop activations, too-fast misses, and broker min-stop-distance blocks.</p></div>
+        <div><h3>What This Tests</h3><p>Does the V19 locked-profit idea still work once live stop-modification timing is bracketed with M30 replay?</p></div>
+        <div><h3>Setup Tested</h3><p>Research-only lower-timeframe replay using the V15 LPFS signal baseline. H4/H8/H12/D1/W1 setups are replayed on M30 bid/ask candles to test lock-stop behavior at 0.9R with a 0.5R protected stop. Conservative variants only activate on a later M30 candle; the same-M30 assumed variant is an optimistic upper bound for the live 30-second loop.</p></div>
+        <div><h3>How To Read This Page</h3><p>Start with the Decision Card and Protection Funnel. The funnel separates 0.9R trigger touches, successful stop activations, too-fast misses, broker min-stop-distance blocks, and the optimistic same-M30 upper bound.</p></div>
         <div><h3>Use / Do Not Use</h3><p>Use this page to decide whether a separate live stop-modification plan is justified. Do not change VPS, MT5 orders, live state, Telegram lifecycle, or production stop handling from V20 alone.</p></div>
       </div>
-      <div class="conclusion-box"><strong>Conclusion:</strong> V20 is the live-design realism gate for stop protection. It does not change live behavior; it checks whether the 0.9R lock-stop idea survives lower-timeframe activation timing.</div>
+      <div class="conclusion-box"><strong>Conclusion:</strong> V20 says the idea is timing-sensitive. Same-M30 assumed activation improves the M30 replay control, but conservative later-M30 activation does not. This is not enough to change live behavior without M1/tick or forward evidence.</div>
 
     </section>
 
@@ -510,7 +510,7 @@
       <h2>Decision Card</h2>
       <p class="callout"><strong>No V20 protection variant is strong enough for live design yet.</strong> Best raw variant is lock_0p50r_pct_90_m30_same_assumed at 176.0R versus M30 replay control, but it failed at least one gate or is only an upper-bound assumption.</p>
       <div class="kpi-grid">
-        <div class="kpi"><span>Recommendation</span><strong>lock_0p50r_pct_90_m30_same_assumed</strong><small>FAIL V20 gate</small></div>
+        <div class="kpi"><span>Best Raw Research Variant</span><strong>lock_0p50r_pct_90_m30_same_assumed</strong><small>FAIL V20 gate; not a live rule</small></div>
         <div class="kpi"><span>R Delta vs M30 Control</span><strong class="positive">176.0</strong><small>same M30 replay path</small></div>
         <div class="kpi"><span>Activation Rate</span><strong>100.0%</strong><small>activated / 0.9R trigger touches</small></div>
         <div class="kpi"><span>Reserved DD / Worst Month</span><strong>19.33% / -4.45%</strong><small>V15 bucket sizing view</small></div>
@@ -560,6 +560,6 @@
     </section>
 
   </main>
-  <footer>Generated from <code>C:\Users\chewc\OneDrive\Desktop\TradeAutomation\reports\strategies\lp_force_strike_experiment_v20_protection_realism\20260505_043723</code>. Research-only; no live execution imports.</footer>
+  <footer>Generated from <code>reports\strategies\lp_force_strike_experiment_v20_protection_realism\20260505_043723</code>. Research-only; no live execution imports.</footer>
 </body>
 </html>

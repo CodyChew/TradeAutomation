@@ -183,6 +183,8 @@ class V20ProtectionRealismReportTests(unittest.TestCase):
 
         self.assertIn("LP + Force Strike V20 Protection Realism", html)
         self.assertIn("Decision Card", html)
+        self.assertIn("Best Raw Research Variant", html)
+        self.assertIn("not a live rule", html)
         self.assertIn("Protection Funnel", html)
         self.assertIn("fast 0.9R touch", html)
         self.assertIn("same-M30 assumed variant is an optimistic upper bound", html)

@@ -424,7 +424,7 @@ def _html_report(
       <h2>Decision Card</h2>
       <p class="callout"><strong>{_escape(decision["headline"])}</strong> {_escape(decision["detail"])}</p>
       <div class="kpi-grid">
-        <div class="kpi"><span>Recommendation</span><strong>{_escape(best["tp_near_variant_id"])}</strong><small>{_escape(pass_fail)} V20 gate</small></div>
+        <div class="kpi"><span>Best Raw Research Variant</span><strong>{_escape(best["tp_near_variant_id"])}</strong><small>{_escape(pass_fail)} V20 gate; not a live rule</small></div>
         <div class="kpi"><span>R Delta vs M30 Control</span><strong class="{_metric_class(best["total_net_r_delta"])}">{_fmt_num(best["total_net_r_delta"], 1)}</strong><small>same M30 replay path</small></div>
         <div class="kpi"><span>Activation Rate</span><strong>{_fmt_num(float(best["activation_rate_of_triggers"]) * 100.0, 1)}%</strong><small>activated / 0.9R trigger touches</small></div>
         <div class="kpi"><span>Reserved DD / Worst Month</span><strong>{_fmt_pct_value(best["efficient_reserved_max_drawdown_pct"])} / {_fmt_pct_value(best["efficient_worst_month_pct"])}</strong><small>V15 bucket sizing view</small></div>
