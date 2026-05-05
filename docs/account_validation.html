@@ -384,7 +384,7 @@
     </nav>
 
     <nav class="report-nav" aria-label="Report sections">
-      <a href="#account-audit">Account Audit</a><a href="#broker-data">Broker Data</a><a href="#v22-comparison">V22 Comparison</a><a href="#commission">Commission</a><a href="#cost-model">Cost Model</a><a href="#next-actions">Next Actions</a>
+      <a href="#account-audit">Account Audit</a><a href="#broker-data">Broker Data</a><a href="#v22-comparison">V22 Comparison</a><a href="#commission">Commission</a><a href="#commission-adjusted">Adjusted Net</a><a href="#risk-buckets">Risk Buckets</a><a href="#cost-model">Cost Model</a><a href="#next-actions">Next Actions</a>
     </nav>
 
   </header>
@@ -510,9 +510,47 @@
       <p class="source-note">Point equivalents assume a USD account and a USD-quoted major where one 1-lot pip is about $10. Crosses and non-USD profit currencies need symbol-specific conversion.</p>
     </section>
 
+    <section id="commission-adjusted" aria-labelledby="commission-adjusted-title">
+      <h2 id="commission-adjusted-title">Commission-Adjusted V22 Result</h2>
+      <p class="note">This symbol-aware overlay applies $5.00 round-turn commission per lot to the FTMO-backed baseline and $7.00 round-turn commission per lot to the IC Markets Raw Spread account. The selected variant is the adopted V22 LP/FS-separated baseline.</p>
+
+      <div class="table-scroll">
+        <table class="data-table adjusted-table">
+          <thead><tr><th>Metric</th><th>FTMO Baseline</th><th>IC Markets Raw Spread</th><th>Delta</th></tr></thead>
+          <tbody><tr><td>Trades</td><td>11,834</td><td>11,937</td><td>103</td></tr>
+<tr><td>Total R after commission</td><td>1,141.8R</td><td>1,531.1R</td><td>389.4R</td></tr>
+<tr><td>Average R after commission</td><td>0.0965R</td><td>0.1283R</td><td>0.0318R</td></tr>
+<tr><td>Win rate</td><td>58.37%</td><td>59.09%</td><td>0.72%</td></tr>
+<tr><td>Profit factor</td><td>1.216</td><td>1.297</td><td>0.081</td></tr>
+<tr><td>Max drawdown</td><td>29.9R</td><td>24.1R</td><td>-5.8R</td></tr>
+<tr><td>Return / DD</td><td>38.16</td><td>63.51</td><td>25.36</td></tr>
+<tr><td>Total modeled commission</td><td>345.8R</td><td>479.5R</td><td>133.7R</td></tr>
+<tr><td>Average commission per trade</td><td>0.0292R</td><td>0.0402R</td><td>0.0109R</td></tr></tbody>
+        </table>
+      </div>
+
+      <p class="source-note">Sensitivity artifact: <code>reports\strategies\lp_force_strike_account_commission_sensitivity\20260505_165121</code>. Script: <code>scripts/run_lpfs_account_commission_sensitivity.py</code>.</p>
+    </section>
+
+    <section id="risk-buckets" aria-labelledby="risk-buckets-title">
+      <h2 id="risk-buckets-title">Risk Bucket Study</h2>
+      <p class="note">The same V15 64-row H4/H8, H12/D1, and W1 risk grid was rerun on commission-adjusted R streams. The current adopted live row remains <code>0.20% / 0.30% / 0.75%</code>; the growth alternative remains <code>0.25% / 0.30% / 0.60%</code>.</p>
+
+      <div class="table-scroll">
+        <table class="data-table risk-table">
+          <thead><tr><th>Row</th><th>FTMO Buckets</th><th>IC Buckets</th><th>FTMO Return</th><th>IC Return</th><th>FTMO Reserved DD</th><th>IC Reserved DD</th><th>FTMO Return/DD</th><th>IC Return/DD</th></tr></thead>
+          <tbody><tr><td>Adopted live row</td><td>0.20% / 0.30% / 0.75%</td><td>0.20% / 0.30% / 0.75%</td><td>305.10%</td><td>386.84%</td><td>11.23%</td><td>7.23%</td><td>27.18</td><td>53.53</td></tr>
+<tr><td>Growth alternative</td><td>0.25% / 0.30% / 0.60%</td><td>0.25% / 0.30% / 0.60%</td><td>327.20%</td><td>426.70%</td><td>10.82%</td><td>9.55%</td><td>30.23</td><td>44.68</td></tr>
+<tr><td>Highest-return practical row</td><td>0.20% / 0.20% / 0.75%</td><td>0.25% / 0.30% / 0.75%</td><td>253.23%</td><td>433.93%</td><td>9.77%</td><td>9.55%</td><td>25.92</td><td>45.43</td></tr></tbody>
+        </table>
+      </div>
+
+      <p class="source-note">Interpretation: IC Markets keeps the same adopted row structurally intact after commission and improves the current row from 305.10% to 386.84% total return while reducing reserved DD from 11.23% to 7.23%. The IC highest-return practical row is 0.25% / 0.30% / 0.75%, at 433.93% return and 9.55% reserved DD.</p>
+    </section>
+
     <section id="cost-model" aria-labelledby="cost-model-title">
       <h2 id="cost-model-title">Backtest Cost Model Used Here</h2>
-      <p class="note warning">The IC Markets comparison included candle spreads but did not include explicit commission or slippage. That means the current comparison is useful for broker-candle and spread behavior, but it is optimistic for net live profitability on a commissioned raw-spread account.</p>
+      <p class="note warning">The original V22 comparison included candle spreads but did not include explicit commission or slippage. The commission-adjusted section above is now the net-R reference for broker comparison, but it is still an overlay on historical trade rows rather than a dry-run or live-send approval.</p>
 
       <div class="table-scroll">
         <table class="data-table cost-table">
@@ -530,8 +568,8 @@
         </article>
         <article class="fact">
           <span>Required next validation</span>
-          <strong>Commission sensitivity</strong>
-          <p class="source-note">Use dollar-per-lot or symbol-aware commission conversion before deciding that the IC account performs similarly enough for execution planning.</p>
+          <strong>Order-check feasibility</strong>
+          <p class="source-note">Commission and bucket studies are complete enough for analysis. The next execution gate is local dry-run/order-check only, still with the VPS account untouched.</p>
         </article>
       </div>
     </section>
@@ -539,9 +577,9 @@
     <section id="next-actions" aria-labelledby="next-actions-title">
       <h2 id="next-actions-title">Next Actions Before Any New-Account Execution</h2>
       <ol>
-        <li>Add a commission-aware rerun for the IC Raw Spread account rather than relying on <code>round_turn_commission_points=0.0</code>.</li>
-        <li>Compare the commission-adjusted IC run against the current FTMO-backed V22 baseline by symbol/timeframe, not only portfolio totals.</li>
-        <li>Only then rerun local dry-run/order-check with an ignored IC config. Keep the VPS live account unchanged.</li>
+        <li>Review the commission-adjusted symbol/timeframe contribution files before interpreting the portfolio-level IC improvement as robust.</li>
+        <li>Rerun local dry-run/order-check with the ignored IC config. Keep <code>LIVE_SEND</code> disabled and keep the VPS live account unchanged.</li>
+        <li>If order checks are clean, plan a separate runtime/config/account boundary before any future live-send discussion.</li>
       </ol>
       <ul class="source-list">
         <li><a href="lpfs_new_mt5_account_validation.md">New MT5 account validation workflow</a></li>
@@ -557,6 +595,6 @@
     </section>
 
   </main>
-  <footer>Generated 2026-05-05 16:37 UTC. Official commission schedules can change; refresh source links before trading decisions.</footer>
+  <footer>Generated 2026-05-05 16:57 UTC. Official commission schedules can change; refresh source links before trading decisions.</footer>
 </body>
 </html>

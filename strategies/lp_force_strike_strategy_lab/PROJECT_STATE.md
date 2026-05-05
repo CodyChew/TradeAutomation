@@ -196,8 +196,40 @@ explicit commission or slippage (`round_turn_commission_points=0.0` in both
 the current V22 baseline and IC rerun configs). Official source checks showed
 FTMO Forex at `$2.50` per lot per side (`$5.00` round turn per lot) and IC
 Markets Raw Spread MetaTrader at `$3.50` per lot per side (`$7.00` round turn
-per lot). Run commission sensitivity before treating this as a net
-profitability answer for the IC account.
+per lot).
+
+Commission-adjusted study:
+
+- script:
+  `../../scripts/run_lpfs_account_commission_sensitivity.py`
+- latest local artifact:
+  `../../reports/strategies/lp_force_strike_account_commission_sensitivity/20260505_165121`
+- method: symbol-aware commission overlay on existing V22 trade rows, then
+  V15 64-row risk-bucket grid rerun on `commission_adjusted_net_r`.
+
+Accepted V22 separated variant after explicit commission:
+
+- FTMO-backed baseline: `11,834` trades, `1,141.8R`, `0.0965R` average,
+  PF `1.216`, max DD `29.9R`, modeled commission `345.8R`.
+- IC Markets Raw Spread: `11,937` trades, `1,531.1R`, `0.1283R` average,
+  PF `1.297`, max DD `24.1R`, modeled commission `479.5R`.
+- IC delta after commission: `+389.4R`, `+0.0318R` average, `+0.081` PF,
+  `-5.8R` max DD.
+
+Risk-bucket study on commission-adjusted R:
+
+- Adopted live row `H4/H8 0.20% / H12/D1 0.30% / W1 0.75%`: IC `386.84%`
+  total return, `7.23%` reserved DD, return/DD `53.53`; FTMO baseline
+  `305.10%`, `11.23%` reserved DD, return/DD `27.18`.
+- Growth alternative `H4/H8 0.25% / H12/D1 0.30% / W1 0.60%`: IC `426.70%`
+  total return and `9.55%` reserved DD; FTMO baseline `327.20%` and
+  `10.82%` reserved DD.
+- IC highest-return practical row: `H4/H8 0.25% / H12/D1 0.30% / W1 0.75%`,
+  `433.93%` total return, `9.55%` reserved DD.
+
+Interpretation: IC Markets Raw Spread remains similar or stronger than the
+current adopted live strategy after explicit commission and bucket revalidation.
+This is still analysis only; it is not approval for new-account `LIVE_SEND`.
 
 First dry-run cycle on `config.lpfs_icmarkets_raw_spread.local.json` processed
 all `140` frames. It found three latest-bar setups, but all were rejected

@@ -16,7 +16,8 @@ docs/account_validation.html
 
 This generated page is the first visual summary for the current IC Markets Raw
 Spread validation. It shows the account audit, V22 comparison, official
-FTMO-vs-IC commission comparison, and the current cost-model caveat.
+FTMO-vs-IC commission comparison, commission-adjusted V22 comparison, and the
+V15 risk-bucket study on commission-adjusted R.
 
 ## Safety Boundary
 
@@ -104,7 +105,7 @@ Cost caveat: the current V22 baseline and the current IC Markets rerun both use
 candle spread data with `round_turn_commission_points=0.0` and zero explicit
 slippage. That makes the first comparison useful for broker-candle behavior,
 but it is not a net profitability answer for a commissioned raw-spread account.
-Before promoting a new account, rerun a commission-aware sensitivity pass.
+Use the commission-aware sensitivity pass before promoting a new account.
 
 As of the latest dashboard-source check, official broker pages showed:
 
@@ -112,7 +113,46 @@ As of the latest dashboard-source check, official broker pages showed:
 - IC Markets Raw Spread MetaTrader: `$3.50` per lot per side, `$7.00` round
   turn per lot.
 
-## 5. Dry-Run / Order-Check Only
+## 5. Commission And Risk-Bucket Study
+
+Apply symbol-aware commission to the existing V22 trade rows:
+
+```powershell
+.\venv\Scripts\python scripts\run_lpfs_account_commission_sensitivity.py
+```
+
+The study writes ignored local artifacts under:
+
+```text
+reports/strategies/lp_force_strike_account_commission_sensitivity/
+```
+
+Current IC Markets Raw Spread result on the accepted V22 LP/FS-separated
+variant:
+
+- FTMO-backed baseline after `$5.00` round-turn commission: `1,141.8R`,
+  `0.0965R` average trade, PF `1.216`, max drawdown `29.9R`.
+- IC Markets Raw Spread after `$7.00` round-turn commission: `1,531.1R`,
+  `0.1283R` average trade, PF `1.297`, max drawdown `24.1R`.
+- IC remains stronger by `389.4R` even though its modeled commission burden is
+  higher (`0.0402R` average per trade vs `0.0292R` on the FTMO baseline).
+
+The same script reruns the V15 64-row H4/H8, H12/D1, and W1 bucket grid on the
+commission-adjusted R stream. Current key rows:
+
+- Adopted live row `0.20% / 0.30% / 0.75%`: IC `386.84%` total return,
+  `7.23%` reserved DD, return/DD `53.53`; FTMO baseline `305.10%`,
+  `11.23%` reserved DD, return/DD `27.18`.
+- Growth alternative `0.25% / 0.30% / 0.60%`: IC `426.70%` total return,
+  `9.55%` reserved DD; FTMO baseline `327.20%`, `10.82%` reserved DD.
+- IC highest-return practical row: `0.25% / 0.30% / 0.75%`, `433.93%`
+  return, `9.55%` reserved DD.
+
+Interpretation: the IC account shows similar or stronger bucket behavior than
+the current adopted live strategy after explicit commission. This is still
+analysis only; it does not approve `LIVE_SEND`.
+
+## 6. Dry-Run / Order-Check Only
 
 Only after the backtest comparison is acceptable:
 

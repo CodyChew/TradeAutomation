@@ -18,6 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = REPO_ROOT / "docs" / "account_validation.html"
 AUDIT_ROOT = REPO_ROOT / "reports" / "mt5_account_validation" / "lpfs_new_account"
 NEW_ACCOUNT_REPORT_ROOT = REPO_ROOT / "reports" / "strategies" / "lp_force_strike_experiment_v22_new_mt5_account"
+COMMISSION_SENSITIVITY_ROOT = REPO_ROOT / "reports" / "strategies" / "lp_force_strike_account_commission_sensitivity"
 BASELINE_CONFIG = REPO_ROOT / "configs" / "strategies" / "lp_force_strike_experiment_v22_lp_fs_separation.json"
 NEW_ACCOUNT_CONFIG = REPO_ROOT / "configs" / "strategies" / "lp_force_strike_experiment_v22_new_mt5_account.example.json"
 FTMO_COMMISSION_SOURCE = "https://ftmo.com/en/trading-updates/trading-update-25-sep-2025/"
@@ -80,6 +81,73 @@ FALLBACK_COMPARISON = {
     ]
 }
 
+FALLBACK_COMMISSION_SENSITIVITY = {
+    "variant": "exclude_lp_pivot_inside_fs",
+    "comparison": [
+        {"metric": "trades", "baseline": 11834.0, "new_account": 11937.0, "delta": 103.0},
+        {"metric": "win_rate", "baseline": 0.5836572587459862, "new_account": 0.5908519728575019, "delta": 0.007194714111515732},
+        {"metric": "total_net_r", "baseline": 1141.7552826970334, "new_account": 1531.1315888012118, "delta": 389.3763061041784},
+        {"metric": "avg_net_r", "baseline": 0.09648092637291139, "new_account": 0.1282677045154739, "delta": 0.031786778142562505},
+        {"metric": "profit_factor", "baseline": 1.21565037619627, "new_account": 1.2966597561956792, "delta": 0.08100937999940916},
+        {"metric": "max_drawdown_r", "baseline": 29.9235970006661, "new_account": 24.10738622153326, "delta": -5.816210779132838},
+        {"metric": "return_to_drawdown_r", "baseline": 38.155683044107896, "new_account": 63.5129654758495, "delta": 25.357282431741602},
+        {"metric": "total_commission_r", "baseline": 345.79278449539004, "new_account": 479.4604924360819, "delta": 133.66770794069186},
+        {"metric": "avg_commission_r", "baseline": 0.02922027923739987, "new_account": 0.0401659120747325, "delta": 0.010945632837332634},
+    ],
+    "risk_bucket_study": {
+        "comparison": [
+            {
+                "comparison_label": "Adopted live row",
+                "baseline_h4_h8_risk_pct": 0.20,
+                "baseline_h12_d1_risk_pct": 0.30,
+                "baseline_w1_risk_pct": 0.75,
+                "new_account_h4_h8_risk_pct": 0.20,
+                "new_account_h12_d1_risk_pct": 0.30,
+                "new_account_w1_risk_pct": 0.75,
+                "total_return_pct_baseline": 305.0964701406732,
+                "total_return_pct_new_account": 386.84202957214984,
+                "total_return_pct_delta": 81.74555943147664,
+                "reserved_max_drawdown_pct_baseline": 11.225293202720891,
+                "reserved_max_drawdown_pct_new_account": 7.226066149705824,
+                "return_to_reserved_drawdown_baseline": 27.179376487620036,
+                "return_to_reserved_drawdown_new_account": 53.53424969516759,
+            },
+            {
+                "comparison_label": "Growth alternative",
+                "baseline_h4_h8_risk_pct": 0.25,
+                "baseline_h12_d1_risk_pct": 0.30,
+                "baseline_w1_risk_pct": 0.60,
+                "new_account_h4_h8_risk_pct": 0.25,
+                "new_account_h12_d1_risk_pct": 0.30,
+                "new_account_w1_risk_pct": 0.60,
+                "total_return_pct_baseline": 327.20349878056766,
+                "total_return_pct_new_account": 426.7029784739505,
+                "total_return_pct_delta": 99.49947969338285,
+                "reserved_max_drawdown_pct_baseline": 10.824374148310895,
+                "reserved_max_drawdown_pct_new_account": 9.551263380078398,
+                "return_to_reserved_drawdown_baseline": 30.228398824483225,
+                "return_to_reserved_drawdown_new_account": 44.67503004512981,
+            },
+            {
+                "comparison_label": "Highest-return practical row",
+                "baseline_h4_h8_risk_pct": 0.20,
+                "baseline_h12_d1_risk_pct": 0.20,
+                "baseline_w1_risk_pct": 0.75,
+                "new_account_h4_h8_risk_pct": 0.25,
+                "new_account_h12_d1_risk_pct": 0.30,
+                "new_account_w1_risk_pct": 0.75,
+                "total_return_pct_baseline": 253.22551278103117,
+                "total_return_pct_new_account": 433.92742920933813,
+                "total_return_pct_delta": 180.70191642830696,
+                "reserved_max_drawdown_pct_baseline": 9.771102501770125,
+                "reserved_max_drawdown_pct_new_account": 9.551263380078396,
+                "return_to_reserved_drawdown_baseline": 25.915756459944724,
+                "return_to_reserved_drawdown_new_account": 45.43141696986441,
+            },
+        ]
+    },
+}
+
 
 def _escape(value: Any) -> str:
     if value is None:
@@ -140,6 +208,10 @@ def _fmt_plain_pct(value: Any, digits: int = 2) -> str:
 
 def _metric_map(comparison: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {str(row.get("metric")): row for row in comparison.get("metrics", [])}
+
+
+def _metric_rows_map(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return {str(row.get("metric")): row for row in rows}
 
 
 def _metric_row(metrics: dict[str, dict[str, Any]], key: str, label: str, formatter: Any) -> list[str]:
@@ -216,9 +288,42 @@ def _costs(config_path: Path) -> dict[str, Any]:
     return config.get("costs", {})
 
 
+def _risk_schedule(row: dict[str, Any], prefix: str) -> str:
+    return " / ".join(
+        [
+            _fmt_plain_pct(row.get(f"{prefix}_h4_h8_risk_pct"), 2),
+            _fmt_plain_pct(row.get(f"{prefix}_h12_d1_risk_pct"), 2),
+            _fmt_plain_pct(row.get(f"{prefix}_w1_risk_pct"), 2),
+        ]
+    )
+
+
+def _risk_bucket_rows(rows: list[dict[str, Any]]) -> list[list[str]]:
+    selected = [
+        row
+        for row in rows
+        if row.get("comparison_label") in {"Adopted live row", "Growth alternative", "Highest-return practical row"}
+    ]
+    return [
+        [
+            _escape(row.get("comparison_label", "")),
+            _escape(_risk_schedule(row, "baseline")),
+            _escape(_risk_schedule(row, "new_account")),
+            _fmt_plain_pct(row.get("total_return_pct_baseline")),
+            _fmt_plain_pct(row.get("total_return_pct_new_account")),
+            _fmt_plain_pct(row.get("reserved_max_drawdown_pct_baseline")),
+            _fmt_plain_pct(row.get("reserved_max_drawdown_pct_new_account")),
+            _fmt_number(row.get("return_to_reserved_drawdown_baseline"), 2),
+            _fmt_number(row.get("return_to_reserved_drawdown_new_account"), 2),
+        ]
+        for row in selected
+    ]
+
+
 def build_account_validation_page(output: Path = DEFAULT_OUTPUT) -> Path:
     audit_dir = _latest_dir(AUDIT_ROOT)
     new_run_dir = _latest_new_account_run()
+    commission_dir = _latest_dir(COMMISSION_SENSITIVITY_ROOT)
 
     audit = _read_json(audit_dir / "account_audit.json", FALLBACK_AUDIT) if audit_dir else FALLBACK_AUDIT
     dataset_pull = (
@@ -231,12 +336,19 @@ def build_account_validation_page(output: Path = DEFAULT_OUTPUT) -> Path:
         if new_run_dir
         else FALLBACK_COMPARISON
     )
+    commission_sensitivity = (
+        _read_json(commission_dir / "commission_sensitivity_summary.json", FALLBACK_COMMISSION_SENSITIVITY)
+        if commission_dir
+        else FALLBACK_COMMISSION_SENSITIVITY
+    )
 
     account = audit.get("account", {})
     summary = audit.get("summary", {})
     specs = audit.get("symbol_specs", [])
     coverage = _coverage_summary(dataset_pull)
     metrics = _metric_map(comparison)
+    commission_metrics = _metric_rows_map(commission_sensitivity.get("comparison", []))
+    risk_comparison_rows = _risk_bucket_rows(commission_sensitivity.get("risk_bucket_study", {}).get("comparison", []))
     new_costs = _costs(NEW_ACCOUNT_CONFIG)
     baseline_costs = _costs(BASELINE_CONFIG)
     generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
@@ -290,6 +402,18 @@ def build_account_validation_page(output: Path = DEFAULT_OUTPUT) -> Path:
         ],
     ]
 
+    adjusted_rows = [
+        _metric_row(commission_metrics, "trades", "Trades", _fmt_int),
+        _metric_row(commission_metrics, "total_net_r", "Total R after commission", lambda value: f"{_fmt_number(value, 1)}R"),
+        _metric_row(commission_metrics, "avg_net_r", "Average R after commission", lambda value: f"{_fmt_number(value, 4)}R"),
+        _metric_row(commission_metrics, "win_rate", "Win rate", _fmt_pct),
+        _metric_row(commission_metrics, "profit_factor", "Profit factor", lambda value: _fmt_number(value, 3)),
+        _metric_row(commission_metrics, "max_drawdown_r", "Max drawdown", lambda value: f"{_fmt_number(value, 1)}R"),
+        _metric_row(commission_metrics, "return_to_drawdown_r", "Return / DD", lambda value: _fmt_number(value, 2)),
+        _metric_row(commission_metrics, "total_commission_r", "Total modeled commission", lambda value: f"{_fmt_number(value, 1)}R"),
+        _metric_row(commission_metrics, "avg_commission_r", "Average commission per trade", lambda value: f"{_fmt_number(value, 4)}R"),
+    ]
+
     spec_rows = [
         ["Volume min", _escape(_unique_values(specs, "volume_min"))],
         ["Volume step", _escape(_unique_values(specs, "volume_step"))],
@@ -340,6 +464,8 @@ def build_account_validation_page(output: Path = DEFAULT_OUTPUT) -> Path:
           ("#broker-data", "Broker Data"),
           ("#v22-comparison", "V22 Comparison"),
           ("#commission", "Commission"),
+          ("#commission-adjusted", "Adjusted Net"),
+          ("#risk-buckets", "Risk Buckets"),
           ("#cost-model", "Cost Model"),
           ("#next-actions", "Next Actions"),
       ],
@@ -387,9 +513,23 @@ def build_account_validation_page(output: Path = DEFAULT_OUTPUT) -> Path:
       <p class="source-note">Point equivalents assume a USD account and a USD-quoted major where one 1-lot pip is about $10. Crosses and non-USD profit currencies need symbol-specific conversion.</p>
     </section>
 
+    <section id="commission-adjusted" aria-labelledby="commission-adjusted-title">
+      <h2 id="commission-adjusted-title">Commission-Adjusted V22 Result</h2>
+      <p class="note">This symbol-aware overlay applies $5.00 round-turn commission per lot to the FTMO-backed baseline and $7.00 round-turn commission per lot to the IC Markets Raw Spread account. The selected variant is the adopted V22 LP/FS-separated baseline.</p>
+      {_table(["Metric", "FTMO Baseline", "IC Markets Raw Spread", "Delta"], adjusted_rows, class_name="data-table adjusted-table")}
+      <p class="source-note">Sensitivity artifact: <code>{_escape(_short_path(commission_dir))}</code>. Script: <code>scripts/run_lpfs_account_commission_sensitivity.py</code>.</p>
+    </section>
+
+    <section id="risk-buckets" aria-labelledby="risk-buckets-title">
+      <h2 id="risk-buckets-title">Risk Bucket Study</h2>
+      <p class="note">The same V15 64-row H4/H8, H12/D1, and W1 risk grid was rerun on commission-adjusted R streams. The current adopted live row remains <code>0.20% / 0.30% / 0.75%</code>; the growth alternative remains <code>0.25% / 0.30% / 0.60%</code>.</p>
+      {_table(["Row", "FTMO Buckets", "IC Buckets", "FTMO Return", "IC Return", "FTMO Reserved DD", "IC Reserved DD", "FTMO Return/DD", "IC Return/DD"], risk_comparison_rows, class_name="data-table risk-table")}
+      <p class="source-note">Interpretation: IC Markets keeps the same adopted row structurally intact after commission and improves the current row from 305.10% to 386.84% total return while reducing reserved DD from 11.23% to 7.23%. The IC highest-return practical row is 0.25% / 0.30% / 0.75%, at 433.93% return and 9.55% reserved DD.</p>
+    </section>
+
     <section id="cost-model" aria-labelledby="cost-model-title">
       <h2 id="cost-model-title">Backtest Cost Model Used Here</h2>
-      <p class="note warning">The IC Markets comparison included candle spreads but did not include explicit commission or slippage. That means the current comparison is useful for broker-candle and spread behavior, but it is optimistic for net live profitability on a commissioned raw-spread account.</p>
+      <p class="note warning">The original V22 comparison included candle spreads but did not include explicit commission or slippage. The commission-adjusted section above is now the net-R reference for broker comparison, but it is still an overlay on historical trade rows rather than a dry-run or live-send approval.</p>
       {_table(["Run", "use_candle_spread", "round_turn_commission_points", "entry_slippage_points", "exit_slippage_points"], cost_rows, class_name="data-table cost-table")}
       <div class="split-grid">
         <article class="fact">
@@ -399,8 +539,8 @@ def build_account_validation_page(output: Path = DEFAULT_OUTPUT) -> Path:
         </article>
         <article class="fact">
           <span>Required next validation</span>
-          <strong>Commission sensitivity</strong>
-          <p class="source-note">Use dollar-per-lot or symbol-aware commission conversion before deciding that the IC account performs similarly enough for execution planning.</p>
+          <strong>Order-check feasibility</strong>
+          <p class="source-note">Commission and bucket studies are complete enough for analysis. The next execution gate is local dry-run/order-check only, still with the VPS account untouched.</p>
         </article>
       </div>
     </section>
@@ -408,9 +548,9 @@ def build_account_validation_page(output: Path = DEFAULT_OUTPUT) -> Path:
     <section id="next-actions" aria-labelledby="next-actions-title">
       <h2 id="next-actions-title">Next Actions Before Any New-Account Execution</h2>
       <ol>
-        <li>Add a commission-aware rerun for the IC Raw Spread account rather than relying on <code>round_turn_commission_points=0.0</code>.</li>
-        <li>Compare the commission-adjusted IC run against the current FTMO-backed V22 baseline by symbol/timeframe, not only portfolio totals.</li>
-        <li>Only then rerun local dry-run/order-check with an ignored IC config. Keep the VPS live account unchanged.</li>
+        <li>Review the commission-adjusted symbol/timeframe contribution files before interpreting the portfolio-level IC improvement as robust.</li>
+        <li>Rerun local dry-run/order-check with the ignored IC config. Keep <code>LIVE_SEND</code> disabled and keep the VPS live account unchanged.</li>
+        <li>If order checks are clean, plan a separate runtime/config/account boundary before any future live-send discussion.</li>
       </ol>
       <ul class="source-list">
         <li><a href="lpfs_new_mt5_account_validation.md">New MT5 account validation workflow</a></li>

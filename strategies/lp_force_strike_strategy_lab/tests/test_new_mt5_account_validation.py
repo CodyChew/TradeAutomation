@@ -75,6 +75,18 @@ class LPFSNewMT5AccountValidationTests(unittest.TestCase):
         self.assertNotIn(".order_send", source)
         self.assertNotIn(".order_check", source)
 
+    def test_commission_sensitivity_script_is_analysis_only_and_runs_bucket_grid(self) -> None:
+        source = (SCRIPTS_ROOT / "run_lpfs_account_commission_sensitivity.py").read_text(encoding="utf-8")
+
+        self.assertIn("DEFAULT_OUTPUT_ROOT", source)
+        self.assertIn("lp_force_strike_account_commission_sensitivity", source)
+        self.assertIn("apply_commission_model", source)
+        self.assertIn("commission_adjusted_net_r", source)
+        self.assertIn("run_bucket_sensitivity_analysis", source)
+        self.assertIn("risk_bucket_formula", source)
+        self.assertNotIn(".order_send", source)
+        self.assertNotIn(".order_check", source)
+
     def test_compare_script_writes_metric_and_symbol_timeframe_deltas(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
