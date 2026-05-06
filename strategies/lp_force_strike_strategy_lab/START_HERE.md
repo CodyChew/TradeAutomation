@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-05-06 after the dedicated IC Markets VPS was promoted to
-its own live runner beside the existing FTMO VPS runner.
+Last updated: 2026-05-06 after adding boot-level Telegram startup alerts to the
+FTMO and IC VPS lanes.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -24,6 +24,10 @@ operational decisions.
   completed, and continuous task `LPFS_IC_Live` is installed/running with its
   own runtime state, journal, heartbeat, logs, Telegram channel, magic
   `231500`, and broker comment prefix `LPFSIC`.
+- VPS boot alert status: FTMO uses startup task `LPFS_FTMO_Startup_Alert`; IC
+  uses startup task `LPFS_IC_Startup_Alert`. These tasks send Telegram
+  `VPS STARTED` cards and journal `vps_startup_alert` rows after Windows boot,
+  without importing MT5 or touching orders/state.
 - Required LP/FS rule: selected LP pivot must be before the Force Strike mother
   bar (`lp_pivot_index < fs_mother_index`).
 - Execution state: guarded MT5 live-send path exists and can place real orders
@@ -61,6 +65,7 @@ operational decisions.
 | Research history | `docs/index.html`, version pages, and LPFS `PROJECT_STATE.md` | V1-V22 pages are audit history; V13/V15/V22 feed the current baseline. |
 | Live broker state | MT5 on the VPS | Do not infer open exposure from Telegram alone. |
 | Live runtime state | `C:\TradeAutomationRuntime\data\live` on the VPS | Contains state, journal, heartbeat, logs, and kill switch. |
+| VPS restart awareness | Startup alert tasks plus Windows System event log | `VPS STARTED` Telegram means Windows booted; MT5/runner still need heartbeat confirmation. |
 | Remote VPS access | `docs/lpfs_lightsail_vps_runbook.md` | Tailscale + OpenSSH is preferred over public SSH/RDP exposure. |
 | Account and secrets | ignored `config.local.json` and local OS/user secrets | Never commit MT5 passwords, Telegram tokens, SSH private keys, or account credentials. |
 | IC account validation | `docs/account_validation.html`, `docs/lpfs_new_mt5_account_validation.md`, and `config.lpfs_new_mt5_account.example.json` | Local-only validation and smoke testing; do not touch VPS live account. |
@@ -73,6 +78,7 @@ operational decisions.
   `C:\Users\chewc\OneDrive\Desktop\TradeAutomation`.
 - VPS production checkout: `C:\TradeAutomation`.
 - VPS production runtime root: `C:\TradeAutomationRuntime`.
+- VPS startup alert task: `LPFS_FTMO_Startup_Alert`.
 - Local SSH alias: `lpfs-vps`.
 - VPS host: `EC2AMAZ-ON6FOF2`.
 - VPS Tailscale IP: `100.115.34.38`.
@@ -86,7 +92,8 @@ do not belong in git.
 
 IC production uses a separate environment boundary: SSH alias `lpfs-ic-vps`,
 host `EC2AMAZ-DT73P0T`, Tailscale IP `100.98.12.113`, scheduled task
-`LPFS_IC_Live`, runtime root `C:\TradeAutomationRuntimeIC`, ignored config
+`LPFS_IC_Live`, startup alert task `LPFS_IC_Startup_Alert`, runtime root
+`C:\TradeAutomationRuntimeIC`, ignored config
 `config.lpfs_icmarkets_raw_spread.local.json`, magic `231500`, broker comment
 prefix `LPFSIC`, and a separate Telegram channel. It is a live production lane,
 not a staging-only host.
@@ -123,6 +130,9 @@ production-adjacent.
 - Telegram is an alert channel only; the JSONL journal and MT5 are the audit
   sources.
 - For docs-only changes, no VPS runner restart is required.
+- A `VPS STARTED` Telegram card is an operating-system alert, not proof the
+  trading loop is healthy. Always follow it with heartbeat, journal, and MT5
+  broker-state checks.
 
 ## Resume Prompts
 

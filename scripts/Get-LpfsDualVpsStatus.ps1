@@ -54,6 +54,7 @@ function New-RemoteStatusScript {
     $RuntimeRoot = Quote-PowerShellString $Spec.RuntimeRoot
     $ConfigPath = Quote-PowerShellString $Spec.ConfigPath
     $TaskName = Quote-PowerShellString $Spec.TaskName
+    $StartupAlertTaskName = Quote-PowerShellString $Spec.StartupAlertTaskName
     $StateFileName = Quote-PowerShellString $Spec.StateFileName
     $JournalFileName = Quote-PowerShellString $Spec.JournalFileName
     $HeartbeatFileName = Quote-PowerShellString $Spec.HeartbeatFileName
@@ -70,6 +71,7 @@ Set-StrictMode -Version Latest
 `$RuntimeRoot = $RuntimeRoot
 `$ConfigPath = $ConfigPath
 `$TaskName = $TaskName
+`$StartupAlertTaskName = $StartupAlertTaskName
 `$StateFileName = $StateFileName
 `$JournalFileName = $JournalFileName
 `$HeartbeatFileName = $HeartbeatFileName
@@ -86,6 +88,7 @@ Write-Output "repo_root=`$RepoRoot"
 Write-Output "runtime_root=`$RuntimeRoot"
 Write-Output "config_path=`$ConfigPath"
 Write-Output "task_name=`$TaskName"
+Write-Output "startup_alert_task_name=`$StartupAlertTaskName"
 Write-Output "strategy_magic=`$Magic"
 Write-Output "comment_prefix=`$CommentPrefix"
 
@@ -127,6 +130,20 @@ if (`$null -eq `$Task) {
             Write-Output "task_next_run_time="
         }
         Write-Output "task_last_result=`$(`$TaskInfo.LastTaskResult)"
+    }
+}
+
+Write-Output ""
+Write-Output "### Startup Alert Task"
+`$StartupTask = Get-ScheduledTask -TaskName `$StartupAlertTaskName -ErrorAction SilentlyContinue
+if (`$null -eq `$StartupTask) {
+    Write-Output "startup_alert_task_state=missing"
+} else {
+    Write-Output "startup_alert_task_state=`$(`$StartupTask.State)"
+    `$StartupTaskInfo = Get-ScheduledTaskInfo -TaskName `$StartupAlertTaskName -ErrorAction SilentlyContinue
+    if (`$null -ne `$StartupTaskInfo) {
+        Write-Output "startup_alert_last_run_time=`$(`$StartupTaskInfo.LastRunTime.ToString("o"))"
+        Write-Output "startup_alert_last_result=`$(`$StartupTaskInfo.LastTaskResult)"
     }
 }
 
@@ -390,6 +407,7 @@ $Specs = @(
         RuntimeRoot = "C:\TradeAutomationRuntime"
         ConfigPath = "C:\TradeAutomation\config.local.json"
         TaskName = "LPFS_Live"
+        StartupAlertTaskName = "LPFS_FTMO_Startup_Alert"
         StateFileName = "lpfs_live_state.json"
         JournalFileName = "lpfs_live_journal.jsonl"
         HeartbeatFileName = "lpfs_live_heartbeat.json"
@@ -404,6 +422,7 @@ $Specs = @(
         RuntimeRoot = "C:\TradeAutomationRuntimeIC"
         ConfigPath = "C:\TradeAutomation\config.lpfs_icmarkets_raw_spread.local.json"
         TaskName = "LPFS_IC_Live"
+        StartupAlertTaskName = "LPFS_IC_Startup_Alert"
         StateFileName = "lpfs_ic_live_state.json"
         JournalFileName = "lpfs_ic_live_journal.jsonl"
         HeartbeatFileName = "lpfs_ic_live_heartbeat.json"

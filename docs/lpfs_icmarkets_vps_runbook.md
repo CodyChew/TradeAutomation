@@ -13,6 +13,7 @@ runtime root, state, journal, heartbeat, kill switch, and scheduled task.
 |---|---|---|
 | VPS alias | `lpfs-vps` | `lpfs-ic-vps` |
 | Scheduled task | `LPFS_Live` | `LPFS_IC_Live` |
+| Startup alert task | `LPFS_FTMO_Startup_Alert` | `LPFS_IC_Startup_Alert` |
 | Repo path | `C:\TradeAutomation` | `C:\TradeAutomation` |
 | Runtime root | `C:\TradeAutomationRuntime` | `C:\TradeAutomationRuntimeIC` |
 | Config | ignored `config.local.json` | ignored `config.lpfs_icmarkets_raw_spread.local.json` |
@@ -61,6 +62,10 @@ staging to its own live runner.
   `scripts\run_lpfs_live_forever.ps1` with `Cycles 100000000`,
   `SleepSeconds 30`, runtime root `C:\TradeAutomationRuntimeIC`, and log prefix
   `lpfs_ic_live`.
+- Boot/restart alert: `LPFS_IC_Startup_Alert` is installed as an at-startup
+  `SYSTEM` task. It sends IC Telegram `VPS STARTED` cards and journals
+  `vps_startup_alert` into `lpfs_ic_live_journal.jsonl` without touching MT5 or
+  live trading state.
 
 ## Files Needed On The IC VPS
 
@@ -222,6 +227,23 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\TradeAutomation\scri
 `LPFS_IC_Live` is now installed. Do not replace it or start a second manual
 runner while the scheduled task is running. Use `Get-LpfsDualVpsStatus.ps1` or
 the IC status command above before maintenance.
+
+Startup alert task for `LPFS_IC_Startup_Alert`:
+
+```powershell
+.\scripts\Install-LpfsStartupAlertTask.ps1 `
+  -TaskName LPFS_IC_Startup_Alert `
+  -ConfigPath C:\TradeAutomation\config.lpfs_icmarkets_raw_spread.local.json `
+  -RuntimeRoot C:\TradeAutomationRuntimeIC `
+  -RuntimeJournalFileName lpfs_ic_live_journal.jsonl `
+  -InstanceLabel "LPFS IC LIVE" `
+  -RunnerTaskName LPFS_IC_Live
+```
+
+This is an alert-only task. It does not import MT5, does not place orders, and
+does not start the live runner. It exists so the operator gets a Telegram signal
+when Windows has rebooted, even before the RDP/logon-dependent MT5 session is
+restored.
 
 ## Guardrails
 

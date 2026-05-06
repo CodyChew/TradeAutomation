@@ -1,8 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-06 local time after the IC Markets Raw Spread LPFS lane
-was promoted to a dedicated live VPS runner beside the existing FTMO VPS
-runner.
+Last updated: 2026-05-06 local time after adding boot-level Telegram startup
+alerts to the FTMO and IC LPFS VPS lanes.
 
 ## Purpose
 
@@ -176,6 +175,7 @@ Dedicated IC VPS production status:
 - Repo: `C:\TradeAutomation`.
 - Runtime: `C:\TradeAutomationRuntimeIC`.
 - Task: `LPFS_IC_Live`.
+- Startup alert task: `LPFS_IC_Startup_Alert`.
 - Config: ignored `config.lpfs_icmarkets_raw_spread.local.json`.
 - Broker: `ICMarketsSC-MT5-2`, company `Raw Trading Ltd`, currency `USD`.
 - Risk: IC growth-practical buckets `0.25% / 0.30% / 0.75%` with
@@ -188,6 +188,9 @@ Dedicated IC VPS production status:
 - `LPFS_IC_Live` is installed/running. Use
   `scripts/Get-LpfsDualVpsStatus.ps1` from the local repo to capture both FTMO
   and IC status packets into ignored `reports/live_ops/` files.
+- FTMO has matching startup alert task `LPFS_FTMO_Startup_Alert`. Startup alert
+  tasks send `VPS STARTED` Telegram cards and journal `vps_startup_alert` after
+  Windows boot; they do not import MT5 or touch live trading state.
 
 ## Current LP Rules
 

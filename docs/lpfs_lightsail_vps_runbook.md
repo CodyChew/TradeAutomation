@@ -1,6 +1,6 @@
 # LPFS Amazon Lightsail VPS Runbook
 
-Last updated: 2026-05-05.
+Last updated: 2026-05-06 after adding the boot-level Telegram startup alert.
 
 This runbook moves the existing Python + MT5 live runner to Amazon Lightsail
 without rewriting strategy logic. The exact strategy behavior remains owned by
@@ -15,6 +15,7 @@ local OneDrive workspace.
 - VPS repo path: `C:\TradeAutomation`.
 - VPS runtime root: `C:\TradeAutomationRuntime`.
 - VPS scheduled task: `LPFS_Live`.
+- VPS startup alert task: `LPFS_FTMO_Startup_Alert`.
 - VPS MT5 terminal: FTMO Global Markets MT5 terminal attached through the local
   MetaTrader5 Python package.
 
@@ -52,6 +53,50 @@ ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; gi
 The remote access path has been verified from the local PC to the VPS over
 Tailscale. The status script returned a running heartbeat and the expected
 Windows parent/child process shape.
+
+## Windows Restart Alerting
+
+`LPFS_FTMO_Startup_Alert` is an at-startup Windows Scheduled Task that runs as
+`SYSTEM`. It sends a Telegram `VPS STARTED` card and appends
+`vps_startup_alert` to the live journal after Windows boots. This alert is
+ops-only:
+
+- it reads ignored local config only for Telegram credentials;
+- it writes only the runtime JSONL journal;
+- it does not import MT5;
+- it does not read or mutate live state;
+- it cannot place, cancel, or modify broker orders.
+
+The alert includes hostname, Windows boot time, the latest Windows restart
+event/reason when available, runner task name, runtime root, and journal path.
+It retries while networking/Tailscale/Telegram connectivity comes up.
+
+Install or refresh it on the FTMO VPS from `C:\TradeAutomation`:
+
+```powershell
+.\scripts\Install-LpfsStartupAlertTask.ps1 `
+  -TaskName LPFS_FTMO_Startup_Alert `
+  -ConfigPath C:\TradeAutomation\config.local.json `
+  -RuntimeRoot C:\TradeAutomationRuntime `
+  -RuntimeJournalFileName lpfs_live_journal.jsonl `
+  -InstanceLabel "LPFS FTMO LIVE" `
+  -RunnerTaskName LPFS_Live
+```
+
+Smoke-test without rebooting:
+
+```powershell
+Start-ScheduledTask -TaskName LPFS_FTMO_Startup_Alert
+Start-Sleep -Seconds 90
+Get-ScheduledTaskInfo -TaskName LPFS_FTMO_Startup_Alert
+Select-String -Path C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl -Pattern "vps_startup_alert" |
+  Select-Object -Last 1
+```
+
+Important limit: this task alerts that Windows came back. It does not make MT5
+or the live runner fully unattended. With the current at-logon runner design,
+RDP/logon is still required after a reboot to restore the interactive MT5
+session and start `LPFS_Live`.
 
 ### Environment Boundaries
 

@@ -1,8 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-06 local time after the IC Markets Raw Spread LPFS lane
-was promoted to a dedicated live VPS runner beside the existing FTMO VPS
-runner.
+Last updated: 2026-05-06 local time after adding boot-level Telegram startup
+alerts to the FTMO and IC LPFS VPS lanes.
 
 ## Purpose
 
@@ -21,6 +20,9 @@ patterns. It now has these layers:
   `order_calc_profit` sizing, dynamic spread gating, MT5 `order_send`,
   pending/order/position/deal reconciliation, and restart-safe lifecycle
   notifications.
+- ops alerting: at-startup Telegram boot cards and `vps_startup_alert` journal
+  rows for Windows restarts, without importing MT5 or touching live trading
+  state.
 
 It now includes a combined TradingView visual indicator for LPFS chart review
 and alerts at `tradingview/lp_force_strike.pine`. V10-V13 add portfolio-style
@@ -288,6 +290,7 @@ Dedicated IC VPS live lane:
 - Repo path: `C:\TradeAutomation`.
 - Runtime root: `C:\TradeAutomationRuntimeIC`.
 - Scheduled task: `LPFS_IC_Live`.
+- Startup alert task: `LPFS_IC_Startup_Alert`.
 - Ignored config: `config.lpfs_icmarkets_raw_spread.local.json`.
 - State/journal/heartbeat/logs: `lpfs_ic_live_*`.
 - MT5 server: `ICMarketsSC-MT5-2`; company `Raw Trading Ltd`; currency `USD`.
@@ -301,6 +304,10 @@ Dedicated IC VPS live lane:
   `0` active positions.
 - Continuous task `LPFS_IC_Live` is installed/running through the watchdog
   wrapper. Do not run a manual IC live process while it is active.
+- FTMO uses startup alert task `LPFS_FTMO_Startup_Alert`; IC uses
+  `LPFS_IC_Startup_Alert`. These at-startup SYSTEM tasks send `VPS STARTED`
+  Telegram cards and journal `vps_startup_alert` rows after Windows boot,
+  without importing MT5 or touching live state.
 - Dual-environment audit command:
   `../../scripts/Get-LpfsDualVpsStatus.ps1`, which writes ignored
   `reports/live_ops/lpfs_dual_vps_status_*.md` packets and compares current

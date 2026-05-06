@@ -1,6 +1,6 @@
 # LPFS Phase 2 Production Hardening
 
-Last updated: 2026-05-03.
+Last updated: 2026-05-06 after adding boot-level Telegram startup alerts.
 
 This is the operations layer for LP + Force Strike live execution. It does not
 change signal rules, risk buckets, spread gates, stop/target geometry, order
@@ -39,6 +39,10 @@ Implemented operational controls:
   sleeps between cycles.
 - `scripts/run_lp_force_strike_live_executor.py --heartbeat-path`: JSON
   heartbeat updated at start, every completed cycle, and shutdown.
+- `scripts/send_lpfs_vps_startup_alert.py`: boot/restart Telegram alert and
+  `vps_startup_alert` journal row without importing MT5 or touching live state.
+- `scripts/Install-LpfsStartupAlertTask.ps1`: installs the at-startup SYSTEM
+  task used by the FTMO and IC VPS lanes.
 
 Default production runtime root:
 
@@ -197,6 +201,42 @@ C:\Users\chewc\OneDrive\Desktop\TradeAutomation
 
 For VPS use, disconnect the RDP session instead of signing out, so MT5 remains
 open in the user session.
+
+## Startup Alert Task
+
+The boot alert is intentionally separate from the MT5 live runner. It can run as
+`SYSTEM` at Windows startup because it only reads the ignored local config for
+Telegram, collects Windows boot/restart evidence, retries Telegram while
+networking starts, and appends one `vps_startup_alert` row to the runtime
+journal.
+
+FTMO:
+
+```powershell
+.\scripts\Install-LpfsStartupAlertTask.ps1 `
+  -TaskName LPFS_FTMO_Startup_Alert `
+  -ConfigPath C:\TradeAutomation\config.local.json `
+  -RuntimeRoot C:\TradeAutomationRuntime `
+  -RuntimeJournalFileName lpfs_live_journal.jsonl `
+  -InstanceLabel "LPFS FTMO LIVE" `
+  -RunnerTaskName LPFS_Live
+```
+
+IC:
+
+```powershell
+.\scripts\Install-LpfsStartupAlertTask.ps1 `
+  -TaskName LPFS_IC_Startup_Alert `
+  -ConfigPath C:\TradeAutomation\config.lpfs_icmarkets_raw_spread.local.json `
+  -RuntimeRoot C:\TradeAutomationRuntimeIC `
+  -RuntimeJournalFileName lpfs_ic_live_journal.jsonl `
+  -InstanceLabel "LPFS IC LIVE" `
+  -RunnerTaskName LPFS_IC_Live
+```
+
+Limit: a `VPS STARTED` card means Windows booted. It is not proof that MT5 is
+logged in, trading is allowed, or the at-logon runner is healthy. Follow it
+with the normal heartbeat, journal, and MT5 broker-state checks.
 
 ## Acceptance Criteria
 

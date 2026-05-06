@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-06 SGT after the dedicated IC Markets VPS was promoted
-to its own live runner beside the existing FTMO VPS runner.
+Last updated: 2026-05-06 SGT after adding boot-level Telegram startup alerts
+to both LPFS VPS lanes.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -59,6 +59,7 @@ LPFS VPS audits and approved cleanup.
 - VPS SSH user: `Administrator`.
 - VPS repo path: `C:\TradeAutomation`.
 - VPS runtime root: `C:\TradeAutomationRuntime`.
+- VPS startup alert task: `LPFS_FTMO_Startup_Alert`.
 - VPS OpenSSH service: `sshd`.
 - VPS firewall rule: `OpenSSH-Tailscale-Only`, inbound TCP `22` from
   `100.64.0.0/10`.
@@ -123,8 +124,26 @@ ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; gi
   `C:\TradeAutomationRuntimeIC`, ignored config
   `config.lpfs_icmarkets_raw_spread.local.json`, magic `231500`, broker comment
   prefix `LPFSIC`, and separate Telegram channel. `LPFS_IC_Live` is installed
-  and running with `risk_bucket_scale=2.0`. Use
+  and running with `risk_bucket_scale=2.0`. `LPFS_IC_Startup_Alert` is the
+  IC boot/restart Telegram task. Use
   `docs/lpfs_icmarkets_vps_runbook.md` before maintenance.
+
+## 2026-05-06 Restart Alert Hardening
+
+- Added ops-only startup alert sender
+  `scripts/send_lpfs_vps_startup_alert.py`.
+- Added installer `scripts/Install-LpfsStartupAlertTask.ps1`.
+- Startup alert tasks run as `SYSTEM` at Windows startup, retry Telegram while
+  networking comes up, and write `vps_startup_alert` rows to the relevant live
+  journal.
+- The alert path does not import MT5, does not call `order_check` or
+  `order_send`, and does not read or mutate live state.
+- Current task names:
+  - FTMO: `LPFS_FTMO_Startup_Alert`.
+  - IC: `LPFS_IC_Startup_Alert`.
+- Important limit: `VPS STARTED` means Windows booted. It does not prove MT5 or
+  the trading loop is healthy; verify `LPFS_Live` / `LPFS_IC_Live` heartbeat,
+  latest journal rows, and MT5 broker state after the alert.
 
 ## IC Markets VPS Live Status
 

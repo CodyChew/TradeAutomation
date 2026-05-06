@@ -403,6 +403,14 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             r".\scripts\run_lpfs_live_forever.ps1 -ConfigPath config.local.json -RuntimeRoot C:\TradeAutomationRuntime -Cycles 100000000 -SleepSeconds 30",
         ),
         (
+            "Install FTMO startup alert task",
+            r'.\scripts\Install-LpfsStartupAlertTask.ps1 -TaskName LPFS_FTMO_Startup_Alert -ConfigPath C:\TradeAutomation\config.local.json -RuntimeRoot C:\TradeAutomationRuntime -RuntimeJournalFileName lpfs_live_journal.jsonl -InstanceLabel "LPFS FTMO LIVE" -RunnerTaskName LPFS_Live',
+        ),
+        (
+            "Install IC startup alert task",
+            r'.\scripts\Install-LpfsStartupAlertTask.ps1 -TaskName LPFS_IC_Startup_Alert -ConfigPath C:\TradeAutomation\config.lpfs_icmarkets_raw_spread.local.json -RuntimeRoot C:\TradeAutomationRuntimeIC -RuntimeJournalFileName lpfs_ic_live_journal.jsonl -InstanceLabel "LPFS IC LIVE" -RunnerTaskName LPFS_IC_Live',
+        ),
+        (
             "Pasteable production status",
             r".\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 20 -LogLines 40",
         ),
@@ -447,6 +455,11 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             "Check the installed production task",
             r"""Get-ScheduledTask -TaskName "LPFS_Live"
 Get-ScheduledTaskInfo -TaskName "LPFS_Live" """.strip(),
+        ),
+        (
+            "Check startup alert task",
+            r"""Get-ScheduledTask -TaskName "LPFS_FTMO_Startup_Alert"
+Get-ScheduledTaskInfo -TaskName "LPFS_FTMO_Startup_Alert" """.strip(),
         ),
         (
             "Check for live runner processes",
@@ -562,6 +575,16 @@ Get-CimInstance Win32_Process |
             "Watchdog launcher",
             "scripts/run_lpfs_live_forever.ps1",
             "Production PowerShell wrapper that logs stdout/stderr and restarts after unexpected crashes while respecting KILL_SWITCH.",
+        ),
+        (
+            "Startup alert sender",
+            "scripts/send_lpfs_vps_startup_alert.py",
+            "Boot/restart Telegram alert that reads ignored config/runtime paths, retries while networking starts, and journals vps_startup_alert without touching MT5.",
+        ),
+        (
+            "Startup task installer",
+            "scripts/Install-LpfsStartupAlertTask.ps1",
+            "Registers the at-startup SYSTEM task for FTMO or IC boot alerts; safe to run without changing runner tasks.",
         ),
         (
             "Status command",
@@ -735,6 +758,7 @@ Get-CimInstance Win32_Process |
             ("ORDER ADOPTED / TRADE CLOSED", "Recovery and manual exits", "Adopted broker items are not resent; manual/unknown exits keep real MT5 PnL and R without a false SL label."),
             ("SKIPPED / REJECTED / CANCELLED", "Readable reason", "Human reason, action taken, key metric, and ref. Raw fields remain in JSONL."),
             ("RUNNER STARTED / STOPPED", "Process heartbeat", "Sleep-after-cycle setting, cycle count, runtime, state-save status, and SGT start/stop time."),
+            ("VPS STARTED", "Windows boot alert", "Startup task sends host, boot time, last Windows restart event, runner task, runtime, and journal path before touching MT5."),
         ])}
       </div>
       <p class="callout">Telegram delivery is best effort. A failed Telegram send must never validate or invalidate a trade. The journal remains the durable audit record.</p>
@@ -764,6 +788,7 @@ Get-CimInstance Win32_Process |
             ("Code path", "C:\\TradeAutomation", "Repository clone used by the Lightsail production task."),
             ("Runtime root", "C:\\TradeAutomationRuntime", "State, journal, heartbeat, kill switch, and logs live outside OneDrive."),
             ("Scheduled task", "LPFS_Live", "At-logon task that starts the production wrapper with 100000000 cycles and a 30-second sleep after each completed scan."),
+            ("Startup alert", "LPFS_FTMO_Startup_Alert", "At-startup SYSTEM task sends a Telegram boot/restart card and journals vps_startup_alert without importing MT5 or sending orders."),
             ("Recovery rollback", "market_recovery_mode=disabled", "Set this local live_send flag only if operator evidence shows recovery should be paused."),
             ("Safe paused state", "KILL_SWITCH exists", "Task can be installed and ready while live cycles are blocked."),
             ("Broker truth", "MT5 orders/positions", "Use MT5 as the source of truth for open exposure; Telegram is an alert channel."),
@@ -787,6 +812,7 @@ Get-CimInstance Win32_Process |
             ("MT5 identity", "ICMarketsSC-MT5-2", "Fail closed if the VPS MT5 terminal is not logged into the expected IC account/server."),
             ("Broker identity", "magic 231500 / LPFSIC", "Separate magic and broker comment prefix prevent FTMO and IC state from being confused."),
             ("Current production", "LPFS_IC_Live running", "The IC VPS has its own at-logon task, runtime root, heartbeat, logs, state, journal, Telegram channel, and MT5 account."),
+            ("Startup alert", "LPFS_IC_Startup_Alert", "At-startup SYSTEM task sends IC Telegram boot/restart cards into the IC channel and journals into lpfs_ic_live_journal.jsonl."),
             ("Latest IC live smoke", "1 pending order placed", "The first IC VPS live-send cycle completed before continuous task startup; broker/runtime reconciliation is captured by the dual VPS status report."),
             ("Sizing", "scale 2.0", "The IC live config uses the IC growth-practical 0.25/0.30/0.75 bucket shape with risk_bucket_scale=2.0 and max_risk_pct_per_trade=1.5."),
         ])}
@@ -807,6 +833,7 @@ Get-CimInstance Win32_Process |
       <div class="scenario-grid">
         {_step_cards([
             ("Limit", "Not a daemon", "The runner only keeps checking when started with multiple cycles or wrapped by an external scheduler/process manager."),
+            ("Alert", "Boot alert is not MT5 recovery", "The startup alert can tell you Windows rebooted before login; MT5 and the at-logon runner still require the interactive session unless a separate auto-logon/service design is approved."),
             ("Protection", "Single-runner lock", "A lock file beside the live state blocks a second live runner from starting against the same state."),
             ("Phase 2", "Production wrapper", "The wrapper adds a launcher, kill switch, watchdog, logs, heartbeat, runtime-root override, Task Scheduler rehearsal path, and Lightsail runbook."),
             ("Protection", "Kill switch", "KILL_SWITCH stops new live cycles before MT5 initialization, before each live cycle, and during sleeps. It does not close positions or delete pending orders by itself."),
