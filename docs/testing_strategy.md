@@ -25,6 +25,13 @@ Generated dashboards, local data, local reports, and one-off research runners
 are outside the strict 100% core gate. If a runner grows reusable behavior, move
 that behavior into a core package and cover it there.
 
+The native MQL5 EA migration is protected by parity/static tests rather than
+the Python branch-coverage gate. The tracked fixture at
+`mql5/lpfs_ea/fixtures/canonical_lpfs_ea_fixture.json` must match Python truth,
+the EA source must stay tester-only by default, and `docs/ea_migration.html`
+must state whether MetaEditor compile and Strategy Tester smoke checks have
+passed.
+
 ## Trading Rule Invariants
 
 - LP levels are sorted by candle time internally, confirmed only after the
@@ -55,6 +62,8 @@ that behavior into a core package and cover it there.
 - Realized drawdown measures closed-trade equity only. Risk-reserved drawdown
   subtracts open reserved risk while trades are active and is the safer account
   stress metric.
+- EA v1 is Strategy Tester-only. It must not alter FTMO/IC live configs,
+  runtime state, journals, scheduled tasks, or broker orders.
 
 ## Edge-Case Expectations
 

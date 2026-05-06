@@ -12,6 +12,8 @@ Start a new handover or Codex session with `SESSION_HANDOFF.md`, then
 - `concepts/`: reusable indicators, signals, and market-structure modules.
 - `shared/`: reusable market data, backtest, and research infrastructure.
 - `strategies/`: future strategy labs that combine reusable concepts.
+- `mql5/lpfs_ea/`: isolated native MQL5 EA migration workspace. V1 is
+  Strategy Tester-only and separate from Python production live runners.
 - `data/`: local generated datasets, ignored by git.
 - `reports/`: local generated research outputs, ignored by git.
 
@@ -58,6 +60,8 @@ The current strategy guide and execution-readiness docs are:
 - `docs/live_ops.html`
 - `docs/lpfs_lightsail_vps_runbook.md`
 - `docs/lpfs_new_mt5_account_validation.md`
+- `docs/ea_migration.html`
+- `mql5/lpfs_ea/README.md`
 - `docs/mt5_execution_contract.md`
 - `docs/telegram_notifications.md`
 - `docs/dry_run_executor.md`

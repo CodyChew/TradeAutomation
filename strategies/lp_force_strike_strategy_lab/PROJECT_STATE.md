@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-06 local time after the LPFS documentation/verification
-refresh for the FTMO and IC VPS lanes.
+Last updated: 2026-05-07 after adding the isolated native MQL5 EA migration
+scaffold and tester-only docs.
 
 ## Purpose
 
@@ -23,6 +23,9 @@ patterns. It now has these layers:
 - ops alerting: at-startup Telegram boot cards and `vps_startup_alert` journal
   rows for Windows restarts, without importing MT5 or touching live trading
   state.
+- native EA migration: isolated MQL5 Strategy Tester-only scaffold under
+  `../../mql5/lpfs_ea`, with Python parity fixtures and a local MetaEditor
+  compile helper. It is not production live execution.
 
 It now includes a combined TradingView visual indicator for LPFS chart review
 and alerts at `tradingview/lp_force_strike.pine`. V10-V13 add portfolio-style
@@ -46,6 +49,15 @@ Python remains the source of truth for MT5-data strategy development.
 The combined TradingView visual lives at `tradingview/lp_force_strike.pine`.
 It is for chart-side inspection and alerts only; Python/MT5 remains the source
 of truth for research and live execution.
+
+The native EA migration lives at `../../mql5/lpfs_ea`. MetaEditor compile and
+MT5 tester load/config smoke passed, but full-result smoke is pending. The next
+EA code task is a fast `InpSmokeTestSingleChartOnly` path plus new-bar gating;
+the first EURUSD H4 tester run was stopped because the scaffold currently
+requests the full 28-symbol x 5-timeframe basket on every tick. Python remains
+canonical until MQL fixture parity and Strategy Tester result checks pass. EA v1
+is locked to tester-only defaults and must not be attached to FTMO or IC live
+charts without a separate operator-approved deployment plan.
 
 Canonical LPFS restart file:
 `START_HERE.md`. Future AI agents should read it immediately after

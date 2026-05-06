@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LPFS Native MQL5 EA Migration</title>
+  <style>
+
+    :root {
+      --bg: #f3f6f8;
+      --panel: #ffffff;
+      --panel-soft: #f8fafb;
+      --ink: #17202a;
+      --muted: #5d6d7e;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --accent-2: #3f7f5f;
+      --good: #256f46;
+      --bad: #9f3333;
+      --warn: #8a5a00;
+      --focus: #f2c94c;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 Inter, Segoe UI, Roboto, Arial, sans-serif;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+    code { overflow-wrap: anywhere; }
+    .dashboard-header {
+      background: #17202a;
+      color: white;
+      padding: 28px max(18px, 5vw);
+      border-bottom: 4px solid #57a773;
+    }
+    .dashboard-header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 4vw, 30px);
+      letter-spacing: 0;
+    }
+    .dashboard-header p {
+      margin: 0;
+      color: #d8e0e8;
+      max-width: 1080px;
+      overflow-wrap: anywhere;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .page-nav {
+      margin-top: 18px;
+    }
+    .report-nav {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, .18);
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+    }
+    nav a:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .page-nav a.active {
+      background: #57a773;
+      border-color: #57a773;
+      color: #17202a;
+      font-weight: 700;
+    }
+    .report-nav a {
+      background: rgba(255, 255, 255, .03);
+      color: #edf4f7;
+    }
+    .archive-nav {
+      min-height: 34px;
+      position: relative;
+    }
+    .archive-nav summary {
+      cursor: pointer;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, .28);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .08);
+      min-height: 34px;
+      list-style: none;
+    }
+    .archive-nav summary::-webkit-details-marker {
+      display: none;
+    }
+    .archive-nav summary::after {
+      content: " +";
+      font-weight: 700;
+    }
+    .archive-nav[open] summary {
+      background: rgba(255, 255, 255, .16);
+    }
+    .archive-nav[open] summary::after {
+      content: " -";
+    }
+    .archive-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      max-width: min(680px, 100%);
+    }
+    .archive-links a {
+      font-size: 13px;
+      padding: 6px 9px;
+      min-height: 30px;
+    }
+    main {
+      padding: 24px max(18px, 5vw) 48px;
+    }
+    section {
+      margin: 0 0 22px;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(23, 32, 42, .05);
+      max-width: 100%;
+      overflow: visible;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 15px;
+      color: #34495e;
+      letter-spacing: 0;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi, .fact {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .kpi-label, .fact span, .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .kpi-value, .kpi strong, .fact strong {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-note {
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 18px;
+    }
+    .note {
+      background: #f6f8f2;
+      border-left: 4px solid #8aa936;
+      padding: 12px 14px;
+      color: #34412d;
+      margin-bottom: 14px;
+    }
+    .warning {
+      background: #fff8e8;
+      border-left-color: var(--warn);
+      color: #4d3b13;
+    }
+    .metric-glossary {
+      border-top: 4px solid #5c7f95;
+    }
+    .metric-glossary dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 10px;
+    }
+    .metric-glossary dl > div {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .metric-glossary dt {
+      margin: 0 0 5px;
+      font-weight: 700;
+    }
+    .metric-glossary dd {
+      margin: 0;
+      color: var(--muted);
+    }
+    .table-scroll, .scroll, .summary-comparison {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th, td {
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      box-shadow: 1px 0 0 var(--line);
+    }
+    th:first-child {
+      z-index: 3;
+    }
+    td:first-child {
+      background: var(--panel);
+      font-weight: 600;
+    }
+    th {
+      color: #3f4d5c;
+      background: #eef3f6;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tbody tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+    tbody tr:hover td {
+      background: #eef6f2;
+    }
+    .positive {
+      color: var(--good);
+      font-weight: 700;
+    }
+    .negative {
+      color: var(--bad);
+      font-weight: 700;
+    }
+    .neutral {
+      color: var(--muted);
+    }
+    footer {
+      color: var(--muted);
+      padding: 0 max(18px, 5vw) 28px;
+    }
+
+    @media (max-width: 760px) {
+      .dashboard-header {
+        padding: 22px 16px;
+      }
+      nav a {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+      .archive-nav {
+        flex: 1 1 100%;
+      }
+      .archive-nav summary {
+        text-align: center;
+      }
+      .archive-links a {
+        flex: 1 1 calc(25% - 8px);
+        text-align: center;
+      }
+      main {
+        padding: 16px 12px 34px;
+      }
+      section {
+        padding: 14px;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 14px;
+      }
+      .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .kpi {
+        padding: 10px;
+      }
+      .kpi-value, .kpi strong, .fact strong {
+        font-size: 20px;
+      }
+      th, td {
+        padding: 6px 7px;
+        font-size: 12px;
+      }
+    }
+    @media (max-width: 480px) {
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+      .report-nav a {
+        flex-basis: calc(50% - 4px);
+      }
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .status-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #ffffff;
+    }
+    .status-card span {
+      color: var(--muted);
+      display: block;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .status-card strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 17px;
+    }
+    .warning {
+      border-left: 4px solid #a23b3b;
+      background: #fff6f4;
+      padding: 14px;
+    }
+    .ok {
+      border-left: 4px solid #2e7d50;
+      background: #f3fbf6;
+      padding: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="dashboard-header">
+    <h1>LPFS Native MQL5 EA Migration</h1>
+    <p>Native MT5 Strategy Tester-only port status for LP + Force Strike. Python remains canonical until EA parity, compile, and tester smoke checks pass.</p>
+    <nav class="page-nav" aria-label="Dashboard pages">
+      <a class="page-link" href="index.html">Home</a>
+      <a class="page-link" href="strategy.html">Strategy</a>
+      <a class="page-link" href="live_ops.html">Live Ops</a>
+      <a class="page-link" href="account_validation.html">Account Validation</a>
+      <a class="page-link" href="v13.html">V13</a>
+      <a class="page-link" href="v14.html">V14</a>
+      <a class="page-link" href="v15.html">V15</a>
+      <a class="page-link" href="v16.html">V16</a>
+      <a class="page-link" href="v17.html">V17</a>
+      <a class="page-link" href="v18.html">V18</a>
+      <a class="page-link" href="v19.html">V19</a>
+      <a class="page-link" href="v20.html">V20</a>
+      <a class="page-link" href="v21.html">V21</a>
+      <a class="page-link" href="v22.html">V22</a>
+      <details class="archive-nav">
+        <summary>Archive V1-V12</summary>
+        <div class="archive-links">
+          <a class="page-link archive-link" href="v1.html">V1</a><a class="page-link archive-link" href="v2.html">V2</a><a class="page-link archive-link" href="v3.html">V3</a><a class="page-link archive-link" href="v4.html">V4</a><a class="page-link archive-link" href="v5.html">V5</a><a class="page-link archive-link" href="v6.html">V6</a><a class="page-link archive-link" href="v7.html">V7</a><a class="page-link archive-link" href="v8.html">V8</a><a class="page-link archive-link" href="v9.html">V9</a><a class="page-link archive-link" href="v10.html">V10</a><a class="page-link archive-link" href="v11.html">V11</a><a class="page-link archive-link" href="v12.html">V12</a>
+        </div>
+      </details>
+    </nav>
+
+    <nav class="report-nav" aria-label="Report sections">
+      <a href="#status">Status</a><a href="#risk-profiles">Risk Profiles</a><a href="#safety">Live Safety</a><a href="#operator-followups">MT5 Follow-Ups</a><a href="#files">Files</a>
+    </nav>
+
+  </header>
+
+  <main>
+    <section id="status" class="panel">
+      <h2>Current EA Status</h2>
+      <div class="status-grid">
+        <div class="status-card"><span>Port stage</span><strong>Scaffolded / tester-only</strong></div>
+        <div class="status-card"><span>Python truth</span><strong>V13 + V15 + V22</strong></div>
+        <div class="status-card"><span>EA parity</span><strong>Fixture harness added; MetaEditor compile passed; tester load/config smoke passed</strong></div>
+        <div class="status-card"><span>Next task</span><strong>Add single-chart smoke mode and new-bar gating</strong></div>
+        <div class="status-card"><span>Live impact</span><strong>No VPS, config, state, journal, or order changes</strong></div>
+      </div>
+      <p class="ok"><strong>Boundary:</strong> EA migration files are isolated under <code>mql5/lpfs_ea/</code>. The FTMO and IC Python live runners remain production truth until a separate EA demo/live deployment plan is approved.</p>
+      <p class="warning"><strong>Tester observation:</strong> the first EURUSD H4 Strategy Tester run loaded the EA and printed the LPFS configuration, but was intentionally stopped because the scaffold currently requests the full 28-symbol x 5-timeframe basket on every tick. Do not run another long full-basket smoke before adding <code>InpSmokeTestSingleChartOnly</code> and new-bar gating.</p>
+    </section>
+
+    <section id="risk-profiles" class="panel">
+      <h2>Blackbox Risk Profiles</h2>
+      <p>Users choose a tested profile instead of editing raw LPFS buckets. Every tester run must disclose the effective schedule so the backtest remains auditable.</p>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>Profile</th><th>H4/H8</th><th>H12/D1</th><th>W1</th><th>Max Open Risk</th><th>Max Trades</th></tr></thead>
+          <tbody><tr><td>Conservative</td><td>0.10% / 0.10%</td><td>0.15% / 0.15%</td><td>0.30%</td><td>3.00%</td><td>8</td></tr><tr><td>Standard</td><td>0.20% / 0.20%</td><td>0.30% / 0.30%</td><td>0.75%</td><td>6.00%</td><td>17</td></tr><tr><td>Growth</td><td>0.25% / 0.25%</td><td>0.30% / 0.30%</td><td>0.75%</td><td>9.00%</td><td>17</td></tr></tbody>
+        </table>
+      </div>
+      <p class="source-note">Raw bucket editing is intentionally deferred. The EA exposes profile, open-risk caps, concurrency caps, MagicNumber, CommentPrefix, and logging controls. A cap value of <code>0</code> uses the selected profile default.</p>
+    </section>
+
+    <section id="safety" class="panel">
+      <h2>Live Safety Boundary</h2>
+      <p class="warning"><strong>Tester-only v1:</strong> the EA must refuse to initialize outside Strategy Tester while <code>InpTesterOnly=true</code> and <code>InpAllowLiveTrading=false</code>. Do not attach it to FTMO or IC live charts.</p>
+      <ul>
+        <li>Default EA identity: <code>MagicNumber=331500</code>, <code>CommentPrefix=LPFSEA</code>.</li>
+        <li>Does not collide with FTMO <code>131500/LPFS</code> or IC <code>231500/LPFSIC</code>.</li>
+        <li>No live configs, VPS scheduled tasks, runtime state, JSONL journals, Telegram channels, or broker orders are part of this migration slice.</li>
+      </ul>
+    </section>
+
+    <section id="operator-followups" class="panel">
+      <h2>Operator Follow-Ups For MT5</h2>
+      <ol>
+        <li>Install or confirm MT5 with MetaEditor available on a local test terminal.</li>
+        <li>Keep the EA test terminal separate from FTMO and IC production terminals.</li>
+        <li>Compile <code>mql5/lpfs_ea/Experts/LPFS/LPFS_EA.mq5</code> using the helper script or MetaEditor.</li>
+        <li>Next code change: add <code>InpSmokeTestSingleChartOnly=true</code> and scan only <code>_Symbol/_Period</code> for first smoke tests.</li>
+        <li>After that patch, run Strategy Tester with one symbol first, real ticks or highest-quality ticks available, then save tester reports for Conservative, Standard, and Growth.</li>
+      </ol>
+    </section>
+
+    <section id="files" class="panel">
+      <h2>Migration Files</h2>
+      <div class="card-grid">
+        <article class="file-card"><h3>EA source</h3><p><code>mql5/lpfs_ea/Experts/LPFS/LPFS_EA.mq5</code></p><p>Native tester-only MQL5 scaffold with blackbox inputs, profile disclosure, LP/FS detector port, and guarded pending-order path.</p></article>
+        <article class="file-card"><h3>Parity fixtures</h3><p><code>mql5/lpfs_ea/fixtures/canonical_lpfs_ea_fixture.json</code></p><p>Small Python-generated parity cases for signal and execution contract matching.</p></article>
+        <article class="file-card"><h3>Fixture exporter</h3><p><code>scripts/export_lpfs_ea_fixtures.py</code></p><p>Regenerates canonical fixtures from Python truth after strategy changes.</p></article>
+        <article class="file-card"><h3>Compile helper</h3><p><code>mql5/lpfs_ea/scripts/Compile-LpfsEa.ps1</code></p><p>Local MetaEditor compile wrapper. It does not touch live terminals or VPS runtime folders.</p></article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

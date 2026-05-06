@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-06 SGT after the LPFS documentation/verification refresh
-for both VPS lanes.
+Last updated: 2026-05-07 after adding the isolated LPFS native MQL5 EA
+migration scaffold, parity fixtures, and tester-only operator docs.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -26,6 +26,8 @@ file, and the JSONL journal before making operational decisions.
    IC Markets production runner.
 10. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
+11. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+   native EA or Strategy Tester work.
 
 ## AI Agent Continuity Rules
 
@@ -45,6 +47,10 @@ file, and the JSONL journal before making operational decisions.
   user wants the docs available on the VPS checkout.
 - Never instruct future agents to edit VPS live state, journal, MT5 orders, or
   MT5 positions unless the user explicitly approves a separate operator plan.
+- EA migration work is local/tester-only until separately approved. Do not
+  attach the v1 EA to FTMO or IC live charts, and do not run it in the same
+  MT5 terminal/account used by Python production without a fresh isolation
+  plan.
 
 ## Remote VPS Access
 
@@ -84,6 +90,35 @@ Environment boundary rule: local OneDrive is development; VPS
 agents should start remote work with `ssh lpfs-vps hostname`, `ssh lpfs-vps
 whoami`, VPS `git status`, and the LPFS status packet before drawing
 operational conclusions.
+
+## 2026-05-07 EA Migration Scaffold
+
+- Added isolated native MQL5 EA workspace under `mql5/lpfs_ea/`.
+- EA v1 is Strategy Tester-only by default: `InpTesterOnly=true` and
+  `InpAllowLiveTrading=false`. It refuses to initialize outside tester with
+  those defaults.
+- EA identity is separate from production: `MagicNumber=331500` and
+  `CommentPrefix=LPFSEA`; it does not collide with FTMO `131500/LPFS` or IC
+  `231500/LPFSIC`.
+- Added Python parity fixture exporter
+  `scripts/export_lpfs_ea_fixtures.py` and tracked fixture
+  `mql5/lpfs_ea/fixtures/canonical_lpfs_ea_fixture.json`.
+- Added local MetaEditor compile helper
+  `mql5/lpfs_ea/scripts/Compile-LpfsEa.ps1`; it only compiles the EA source
+  and does not touch live terminals, VPS runtime, configs, state, journals, or
+  broker orders.
+- Local MetaEditor compile check passed with `0 errors, 0 warnings`; Strategy
+  Tester load/config smoke also passed in MT5.
+- The first EURUSD H4 tester run printed the LPFS configuration, risk schedule,
+  basket/timeframes, and tester-only mode. It was intentionally stopped because
+  the scaffold requests the full 28-symbol x 5-timeframe basket on every tick,
+  causing an impractical first-smoke estimate.
+- Next EA continuation task: add `InpSmokeTestSingleChartOnly=true` so the
+  first smoke path scans only `_Symbol/_Period`, and add new-bar gating so
+  full-basket mode does not rescan all frames on every tick.
+- Added `docs/ea_migration.html` and linked it from `docs/index.html`.
+- Production live runs were not changed: no VPS pull, no task restart, no
+  config edits, no live state/journal edits, and no MT5 order/position changes.
 
 ## 2026-05-06 Wrap-Up / Git State
 

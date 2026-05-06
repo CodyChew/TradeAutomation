@@ -27,3 +27,7 @@ htmlcov/
 
 data/
 reports/
+
+# MQL5 build outputs
+*.ex5
+mql5/lpfs_ea/compile_lpfs_ea.log

@@ -258,8 +258,29 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Current Baseline", html)
         self.assertIn("Current Research Pages", html)
         self.assertIn("Research Archive V1-V12", html)
+        self.assertIn("Native MQL5 EA Migration", html)
+        self.assertIn('href="ea_migration.html"', html)
         self.assertNotIn("Current focus", html)
         self.assertIn("V8 is positive but weaker", html)
+
+    def test_ea_migration_page_shows_tester_only_boundary(self) -> None:
+        html = (DOCS_ROOT / "ea_migration.html").read_text(encoding="utf-8")
+
+        self.assertIn("LPFS Native MQL5 EA Migration", html)
+        self.assertIn("Strategy Tester-only", html)
+        self.assertIn("Fixture harness added; MetaEditor compile passed; tester load/config smoke passed", html)
+        self.assertIn("Add single-chart smoke mode and new-bar gating", html)
+        self.assertIn("InpSmokeTestSingleChartOnly", html)
+        self.assertIn("No VPS, config, state, journal, or order changes", html)
+        self.assertIn("Blackbox Risk Profiles", html)
+        self.assertIn("Conservative", html)
+        self.assertIn("Standard", html)
+        self.assertIn("Growth", html)
+        self.assertIn("MagicNumber=331500", html)
+        self.assertIn("CommentPrefix=LPFSEA", html)
+        self.assertIn("Do not attach it to FTMO or IC live charts", html)
+        self.assertIn("mql5/lpfs_ea/Experts/LPFS/LPFS_EA.mq5", html)
+        self.assertNotIn("<script", html.lower())
 
     def test_v10_dashboard_is_analysis_first(self) -> None:
         html = (DOCS_ROOT / "v10.html").read_text(encoding="utf-8")

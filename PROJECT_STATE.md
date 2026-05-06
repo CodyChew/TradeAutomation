@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-06 local time after the LPFS documentation/verification
-refresh for the FTMO and IC VPS lanes.
+Last updated: 2026-05-07 after adding the isolated LPFS native MQL5 EA
+migration scaffold and tester-only docs.
 
 ## Purpose
 
@@ -27,8 +27,10 @@ source of truth for strategy research and live execution work.
 9. `docs/lpfs_icmarkets_vps_runbook.md` before IC VPS maintenance.
 10. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-11. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
-12. `concepts/lp_levels_lab/PROJECT_STATE.md` and
+11. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+   native MQL5 EA or Strategy Tester work.
+12. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
+13. `concepts/lp_levels_lab/PROJECT_STATE.md` and
    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
    concept behavior.
 
@@ -50,6 +52,10 @@ https://codychew.github.io/TradeAutomation/
 - `strategies/lp_force_strike_strategy_lab`: active LP + Force Strike strategy
   research, MT5 execution contract, dry-run order-check adapter, and Telegram
   notification contract.
+- `mql5/lpfs_ea`: isolated native MQL5 EA migration workspace. It is
+  Strategy Tester-only in v1 and must not be treated as production live
+  execution. Compile and tester load/config smoke passed; full-result smoke is
+  pending until the EA gets single-chart smoke mode and new-bar gating.
 - `docs/`: static GitHub Pages dashboards.
 - `data/` and `reports/`: generated local data/results, intentionally ignored by
   git.
@@ -800,6 +806,23 @@ That folder preserves `CryptoBot_test/`, `FOREX/`, `forex_experiment/`,
 the user explicitly asks.
 
 ## Suggested Prompt For Next Session
+
+For the native EA migration task:
+
+```text
+Continue the LPFS native MQL5 EA migration from TradeAutomation. Read
+SESSION_HANDOFF.md, strategies/lp_force_strike_strategy_lab/START_HERE.md,
+docs/ea_migration.html, and mql5/lpfs_ea/README.md first. Current checkpoint:
+MetaEditor compile passed with 0 errors/0 warnings, MT5 Strategy Tester
+load/config smoke passed, and the first EURUSD H4 tester run was intentionally
+stopped because the scaffold scans the full 28-symbol x 5-timeframe basket on
+every tick. Next task: add InpSmokeTestSingleChartOnly=true by default for v1
+tester smoke, scan only _Symbol/_Period when enabled, add new-bar gating, then
+compile and rerun a short EURUSD H4 Strategy Tester smoke. Do not touch VPS
+runtime, live configs, live journals, scheduled tasks, or broker orders.
+```
+
+For LPFS live operations:
 
 ```text
 Continue from TradeAutomation/PROJECT_STATE.md. Focus on the LP + Force Strike

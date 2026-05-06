@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-05-06 after adding boot-level Telegram startup alerts to the
-FTMO and IC VPS lanes.
+Last updated: 2026-05-07 after adding the isolated native MQL5 EA migration
+workspace, Python parity fixture, and tester-only operator docs.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -32,6 +32,10 @@ operational decisions.
   bar (`lp_pivot_index < fs_mother_index`).
 - Execution state: guarded MT5 live-send path exists and can place real orders
   only when ignored local config explicitly enables live send.
+- EA migration state: native MQL5 tester-only scaffold exists under
+  `mql5/lpfs_ea/`. MetaEditor compile and MT5 tester load/config smoke passed;
+  full-result smoke is pending until single-chart smoke mode and new-bar gating
+  are added. Python remains canonical.
 - Production host: Amazon Lightsail Windows VPS.
 - Preferred remote access: Tailscale + OpenSSH using local alias `lpfs-vps`.
 - Broker truth: MT5 orders, positions, order history, and deal history.
@@ -56,6 +60,8 @@ operational decisions.
    `docs/dry_run_executor.md` before changing execution or notification code.
 9. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
+10. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+   native MQL5 EA or Strategy Tester work.
 
 ## Source-Of-Truth Matrix
 
@@ -70,6 +76,7 @@ operational decisions.
 | Account and secrets | ignored `config.local.json` and local OS/user secrets | Never commit MT5 passwords, Telegram tokens, SSH private keys, or account credentials. |
 | IC account validation | `docs/account_validation.html`, `docs/lpfs_new_mt5_account_validation.md`, and `config.lpfs_new_mt5_account.example.json` | Local-only validation and smoke testing; do not touch VPS live account. |
 | IC production setup | `docs/lpfs_icmarkets_vps_runbook.md`, `config.lpfs_icmarkets_raw_spread.example.json`, and `scripts/Get-LpfsDualVpsStatus.ps1` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
+| Native EA migration | `docs/ea_migration.html`, `mql5/lpfs_ea/README.md`, and `mql5/lpfs_ea/Experts/LPFS/LPFS_EA.mq5` | Tester-only v1; do not attach to production live charts. |
 | Dashboard HTML | builder scripts in `scripts/` | Edit builders, then regenerate HTML; do not make HTML-only dashboard changes. |
 
 ## Environment Boundaries
@@ -122,6 +129,9 @@ production-adjacent.
   its own ignored config, state, journal, and reconciliation plan.
 - Do not run a manual IC live runner while `LPFS_IC_Live` is active on the IC
   VPS; use the kill switch/status packet first.
+- Do not attach the native MQL5 EA to FTMO or IC live charts during v1. It is
+  Strategy Tester-only until a separate demo/live EA deployment plan is
+  approved.
 - Do not edit live state, journal rows, MT5 orders, MT5 positions, or deal
   history unless the user explicitly approves a separate operator plan.
 - Use the kill switch before approved deploy, restart, or emergency pause work.
@@ -144,3 +154,4 @@ Use one of these prompts to restart cleanly:
 - Second MT5 account planning: `Read START_HERE.md and docs/mt5_execution_contract.md, then plan a separate config/runtime/account boundary for another MT5 account without touching current VPS state.`
 - Second MT5 account validation: `Read START_HERE.md and docs/lpfs_new_mt5_account_validation.md, then audit the locally logged-in MT5 account before pulling data or running dry-run.`
 - IC VPS audit: `Read START_HERE.md and docs/lpfs_icmarkets_vps_runbook.md, then run Get-LpfsDualVpsStatus.ps1 and verify LPFS_Live and LPFS_IC_Live from MT5/runtime state before making operational changes.`
+- EA migration: `Read START_HERE.md, docs/ea_migration.html, and mql5/lpfs_ea/README.md, then continue native MQL5 tester-only work without touching VPS runtime, live configs, live journals, or broker orders.`

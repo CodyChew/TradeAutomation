@@ -1,0 +1,603 @@
+{
+  "approved_symbols": [
+    "AUDCAD",
+    "AUDCHF",
+    "AUDJPY",
+    "AUDNZD",
+    "AUDUSD",
+    "CADCHF",
+    "CADJPY",
+    "CHFJPY",
+    "EURAUD",
+    "EURCAD",
+    "EURCHF",
+    "EURGBP",
+    "EURJPY",
+    "EURNZD",
+    "EURUSD",
+    "GBPAUD",
+    "GBPCAD",
+    "GBPCHF",
+    "GBPJPY",
+    "GBPNZD",
+    "GBPUSD",
+    "NZDCAD",
+    "NZDCHF",
+    "NZDJPY",
+    "NZDUSD",
+    "USDCAD",
+    "USDCHF",
+    "USDJPY"
+  ],
+  "approved_timeframes": [
+    "H4",
+    "H8",
+    "H12",
+    "D1",
+    "W1"
+  ],
+  "cases": {
+    "invalid_lp_fs_separation": {
+      "bars": [
+        {
+          "close": 6.0,
+          "high": 8.0,
+          "low": 5.0,
+          "open": 6.5,
+          "time_utc": "2026-01-01T00:00:00+00:00"
+        },
+        {
+          "close": 6.5,
+          "high": 8.5,
+          "low": 5.5,
+          "open": 7.0,
+          "time_utc": "2026-01-01T04:00:00+00:00"
+        },
+        {
+          "close": 7.0,
+          "high": 9.2,
+          "low": 6.0,
+          "open": 7.6,
+          "time_utc": "2026-01-01T08:00:00+00:00"
+        },
+        {
+          "close": 7.5,
+          "high": 9.4,
+          "low": 6.5,
+          "open": 7.95,
+          "time_utc": "2026-01-01T12:00:00+00:00"
+        },
+        {
+          "close": 9.8,
+          "high": 10.0,
+          "low": 8.0,
+          "open": 9.0,
+          "time_utc": "2026-01-01T16:00:00+00:00"
+        },
+        {
+          "close": 9.0,
+          "high": 9.8,
+          "low": 8.4,
+          "open": 9.1,
+          "time_utc": "2026-01-01T20:00:00+00:00"
+        },
+        {
+          "close": 9.2,
+          "high": 9.7,
+          "low": 8.5,
+          "open": 9.1,
+          "time_utc": "2026-01-02T00:00:00+00:00"
+        },
+        {
+          "close": 9.4,
+          "high": 9.8,
+          "low": 8.6,
+          "open": 9.2,
+          "time_utc": "2026-01-02T04:00:00+00:00"
+        },
+        {
+          "close": 8.9,
+          "high": 10.2,
+          "low": 8.5,
+          "open": 9.35,
+          "time_utc": "2026-01-02T08:00:00+00:00"
+        },
+        {
+          "close": 9.0,
+          "high": 9.5,
+          "low": 8.4,
+          "open": 8.95,
+          "time_utc": "2026-01-02T12:00:00+00:00"
+        }
+      ],
+      "default_signal_count": 0,
+      "legacy_signal_count": 1,
+      "symbol": "EURUSD",
+      "timeframe": "H4"
+    },
+    "no_signal": {
+      "bars": [
+        {
+          "close": 0.9,
+          "high": 1.0,
+          "low": 0.8,
+          "open": 0.9,
+          "time_utc": "2026-01-01T00:00:00+00:00"
+        },
+        {
+          "close": 0.9,
+          "high": 1.0,
+          "low": 0.8,
+          "open": 0.9,
+          "time_utc": "2026-01-01T04:00:00+00:00"
+        },
+        {
+          "close": 0.9,
+          "high": 1.0,
+          "low": 0.8,
+          "open": 0.9,
+          "time_utc": "2026-01-01T08:00:00+00:00"
+        },
+        {
+          "close": 0.9,
+          "high": 1.0,
+          "low": 0.8,
+          "open": 0.9,
+          "time_utc": "2026-01-01T12:00:00+00:00"
+        },
+        {
+          "close": 0.9,
+          "high": 1.0,
+          "low": 0.8,
+          "open": 0.9,
+          "time_utc": "2026-01-01T16:00:00+00:00"
+        },
+        {
+          "close": 0.9,
+          "high": 1.0,
+          "low": 0.8,
+          "open": 0.9,
+          "time_utc": "2026-01-01T20:00:00+00:00"
+        },
+        {
+          "close": 0.9,
+          "high": 1.0,
+          "low": 0.8,
+          "open": 0.9,
+          "time_utc": "2026-01-02T00:00:00+00:00"
+        },
+        {
+          "close": 0.9,
+          "high": 1.0,
+          "low": 0.8,
+          "open": 0.9,
+          "time_utc": "2026-01-02T04:00:00+00:00"
+        },
+        {
+          "close": 0.9,
+          "high": 1.0,
+          "low": 0.8,
+          "open": 0.9,
+          "time_utc": "2026-01-02T08:00:00+00:00"
+        },
+        {
+          "close": 0.9,
+          "high": 1.0,
+          "low": 0.8,
+          "open": 0.9,
+          "time_utc": "2026-01-02T12:00:00+00:00"
+        },
+        {
+          "close": 0.9,
+          "high": 1.0,
+          "low": 0.8,
+          "open": 0.9,
+          "time_utc": "2026-01-02T16:00:00+00:00"
+        },
+        {
+          "close": 0.9,
+          "high": 1.0,
+          "low": 0.8,
+          "open": 0.9,
+          "time_utc": "2026-01-02T20:00:00+00:00"
+        }
+      ],
+      "signals": [],
+      "symbol": "EURUSD",
+      "timeframe": "H4"
+    },
+    "rejections": {
+      "duplicate_signal": {
+        "checks": [],
+        "detail": "lpfs:EURUSD:H4:10:long:lp_pivot_3__signal_zone_0p5_pullback__fs_structure__1r:2026-01-01 00:00:00+00:00",
+        "ready": false,
+        "rejection_reason": "duplicate_signal",
+        "status": "rejected"
+      },
+      "max_open_risk": {
+        "checks": [
+          "basic_contract",
+          "pending_direction",
+          "broker_distances",
+          "risk_bucket",
+          "volume_sizing"
+        ],
+        "detail": "open=5.91 new=0.1 max=6",
+        "ready": false,
+        "rejection_reason": "max_open_risk",
+        "status": "rejected"
+      },
+      "pending_expired": {
+        "checks": [
+          "basic_contract",
+          "pending_direction",
+          "broker_distances",
+          "risk_bucket",
+          "volume_sizing",
+          "exposure_limits",
+          "expiration"
+        ],
+        "detail": "broker_backstop_expiration_time_utc=2026-01-12T04:00:00+00:00 market_time_utc=2026-01-12T04:00:00+00:00",
+        "ready": false,
+        "rejection_reason": "pending_expired",
+        "status": "rejected"
+      },
+      "sl_tp_too_close": {
+        "checks": [
+          "basic_contract",
+          "pending_direction"
+        ],
+        "detail": "stop_distance=0.0002 target_distance=0.0002 min=0.0005",
+        "ready": false,
+        "rejection_reason": "sl_tp_too_close",
+        "status": "rejected"
+      },
+      "spread_too_wide_dynamic": {
+        "max_spread_risk_fraction": 0.1,
+        "passed": false,
+        "risk_price": 0.005,
+        "spread_price": 0.0008,
+        "spread_risk_fraction": 0.16
+      },
+      "volume_below_min": {
+        "checks": [
+          "basic_contract",
+          "pending_direction",
+          "broker_distances",
+          "risk_bucket"
+        ],
+        "detail": "raw_volume=0.0004 rounded_volume=0 min=0.1",
+        "ready": false,
+        "rejection_reason": "volume_below_min",
+        "status": "rejected"
+      }
+    },
+    "valid_long_signal": {
+      "bars": [
+        {
+          "close": 9.0,
+          "high": 10.0,
+          "low": 8.0,
+          "open": 9.0,
+          "time_utc": "2026-01-01T00:00:00+00:00"
+        },
+        {
+          "close": 8.0,
+          "high": 9.0,
+          "low": 7.0,
+          "open": 8.0,
+          "time_utc": "2026-01-01T04:00:00+00:00"
+        },
+        {
+          "close": 6.0,
+          "high": 8.0,
+          "low": 5.0,
+          "open": 6.5,
+          "time_utc": "2026-01-01T08:00:00+00:00"
+        },
+        {
+          "close": 8.0,
+          "high": 9.0,
+          "low": 7.0,
+          "open": 8.0,
+          "time_utc": "2026-01-01T12:00:00+00:00"
+        },
+        {
+          "close": 9.0,
+          "high": 10.0,
+          "low": 8.0,
+          "open": 9.0,
+          "time_utc": "2026-01-01T16:00:00+00:00"
+        },
+        {
+          "close": 5.0,
+          "high": 8.0,
+          "low": 4.0,
+          "open": 6.0,
+          "time_utc": "2026-01-01T20:00:00+00:00"
+        },
+        {
+          "close": 8.0,
+          "high": 9.0,
+          "low": 7.0,
+          "open": 8.0,
+          "time_utc": "2026-01-02T00:00:00+00:00"
+        },
+        {
+          "close": 9.0,
+          "high": 10.0,
+          "low": 8.0,
+          "open": 9.0,
+          "time_utc": "2026-01-02T04:00:00+00:00"
+        },
+        {
+          "close": 7.0,
+          "high": 9.0,
+          "low": 3.8,
+          "open": 6.4,
+          "time_utc": "2026-01-02T08:00:00+00:00"
+        },
+        {
+          "close": 7.0,
+          "high": 8.5,
+          "low": 4.5,
+          "open": 6.5,
+          "time_utc": "2026-01-02T12:00:00+00:00"
+        },
+        {
+          "close": 8.0,
+          "high": 8.8,
+          "low": 3.5,
+          "open": 6.15,
+          "time_utc": "2026-01-02T16:00:00+00:00"
+        },
+        {
+          "close": 8.2,
+          "high": 9.0,
+          "low": 6.0,
+          "open": 7.5,
+          "time_utc": "2026-01-02T20:00:00+00:00"
+        }
+      ],
+      "order_decision": {
+        "checks": [
+          "basic_contract",
+          "pending_direction",
+          "broker_distances",
+          "risk_bucket",
+          "volume_sizing",
+          "exposure_limits",
+          "expiration"
+        ],
+        "detail": "",
+        "intent": {
+          "actual_risk_pct": 0.18550000000000005,
+          "comment": "LPFSEA H4 L 10",
+          "entry_price": 6.15,
+          "magic": 331500,
+          "max_entry_wait_bars": 6,
+          "order_type": "BUY_LIMIT",
+          "signal_key": "lpfs:EURUSD:H4:10:long:lp_pivot_3__signal_zone_0p5_pullback__fs_structure__1r:2026-01-02 16:00:00+00:00",
+          "stop_loss": 3.5,
+          "strategy_expiry_mode": "bar_count",
+          "take_profit": 8.8,
+          "target_risk_pct": 0.2,
+          "volume": 0.07
+        },
+        "ready": true,
+        "rejection_reason": null,
+        "status": "ready"
+      },
+      "setup": {
+        "entry_index": 11,
+        "entry_price": 6.15,
+        "setup_id": "EURUSD_H4_10_lp_pivot_3__signal_zone_0p5_pullback__fs_structure__1r",
+        "side": "long",
+        "signal_index": 10,
+        "signal_key": "lpfs:EURUSD:H4:10:long:lp_pivot_3__signal_zone_0p5_pullback__fs_structure__1r:2026-01-02 16:00:00+00:00",
+        "stop_price": 3.5,
+        "symbol": "EURUSD",
+        "target_price": 8.8,
+        "timeframe": "H4"
+      },
+      "signal": {
+        "bars_from_lp_break": 3,
+        "fs_mother_index": 8,
+        "fs_signal_index": 10,
+        "fs_signal_time_utc": "2026-01-02T16:00:00+00:00",
+        "fs_total_bars": 3,
+        "lp_break_index": 8,
+        "lp_pivot_index": 5,
+        "lp_price": 4.0,
+        "scenario": "force_bottom",
+        "side": "bullish"
+      },
+      "symbol": "EURUSD",
+      "timeframe": "H4"
+    },
+    "valid_short_signal": {
+      "bars": [
+        {
+          "close": 10.0,
+          "high": 12.0,
+          "low": 8.0,
+          "open": 10.0,
+          "time_utc": "2026-01-01T00:00:00+00:00"
+        },
+        {
+          "close": 11.0,
+          "high": 13.0,
+          "low": 9.0,
+          "open": 11.0,
+          "time_utc": "2026-01-01T04:00:00+00:00"
+        },
+        {
+          "close": 12.0,
+          "high": 15.0,
+          "low": 10.0,
+          "open": 12.5,
+          "time_utc": "2026-01-01T08:00:00+00:00"
+        },
+        {
+          "close": 11.0,
+          "high": 13.0,
+          "low": 9.0,
+          "open": 11.0,
+          "time_utc": "2026-01-01T12:00:00+00:00"
+        },
+        {
+          "close": 10.0,
+          "high": 12.0,
+          "low": 8.0,
+          "open": 10.0,
+          "time_utc": "2026-01-01T16:00:00+00:00"
+        },
+        {
+          "close": 12.0,
+          "high": 16.0,
+          "low": 10.0,
+          "open": 13.0,
+          "time_utc": "2026-01-01T20:00:00+00:00"
+        },
+        {
+          "close": 11.0,
+          "high": 13.0,
+          "low": 9.0,
+          "open": 11.0,
+          "time_utc": "2026-01-02T00:00:00+00:00"
+        },
+        {
+          "close": 10.0,
+          "high": 12.0,
+          "low": 8.0,
+          "open": 10.0,
+          "time_utc": "2026-01-02T04:00:00+00:00"
+        },
+        {
+          "close": 12.0,
+          "high": 17.0,
+          "low": 10.0,
+          "open": 13.5,
+          "time_utc": "2026-01-02T08:00:00+00:00"
+        },
+        {
+          "close": 12.0,
+          "high": 16.5,
+          "low": 10.5,
+          "open": 13.5,
+          "time_utc": "2026-01-02T12:00:00+00:00"
+        },
+        {
+          "close": 11.0,
+          "high": 17.2,
+          "low": 10.5,
+          "open": 13.85,
+          "time_utc": "2026-01-02T16:00:00+00:00"
+        },
+        {
+          "close": 11.0,
+          "high": 14.1,
+          "low": 9.8,
+          "open": 11.95,
+          "time_utc": "2026-01-02T20:00:00+00:00"
+        }
+      ],
+      "order_decision": {
+        "checks": [
+          "basic_contract",
+          "pending_direction",
+          "broker_distances",
+          "risk_bucket",
+          "volume_sizing",
+          "exposure_limits",
+          "expiration"
+        ],
+        "detail": "",
+        "intent": {
+          "actual_risk_pct": 0.7369999999999999,
+          "comment": "LPFSEA W1 S 10",
+          "entry_price": 13.85,
+          "magic": 331500,
+          "max_entry_wait_bars": 6,
+          "order_type": "SELL_LIMIT",
+          "signal_key": "lpfs:EURUSD:W1:10:short:lp_pivot_3__signal_zone_0p5_pullback__fs_structure__1r:2026-01-02 16:00:00+00:00",
+          "stop_loss": 17.2,
+          "strategy_expiry_mode": "bar_count",
+          "take_profit": 10.5,
+          "target_risk_pct": 0.75,
+          "volume": 0.22
+        },
+        "ready": true,
+        "rejection_reason": null,
+        "status": "ready"
+      },
+      "setup": {
+        "entry_index": 11,
+        "entry_price": 13.85,
+        "setup_id": "EURUSD_W1_10_lp_pivot_3__signal_zone_0p5_pullback__fs_structure__1r",
+        "side": "short",
+        "signal_index": 10,
+        "signal_key": "lpfs:EURUSD:W1:10:short:lp_pivot_3__signal_zone_0p5_pullback__fs_structure__1r:2026-01-02 16:00:00+00:00",
+        "stop_price": 17.2,
+        "symbol": "EURUSD",
+        "target_price": 10.5,
+        "timeframe": "W1"
+      },
+      "signal": {
+        "bars_from_lp_break": 3,
+        "fs_mother_index": 8,
+        "fs_signal_index": 10,
+        "fs_signal_time_utc": "2026-01-02T16:00:00+00:00",
+        "fs_total_bars": 3,
+        "lp_break_index": 8,
+        "lp_pivot_index": 5,
+        "lp_price": 16.0,
+        "scenario": "force_top",
+        "side": "bearish"
+      },
+      "symbol": "EURUSD",
+      "timeframe": "W1"
+    }
+  },
+  "ea_mode": "native_mql5_tester_only",
+  "fixture_version": 1,
+  "risk_profiles": {
+    "Conservative": {
+      "max_concurrent_trades": 8,
+      "max_open_risk_pct": 3.0,
+      "max_same_symbol_trades": 2,
+      "risk_buckets_pct": {
+        "D1": 0.15,
+        "H12": 0.15,
+        "H4": 0.1,
+        "H8": 0.1,
+        "W1": 0.3
+      }
+    },
+    "Growth": {
+      "max_concurrent_trades": 17,
+      "max_open_risk_pct": 9.0,
+      "max_same_symbol_trades": 4,
+      "risk_buckets_pct": {
+        "D1": 0.3,
+        "H12": 0.3,
+        "H4": 0.25,
+        "H8": 0.25,
+        "W1": 0.75
+      }
+    },
+    "Standard": {
+      "max_concurrent_trades": 17,
+      "max_open_risk_pct": 6.0,
+      "max_same_symbol_trades": 4,
+      "risk_buckets_pct": {
+        "D1": 0.3,
+        "H12": 0.3,
+        "H4": 0.2,
+        "H8": 0.2,
+        "W1": 0.75
+      }
+    }
+  },
+  "strategy_contract": "V13 mechanics + V15 risk buckets + V22 LP/FS separation"
+}

@@ -137,6 +137,21 @@ def _account_validation_card() -> str:
     """
 
 
+def _ea_migration_card() -> str:
+    return """
+    <section id="ea-migration" class="card featured">
+      <div class="status status-neutral">EA migration</div>
+      <h2>Native MQL5 EA Migration</h2>
+      <p>Strategy Tester-only native MQL5 port workspace with blackbox risk profiles, Python parity fixtures, compile helper, and operator follow-ups. The Python FTMO and IC live runners remain production truth.</p>
+      <div class="facts">
+        <div class="fact"><span>Stage</span><strong>Tester-only scaffold</strong></div>
+        <div class="fact"><span>Live impact</span><strong>No VPS/runtime changes</strong></div>
+      </div>
+      <a class="button" href="ea_migration.html">Open EA Migration</a>
+    </section>
+    """
+
+
 def _section_heading(title: str, body: str) -> str:
     return f"""
     <section class="section-heading">
@@ -183,6 +198,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
         _strategy_card(),
         _live_ops_card(),
         _account_validation_card(),
+        _ea_migration_card(),
         _section_heading(
             "Current Research Pages",
             "These are the current research snapshots that still feed the active LPFS strategy contract.",
