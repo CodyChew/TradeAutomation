@@ -26,6 +26,7 @@ from lp_force_strike_strategy_lab.ops_alerts import (  # noqa: E402
     VpsStartupSnapshot,
     _message_summary,
     _restart_reason_from_message,
+    _windows_last_restart_event,
     build_vps_startup_message,
     send_vps_startup_alert,
 )
@@ -88,6 +89,20 @@ class OpsAlertTests(unittest.TestCase):
             _message_summary(message),
             "The process C:\\Windows\\system32\\svchost.exe has initiated the restart. | Reason Code: 0x80020010",
         )
+
+    def test_windows_restart_event_query_prefers_planned_restart_reason(self) -> None:
+        captured = {}
+
+        def fake_run_powershell_json(script: str):
+            captured["script"] = script
+            return {"id": 1074, "message": "Reason Code: 0x80020010"}
+
+        with mock.patch.object(ops_alerts_module, "_run_powershell_json", side_effect=fake_run_powershell_json):
+            event = _windows_last_restart_event()
+
+        self.assertEqual(event["id"], 1074)
+        self.assertIn("Where-Object { $_.Id -eq 1074 }", captured["script"])
+        self.assertIn("6008,41", captured["script"])
 
     def test_startup_alert_retries_delivery_and_journals_sanitized_outcome(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -192,7 +192,14 @@ def _windows_last_boot_time_utc() -> str:
 def _windows_last_restart_event() -> dict[str, Any]:
     payload = _run_powershell_json(
         """
-        $event = Get-WinEvent -FilterHashtable @{LogName='System'; Id=1074,6005,6006,6008,41} -MaxEvents 1
+        $events = @(Get-WinEvent -FilterHashtable @{LogName='System'; Id=1074,6008,41,6005,6006} -MaxEvents 20)
+        $event = $events | Where-Object { $_.Id -eq 1074 } | Select-Object -First 1
+        if ($null -eq $event) {
+            $event = $events | Where-Object { $_.Id -in @(6008,41) } | Select-Object -First 1
+        }
+        if ($null -eq $event) {
+            $event = $events | Select-Object -First 1
+        }
         if ($null -ne $event) {
             [pscustomobject]@{
                 time_created_utc = $event.TimeCreated.ToUniversalTime().ToString("o")
