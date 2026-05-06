@@ -431,6 +431,10 @@ class LiveExecutorTests(unittest.TestCase):
             string_symbol = load_live_send_settings(config_path, env={})
             self.assertEqual(string_symbol.executor.symbols, ("EURUSD",))
 
+            config_path.write_text(json.dumps({"live_send": {"risk_buckets_pct": ["H4", 0.25]}}), encoding="utf-8")
+            with self.assertRaisesRegex(LocalConfigError, "risk_buckets_pct must be an object"):
+                load_live_send_settings(config_path, env={})
+
     def test_live_settings_accept_powershell_utf8_bom_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.local.json"
@@ -455,6 +459,30 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(settings.local.expected_login, "123")
             self.assertEqual(settings.executor.symbols, ("EURUSD",))
             validate_live_send_settings(settings)
+
+    def test_order_signal_timing_fields_handle_missing_and_invalid_values(self) -> None:
+        complete = live_module._order_signal_timing_fields(
+            _pending(
+                placed_time_utc="2026-01-01T05:00:00+00:00",
+                signal_time_utc="2026-01-01T00:00:00+00:00",
+                timeframe="H4",
+            )
+        )
+        self.assertEqual(complete["signal_closed_time_utc"], "2026-01-01T04:00:00+00:00")
+        self.assertEqual(complete["latest_closed_candle_time_utc"], "2026-01-01T04:00:00+00:00")
+        self.assertEqual(complete["placement_lag_seconds"], 3600)
+
+        missing = live_module._order_signal_timing_fields(_pending(signal_time_utc=None))
+        self.assertEqual(missing, {"placed_time_utc": "2026-01-01T04:00:00+00:00"})
+
+        invalid_signal = live_module._order_signal_timing_fields(_pending(signal_time_utc="not-a-time"))
+        self.assertEqual(invalid_signal, {"placed_time_utc": "2026-01-01T04:00:00+00:00"})
+
+        invalid_placed = live_module._order_signal_timing_fields(
+            _pending(placed_time_utc="not-a-time", signal_time_utc="2026-01-01T00:00:00+00:00")
+        )
+        self.assertIn("signal_closed_time_utc", invalid_placed)
+        self.assertNotIn("placement_lag_seconds", invalid_placed)
 
     def test_state_round_trip_and_config_helpers(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

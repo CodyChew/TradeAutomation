@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-06 local time after adding boot-level Telegram startup
-alerts to the FTMO and IC LPFS VPS lanes.
+Last updated: 2026-05-06 local time after the LPFS documentation/verification
+refresh for the FTMO and IC VPS lanes.
 
 ## Purpose
 
@@ -1116,7 +1116,8 @@ manual performance summary script is
 7` or `--weeks 4`; it is metric-only by default and lists exact trades only
 with `--include-trades`. On the VPS, include
 `--runtime-root C:\TradeAutomationRuntime` because production live state and
-journal files live outside the repo checkout.
+journal files live outside the repo checkout. Routine Telegram summaries should
+omit `--include-trades`; the flag is only for explicit long-form trade lists.
 
 Runner start/stop cards are intentionally separate from trade lifecycle cards.
 They show the sleep-after-cycle setting, requested/completed cycles, runtime,
@@ -1398,6 +1399,14 @@ Recommended next path:
    spread waits, market-recovery price waits, later recoveries, expiries,
    symbols/timeframes affected, and whether blocks cluster around weekly open
    before changing the spread gate or recovery rules.
+   Initial implementation now exists at
+   `../../scripts/summarize_lpfs_live_gate_attribution.py`; it can stream both
+   FTMO and IC journals over SSH and write ignored Markdown reports under
+   `../../reports/live_ops/`. The first dual report
+   `lpfs_gate_attribution_20260506_2138.md` showed no spread waits in the
+   sampled FTMO/IC windows, `1` FTMO market-recovery price wait, `3` IC
+   market-recovery price waits, and `0` retryable waits inside the 12-hour
+   weekly-open window. Treat this as forward evidence, not a live-rule change.
 
 Acceptance criteria include single-runner protection, no duplicate orders after
 restart, kill-switch stop before order send, state/journal/log survival across

@@ -262,6 +262,11 @@ Phase 2 is ready for VPS migration when these pass locally:
 - Weekly-open spread WAITING and market-recovery price WAITING behavior is
   reviewed with live gate attribution before changing the `0.10` spread/risk
   gate.
+  Current local command:
+
+  ```powershell
+  .\venv\Scripts\python scripts\summarize_lpfs_live_gate_attribution.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl" --tail-lines 200000 --detail-limit 60 --output reports\live_ops\lpfs_gate_attribution_latest.md
+  ```
 - Better-than-entry market recovery is default-on for missed pending touches:
   long ask must be at or below original entry, short bid must be at or above
   original entry, spread must still be <= 10% of actual fill-to-stop risk, and
@@ -270,9 +275,9 @@ Phase 2 is ready for VPS migration when these pass locally:
   invalidation, or actual-bar expiry.
 - Rollback is explicit and local: set `live_send.market_recovery_mode` to
   `"disabled"` and restart the runner intentionally.
-- Verification on 2026-05-04: focused live executor/notification tests passed
-  (`38` tests), full LPFS discovery passed (`186` tests), and
-  `scripts/run_core_coverage.py` passed with `100.00%` total coverage.
+- Latest verification on 2026-05-06: focused live attribution/summary tests
+  passed, full LPFS discovery passed, and `scripts/run_core_coverage.py`
+  passed with `100.00%` line/branch coverage across the scoped core packages.
 
 ## Amazon Lightsail Next Step
 

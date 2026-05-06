@@ -338,6 +338,10 @@ class DryRunExecutorTests(unittest.TestCase):
             )
             self.assertEqual(env_settings.local.mt5_server, "3")
             self.assertFalse(env_settings.local.use_existing_terminal_session)
+
+            config_path.write_text(json.dumps({"dry_run": {"risk_buckets_pct": ["H4", 0.25]}}), encoding="utf-8")
+            with self.assertRaisesRegex(LocalConfigError, "risk_buckets_pct must be an object"):
+                load_dry_run_settings(config_path, env={})
             self.assertEqual(env_settings.executor.symbols, ("EURUSD",))
             self.assertTrue(env_settings.executor.require_lp_pivot_before_fs_mother)
 

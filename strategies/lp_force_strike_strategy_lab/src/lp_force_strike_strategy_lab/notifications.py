@@ -609,8 +609,7 @@ def _append_signal_timing(lines: list[str], event: NotificationEvent) -> None:
         parts.append(f"Placed {format_trader_timestamp(placed)}")
     if lag:
         parts.append(f"Lag {_format_seconds(lag)}")
-    if parts:
-        lines.append(f"Signal: {' | '.join(parts)}")
+    lines.append(f"Signal: {' | '.join(parts)}")
 
 
 def _format_position_closed_card(event: NotificationEvent, *, max_field_value_length: int) -> str:

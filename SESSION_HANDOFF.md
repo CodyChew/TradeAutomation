@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-06 SGT after adding boot-level Telegram startup alerts
-to both LPFS VPS lanes.
+Last updated: 2026-05-06 SGT after the LPFS documentation/verification refresh
+for both VPS lanes.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -179,9 +179,45 @@ The dedicated IC VPS was provisioned, smoke-tested, and promoted on
 - `scripts/Get-LpfsDualVpsStatus.ps1` writes ignored
   `reports/live_ops/lpfs_dual_vps_status_*.md` packets for later inspection and
   compares open signal keys across FTMO and IC.
+- `scripts/summarize_lpfs_live_gate_attribution.py` now streams FTMO/IC live
+  journals over SSH and writes ignored
+  `reports/live_ops/lpfs_gate_attribution_*.md` reports. Use it before changing
+  spread or market-recovery rules.
 
 Do not run a second IC live process manually while `LPFS_IC_Live` is active.
 Pause with the IC kill switch and verify `processes=0` before IC maintenance.
+
+## 2026-05-06 Live Gate Attribution Snapshot
+
+Read-only dual VPS status at 2026-05-06 21:16 SGT showed both scheduled tasks
+running on clean `main...origin/main` checkouts with expected parent/child
+Python process shape, kill switches clear, fresh heartbeats, and `orders_sent=0`,
+`setups_blocked=0`, `setups_rejected=0` in the latest completed cycles.
+
+Current broker/state snapshot from that packet:
+
+- FTMO: pending `AUDCHF H8 LONG` and `GBPCAD H8 LONG`; active
+  `EURCHF H12 LONG`; MT5 server `FTMO-Server`.
+- IC: pending `AUDCHF H8 LONG`, `EURCHF H4 LONG`, `EURCHF H8 LONG`, and
+  `EURCHF H12 LONG`; no active IC LPFS positions; MT5 server
+  `ICMarketsSC-MT5-2`.
+
+Initial gate-attribution report:
+
+```powershell
+.\venv\Scripts\python scripts\summarize_lpfs_live_gate_attribution.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl" --tail-lines 200000 --detail-limit 60 --output reports\live_ops\lpfs_gate_attribution_latest.md
+```
+
+Latest generated local artifact:
+`reports/live_ops/lpfs_gate_attribution_20260506_2138.md` (ignored). It showed
+FTMO window `2026-05-05T08:42:28Z` to `2026-05-06T13:25:56Z`: `18` unique
+decision signals, `10` placements, `0` spread waits, `1` market-recovery price
+wait, `5` expiries, and `0` retryable waits inside the weekly-open window. IC
+window `2026-05-05T19:49:36Z` to `2026-05-06T13:38:19Z`: `7` unique decision
+signals, `4` placements, `0` spread waits, `3` market-recovery price waits,
+`1` entry-touch/path skip, `0` expiries, and `0` weekly-open-window waits. This
+is evidence-gathering only; no live rule, risk, state, MT5 order, or Telegram
+behavior changed.
 
 ## Current Project Focus
 
@@ -404,7 +440,7 @@ Manual performance summary, metric-only by default:
 .\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --days 7
 ```
 
-Post summary:
+Post compact summary:
 
 ```powershell
 .\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --weeks 4 --post-telegram
@@ -417,6 +453,16 @@ the summary commands must include `--runtime-root`:
 .\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7
 .\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --weeks 4 --post-telegram
 ```
+
+Do not add `--include-trades` for routine Telegram summaries. That flag is the
+explicit long-form override and appends the trade-by-trade list.
+
+Latest weekly summary posts on 2026-05-06:
+
+- FTMO compact 1-week summary: `16` closed trades, `43.8%` win rate, net PnL
+  `-37.85`, total `-1.88R`, latest close `2026-05-06 18:53 SGT`.
+- IC raw-spread compact 1-week summary: no closed trades found in the IC VPS
+  live journal.
 
 ## Spread Gate
 
@@ -722,9 +768,10 @@ Full strict gate:
 .\venv\Scripts\python scripts\run_core_coverage.py
 ```
 
-Latest full strict result on 2026-05-05 after V22 baseline implementation:
+Latest full strict result on 2026-05-06 after the live gate-attribution and
+documentation refresh:
 
-- `274` LPFS unittest discovery cases.
+- `300` LPFS unittest discovery cases inside `scripts/run_core_coverage.py`.
 - Core coverage ran all scoped concept/shared/LPFS tests and reported
   `100.00%` line and branch coverage across the measured modules.
 

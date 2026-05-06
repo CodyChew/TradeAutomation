@@ -423,11 +423,15 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             r".\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40",
         ),
         (
-            "Print 7-day performance summary",
+            "Dual VPS gate attribution report",
+            r'.\venv\Scripts\python scripts\summarize_lpfs_live_gate_attribution.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl" --tail-lines 200000 --detail-limit 60 --output reports\live_ops\lpfs_gate_attribution_latest.md',
+        ),
+        (
+            "Print compact 7-day performance summary",
             r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7",
         ),
         (
-            "Post 4-week performance summary to Telegram",
+            "Post compact 4-week performance summary to Telegram",
             r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --weeks 4 --post-telegram",
         ),
         (
@@ -723,7 +727,7 @@ Get-CimInstance Win32_Process |
             ("Order removal", "Expiry / fill / broker removal", "The pending order is kept until it fills, reaches expiry and is cancelled, or MT5 shows it was removed/rejected."),
             ("NZDCHF example", "11.5% vs 10.0%", "With the patched policy, this means wait. A future cycle can place the order if spread improves before entry touch or expiry."),
             ("Cycle summary", "setups_blocked", "Spread-only waits are counted separately from real rejected setups in the live cycle audit row."),
-            ("Evidence task", "Live gate attribution", "Before tuning the 10% gate, measure detected setups, placed orders, spread waits, later placements, entry-touch skips, expiries, and whether blocks cluster around weekly open."),
+            ("Evidence task", "Live gate attribution", "Before tuning the 10% gate, run scripts/summarize_lpfs_live_gate_attribution.py to measure detected setups, placed orders, spread waits, later placements, entry-touch skips, expiries, and whether blocks cluster around weekly open."),
         ])}
       </div>
     </section>

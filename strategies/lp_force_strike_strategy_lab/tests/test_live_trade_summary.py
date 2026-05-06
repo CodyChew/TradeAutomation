@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from collections import Counter
 from pathlib import Path
 
 
@@ -406,6 +407,23 @@ class LiveTradeSummaryTests(unittest.TestCase):
         self.assertEqual(summary_module._first_int(None, "bad"), None)
         self.assertEqual(summary_module._safe_float(""), None)
         self.assertEqual(summary_module._safe_int(""), None)
+        with self.assertRaisesRegex(ValueError, "either days or weeks"):
+            build_recent_trade_summary_message(trades=[profit_only], days=1, weeks=1)
+        with self.assertRaisesRegex(ValueError, "days must be positive"):
+            build_recent_trade_summary_message(trades=[profit_only], days=0)
+        with self.assertRaisesRegex(ValueError, "weeks must be positive"):
+            build_recent_trade_summary_message(trades=[profit_only], weeks=0)
+
+        all_message = build_recent_trade_summary_message(trades=[profit_only], limit=0)
+        self.assertIn("Period: All closed trades | Closed trades 1", all_message)
+
+        now_default_message = build_recent_trade_summary_message(trades=[profit_only], days=1)
+        self.assertIn("Period: 1 day", now_default_message)
+        self.assertEqual(summary_module._percent_text(1, 0), "n/a")
+        self.assertEqual(summary_module._duration_text(90000), "1d 1h")
+        self.assertEqual(summary_module._duration_text(7200), "2h 0m")
+        self.assertEqual(summary_module._duration_text(60), "1m")
+        self.assertEqual(summary_module._counter_text(Counter({"d1": 2, "h4": 1}), ("h4",)), "H4 1 | D1 2")
 
 
 if __name__ == "__main__":

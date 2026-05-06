@@ -473,6 +473,18 @@ class NotificationTests(unittest.TestCase):
         self.assertNotIn("Retcode:", order)
         self.assertNotIn("Broker:", order)
 
+        timing_variants = [
+            ({"placed_time_utc": "2026-01-01T06:36:00+00:00"}, "Signal: Placed 2026-01-01 14:36 SGT"),
+            ({"placement_lag_seconds": 60}, "Signal: Lag 1m"),
+            ({"signal_closed_time_utc": "2026-01-01T04:00:00+00:00"}, "Signal: closed 2026-01-01 12:00 SGT"),
+        ]
+        for fields, expected in timing_variants:
+            with self.subTest(fields=fields):
+                timing_only = format_notification_message(
+                    NotificationEvent(kind="order_sent", mode="LIVE", title="Order", fields=fields)
+                )
+                self.assertIn(expected, timing_only)
+
         recovery = format_notification_message(
             NotificationEvent(
                 kind="market_recovery_sent",

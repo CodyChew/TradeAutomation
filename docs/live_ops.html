@@ -682,7 +682,7 @@
         <article class="ops-fact">
           <span>Evidence task</span>
           <strong>Live gate attribution</strong>
-          <p>Before tuning the 10% gate, measure detected setups, placed orders, spread waits, later placements, entry-touch skips, expiries, and whether blocks cluster around weekly open.</p>
+          <p>Before tuning the 10% gate, run scripts/summarize_lpfs_live_gate_attribution.py to measure detected setups, placed orders, spread waits, later placements, entry-touch skips, expiries, and whether blocks cluster around weekly open.</p>
         </article>
 
       </div>
@@ -1175,13 +1175,19 @@ Get-CimInstance Win32_Process |
 
 
         <div class="command-row">
-          <strong>Print 7-day performance summary</strong>
+          <strong>Dual VPS gate attribution report</strong>
+          <code>.\venv\Scripts\python scripts\summarize_lpfs_live_gate_attribution.py --ssh-journal &quot;FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl&quot; --ssh-journal &quot;IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl&quot; --tail-lines 200000 --detail-limit 60 --output reports\live_ops\lpfs_gate_attribution_latest.md</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Print compact 7-day performance summary</strong>
           <code>.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7</code>
         </div>
 
 
         <div class="command-row">
-          <strong>Post 4-week performance summary to Telegram</strong>
+          <strong>Post compact 4-week performance summary to Telegram</strong>
           <code>.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --weeks 4 --post-telegram</code>
         </div>
 

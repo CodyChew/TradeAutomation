@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-06 local time after adding boot-level Telegram startup
-alerts to the FTMO and IC LPFS VPS lanes.
+Last updated: 2026-05-06 local time after the LPFS documentation/verification
+refresh for the FTMO and IC VPS lanes.
 
 ## Purpose
 
@@ -191,6 +191,22 @@ Dedicated IC VPS production status:
 - FTMO has matching startup alert task `LPFS_FTMO_Startup_Alert`. Startup alert
   tasks send `VPS STARTED` Telegram cards and journal `vps_startup_alert` after
   Windows boot; they do not import MT5 or touch live trading state.
+- Live gate-attribution script:
+  `scripts/summarize_lpfs_live_gate_attribution.py`. It reads local journals or
+  streams FTMO/IC journals over SSH, omits high-volume `market_snapshot` rows by
+  default, and writes ignored Markdown under `reports/live_ops/`.
+- Latest read-only dual VPS status at 2026-05-06 21:16 SGT: FTMO task and IC
+  task both running with fresh heartbeat, kill switches clear, clean
+  `main...origin/main`, and latest cycles at `140` frames with `orders_sent=0`,
+  `setups_blocked=0`, `setups_rejected=0`.
+- Latest generated attribution artifact:
+  `reports/live_ops/lpfs_gate_attribution_20260506_2138.md` (ignored). It
+  covered FTMO from `2026-05-05T08:42:28Z` to `2026-05-06T13:25:56Z` and IC from
+  `2026-05-05T19:49:36Z` to `2026-05-06T13:38:19Z`. FTMO had `18` unique
+  decision signals, `10` placements, `0` spread waits, `1` market-recovery price
+  wait, and `5` expiries. IC had `7` unique decision signals, `4` placements,
+  `0` spread waits, `3` market-recovery price waits, and `1` entry-touch/path
+  skip. Both had `0` retryable waits inside the 12-hour weekly-open window.
 
 ## Current LP Rules
 
@@ -678,6 +694,10 @@ Live-send adapter facts:
   or `--weeks 4` with optional `--post-telegram`; on the VPS add
   `--runtime-root C:\TradeAutomationRuntime`. It is metric-only by default and
   lists exact trades only with `--include-trades`.
+- Routine Telegram summaries should omit `--include-trades`. Latest compact
+  weekly posts on 2026-05-06: FTMO reported `16` closed trades, `43.8%` win
+  rate, net PnL `-37.85`, total `-1.88R`; IC raw-spread reported no closed
+  trades in its live journal.
 - Live Ops dashboard page: `docs/live_ops.html`.
 - The runner script is
   `scripts/run_lp_force_strike_live_executor.py --config config.local.json`.

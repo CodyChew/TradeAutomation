@@ -122,7 +122,18 @@ ssh lpfs-ic-vps whoami
 ssh lpfs-ic-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch"
 ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -StateFileName lpfs_ic_live_state.json -JournalFileName lpfs_ic_live_journal.jsonl -HeartbeatFileName lpfs_ic_live_heartbeat.json -LogFilter 'lpfs_ic_live_*.log' -JournalLines 40 -LogLines 80"
 .\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40
+.\venv\Scripts\python scripts\summarize_lpfs_live_gate_attribution.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl" --tail-lines 200000 --detail-limit 60 --output reports\live_ops\lpfs_gate_attribution_latest.md
 ```
+
+Compact IC performance summary from the IC VPS checkout:
+
+```powershell
+cd C:\TradeAutomation
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.lpfs_icmarkets_raw_spread.local.json --journal C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl --weeks 1 --post-telegram
+```
+
+Routine IC summaries should omit `--include-trades`. Add that flag only when
+an explicit trade-by-trade list is requested.
 
 ## Setup Order
 
@@ -225,8 +236,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\TradeAutomation\scri
 ```
 
 `LPFS_IC_Live` is now installed. Do not replace it or start a second manual
-runner while the scheduled task is running. Use `Get-LpfsDualVpsStatus.ps1` or
-the IC status command above before maintenance.
+runner while the scheduled task is running. Use `Get-LpfsDualVpsStatus.ps1`,
+the gate-attribution report, or the IC status command above before maintenance.
 
 Startup alert task for `LPFS_IC_Startup_Alert`:
 
