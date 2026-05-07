@@ -553,7 +553,7 @@
 
         <article class="checklist-card">
           <h3>While running</h3>
-          <ul><li>Monitor RUNNER STARTED / STOPPED cards and the latest cycle summary.</li><li>Monitor lpfs_live_heartbeat.json and the latest timestamped log when using the Phase 2 wrapper.</li><li>Use MT5 orders_get / positions_get as the source of truth for open exposure.</li><li>Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled.</li><li>Treat spread waits as retryable until entry touch or bar-count expiry makes the setup invalid; after a touch, default-on market recovery can still enter only at a better executable price.</li></ul>
+          <ul><li>Monitor RUNNER STARTED / STOPPED cards and the latest cycle summary.</li><li>Monitor lpfs_live_heartbeat.json and the latest timestamped log when using the Phase 2 wrapper.</li><li>Use MT5 orders_get / positions_get as the source of truth for open exposure.</li><li>Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled.</li><li>Treat spread waits and broker market-closed placement blocks as retryable until entry touch or bar-count expiry makes the setup invalid; after a touch, default-on market recovery can still enter only at a better executable price.</li></ul>
         </article>
 
 
@@ -591,6 +591,7 @@
       <h2 id="spread-policy-title">Spread Policy</h2>
       <p class="callout"><strong>Current behavior:</strong> a setup blocked because spread is too wide stays retryable. The runner records one WAITING alert, does not mark the signal processed, and can place the pending order on a future cycle if spread improves while the setup is still valid.</p>
       <p class="callout"><strong>Market recovery:</strong> if spread was too wide first and the entry later touches before a pending order exists, the default live path tries a better-than-entry market recovery. It sends only if the current executable price is same-or-better than the original pending entry and spread is still no more than 10% of actual fill-to-stop risk. Worse-than-entry quotes are WAITING, not permanently skipped, while the actual 6-bar window remains open.</p>
+      <p class="callout"><strong>Broker session:</strong> if MT5 returns <code>Market closed</code> before any order exists, the runner records WAITING, removes the processed signal key, and retries while the setup remains valid. True broker rejections and manual deletion of already placed orders remain final unless deliberately re-armed.</p>
       <p class="callout"><strong>Broker fill mode:</strong> market recovery uses <code>TRADE_ACTION_DEAL</code> and now chooses broker-supported market filling modes from symbol metadata. If MT5 rejects <code>order_check</code> with invalid or unsupported filling mode, the runner tries the next market filling mode and sends using the exact request that passed <code>order_check</code>.</p>
       <p class="callout warning"><strong>Weekly-open observation:</strong> first live VPS market-open monitoring showed multiple WAITING cards where spread was far above the 10% risk-distance limit, followed by missed-entry recovery checks. Market recovery reduces this forward/backtest drift when a later live quote becomes same-or-better than the backtested entry and the stop/target path after first entry touch remains clean.</p>
       <div class="ops-grid">
@@ -606,6 +607,13 @@
           <span>Before placement</span>
           <strong>Retryable WAITING</strong>
           <p>If spread is above 10% of risk distance, no order is placed yet and the same signal can be checked again.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Broker closed</span>
+          <strong>Retryable WAITING</strong>
+          <p>If MT5 returns Market closed before placement, the signal key is not processed and the next cycles can retry.</p>
         </article>
 
 

@@ -136,7 +136,8 @@ comments, exact floats, and diagnostic fields stay in the JSONL journal.
 - retryable `setup_rejected`: `WAITING`, human reason, key metric, retry
   action, and signal ref. This includes pending-order spread waits,
   market-recovery spread waits, and market-recovery price waits where current
-  executable price is worse than the original entry.
+  executable price is worse than the original entry, plus broker-session
+  `market_closed` blocks before an order exists.
 - other `setup_rejected` / `order_check_failed` / `order_rejected`: `SKIPPED`
   or `REJECTED`, human reason, key metric such as touched time, action taken,
   and signal ref.

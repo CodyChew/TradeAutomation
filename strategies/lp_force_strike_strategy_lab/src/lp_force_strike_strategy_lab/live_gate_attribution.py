@@ -17,6 +17,7 @@ RETRYABLE_WAIT_STATUSES = {
     "market_recovery_not_better",
     "market_recovery_spread_too_wide",
     "autotrading_disabled",
+    "market_closed",
 }
 ENTRY_TOUCH_STATUSES = {
     "entry_already_touched_before_placement",
@@ -43,6 +44,7 @@ class LPFSGateSignalSummary:
     final_spread_waits: int = 0
     market_recovery_price_waits: int = 0
     market_recovery_spread_waits: int = 0
+    broker_session_waits: int = 0
     entry_touch_skips: int = 0
     expiries: int = 0
     placements: int = 0
@@ -95,6 +97,10 @@ class LPFSGateAttributionReport:
     @property
     def market_recovery_spread_waits(self) -> int:
         return sum(signal.market_recovery_spread_waits for signal in self.signals)
+
+    @property
+    def broker_session_waits(self) -> int:
+        return sum(signal.broker_session_waits for signal in self.signals)
 
     @property
     def entry_touch_skips(self) -> int:
@@ -228,6 +234,7 @@ def _render_single_report(report: LPFSGateAttributionReport, *, detail_limit: in
         f"- New placements: `{report.placed_orders}` pending/market orders; market recoveries: `{report.market_recoveries}`; adoptions: `{report.adopted_orders}`",
         f"- Spread waits: `{report.spread_waits}`; later placements after spread wait: `{report.later_placements_after_spread_wait}`",
         f"- Market-recovery waits: price `{report.market_recovery_price_waits}`, spread `{report.market_recovery_spread_waits}`",
+        f"- Broker-session waits: `{report.broker_session_waits}`",
         f"- Entry-touch/path skips: `{report.entry_touch_skips}`; expiries: `{report.expiries}`",
         f"- Retryable waits inside weekly-open window: `{report.weekly_open_waits}` using `{report.weekly_open_window_hours}` hours after Sunday 21:00 UTC",
         "",
@@ -281,6 +288,9 @@ def _build_signal_summary(
         if status in {"market_recovery_not_better", "market_recovery_spread_too_wide"}:
             if _is_weekly_open_window(timestamp, hours=weekly_open_window_hours):
                 weekly_open_waits += 1
+        if status == "market_closed":
+            if _is_weekly_open_window(timestamp, hours=weekly_open_window_hours):
+                weekly_open_waits += 1
         if event_name in PLACEMENT_EVENTS:
             if timestamp is not None:
                 placement_times.append(timestamp)
@@ -300,6 +310,7 @@ def _build_signal_summary(
         final_spread_waits=statuses.get("spread_too_wide_before_send", 0),
         market_recovery_price_waits=statuses.get("market_recovery_not_better", 0),
         market_recovery_spread_waits=statuses.get("market_recovery_spread_too_wide", 0),
+        broker_session_waits=statuses.get("market_closed", 0),
         entry_touch_skips=sum(statuses.get(status, 0) for status in ENTRY_TOUCH_STATUSES),
         expiries=event_counts.get("pending_expired", 0) + statuses.get("pending_expired", 0),
         placements=event_counts.get("order_sent", 0) + event_counts.get("market_recovery_sent", 0),
@@ -440,6 +451,7 @@ def _signal_table(signals: Sequence[LPFSGateSignalSummary], *, limit: int) -> st
         or signal.final_spread_waits
         or signal.market_recovery_price_waits
         or signal.market_recovery_spread_waits
+        or signal.broker_session_waits
         or signal.entry_touch_skips
         or signal.expiries
         or signal.adopted
@@ -449,7 +461,14 @@ def _signal_table(signals: Sequence[LPFSGateSignalSummary], *, limit: int) -> st
     rows = sorted(
         interesting,
         key=lambda signal: (
-            -(signal.placements + signal.adopted + signal.spread_waits + signal.market_recovery_price_waits + signal.market_recovery_spread_waits),
+            -(
+                signal.placements
+                + signal.adopted
+                + signal.spread_waits
+                + signal.market_recovery_price_waits
+                + signal.market_recovery_spread_waits
+                + signal.broker_session_waits
+            ),
             signal.symbol,
             signal.timeframe,
             signal.first_seen_utc,
@@ -458,8 +477,8 @@ def _signal_table(signals: Sequence[LPFSGateSignalSummary], *, limit: int) -> st
     if limit > 0:
         rows = rows[:limit]
     lines = [
-        "| signal | first seen UTC | placements | waits | recovery waits | skips/expiries | notes |",
-        "|---|---|---:|---:|---:|---:|---|",
+        "| signal | first seen UTC | placements | waits | recovery waits | broker waits | skips/expiries | notes |",
+        "|---|---|---:|---:|---:|---:|---:|---|",
     ]
     for signal in rows:
         waits = signal.spread_waits + signal.final_spread_waits
@@ -477,7 +496,7 @@ def _signal_table(signals: Sequence[LPFSGateSignalSummary], *, limit: int) -> st
         label = f"{signal.symbol} {signal.timeframe} {signal.side}".strip()
         lines.append(
             f"| `{label}` | `{signal.first_seen_utc}` | {signal.placements} | {waits} | "
-            f"{recovery_waits} | {skips} | {', '.join(notes) or '-'} |"
+            f"{recovery_waits} | {signal.broker_session_waits} | {skips} | {', '.join(notes) or '-'} |"
         )
     return "\n".join(lines)
 

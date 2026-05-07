@@ -613,6 +613,12 @@ Live-send adapter facts:
   processed, and can place later if spread improves before entry touch or
   expiry. The one old NZDCHF spread skip was cleaned from local live state
   explicitly instead of keeping compatibility code.
+- Broker `Market closed` placement blocks are also retryable. If MT5 returns
+  retcode `10018` or a `Market closed` comment during pending-order or
+  market-recovery `order_check`/`order_send`, the runner sends/logs WAITING,
+  removes the processed signal key, and retries while the setup remains valid.
+  True broker rejections and manual deletion of already placed orders remain
+  final unless deliberately re-armed.
 - First Lightsail weekly-open observation: after market open, the runner
   correctly reconciled the two old broker-missing pending orders out of local
   state, then emitted multiple spread-too-wide WAITING cards and one
@@ -673,7 +679,8 @@ Live-send adapter facts:
 - Telegram lifecycle alerts cover `ORDER PLACED`, `ORDER ADOPTED`, `ENTERED`,
   `TAKE PROFIT`, `STOP LOSS`, `TRADE CLOSED`, `WAITING`, `SKIPPED`,
   `REJECTED`, `CANCELLED`, `RUNNER STARTED`, and `RUNNER STOPPED`.
-  Spread-only WAITING cards are retryable; fill, close, expiry, and
+  Spread-only, market-recovery price/spread, AutoTrading-disabled, and broker
+  market-closed WAITING cards are retryable; fill, close, expiry, and
   cancellation cards reply to the original order/adoption card when Telegram
   returns a message ID.
 - Manual or unknown close reasons are reported as `TRADE CLOSED` with MT5 PnL/R

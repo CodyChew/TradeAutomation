@@ -60,6 +60,7 @@ from .notifications import (
 LIVE_SEND_ACK = "I_UNDERSTAND_THIS_SENDS_REAL_ORDERS"
 LIVE_SEND_MODE = "LIVE_SEND"
 TRADE_RETCODE_CLIENT_DISABLES_AT = 10027
+TRADE_RETCODE_MARKET_CLOSED = 10018
 
 
 @dataclass(frozen=True)
@@ -1204,6 +1205,17 @@ def _process_market_recovery_live_send(
     )
     checked_state = _with_checked_key(processed_state, signal_key)
     if not order_check.passed:
+        if _is_market_closed_block(order_check.retcode, order_check.comment):
+            event = _retryable_broker_block_event(
+                "market_closed",
+                signal_key,
+                order_check.retcode,
+                order_check.comment,
+                {"execution_type": "market_recovery", **recovery_check.to_dict()},
+            )
+            retry_state = _without_processed_key(checked_state, signal_key)
+            retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:market_closed", event)
+            return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check)
         event = NotificationEvent(
             kind="order_check_failed",
             mode="LIVE",
@@ -1231,20 +1243,20 @@ def _process_market_recovery_live_send(
         checked_request=order_check.request,
     )
     if not outcome.sent:
-        if _is_retryable_order_send_block(outcome):
-            event = _rejection_event(
-                "autotrading_disabled",
-                "MT5 AutoTrading is disabled by the client terminal.",
+        retry_status = _retryable_order_send_block_status(outcome)
+        if retry_status is not None:
+            event = _retryable_broker_block_event(
+                retry_status,
                 signal_key,
+                outcome.retcode,
+                outcome.comment,
                 {
-                    "retcode": outcome.retcode,
-                    "comment": outcome.comment,
                     "execution_type": "market_recovery",
                     **recovery_check.to_dict(),
                 },
             )
             retry_state = _without_processed_key(checked_state, signal_key)
-            retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:autotrading_disabled", event)
+            retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:{retry_status}", event)
             return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check, order_send=outcome)
         event = NotificationEvent(
             kind="order_rejected",
@@ -1391,6 +1403,11 @@ def process_trade_setup_live_send(
     order_check = run_order_check(mt5_module, decision.intent)
     checked_state = _with_checked_key(processed_state, signal_key)
     if not order_check.passed:
+        if _is_market_closed_block(order_check.retcode, order_check.comment):
+            event = _retryable_broker_block_event("market_closed", signal_key, order_check.retcode, order_check.comment)
+            retry_state = _without_processed_key(checked_state, signal_key)
+            retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:market_closed", event)
+            return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check)
         event = NotificationEvent(
             kind="order_check_failed",
             mode="LIVE",
@@ -1425,15 +1442,11 @@ def process_trade_setup_live_send(
 
     outcome = send_pending_order(mt5_module, decision.intent)
     if not outcome.sent or outcome.order_ticket is None:
-        if _is_retryable_order_send_block(outcome):
-            event = _rejection_event(
-                "autotrading_disabled",
-                "MT5 AutoTrading is disabled by the client terminal.",
-                signal_key,
-                {"retcode": outcome.retcode, "comment": outcome.comment},
-            )
+        retry_status = _retryable_order_send_block_status(outcome)
+        if retry_status is not None:
+            event = _retryable_broker_block_event(retry_status, signal_key, outcome.retcode, outcome.comment)
             retry_state = _without_processed_key(checked_state, signal_key)
-            retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:autotrading_disabled", event)
+            retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:{retry_status}", event)
             return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check, order_send=outcome)
         event = NotificationEvent(
             kind="order_rejected",
@@ -2321,6 +2334,23 @@ def _rejection_event(status: str, message: str, signal_key: str, fields: dict[st
     )
 
 
+def _retryable_broker_block_event(
+    status: str,
+    signal_key: str,
+    retcode: Any,
+    comment: str,
+    fields: dict[str, Any] | None = None,
+) -> NotificationEvent:
+    messages = {
+        "autotrading_disabled": "MT5 AutoTrading is disabled by the client terminal.",
+        "market_closed": "Broker market is closed for this symbol.",
+    }
+    payload = {"retcode": retcode, "comment": comment}
+    if fields:
+        payload.update(fields)
+    return _rejection_event(status, messages.get(status, "Broker temporarily blocked order placement."), signal_key, payload)
+
+
 def _matching_broker_order_for_intent(
     mt5_module: Any,
     intent: MT5OrderIntent,
@@ -2529,10 +2559,27 @@ def _accepted_send_retcodes(mt5_module: Any) -> set[int]:
     return accepted
 
 
-def _is_retryable_order_send_block(outcome: LiveOrderSendOutcome) -> bool:
-    """Return true for operator/environment send blocks that can clear later."""
+def _retryable_order_send_block_status(outcome: LiveOrderSendOutcome) -> str | None:
+    """Return operator/environment send block status values that can clear later."""
 
-    return outcome.retcode == TRADE_RETCODE_CLIENT_DISABLES_AT
+    try:
+        retcode = None if outcome.retcode is None else int(outcome.retcode)
+    except (TypeError, ValueError):
+        retcode = None
+    if retcode == TRADE_RETCODE_CLIENT_DISABLES_AT:
+        return "autotrading_disabled"
+    if _is_market_closed_block(outcome.retcode, outcome.comment):
+        return "market_closed"
+    return None
+
+
+def _is_market_closed_block(retcode: Any, comment: str) -> bool:
+    try:
+        if retcode is not None and int(retcode) == TRADE_RETCODE_MARKET_CLOSED:
+            return True
+    except (TypeError, ValueError):
+        pass
+    return "market closed" in str(comment or "").casefold()
 
 
 def _mt5_pending_order_type(mt5_module: Any, intent: MT5OrderIntent) -> int:

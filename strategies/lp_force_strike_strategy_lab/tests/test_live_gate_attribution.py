@@ -68,6 +68,7 @@ class LiveGateAttributionTests(unittest.TestCase):
         rows = [
             _notification_row("setup_rejected", price_wait, status="market_recovery_not_better"),
             _notification_row("setup_rejected", price_wait, status="market_recovery_spread_too_wide"),
+            _notification_row("setup_rejected", price_wait, status="market_closed"),
             _notification_row("market_recovery_sent", price_wait, status="open"),
             _notification_row("setup_rejected", expired, status="pending_expired"),
             _notification_row("pending_expired", expired, status="cancelled"),
@@ -79,6 +80,7 @@ class LiveGateAttributionTests(unittest.TestCase):
         self.assertEqual(report.detected_setups, 3)
         self.assertEqual(report.market_recovery_price_waits, 1)
         self.assertEqual(report.market_recovery_spread_waits, 1)
+        self.assertEqual(report.broker_session_waits, 1)
         self.assertEqual(report.market_recoveries, 1)
         self.assertEqual(report.entry_touch_skips, 1)
         self.assertEqual(report.expiries, 2)
@@ -190,12 +192,14 @@ class LiveGateAttributionTests(unittest.TestCase):
                     "occurred_at_utc": "2026-05-03T22:00:00+00:00",
                     "notification_event": {"status": "market_recovery_spread_too_wide", "signal_key": signal_key},
                 },
+                {"event": "setup_rejected", "notification_event": {"status": "market_closed", "signal_key": signal_key}},
                 {"event": "order_sent", "notification_event": {"status": "", "signal_key": signal_key}},
             ],
             weekly_open_window_hours=12,
         )
         self.assertEqual(summary.spread_waits, 1)
         self.assertEqual(summary.market_recovery_spread_waits, 1)
+        self.assertEqual(summary.broker_session_waits, 1)
         self.assertEqual(summary.weekly_open_waits, 1)
 
         self.assertEqual(gate_module._row_signal_key({}), "")

@@ -663,6 +663,7 @@ def _format_live_exception_card(event: NotificationEvent, *, max_field_value_len
         "market_recovery_not_better",
         "market_recovery_spread_too_wide",
         "autotrading_disabled",
+        "market_closed",
     }:
         title = "WAITING"
     lines = [
@@ -853,6 +854,7 @@ def _human_reason(event: NotificationEvent) -> str:
         "market_recovery_invalid_stop_distance": "Current price is not valid versus the stop",
         "market_recovery_path_unavailable": "Could not verify recovery path",
         "autotrading_disabled": "MT5 AutoTrading is disabled",
+        "market_closed": "Broker market is closed",
         "entry_already_touched_before_placement": "Entry was already touched before placement",
         "missed_entry_check_unavailable": "Could not verify whether entry was already touched",
         "entry_not_pending_pullback": "Entry is no longer a valid pending pullback",
@@ -871,6 +873,8 @@ def _human_action(event: NotificationEvent) -> str:
         return "Will retry market recovery until price returns same-or-better, path invalidates, or the 6-bar window expires"
     if event.kind == "setup_rejected" and event.status == "autotrading_disabled":
         return "Enable Algo Trading in MT5; will retry until entry touch or expiry"
+    if event.kind == "setup_rejected" and event.status == "market_closed":
+        return "Will retry when broker session reopens while setup remains valid"
     if event.kind in {"setup_rejected", "order_check_failed", "order_rejected"}:
         return "No order placed"
     if event.kind == "pending_expired":

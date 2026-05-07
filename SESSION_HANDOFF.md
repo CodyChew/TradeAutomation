@@ -509,6 +509,12 @@ blocks, so a future cycle can place the order if spread improves before the
 entry touches or the pending window expires. The one old NZDCHF spread skip was
 cleaned from local live state explicitly instead of keeping compatibility code.
 
+Broker `Market closed` placement blocks are retryable too. If MT5 returns
+retcode `10018` or a `Market closed` comment before any pending order or market
+recovery order exists, the runner emits `LPFS LIVE | WAITING`, removes the
+processed signal key, and retries on future cycles while the setup is still
+valid. This does not re-arm true broker rejections or manually deleted orders.
+
 Default-on market recovery is now the live path after a missed pending touch.
 If spread was too wide first and the original entry later traded before the
 pending order existed, the runner attempts `MARKET RECOVERY` before final skip.

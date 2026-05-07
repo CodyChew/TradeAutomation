@@ -216,6 +216,7 @@ class FakeMT5:
     TRADE_RETCODE_PLACED = 10008
     TRADE_RETCODE_INVALID_FILL = 10030
     TRADE_RETCODE_CLIENT_DISABLES_AT = 10027
+    TRADE_RETCODE_MARKET_CLOSED = 10018
     DEAL_ENTRY_OUT = 1
     DEAL_ENTRY_INOUT = 2
     DEAL_REASON_SL = 4
@@ -1439,6 +1440,28 @@ class LiveExecutorTests(unittest.TestCase):
             )
             self.assertEqual(failed_check.status, "order_check_failed")
 
+            mt5_market_check = FakeMT5()
+            mt5_market_check.order_check_result = SimpleNamespace(retcode=mt5_market_check.TRADE_RETCODE_MARKET_CLOSED, comment="Market closed")
+            market_closed_check = process_trade_setup_live_send(
+                mt5_market_check,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_closed_check.jsonl")),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(market_closed_check.status, "blocked")
+            self.assertNotIn(market_closed_check.signal_key, market_closed_check.state.processed_signal_keys)
+            self.assertIn(f"setup_blocked:{market_closed_check.signal_key}:market_closed", market_closed_check.state.notified_event_keys)
+
+            mt5_market_check.order_check_result = SimpleNamespace(retcode=mt5_market_check.TRADE_RETCODE_DONE, comment="ok")
+            mt5_market_check.order_send_result = SimpleNamespace(retcode=mt5_market_check.TRADE_RETCODE_PLACED, comment="placed", order=9003, deal=0)
+            retried_after_market_open_check = process_trade_setup_live_send(
+                mt5_market_check,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_closed_check_retried.jsonl")),
+                state=market_closed_check.state,
+            )
+            self.assertEqual(retried_after_market_open_check.status, "order_sent")
+
             mt5.order_check_result = SimpleNamespace(retcode=mt5.TRADE_RETCODE_DONE, comment="ok")
             mt5.tick = SimpleNamespace(bid=1.1000, ask=1.1020, time_msc=int(pd.Timestamp("2026-01-01T04:02:00Z").timestamp() * 1000), time=0)
             final_spread = process_trade_setup_live_send(
@@ -1461,6 +1484,27 @@ class LiveExecutorTests(unittest.TestCase):
             )
             self.assertEqual(rejected_send.status, "order_rejected")
             self.assertIn(rejected_send.signal_key, rejected_send.state.processed_signal_keys)
+
+            mt5_market_send = FakeMT5()
+            mt5_market_send.order_send_result = SimpleNamespace(retcode=123, comment="Market closed by broker", order=0, deal=0)
+            market_closed_send = process_trade_setup_live_send(
+                mt5_market_send,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_closed_send.jsonl")),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(market_closed_send.status, "blocked")
+            self.assertNotIn(market_closed_send.signal_key, market_closed_send.state.processed_signal_keys)
+            self.assertIn(f"setup_blocked:{market_closed_send.signal_key}:market_closed", market_closed_send.state.notified_event_keys)
+
+            mt5_market_send.order_send_result = SimpleNamespace(retcode=mt5_market_send.TRADE_RETCODE_PLACED, comment="placed", order=9004, deal=0)
+            retried_after_market_open_send = process_trade_setup_live_send(
+                mt5_market_send,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_closed_send_retried.jsonl")),
+                state=market_closed_send.state,
+            )
+            self.assertEqual(retried_after_market_open_send.status, "order_sent")
 
             mt5.order_send_result = SimpleNamespace(
                 retcode=mt5.TRADE_RETCODE_CLIENT_DISABLES_AT,
@@ -1563,6 +1607,18 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(mt5.order_check_requests[-1]["action"], mt5.TRADE_ACTION_DEAL)
 
             mt5 = recoverable_mt5()
+            mt5.order_check_result = SimpleNamespace(retcode=mt5.TRADE_RETCODE_MARKET_CLOSED, comment="Market closed")
+            market_closed_check = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_recovery_closed_check.jsonl")),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(market_closed_check.status, "blocked")
+            self.assertNotIn(market_closed_check.signal_key, market_closed_check.state.processed_signal_keys)
+            self.assertEqual(mt5.order_check_requests[-1]["action"], mt5.TRADE_ACTION_DEAL)
+
+            mt5 = recoverable_mt5()
             mt5.order_check_result = [
                 SimpleNamespace(retcode=mt5.TRADE_RETCODE_INVALID_FILL, comment="Unsupported filling mode"),
                 SimpleNamespace(retcode=mt5.TRADE_RETCODE_DONE, comment="ok"),
@@ -1650,6 +1706,22 @@ class LiveExecutorTests(unittest.TestCase):
             )
             self.assertEqual(operator_blocked.status, "blocked")
             self.assertNotIn(operator_blocked.signal_key, operator_blocked.state.processed_signal_keys)
+
+            mt5 = recoverable_mt5()
+            mt5.order_send_result = SimpleNamespace(
+                retcode=mt5.TRADE_RETCODE_MARKET_CLOSED,
+                comment="Market closed",
+                order=0,
+                deal=0,
+            )
+            market_closed_send = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "market_recovery_closed_send.jsonl")),
+                state=LiveExecutorState(),
+            )
+            self.assertEqual(market_closed_send.status, "blocked")
+            self.assertNotIn(market_closed_send.signal_key, market_closed_send.state.processed_signal_keys)
 
             mt5 = recoverable_mt5()
             mt5.order_send_result = SimpleNamespace(retcode=123, comment="market rejected", order=0, deal=0)

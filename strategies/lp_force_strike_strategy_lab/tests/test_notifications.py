@@ -779,6 +779,20 @@ class NotificationTests(unittest.TestCase):
         self.assertIn("Reason: Market recovery spread is too wide", recovery_spread_wait)
         self.assertIn("Action: Will retry market recovery while price remains better and inside the 6-bar window", recovery_spread_wait)
 
+        market_closed_wait = format_notification_message(
+            NotificationEvent(
+                kind="setup_rejected",
+                mode="LIVE",
+                title="Market closed",
+                status="market_closed",
+                signal_key="lpfs:GBPUSD:D1:299:short:c:2026-05-06T21:00:00Z",
+                fields={"retcode": 10018, "comment": "Market closed"},
+            )
+        )
+        self.assertIn("LPFS LIVE | WAITING", market_closed_wait)
+        self.assertIn("Reason: Broker market is closed", market_closed_wait)
+        self.assertIn("Action: Will retry when broker session reopens while setup remains valid", market_closed_wait)
+
         recovery_price_wait = format_notification_message(
             NotificationEvent(
                 kind="setup_rejected",

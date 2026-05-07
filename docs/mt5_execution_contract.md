@@ -245,6 +245,9 @@ It adds:
   block. It sends/logs a WAITING event once, does not mark the signal processed,
   and can place the order on a later cycle if spread improves before entry
   touch or expiry;
+- broker-session `Market closed` responses during pending-order or
+  market-recovery `order_check`/`order_send` are retryable WAITING blocks. The
+  signal is not marked processed, and true broker rejections remain permanent;
 - late-start missed-entry recovery: after the signal candle, if the current or
   later MT5 bars already traded through the planned limit entry, the runner
   attempts default-on better-than-entry market recovery. If current executable
@@ -274,6 +277,9 @@ It adds:
 - spread is a placement gate only. After a pending order is placed, spread
   widening does not auto-cancel it and does not currently emit a dedicated
   Telegram alert;
+- broker market-closed is a placement-session gate only. It does not change
+  already placed pending orders, manual deletion behavior, or close
+  classification;
 - weekly-open spread behavior is expected to be more conservative than the
   historical V15/V22 baseline. If spread or not-better recovery WAITING cards
   cluster only around poor-liquidity windows, keep the current `0.10` gate. If

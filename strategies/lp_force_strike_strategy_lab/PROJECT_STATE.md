@@ -1116,7 +1116,8 @@ Live Telegram messages add real broker lifecycle alerts:
 - `TAKE PROFIT`;
 - `STOP LOSS`;
 - `TRADE CLOSED`;
-- `WAITING` for retryable spread-only blocks;
+- `WAITING` for retryable spread-only, market-recovery, AutoTrading-disabled,
+  and broker market-closed blocks;
 - `SKIPPED` / `REJECTED` / `CANCELLED`;
 - `RUNNER STARTED` / `RUNNER STOPPED` for process lifecycle status.
 
@@ -1265,6 +1266,11 @@ written.
   order if spread improves before entry touch or expiry. The one old NZDCHF
   spread skip was cleaned from local live state explicitly instead of keeping
   compatibility code.
+- Broker `Market closed` responses during pending-order or market-recovery
+  `order_check`/`order_send` are retryable WAITING events before any order
+  exists. They do not mark the signal processed; true broker rejections and
+  manual deletion of already placed orders remain final unless deliberately
+  re-armed.
 - 2026-05-05 market-recovery retry alignment: after a pending entry is touched
   before placement, `market_recovery_not_better` is now retryable WAITING
   instead of a permanent skip. The runner does not mark the signal processed
