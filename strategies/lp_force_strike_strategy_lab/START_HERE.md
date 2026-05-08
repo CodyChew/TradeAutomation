@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-05-08 after adding the FTMO challenge-profile frontier
-study and refreshing operator handoff guidance.
+Last updated: 2026-05-09 after refreshing LPFS operations/documentation
+verification guidance and stable dashboard navigation.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -46,6 +46,10 @@ operational decisions.
   H4/H8 `0.20%`, H12/D1 `0.20%`, W1 `0.65%` as the fresh 100k Challenge
   profile and H4/H8 `0.20%`, H12/D1 `0.25%`, W1 `0.55%` as the
   aggressive/funded profile. This did not change live config or VPS runtime.
+- Weekly performance state: `docs/live_weekly_performance.html` is the
+  read-only latest-week FTMO/IC monitor. It is not yet a week-over-week trend
+  chart; use timestamped packets under
+  `reports/live_ops/lpfs_weekly_performance/` for historical checkpoints.
 - Production host: Amazon Lightsail Windows VPS.
 - Preferred remote access: Tailscale + OpenSSH using local alias `lpfs-vps`.
 - Broker truth: MT5 orders, positions, order history, and deal history.
@@ -62,17 +66,19 @@ operational decisions.
 4. `docs/strategy.html` for the current strategy contract.
 5. `docs/live_ops.html` for live-run behavior, gates, reconciliation, status,
    and operator commands.
-6. `docs/lpfs_lightsail_vps_runbook.md` before any VPS maintenance or remote
+6. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
+   performance checkpoint and backtest-distribution comparison.
+7. `docs/lpfs_lightsail_vps_runbook.md` before any VPS maintenance or remote
    access work.
-7. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+8. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
    IC Markets production runner.
-8. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+9. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before changing execution or notification code.
-9. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+10. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-10. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+11. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
    buckets or income expectations.
-11. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+12. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native MQL5 EA or Strategy Tester work.
 
 ## Source-Of-Truth Matrix
@@ -89,6 +95,7 @@ operational decisions.
 | IC account validation | `docs/account_validation.html`, `docs/lpfs_new_mt5_account_validation.md`, and `config.lpfs_new_mt5_account.example.json` | Local-only validation and smoke testing; do not touch VPS live account. |
 | IC production setup | `docs/lpfs_icmarkets_vps_runbook.md`, `config.lpfs_icmarkets_raw_spread.example.json`, and `scripts/Get-LpfsDualVpsStatus.ps1` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
 | FTMO challenge sizing | `docs/ftmo_challenge_profiles.html` and `reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959` | Research-only frontier; do not change FTMO live validation config without a separate deployment decision. |
+| Weekly live performance | `docs/live_weekly_performance.html` and `reports/live_ops/lpfs_weekly_performance/` | Latest-week monitor only; use report packets for historical checkpoints until a trend view is built. |
 | Rollover/spread-wait behavior | `docs/live_ops.html`, `SESSION_HANDOFF.md`, and live JSONL journals | Treat Telegram as an alert only; verify MT5 history, journal rows, spread snapshots, and both VPS lanes before concluding a bug. |
 | Native EA migration | `docs/ea_migration.html`, `mql5/lpfs_ea/README.md`, and `mql5/lpfs_ea/Experts/LPFS/LPFS_EA.mq5` | Tester-only v1; do not attach to production live charts. |
 | Dashboard HTML | builder scripts in `scripts/` | Edit builders, then regenerate HTML; do not make HTML-only dashboard changes. |
@@ -153,6 +160,13 @@ production-adjacent.
   close, cancellation, or missed trade.
 - Telegram is an alert channel only; the JSONL journal and MT5 are the audit
   sources.
+- Retryable waits are not final rejects. Spread waits, AutoTrading-disabled
+  waits, market-recovery waits, and broker market-closed waits should remain
+  retryable while the setup remains valid.
+- Runtime sync should compare the latest runtime commit, not only local
+  `HEAD`, because docs/reporting commits may be ahead of the VPS checkout.
+- Weekly report SSH/fetch failures must be visible as incomplete evidence, not
+  silently treated as clean performance.
 - For docs-only changes, no VPS runner restart is required.
 - A `VPS STARTED` Telegram card is an operating-system alert, not proof the
   trading loop is healthy. Always follow it with heartbeat, journal, and MT5

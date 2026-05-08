@@ -143,6 +143,22 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Normal / Watch / Review", html)
         self.assertTrue((DOCS_ROOT / "live_weekly_performance.html").exists())
 
+    def test_stable_operator_pages_link_to_live_weekly_performance(self) -> None:
+        stable_pages = [
+            "index.html",
+            "strategy.html",
+            "live_ops.html",
+            "account_validation.html",
+            "ftmo_challenge_profiles.html",
+            "ea_migration.html",
+            "live_weekly_performance.html",
+        ]
+
+        for page in stable_pages:
+            html = (DOCS_ROOT / page).read_text(encoding="utf-8")
+            self.assertIn("href=\"live_weekly_performance.html\"", html, f"{page} missing weekly page link")
+            self.assertIn("Weekly Performance", html, f"{page} missing weekly label")
+
     def test_ftmo_challenge_profiles_page_shows_recommendation_and_boundaries(self) -> None:
         html = (DOCS_ROOT / "ftmo_challenge_profiles.html").read_text(encoding="utf-8")
         lower_html = html.lower()
@@ -211,6 +227,11 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("data/live/lpfs_live_journal.jsonl", html)
         self.assertIn("Telegram is reporting only", html)
         self.assertIn("Operator Checklist", html)
+        self.assertIn("Weekly dashboard is latest-week only", html)
+        self.assertIn("Runtime sync uses runtime commit", html)
+        self.assertIn("Retryable waits are not final rejects", html)
+        self.assertIn("SSH/report fetch failures must be visible", html)
+        self.assertIn("EA v1 remains tester-only", html)
         self.assertIn("Before starting", html)
         self.assertIn("While running", html)
         self.assertIn("After Telegram alert", html)

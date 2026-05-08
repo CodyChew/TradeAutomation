@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-08 after documenting rollover spread / broker-feed
-divergence behavior and refreshing operator handoff guidance.
+Last updated: 2026-05-09 after refreshing LPFS operations/documentation
+verification guidance and stable dashboard navigation.
 
 ## Purpose
 
@@ -26,6 +26,10 @@ patterns. It now has these layers:
 - native EA migration: isolated MQL5 Strategy Tester-only scaffold under
   `../../mql5/lpfs_ea`, with Python parity fixtures and a local MetaEditor
   compile helper. It is not production live execution.
+- weekly live monitoring: read-only FTMO/IC latest-week performance dashboard
+  at `../../docs/live_weekly_performance.html`, with timestamped packets under
+  `../../reports/live_ops/lpfs_weekly_performance`. It is not yet a
+  week-over-week trend chart.
 
 It now includes a combined TradingView visual indicator for LPFS chart review
 and alerts at `tradingview/lp_force_strike.pine`. V10-V13 add portfolio-style

@@ -877,6 +877,13 @@ Get-CimInstance Win32_Process |
       <h2 id="limits-title">Known Operating Limits</h2>
       <div class="scenario-grid">
         {_step_cards([
+            ("Watch", "Weekly dashboard is latest-week only", "The Weekly Performance page is a current-week checkpoint, not a week-over-week trend chart. Use timestamped report packets for history until a trend view is built."),
+            ("Watch", "Telegram is reporting only", "MT5 broker orders, positions, order history, and deal history are the source of truth. Telegram cards are operator alerts, not broker-state proof."),
+            ("Watch", "Runtime sync uses runtime commit", "Docs/reporting commits can be ahead of the VPS. Treat runtime sync as healthy when the latest runtime commit is contained in the VPS checkout, even if local HEAD is newer."),
+            ("Watch", "Retryable waits are not final rejects", "Spread waits, AutoTrading-disabled waits, market-recovery waits, and broker market-closed waits should stay retryable while the setup remains valid."),
+            ("Watch", "True rejects stay final", "Manual deletion and true broker rejects remain final unless an explicit operator re-arm plan approves state surgery."),
+            ("Watch", "SSH/report fetch failures must be visible", "Weekly reporting must mark lane fetch failures as incomplete instead of treating missing journal/state data as a clean result."),
+            ("Watch", "EA v1 remains tester-only", "The native MQL5 EA scaffold is Strategy Tester-only. Do not attach it to FTMO or IC live charts during v1."),
             ("Limit", "Not a daemon", "The runner only keeps checking when started with multiple cycles or wrapped by an external scheduler/process manager."),
             ("Alert", "Boot alert is not MT5 recovery", "The startup alert can tell you Windows rebooted before login; MT5 and the at-logon runner still require the interactive session unless a separate auto-logon/service design is approved."),
             ("Protection", "Single-runner lock", "A lock file beside the live state blocks a second live runner from starting against the same state."),

@@ -1,8 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-08 after adding the LPFS live weekly performance
-dashboard, linking it from the Home dashboard, and refreshing the operator
-handoff.
+Last updated: 2026-05-09 after running the LPFS operations/documentation
+verification checkpoint and refreshing stable dashboard navigation.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -119,7 +118,7 @@ were changed.
   cleanly with `already up to date` and does not rewrite reports. Use
   `--force` only when intentionally regenerating the same evidence.
 - Latest generated packet:
-  `reports/live_ops/lpfs_weekly_performance/20260508_155536/`.
+  `reports/live_ops/lpfs_weekly_performance/20260508_162326/`.
 - Latest stable page: `docs/live_weekly_performance.html`, linked from
   `docs/index.html` as "Live Weekly Performance".
 - Verified live portfolio starts:
@@ -135,7 +134,7 @@ were changed.
   far. FTMO is just above its historical 10th percentile. This is monitoring
   evidence, not a strategy patch instruction by itself.
 - Version context from the latest run:
-  local and `origin/main` were `bd90325`; both VPS checkouts were `a223daf`;
+  local and `origin/main` were `29c5bc4`; both VPS checkouts were `a223daf`;
   latest runtime commit was `94ffea1` (`Treat LPFS market-closed sends as
   retryable`). Runtime sync is true because `94ffea1` is contained in each VPS
   checkout even though local docs/reporting commits are ahead.
@@ -149,6 +148,72 @@ were changed.
   cover lane-start detection, partial-week classification, mid-week runtime
   change warning, unchanged-input no-rewrite behavior, percentile/status
   rules, dashboard content, and shared navigation.
+
+## Known Operational Lapses / Watch Items
+
+- Weekly dashboard is currently a latest-week monitor, not a week-over-week
+  trend chart. Use timestamped packets under
+  `reports/live_ops/lpfs_weekly_performance/` for historical checkpoints until
+  a trend view is built.
+- Telegram is reporting only. MT5 broker orders, positions, order history, and
+  deal history are the source of truth.
+- `VPS STARTED` means Windows booted. It does not prove MT5 login, live runner
+  health, or broker connectivity.
+- Runtime sync should compare the latest runtime commit, not only local
+  `HEAD`, because docs/reporting commits may be ahead of the VPS checkout.
+- Retryable waits such as spread, AutoTrading disabled, market recovery, and
+  broker market-closed must not be treated as final rejects while the setup
+  remains valid.
+- Manual deletion and true broker rejection remain final unless an explicit
+  operator re-arm plan approves state surgery.
+- Rollover spread divergence can create broker-specific outcomes and should
+  not be patched from one incident.
+- Duplicate runner risk exists if a local live runner and VPS live runner run
+  against the same account/state at the same time.
+- EA v1 remains Strategy Tester-only. Do not attach it to FTMO or IC live
+  charts.
+- Weekly report SSH/fetch failures must be visible as incomplete evidence, not
+  silently treated as clean performance.
+- FTMO challenge-profile full recomputation is too slow for a simple docs
+  navigation refresh. For this checkpoint the stable page was rebuilt from the
+  accepted `20260508_112959` report packet; a future improvement could add a
+  first-class docs-only rebuild mode.
+
+## 2026-05-09 Operations / Documentation Verification Checkpoint
+
+This was a read-only operations checkpoint plus docs/test refresh. No VPS
+runtime files, live configs, scheduled tasks, state, journals, broker orders,
+or broker positions were changed.
+
+- Local repo started clean and synced at `29c5bc4` / `origin/main`.
+- Stable dashboard navigation was regenerated so Home, Strategy, Live Ops,
+  Account Validation, FTMO Challenge Profiles, EA Migration, and Weekly
+  Performance all expose `live_weekly_performance.html`.
+- Weekly monitor refreshed to
+  `reports/live_ops/lpfs_weekly_performance/20260508_162326/`, then a second
+  `--latest` run printed `already up to date`.
+- Latest weekly status remains `watch` for both lanes:
+  - FTMO: `25` closed trades, `-5.3354R`, `-$63.64`, `1` pending order,
+    `1` active position.
+  - IC: `9` closed trades, `-5.8779R`, `-$39.05`, `2` pending orders,
+    `0` active positions.
+- Dual VPS status packet:
+  `reports/live_ops/lpfs_dual_vps_status_20260509_002745.md`.
+- FTMO VPS evidence from the packet: `LPFS_Live` task `Running`,
+  `task_last_result=267009` (running), startup alert task `Ready` with
+  `startup_alert_last_result=0`, kill switch clear, parent/child runner shape,
+  heartbeat `running` at `2026-05-08T16:25:46Z`, MT5 connected/trade allowed,
+  broker/state snapshot shows EURJPY D1 pending ticket `258799969` and GBPUSD
+  D1 active position `258801290`.
+- IC VPS evidence from the packet: `LPFS_IC_Live` task `Running`,
+  `task_last_result=267009` (running), startup alert task `Ready` with
+  `startup_alert_last_result=0`, kill switch clear, parent/child runner shape,
+  heartbeat `running` at `2026-05-08T16:28:43Z`, MT5 connected/trade allowed,
+  broker/state snapshot shows EURCHF H12 pending ticket `4420525163` and
+  AUDNZD H4 pending ticket `4422248655`.
+- Cross-account open state had `0` shared signal keys, `2` FTMO-only and `2`
+  IC-only. Current interpretation is expected broker/feed/start-date
+  divergence; inspect journals before treating this as a defect.
 
 ## 2026-05-08 Rollover Spread / Broker Divergence Audit
 
@@ -952,6 +1017,24 @@ performance dashboard refresh:
   passed `39` tests.
 - `.\venv\Scripts\python.exe -m pytest strategies/lp_force_strike_strategy_lab/tests -q`
   passed `320` tests and `172` subtests.
+- `git diff --check` reported no whitespace errors. Git printed line-ending
+  normalization warnings only.
+
+Latest operations/docs verification on 2026-05-09:
+
+- `.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 40 -LogLines 80`
+  wrote `reports/live_ops/lpfs_dual_vps_status_20260509_002745.md`.
+- `.\venv\Scripts\python.exe scripts\build_lpfs_live_weekly_performance.py --latest`
+  generated `reports/live_ops/lpfs_weekly_performance/20260508_162326/`;
+  the second run printed `already up to date`.
+- Regenerated stable pages: Home, Strategy, Live Ops, Account Validation,
+  FTMO Challenge Profiles, EA Migration, and Weekly Performance. The FTMO
+  page was rebuilt from the accepted `20260508_112959` report packet rather
+  than re-running the full frontier study.
+- `.\venv\Scripts\python.exe -m pytest strategies/lp_force_strike_strategy_lab/tests/test_live_trade_summary.py strategies/lp_force_strike_strategy_lab/tests/test_dashboard_pages.py strategies/lp_force_strike_strategy_lab/tests/test_live_weekly_performance.py strategies/lp_force_strike_strategy_lab/tests/test_ea_migration.py -q`
+  passed `44` tests.
+- `.\venv\Scripts\python.exe -m pytest strategies/lp_force_strike_strategy_lab/tests -q`
+  passed `321` tests and `172` subtests.
 - `git diff --check` reported no whitespace errors. Git printed line-ending
   normalization warnings only.
 

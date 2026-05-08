@@ -457,6 +457,7 @@
       <a class="page-link" href="index.html">Home</a>
       <a class="page-link" href="strategy.html">Strategy</a>
       <a class="page-link active" href="live_ops.html">Live Ops</a>
+      <a class="page-link" href="live_weekly_performance.html">Weekly Performance</a>
       <a class="page-link" href="account_validation.html">Account Validation</a>
       <a class="page-link" href="ftmo_challenge_profiles.html">FTMO Challenge Profiles</a>
       <a class="page-link" href="v13.html">V13</a>
@@ -1252,6 +1253,55 @@ Get-CimInstance Win32_Process |
     <section id="limits" aria-labelledby="limits-title">
       <h2 id="limits-title">Known Operating Limits</h2>
       <div class="scenario-grid">
+
+        <article class="step-card">
+          <span>Watch</span>
+          <h3>Weekly dashboard is latest-week only</h3>
+          <p>The Weekly Performance page is a current-week checkpoint, not a week-over-week trend chart. Use timestamped report packets for history until a trend view is built.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Watch</span>
+          <h3>Telegram is reporting only</h3>
+          <p>MT5 broker orders, positions, order history, and deal history are the source of truth. Telegram cards are operator alerts, not broker-state proof.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Watch</span>
+          <h3>Runtime sync uses runtime commit</h3>
+          <p>Docs/reporting commits can be ahead of the VPS. Treat runtime sync as healthy when the latest runtime commit is contained in the VPS checkout, even if local HEAD is newer.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Watch</span>
+          <h3>Retryable waits are not final rejects</h3>
+          <p>Spread waits, AutoTrading-disabled waits, market-recovery waits, and broker market-closed waits should stay retryable while the setup remains valid.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Watch</span>
+          <h3>True rejects stay final</h3>
+          <p>Manual deletion and true broker rejects remain final unless an explicit operator re-arm plan approves state surgery.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Watch</span>
+          <h3>SSH/report fetch failures must be visible</h3>
+          <p>Weekly reporting must mark lane fetch failures as incomplete instead of treating missing journal/state data as a clean result.</p>
+        </article>
+
+
+        <article class="step-card">
+          <span>Watch</span>
+          <h3>EA v1 remains tester-only</h3>
+          <p>The native MQL5 EA scaffold is Strategy Tester-only. Do not attach it to FTMO or IC live charts during v1.</p>
+        </article>
+
 
         <article class="step-card">
           <span>Limit</span>
