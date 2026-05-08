@@ -1,7 +1,8 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-08 after documenting LPFS rollover spread / broker-feed
-divergence behavior and refreshing handoff material.
+Last updated: 2026-05-09 after refreshing LPFS weekly performance status,
+fast-forwarding both VPS checkouts to the latest docs/reporting commit, and
+verifying both live runners remained operational.
 
 ## Purpose
 
@@ -29,8 +30,10 @@ source of truth for strategy research and live execution work.
    account or broker feed.
 11. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native MQL5 EA or Strategy Tester work.
-12. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
-13. `concepts/lp_levels_lab/PROJECT_STATE.md` and
+12. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
+   performance checkpoint.
+13. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
+14. `concepts/lp_levels_lab/PROJECT_STATE.md` and
    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
    concept behavior.
 

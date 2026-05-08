@@ -97,6 +97,54 @@ agents should start remote work with `ssh lpfs-vps hostname`, `ssh lpfs-vps
 whoami`, VPS `git status`, and the LPFS status packet before drawing
 operational conclusions.
 
+## 2026-05-09 Code Freshness / Runner Health Check
+
+Scope: local status refresh, pull-only VPS checkout update, weekly dashboard
+refresh, and read-only runner health verification. No live configs, VPS
+runtime files, scheduled tasks, state files, journals, broker orders, broker
+positions, or runner processes were edited or restarted.
+
+- Local repo was clean and synced with `origin/main` at `18a76af` before the
+  refresh.
+- The code delta from the previous VPS checkout `a223daf` to `18a76af` was
+  reporting/docs/tests only: dashboard builders, weekly performance reporting,
+  FTMO challenge profile reporting, generated docs pages, and tests. It did
+  not include live executor strategy/runtime logic.
+- Both VPS checkouts were fast-forwarded with `git pull --ff-only origin main`
+  to `18a76af`:
+  - FTMO `C:\TradeAutomation`: `git_head=18a76af`, clean
+    `main...origin/main`.
+  - IC `C:\TradeAutomation`: `git_head=18a76af`, clean `main...origin/main`.
+- No runner restart was performed. The currently running Python processes keep
+  using their already-loaded runtime code until a separate approved restart.
+- Weekly performance dashboard refreshed to
+  `reports/live_ops/lpfs_weekly_performance/20260508_164325/` and
+  `docs/live_weekly_performance.html`. Current status remains `watch` for both
+  lanes because this is still a partial week and runtime changed inside the
+  reporting window:
+  - FTMO: `25` closed trades, `-5.3354R`, `-$63.64`, `40.0%` win rate,
+    `27` retryable waits, `4` true rejects, `1` pending, `1` active.
+  - IC: `9` closed trades, `-5.8779R`, `-$39.05`, `22.2%` win rate,
+    `8` retryable waits, `1` true reject, `2` pending, `0` active.
+- Latest dual-VPS status packet:
+  `reports/live_ops/lpfs_dual_vps_status_20260509_004325.md`.
+- FTMO health from that packet: `LPFS_Live` task `Running`, startup alert task
+  `Ready`, kill switch clear, parent/child runner process pair alive,
+  heartbeat `running` at `2026-05-08T16:43:05.686712Z`, MT5 connected and
+  trade allowed. Broker/state snapshot shows EURJPY D1 pending ticket
+  `258799969` and GBPUSD D1 active position `258801290`.
+- IC health from that packet: `LPFS_IC_Live` task `Running`, startup alert task
+  `Ready`, kill switch clear, parent/child runner process pair alive,
+  heartbeat `running` at `2026-05-08T16:43:07.753079Z`, MT5 connected and
+  trade allowed. Broker/state snapshot shows EURCHF H12 pending ticket
+  `4420525163` and AUDNZD H4 pending ticket `4422248655`.
+- Verification after this refresh:
+  `.\venv\Scripts\python.exe -m pytest strategies/lp_force_strike_strategy_lab/tests/test_live_weekly_performance.py strategies/lp_force_strike_strategy_lab/tests/test_dashboard_pages.py -q`
+  passed `35` tests;
+  `.\venv\Scripts\python.exe -m pytest strategies/lp_force_strike_strategy_lab/tests -q`
+  passed `321` tests and `172` subtests; `git diff --check` reported no
+  whitespace errors, only line-ending normalization warnings.
+
 ## 2026-05-08 Live Weekly Performance Dashboard
 
 This was a read-only reporting/docs change. No live configs, VPS runtime
@@ -118,7 +166,7 @@ were changed.
   cleanly with `already up to date` and does not rewrite reports. Use
   `--force` only when intentionally regenerating the same evidence.
 - Latest generated packet:
-  `reports/live_ops/lpfs_weekly_performance/20260508_162326/`.
+  `reports/live_ops/lpfs_weekly_performance/20260508_164325/`.
 - Latest stable page: `docs/live_weekly_performance.html`, linked from
   `docs/index.html` as "Live Weekly Performance".
 - Verified live portfolio starts:
@@ -134,10 +182,10 @@ were changed.
   far. FTMO is just above its historical 10th percentile. This is monitoring
   evidence, not a strategy patch instruction by itself.
 - Version context from the latest run:
-  local and `origin/main` were `29c5bc4`; both VPS checkouts were `a223daf`;
+  local, `origin/main`, and both VPS checkouts were `18a76af`;
   latest runtime commit was `94ffea1` (`Treat LPFS market-closed sends as
   retryable`). Runtime sync is true because `94ffea1` is contained in each VPS
-  checkout even though local docs/reporting commits are ahead.
+  checkout.
 - Latest live weekly closed-trade snapshot:
   - FTMO: `25` closed trades, `-5.3354R`, `-$63.64`, `40.0%` win rate,
     `27` retryable waits, `4` true rejects, `1` pending, `1` active.
@@ -1023,10 +1071,10 @@ performance dashboard refresh:
 Latest operations/docs verification on 2026-05-09:
 
 - `.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 40 -LogLines 80`
-  wrote `reports/live_ops/lpfs_dual_vps_status_20260509_002745.md`.
+  wrote `reports/live_ops/lpfs_dual_vps_status_20260509_004325.md`.
 - `.\venv\Scripts\python.exe scripts\build_lpfs_live_weekly_performance.py --latest`
-  generated `reports/live_ops/lpfs_weekly_performance/20260508_162326/`;
-  the second run printed `already up to date`.
+  generated `reports/live_ops/lpfs_weekly_performance/20260508_164325/`
+  and refreshed `docs/live_weekly_performance.html`.
 - Regenerated stable pages: Home, Strategy, Live Ops, Account Validation,
   FTMO Challenge Profiles, EA Migration, and Weekly Performance. The FTMO
   page was rebuilt from the accepted `20260508_112959` report packet rather
