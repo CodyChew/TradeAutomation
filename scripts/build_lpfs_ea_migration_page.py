@@ -151,7 +151,7 @@ def build_page(output: Path = DEFAULT_OUTPUT) -> Path:
 </body>
 </html>
 """
-    output.write_text(html_text, encoding="utf-8")
+    output.write_text("\n".join(line.rstrip() for line in html_text.splitlines()) + "\n", encoding="utf-8")
     return output
 
 

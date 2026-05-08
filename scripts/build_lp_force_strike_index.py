@@ -444,6 +444,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
           ("#current-baseline", "Current Baseline"),
           ("#strategy-guide", "Strategy Guide"),
           ("#live-ops", "Live Ops"),
+          ("#ftmo-challenge-profiles", "FTMO Profiles"),
           ("#research-archive", "Archive"),
           ("#metric-glossary", "Glossary"),
       ],

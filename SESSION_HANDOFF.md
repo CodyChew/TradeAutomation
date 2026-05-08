@@ -1,7 +1,8 @@
 # TradeAutomation Session Handoff
 
 Last updated: 2026-05-08 after adding the FTMO challenge-profile frontier
-study and refreshing the LPFS operator handoff.
+study, making it visible in the dashboard top navigation, and refreshing the
+LPFS operator handoff.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -27,7 +28,8 @@ file, and the JSONL journal before making operational decisions.
 10. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
 11. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
-   buckets or income expectations.
+   buckets or income expectations. It is linked from the dashboard top
+   navigation and the Home page FTMO Profiles section.
 12. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native EA or Strategy Tester work.
 
@@ -316,7 +318,8 @@ so H4/H8 are `0.01%`, H12/D1 are `0.015%`, and W1 is `0.0375%`.
 FTMO challenge profile research is now separate from the live validation
 config. Latest run:
 `reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959`, with
-docs page `docs/ftmo_challenge_profiles.html`.
+docs page `docs/ftmo_challenge_profiles.html`, linked from
+`docs/index.html` top navigation and the Home page FTMO Profiles section.
 
 - Source: current FTMO V22 separated, commission-adjusted trade set; initial
   signal-candle spread gate overlaid from FTMO candle `spread_points` at the

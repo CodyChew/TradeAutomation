@@ -81,6 +81,10 @@ def dashboard_page_links(current_page: str, metadata: dict[str, Any] | None = No
     links.append(
         f'<a class="page-link{account_validation_active}" href="account_validation.html">Account Validation</a>'
     )
+    ftmo_profiles_active = " active" if current_page == "ftmo_challenge_profiles.html" else ""
+    links.append(
+        f'<a class="page-link{ftmo_profiles_active}" href="ftmo_challenge_profiles.html">FTMO Challenge Profiles</a>'
+    )
     for page in current_dashboard_pages(metadata):
         active = " active" if current_page == page["page"] else ""
         href = _escape(page["page"])

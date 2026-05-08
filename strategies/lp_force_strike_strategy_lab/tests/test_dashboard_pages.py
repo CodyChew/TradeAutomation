@@ -31,7 +31,13 @@ class DashboardPagesTests(unittest.TestCase):
                 self.assertTrue(page[field], f"missing {field} for v{version}")
 
     def test_every_generated_dashboard_links_to_all_pages(self) -> None:
-        expected_links = ['href="index.html"', 'href="strategy.html"', 'href="live_ops.html"', 'href="account_validation.html"'] + [
+        expected_links = [
+            'href="index.html"',
+            'href="strategy.html"',
+            'href="live_ops.html"',
+            'href="account_validation.html"',
+            'href="ftmo_challenge_profiles.html"',
+        ] + [
             f'href="v{version}.html"' for version in range(1, LATEST_VERSION + 1)
         ]
 
