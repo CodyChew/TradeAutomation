@@ -377,6 +377,29 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         ["10", "Final send", "Pending sends place TRADE_ACTION_PENDING. Recovery sends TRADE_ACTION_DEAL with zero slippage by default."],
     ]
 
+    rollover_rows = [
+        [
+            "AUDNZD IC vs FTMO",
+            "2026-05-08 05:02 SGT",
+            "IC AUDNZD H4/H8 stopped during a rollover spread spike while FTMO kept comparable positions open. Treat as broker quote/spread/feed divergence unless repeated evidence shows a systematic issue.",
+        ],
+        [
+            "10-year evidence",
+            "Spread-inclusive bars",
+            "Commission-adjusted V22 separated audit showed rollover-containing intraday exit bars stayed net positive: IC 2,461 exits for +364.3R; FTMO 2,487 exits for +308.8R.",
+        ],
+        [
+            "Placement lag",
+            "05:00-06:00 SGT",
+            "One-hour lag on 2026-05-08 was retryable spread_too_wide WAITING. Both VPS lanes were healthy and delayed orders placed after spread normalized near 06:00 SGT.",
+        ],
+        [
+            "Operator decision",
+            "Monitor, do not patch",
+            "Keep the current spread gate and retry behavior. Build a dedicated read-only rollover report only if repeated events materially hurt PnL.",
+        ],
+    ]
+
     commands = [
         (
             "Run one live-send cycle",
@@ -671,6 +694,8 @@ Get-CimInstance Win32_Process |
           ("#proof", "Proof"),
           ("#operator-checklist", "Checklist"),
           ("#send-gates", "Send Gates"),
+          ("#spread-policy", "Spread"),
+          ("#rollover", "Rollover"),
           ("#reconciliation-gates", "Reconcile"),
           ("#pending-expiry", "Expiry"),
           ("#telegram", "Telegram"),
@@ -714,6 +739,7 @@ Get-CimInstance Win32_Process |
       <p class="callout"><strong>Broker session:</strong> if MT5 returns <code>Market closed</code> before any order exists, the runner records WAITING, removes the processed signal key, and retries while the setup remains valid. True broker rejections and manual deletion of already placed orders remain final unless deliberately re-armed.</p>
       <p class="callout"><strong>Broker fill mode:</strong> market recovery uses <code>TRADE_ACTION_DEAL</code> and now chooses broker-supported market filling modes from symbol metadata. If MT5 rejects <code>order_check</code> with invalid or unsupported filling mode, the runner tries the next market filling mode and sends using the exact request that passed <code>order_check</code>.</p>
       <p class="callout warning"><strong>Weekly-open observation:</strong> first live VPS market-open monitoring showed multiple WAITING cards where spread was far above the 10% risk-distance limit, followed by missed-entry recovery checks. Market recovery reduces this forward/backtest drift when a later live quote becomes same-or-better than the backtested entry and the stop/target path after first entry touch remains clean.</p>
+      <p class="callout warning"><strong>Daily rollover observation:</strong> the 05:00-06:00 SGT rollover window can keep spreads too wide for many cycles and can produce broker-specific quote differences. Current policy is to wait/retry while valid, not to loosen the spread gate from a single event.</p>
       <div class="ops-grid">
         {_fact_grid([
             ("Loop timing", "Scan then sleep", "The runner does not start every 30 wall-clock seconds. It scans all frames, saves state/heartbeat, then sleeps 30 seconds before the next cycle."),
@@ -730,6 +756,19 @@ Get-CimInstance Win32_Process |
             ("NZDCHF example", "11.5% vs 10.0%", "With the patched policy, this means wait. A future cycle can place the order if spread improves before entry touch or expiry."),
             ("Cycle summary", "setups_blocked", "Spread-only waits are counted separately from real rejected setups in the live cycle audit row."),
             ("Evidence task", "Live gate attribution", "Before tuning the 10% gate, run scripts/summarize_lpfs_live_gate_attribution.py to measure detected setups, placed orders, spread waits, later placements, entry-touch skips, expiries, and whether blocks cluster around weekly open."),
+        ])}
+      </div>
+    </section>
+
+    <section id="rollover" aria-labelledby="rollover-title">
+      <h2 id="rollover-title">Rollover Spread And Broker Divergence</h2>
+      <p class="callout warning"><strong>QA stance:</strong> rollover spread spikes are expected live-market behavior. A single broker stopout that another broker avoids is not automatically an LPFS bug. Verify MT5 history, quote/spread snapshots, live journals, and both VPS status packets before changing strategy or ops code.</p>
+      {_table(["Case", "Window", "Documented behavior"], rollover_rows)}
+      <div class="ops-grid">
+        {_fact_grid([
+            ("Current decision", "No patch", "The 2026-05-08 AUDNZD and CAD-cross placement-lag audit supports keeping the current spread gate and retry rules."),
+            ("Backtest caveat", "Bar-level realism", "The 10-year model includes candle spread through bid/ask simulation, but tick-only rollover spikes can be understated if they are not preserved in OHLC/spread data."),
+            ("Next trigger", "Repeat or PnL harm", "If rollover stops/waits cluster or materially hurt returns, add a read-only report grouped by signal key, broker lane, wait reason, later outcome, and FTMO-vs-IC divergence."),
         ])}
       </div>
     </section>

@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-05-07 after adding the isolated native MQL5 EA migration
-workspace, Python parity fixture, and tester-only operator docs.
+Last updated: 2026-05-08 after documenting rollover spread / broker-feed
+divergence behavior and refreshing operator handoff guidance.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -36,6 +36,11 @@ operational decisions.
   `mql5/lpfs_ea/`. MetaEditor compile and MT5 tester load/config smoke passed;
   full-result smoke is pending until single-chart smoke mode and new-bar gating
   are added. Python remains canonical.
+- Rollover spread state: a 2026-05-08 audit found IC/FTMO divergence on
+  `AUDNZD H4/H8` around daily rollover and a separate 05:00-06:00 SGT
+  spread-wait placement lag. The spread gate and retry behavior matched the
+  intended design; no patch is recommended unless the pattern repeats or
+  materially harms PnL.
 - Production host: Amazon Lightsail Windows VPS.
 - Preferred remote access: Tailscale + OpenSSH using local alias `lpfs-vps`.
 - Broker truth: MT5 orders, positions, order history, and deal history.
@@ -76,6 +81,7 @@ operational decisions.
 | Account and secrets | ignored `config.local.json` and local OS/user secrets | Never commit MT5 passwords, Telegram tokens, SSH private keys, or account credentials. |
 | IC account validation | `docs/account_validation.html`, `docs/lpfs_new_mt5_account_validation.md`, and `config.lpfs_new_mt5_account.example.json` | Local-only validation and smoke testing; do not touch VPS live account. |
 | IC production setup | `docs/lpfs_icmarkets_vps_runbook.md`, `config.lpfs_icmarkets_raw_spread.example.json`, and `scripts/Get-LpfsDualVpsStatus.ps1` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
+| Rollover/spread-wait behavior | `docs/live_ops.html`, `SESSION_HANDOFF.md`, and live JSONL journals | Treat Telegram as an alert only; verify MT5 history, journal rows, spread snapshots, and both VPS lanes before concluding a bug. |
 | Native EA migration | `docs/ea_migration.html`, `mql5/lpfs_ea/README.md`, and `mql5/lpfs_ea/Experts/LPFS/LPFS_EA.mq5` | Tester-only v1; do not attach to production live charts. |
 | Dashboard HTML | builder scripts in `scripts/` | Edit builders, then regenerate HTML; do not make HTML-only dashboard changes. |
 
@@ -143,6 +149,9 @@ production-adjacent.
 - A `VPS STARTED` Telegram card is an operating-system alert, not proof the
   trading loop is healthy. Always follow it with heartbeat, journal, and MT5
   broker-state checks.
+- Do not patch strategy or executor behavior from one rollover stopout or
+  single-broker quote divergence. First run a read-only dual-VPS/journal/MT5
+  audit and compare against the 10-year spread-inclusive evidence.
 
 ## Resume Prompts
 
@@ -155,3 +164,4 @@ Use one of these prompts to restart cleanly:
 - Second MT5 account validation: `Read START_HERE.md and docs/lpfs_new_mt5_account_validation.md, then audit the locally logged-in MT5 account before pulling data or running dry-run.`
 - IC VPS audit: `Read START_HERE.md and docs/lpfs_icmarkets_vps_runbook.md, then run Get-LpfsDualVpsStatus.ps1 and verify LPFS_Live and LPFS_IC_Live from MT5/runtime state before making operational changes.`
 - EA migration: `Read START_HERE.md, docs/ea_migration.html, and mql5/lpfs_ea/README.md, then continue native MQL5 tester-only work without touching VPS runtime, live configs, live journals, or broker orders.`
+- Rollover/spread audit: `Read START_HERE.md, SESSION_HANDOFF.md, and docs/live_ops.html, then use MT5 history, both VPS journals, and gate-attribution reports before deciding whether a rollover spread event needs code or ops changes.`

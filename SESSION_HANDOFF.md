@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-07 after adding the isolated LPFS native MQL5 EA
-migration scaffold, parity fixtures, and tester-only operator docs.
+Last updated: 2026-05-08 after documenting rollover spread / broker-feed
+divergence behavior and refreshing the LPFS operator handoff.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -90,6 +90,38 @@ Environment boundary rule: local OneDrive is development; VPS
 agents should start remote work with `ssh lpfs-vps hostname`, `ssh lpfs-vps
 whoami`, VPS `git status`, and the LPFS status packet before drawing
 operational conclusions.
+
+## 2026-05-08 Rollover Spread / Broker Divergence Audit
+
+This was a read-only QA/operator audit. No live configs, VPS runtime files,
+scheduled tasks, state, journals, broker orders, or broker positions were
+changed.
+
+- IC live `AUDNZD H4` and `AUDNZD H8` long positions stopped out around
+  `2026-05-08 05:02 SGT`; FTMO kept the comparable positions open in the same
+  window. The IC journal snapshot around the close showed `bid=1.21071`,
+  `ask=1.21456`, and `385` points of spread. FTMO bid stayed above its stop in
+  the observed journal window.
+- Current interpretation: this is broker quote/spread/feed divergence during
+  daily rollover, not evidence of an LPFS signal bug. Do not patch strategy or
+  executor logic from this single event.
+- The 10-year candle-level realism model already includes spread as bid/ask
+  movement. A read-only audit of current commission-adjusted V22 separated
+  trades showed rollover-containing intraday exit bars were still net positive:
+  IC `2,461` such exits for `+364.3R`; FTMO `2,487` such exits for `+308.8R`.
+  Rollover stops exist, but were outweighed by rollover targets in the same
+  study. Tick-level rollover spikes can still be understated when they are not
+  preserved in candle OHLC/spread data.
+- The 05:00-06:00 SGT order-placement lag on 2026-05-08 was caused by
+  retryable `spread_too_wide` WAITING rows, not a runner outage or duplicate
+  bug. Both VPS lanes were running with fresh heartbeats and 140-frame cycles.
+  Several CAD-cross setups waited through rollover and placed when spread
+  normalized near 06:00 SGT.
+- Current operator decision: keep existing spread gate and retry behavior.
+  No extra monitoring code is necessary yet. If rollover waits/stops repeat or
+  materially hurt PnL, build a read-only rollover report that groups journal
+  rows by signal key and broker lane, measuring first WAITING reason, spread
+  ratio, later placement/expiry/invalidation, and FTMO-vs-IC outcome.
 
 ## 2026-05-07 EA Migration Scaffold
 
@@ -815,6 +847,15 @@ documentation refresh:
 - `300` LPFS unittest discovery cases inside `scripts/run_core_coverage.py`.
 - Core coverage ran all scoped concept/shared/LPFS tests and reported
   `100.00%` line and branch coverage across the measured modules.
+
+Latest docs/handoff verification on 2026-05-08 after the rollover
+documentation refresh:
+
+- `scripts/build_lp_force_strike_live_ops_page.py` regenerated
+  `docs/live_ops.html`.
+- `.\.venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_dashboard_pages -v`
+  passed `24` tests.
+- `git diff --check` reported no whitespace errors.
 
 Latest selector revalidation on 2026-05-01:
 

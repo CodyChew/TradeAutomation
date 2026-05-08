@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-07 after adding the isolated native MQL5 EA migration
-scaffold and tester-only docs.
+Last updated: 2026-05-08 after documenting rollover spread / broker-feed
+divergence behavior and refreshing operator handoff guidance.
 
 ## Purpose
 
@@ -324,6 +324,34 @@ Dedicated IC VPS live lane:
   `../../scripts/Get-LpfsDualVpsStatus.ps1`, which writes ignored
   `reports/live_ops/lpfs_dual_vps_status_*.md` packets and compares current
   FTMO/IC open signal keys.
+
+## 2026-05-08 Rollover Spread / Broker Divergence Observation
+
+This note documents live behavior that should not be mistaken for a strategy
+logic bug during future handoff.
+
+- IC live `AUDNZD H4` and `AUDNZD H8` long positions stopped around
+  `2026-05-08 05:02 SGT` while FTMO kept comparable positions open around
+  `05:05 SGT`. IC entry/stop/target were approximately `1.21378 / 1.21165 /
+  1.21591`; the IC close snapshot showed `bid=1.21071`, `ask=1.21456`, and
+  `385` points of spread.
+- Interpretation: broker quote/spread/feed divergence during daily rollover.
+  The current evidence does not justify a strategy or executor patch.
+- Ten-year commission-adjusted V22 separated audit: IC had `11,937` trades,
+  `+1,531.1R`, PF `1.297`; rollover-containing intraday exit bars were
+  `2,461` trades for `+364.3R`. FTMO had `11,834` trades, `+1,141.8R`, PF
+  `1.216`; rollover-containing intraday exit bars were `2,487` trades for
+  `+308.8R`. Rollover stops exist, but were outweighed by rollover targets in
+  this bar-level evidence.
+- The 2026-05-08 05:00-06:00 SGT placement lag was explained by retryable
+  `spread_too_wide` WAITING rows. Both VPS lanes had fresh heartbeat/cycle
+  evidence. Delayed orders placed when spread normalized near 06:00 SGT.
+- Operator rule: investigate with MT5 history, journal rows, spread snapshots,
+  `../../scripts/Get-LpfsDualVpsStatus.ps1`, and
+  `../../scripts/summarize_lpfs_live_gate_attribution.py` before changing code.
+  Build a dedicated rollover report only if this repeats or materially hurts
+  PnL. This documentation update made no live runtime, config, state, journal,
+  task, or broker changes.
 
 ## Experiment V1
 

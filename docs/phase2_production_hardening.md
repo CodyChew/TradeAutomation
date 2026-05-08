@@ -1,6 +1,7 @@
 # LPFS Phase 2 Production Hardening
 
-Last updated: 2026-05-06 after adding boot-level Telegram startup alerts.
+Last updated: 2026-05-08 after documenting rollover spread / broker-feed
+divergence observations and live gate-attribution guidance.
 
 This is the operations layer for LP + Force Strike live execution. It does not
 change signal rules, risk buckets, spread gates, stop/target geometry, order
@@ -238,6 +239,36 @@ Limit: a `VPS STARTED` card means Windows booted. It is not proof that MT5 is
 logged in, trading is allowed, or the at-logon runner is healthy. Follow it
 with the normal heartbeat, journal, and MT5 broker-state checks.
 
+## Rollover Spread Observations
+
+Daily FX rollover can produce wide spreads, quote divergence between brokers,
+and delayed placement even when both VPS lanes are healthy. The current runner
+behavior is intentional:
+
+- `spread_too_wide`, AutoTrading-disabled, market-recovery price/spread waits,
+  and broker market-closed placement blocks are retryable `WAITING` states.
+- Manual deletion and true broker rejection remain final unless an operator
+  explicitly approves re-arming.
+- Spread is a send gate. Once an order is pending, later spread widening does
+  not auto-cancel the order by default.
+
+2026-05-08 QA note:
+
+- IC `AUDNZD H4/H8` stopped around `05:02 SGT`, while FTMO kept comparable
+  positions open. IC showed a rollover spread spike in the journal; this is
+  currently classified as broker quote/spread/feed divergence, not an LPFS
+  logic bug.
+- The 05:00-06:00 SGT order-placement lag that followed was retryable
+  `spread_too_wide` WAITING. Both VPS lanes had fresh heartbeat and cycle
+  evidence, and delayed orders placed after spread normalized near 06:00 SGT.
+- Ten-year commission-adjusted V22 separated evidence still shows
+  rollover-containing intraday exit bars net positive for both IC and FTMO.
+
+Before changing the spread gate or recovery rules, run a read-only dual-VPS
+status packet and gate-attribution report, then compare against MT5 history and
+journal rows. Build a dedicated rollover monitoring report only if repeated
+events materially harm PnL.
+
 ## Acceptance Criteria
 
 Phase 2 is ready for VPS migration when these pass locally:
@@ -259,9 +290,9 @@ Phase 2 is ready for VPS migration when these pass locally:
 - Telegram failure does not change trade validity.
 - Existing MT5 pending orders and positions are reconciled before any new
   signal send.
-- Weekly-open spread WAITING and market-recovery price WAITING behavior is
-  reviewed with live gate attribution before changing the `0.10` spread/risk
-  gate.
+- Weekly-open and daily-rollover spread WAITING plus market-recovery price
+  WAITING behavior are reviewed with live gate attribution before changing the
+  `0.10` spread/risk gate.
   Current local command:
 
   ```powershell

@@ -477,7 +477,7 @@
     </nav>
 
     <nav class="report-nav" aria-label="Report sections">
-      <a href="#proof">Proof</a><a href="#operator-checklist">Checklist</a><a href="#send-gates">Send Gates</a><a href="#reconciliation-gates">Reconcile</a><a href="#pending-expiry">Expiry</a><a href="#telegram">Telegram</a><a href="#remote-access">Remote Access</a><a href="#vps-operator">VPS</a><a href="#ic-vps">IC VPS</a><a href="#commands">Commands</a><a href="#limits">Limits</a><a href="#files">Files</a>
+      <a href="#proof">Proof</a><a href="#operator-checklist">Checklist</a><a href="#send-gates">Send Gates</a><a href="#spread-policy">Spread</a><a href="#rollover">Rollover</a><a href="#reconciliation-gates">Reconcile</a><a href="#pending-expiry">Expiry</a><a href="#telegram">Telegram</a><a href="#remote-access">Remote Access</a><a href="#vps-operator">VPS</a><a href="#ic-vps">IC VPS</a><a href="#commands">Commands</a><a href="#limits">Limits</a><a href="#files">Files</a>
     </nav>
 
   </header>
@@ -594,6 +594,7 @@
       <p class="callout"><strong>Broker session:</strong> if MT5 returns <code>Market closed</code> before any order exists, the runner records WAITING, removes the processed signal key, and retries while the setup remains valid. True broker rejections and manual deletion of already placed orders remain final unless deliberately re-armed.</p>
       <p class="callout"><strong>Broker fill mode:</strong> market recovery uses <code>TRADE_ACTION_DEAL</code> and now chooses broker-supported market filling modes from symbol metadata. If MT5 rejects <code>order_check</code> with invalid or unsupported filling mode, the runner tries the next market filling mode and sends using the exact request that passed <code>order_check</code>.</p>
       <p class="callout warning"><strong>Weekly-open observation:</strong> first live VPS market-open monitoring showed multiple WAITING cards where spread was far above the 10% risk-distance limit, followed by missed-entry recovery checks. Market recovery reduces this forward/backtest drift when a later live quote becomes same-or-better than the backtested entry and the stop/target path after first entry touch remains clean.</p>
+      <p class="callout warning"><strong>Daily rollover observation:</strong> the 05:00-06:00 SGT rollover window can keep spreads too wide for many cycles and can produce broker-specific quote differences. Current policy is to wait/retry while valid, not to loosen the spread gate from a single event.</p>
       <div class="ops-grid">
 
         <article class="ops-fact">
@@ -691,6 +692,45 @@
           <span>Evidence task</span>
           <strong>Live gate attribution</strong>
           <p>Before tuning the 10% gate, run scripts/summarize_lpfs_live_gate_attribution.py to measure detected setups, placed orders, spread waits, later placements, entry-touch skips, expiries, and whether blocks cluster around weekly open.</p>
+        </article>
+
+      </div>
+    </section>
+
+    <section id="rollover" aria-labelledby="rollover-title">
+      <h2 id="rollover-title">Rollover Spread And Broker Divergence</h2>
+      <p class="callout warning"><strong>QA stance:</strong> rollover spread spikes are expected live-market behavior. A single broker stopout that another broker avoids is not automatically an LPFS bug. Verify MT5 history, quote/spread snapshots, live journals, and both VPS status packets before changing strategy or ops code.</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Case</th><th>Window</th><th>Documented behavior</th></tr></thead>
+        <tbody><tr><td>AUDNZD IC vs FTMO</td><td>2026-05-08 05:02 SGT</td><td>IC AUDNZD H4/H8 stopped during a rollover spread spike while FTMO kept comparable positions open. Treat as broker quote/spread/feed divergence unless repeated evidence shows a systematic issue.</td></tr>
+<tr><td>10-year evidence</td><td>Spread-inclusive bars</td><td>Commission-adjusted V22 separated audit showed rollover-containing intraday exit bars stayed net positive: IC 2,461 exits for +364.3R; FTMO 2,487 exits for +308.8R.</td></tr>
+<tr><td>Placement lag</td><td>05:00-06:00 SGT</td><td>One-hour lag on 2026-05-08 was retryable spread_too_wide WAITING. Both VPS lanes were healthy and delayed orders placed after spread normalized near 06:00 SGT.</td></tr>
+<tr><td>Operator decision</td><td>Monitor, do not patch</td><td>Keep the current spread gate and retry behavior. Build a dedicated read-only rollover report only if repeated events materially hurt PnL.</td></tr></tbody>
+      </table>
+    </div>
+
+      <div class="ops-grid">
+
+        <article class="ops-fact">
+          <span>Current decision</span>
+          <strong>No patch</strong>
+          <p>The 2026-05-08 AUDNZD and CAD-cross placement-lag audit supports keeping the current spread gate and retry rules.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Backtest caveat</span>
+          <strong>Bar-level realism</strong>
+          <p>The 10-year model includes candle spread through bid/ask simulation, but tick-only rollover spikes can be understated if they are not preserved in OHLC/spread data.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Next trigger</span>
+          <strong>Repeat or PnL harm</strong>
+          <p>If rollover stops/waits cluster or materially hurt returns, add a read-only report grouped by signal key, broker lane, wait reason, later outcome, and FTMO-vs-IC divergence.</p>
         </article>
 
       </div>

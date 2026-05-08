@@ -59,6 +59,7 @@ The current strategy guide and execution-readiness docs are:
 - `docs/strategy.html`
 - `docs/live_ops.html`
 - `docs/lpfs_lightsail_vps_runbook.md`
+- `docs/lpfs_icmarkets_vps_runbook.md`
 - `docs/lpfs_new_mt5_account_validation.md`
 - `docs/ea_migration.html`
 - `mql5/lpfs_ea/README.md`
@@ -78,7 +79,9 @@ orders only when ignored local config explicitly sets
 `live_send.real_money_ack="I_UNDERSTAND_THIS_SENDS_REAL_ORDERS"`. Treat this
 path as real-account capable. Open `docs/live_ops.html` for cycle cadence,
 spread behavior, pending-order lifecycle, Telegram alerts, and operator
-commands.
+commands. The live-ops handoff also documents daily rollover spread waits and
+broker-feed divergence observations so operators verify MT5 history and JSONL
+journals before treating a single broker difference as a code bug.
 
 Copy `config.local.example.json` to ignored `config.local.json` before running
 the executors. Real MT5 passwords, Telegram credentials, broker/account

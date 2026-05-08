@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-07 after adding the isolated LPFS native MQL5 EA
-migration scaffold and tester-only docs.
+Last updated: 2026-05-08 after documenting LPFS rollover spread / broker-feed
+divergence behavior and refreshing handoff material.
 
 ## Purpose
 
@@ -213,6 +213,28 @@ Dedicated IC VPS production status:
   wait, and `5` expiries. IC had `7` unique decision signals, `4` placements,
   `0` spread waits, `3` market-recovery price waits, and `1` entry-touch/path
   skip. Both had `0` retryable waits inside the 12-hour weekly-open window.
+
+2026-05-08 rollover/spread-wait QA note:
+
+- IC `AUDNZD H4` and `AUDNZD H8` stopped out around `05:02 SGT` while FTMO kept
+  the comparable positions open. The IC journal showed a rollover spread spike
+  near the close (`bid=1.21071`, `ask=1.21456`, `385` points). This is currently
+  treated as broker quote/spread/feed divergence during daily rollover, not as a
+  strategy or executor bug.
+- The 10-year commission-adjusted V22 separated trade audit showed
+  rollover-containing intraday exit bars remained net positive after both stops
+  and targets: IC `2,461` exits for `+364.3R`; FTMO `2,487` exits for `+308.8R`.
+  Candle-level testing includes spread through bid/ask simulation, but may miss
+  tick-only rollover spikes that are not preserved in OHLC/spread bars.
+- The one-hour placement lag later that morning was retryable
+  `spread_too_wide` WAITING behavior through the 05:00-06:00 SGT rollover
+  window. Both VPS lanes were running, and delayed CAD-cross orders placed after
+  spread normalized near 06:00 SGT.
+- Current decision: no code or ops patch. Keep monitoring through
+  `scripts/Get-LpfsDualVpsStatus.ps1`,
+  `scripts/summarize_lpfs_live_gate_attribution.py`, MT5 history, and journal
+  rows. Build a dedicated rollover report only if this pattern repeats or
+  materially harms PnL.
 
 ## Current LP Rules
 
