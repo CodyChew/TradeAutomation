@@ -1,8 +1,8 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-08 after adding the FTMO challenge-profile frontier
-study, making it visible in the dashboard top navigation, and refreshing the
-LPFS operator handoff.
+Last updated: 2026-05-08 after adding the LPFS live weekly performance
+dashboard, linking it from the Home dashboard, and refreshing the operator
+handoff.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -19,18 +19,21 @@ file, and the JSONL journal before making operational decisions.
 5. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before touching execution code.
 6. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
-7. `docs/phase2_production_hardening.md` before operating the watchdog, kill
+7. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
+   performance monitor, live start timestamps, version context, and
+   backtest-distribution comparison.
+8. `docs/phase2_production_hardening.md` before operating the watchdog, kill
    switch, heartbeat, status command, or Task Scheduler setup.
-8. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+9. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
-9. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+10. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
    IC Markets production runner.
-10. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+11. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-11. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+12. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
    buckets or income expectations. It is linked from the dashboard top
    navigation and the Home page FTMO Profiles section.
-12. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+13. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native EA or Strategy Tester work.
 
 ## AI Agent Continuity Rules
@@ -94,6 +97,58 @@ Environment boundary rule: local OneDrive is development; VPS
 agents should start remote work with `ssh lpfs-vps hostname`, `ssh lpfs-vps
 whoami`, VPS `git status`, and the LPFS status packet before drawing
 operational conclusions.
+
+## 2026-05-08 Live Weekly Performance Dashboard
+
+This was a read-only reporting/docs change. No live configs, VPS runtime
+files, scheduled tasks, state, journals, broker orders, or broker positions
+were changed.
+
+- Added `scripts/build_lpfs_live_weekly_performance.py`, a manual FTMO/IC
+  weekly report builder. It reads live journals/state and repo HEADs over SSH,
+  compares closed-trade weekly net R against each broker's current V22
+  commission-adjusted historical weekly distribution, and writes local report
+  artifacts plus `docs/live_weekly_performance.html`.
+- Manual refresh command:
+
+```powershell
+.\venv\Scripts\python.exe scripts\build_lpfs_live_weekly_performance.py --latest
+```
+
+- If journals/state/benchmark files/git inputs are unchanged, the script exits
+  cleanly with `already up to date` and does not rewrite reports. Use
+  `--force` only when intentionally regenerating the same evidence.
+- Latest generated packet:
+  `reports/live_ops/lpfs_weekly_performance/20260508_155536/`.
+- Latest stable page: `docs/live_weekly_performance.html`, linked from
+  `docs/index.html` as "Live Weekly Performance".
+- Verified live portfolio starts:
+  - FTMO first journal event:
+    `2026-04-30T19:48:13.743598+00:00`; first order:
+    `2026-04-30T19:48:18.664456+00:00`.
+  - IC first journal event:
+    `2026-05-05T19:49:36.894185+00:00`; first order:
+    `2026-05-05T19:49:45.204982+00:00`.
+- Current week status from the latest run is `watch` for both lanes. Reasons:
+  the week is still partial, runtime changed inside the week, and losses are
+  concentrated. IC is also below the historical 10th-percentile weekly R so
+  far. FTMO is just above its historical 10th percentile. This is monitoring
+  evidence, not a strategy patch instruction by itself.
+- Version context from the latest run:
+  local and `origin/main` were `bd90325`; both VPS checkouts were `a223daf`;
+  latest runtime commit was `94ffea1` (`Treat LPFS market-closed sends as
+  retryable`). Runtime sync is true because `94ffea1` is contained in each VPS
+  checkout even though local docs/reporting commits are ahead.
+- Latest live weekly closed-trade snapshot:
+  - FTMO: `25` closed trades, `-5.3354R`, `-$63.64`, `40.0%` win rate,
+    `27` retryable waits, `4` true rejects, `1` pending, `1` active.
+  - IC: `9` closed trades, `-5.8779R`, `-$39.05`, `22.2%` win rate,
+    `8` retryable waits, `1` true reject, `2` pending, `0` active.
+- Tests added in
+  `strategies/lp_force_strike_strategy_lab/tests/test_live_weekly_performance.py`
+  cover lane-start detection, partial-week classification, mid-week runtime
+  change warning, unchanged-input no-rewrite behavior, percentile/status
+  rules, dashboard content, and shared navigation.
 
 ## 2026-05-08 Rollover Spread / Broker Divergence Audit
 
@@ -883,14 +938,22 @@ documentation refresh:
 - Core coverage ran all scoped concept/shared/LPFS tests and reported
   `100.00%` line and branch coverage across the measured modules.
 
-Latest docs/handoff verification on 2026-05-08 after the rollover
-documentation refresh:
+Latest docs/handoff verification on 2026-05-08 after the live weekly
+performance dashboard refresh:
 
-- `scripts/build_lp_force_strike_live_ops_page.py` regenerated
-  `docs/live_ops.html`.
-- `.\.venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_dashboard_pages -v`
-  passed `24` tests.
-- `git diff --check` reported no whitespace errors.
+- `.\venv\Scripts\python.exe scripts\build_lpfs_live_weekly_performance.py --latest`
+  generated `reports/live_ops/lpfs_weekly_performance/20260508_155536/`
+  and `docs/live_weekly_performance.html`.
+- A second `--latest` run printed `already up to date`, proving unchanged
+  inputs do not rewrite the report.
+- `.\venv\Scripts\python.exe scripts\build_lp_force_strike_index.py`
+  regenerated `docs/index.html` with the Weekly Performance card/link.
+- `.\venv\Scripts\python.exe -m pytest strategies/lp_force_strike_strategy_lab/tests/test_live_trade_summary.py strategies/lp_force_strike_strategy_lab/tests/test_dashboard_pages.py strategies/lp_force_strike_strategy_lab/tests/test_live_weekly_performance.py -q`
+  passed `39` tests.
+- `.\venv\Scripts\python.exe -m pytest strategies/lp_force_strike_strategy_lab/tests -q`
+  passed `320` tests and `172` subtests.
+- `git diff --check` reported no whitespace errors. Git printed line-ending
+  normalization warnings only.
 
 Latest selector revalidation on 2026-05-01:
 

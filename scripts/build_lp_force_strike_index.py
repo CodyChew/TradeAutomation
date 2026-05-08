@@ -122,6 +122,21 @@ def _live_ops_card() -> str:
     """
 
 
+def _weekly_performance_card() -> str:
+    return """
+    <section id="weekly-performance" class="card featured">
+      <div class="status status-active">Weekly monitor</div>
+      <h2>Live Weekly Performance</h2>
+      <p>Read-only FTMO and IC weekly monitor that detects actual portfolio starts, checks live/VPS/runtime versions, and compares live closed-trade R against each broker's V22 historical weekly distribution.</p>
+      <div class="facts">
+        <div class="fact"><span>Refresh</span><strong>Manual, read-only</strong></div>
+        <div class="fact"><span>Status labels</span><strong>Normal / Watch / Review</strong></div>
+      </div>
+      <a class="button" href="live_weekly_performance.html">Open Weekly Performance</a>
+    </section>
+    """
+
+
 def _account_validation_card() -> str:
     return """
     <section id="account-validation" class="card featured">
@@ -212,6 +227,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
         _baseline_card(home),
         _strategy_card(),
         _live_ops_card(),
+        _weekly_performance_card(),
         _account_validation_card(),
         _ftmo_challenge_profiles_card(),
         _ea_migration_card(),
@@ -444,6 +460,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
           ("#current-baseline", "Current Baseline"),
           ("#strategy-guide", "Strategy Guide"),
           ("#live-ops", "Live Ops"),
+          ("#weekly-performance", "Weekly Performance"),
           ("#ftmo-challenge-profiles", "FTMO Profiles"),
           ("#research-archive", "Archive"),
           ("#metric-glossary", "Glossary"),

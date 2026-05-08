@@ -135,6 +135,14 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("0.20 / 0.20 / 0.65", html)
         self.assertTrue((DOCS_ROOT / "ftmo_challenge_profiles.html").exists())
 
+    def test_index_links_to_live_weekly_performance(self) -> None:
+        html = (DOCS_ROOT / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn("Live Weekly Performance", html)
+        self.assertIn("href=\"live_weekly_performance.html\"", html)
+        self.assertIn("Normal / Watch / Review", html)
+        self.assertTrue((DOCS_ROOT / "live_weekly_performance.html").exists())
+
     def test_ftmo_challenge_profiles_page_shows_recommendation_and_boundaries(self) -> None:
         html = (DOCS_ROOT / "ftmo_challenge_profiles.html").read_text(encoding="utf-8")
         lower_html = html.lower()
