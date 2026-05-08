@@ -52,12 +52,19 @@ account-constraint candidate is H4/H8
 `0.25%`, H12/D1 `0.30%`, and W1 `0.60%`. Open `docs/index.html` or the GitHub
 Pages link for the latest dashboard.
 
+For future FTMO Challenge sizing, use the separate research-only frontier page
+`docs/ftmo_challenge_profiles.html`. The latest run selected H4/H8 `0.20%`,
+H12/D1 `0.20%`, W1 `0.65%` as the fresh 100k Challenge profile and H4/H8
+`0.20%`, H12/D1 `0.25%`, W1 `0.55%` as the aggressive/funded profile. This is
+not the current low-scale FTMO live-validation config.
+
 The current strategy guide and execution-readiness docs are:
 
 - `SESSION_HANDOFF.md`
 - `strategies/lp_force_strike_strategy_lab/START_HERE.md`
 - `docs/strategy.html`
 - `docs/live_ops.html`
+- `docs/ftmo_challenge_profiles.html`
 - `docs/lpfs_lightsail_vps_runbook.md`
 - `docs/lpfs_icmarkets_vps_runbook.md`
 - `docs/lpfs_new_mt5_account_validation.md`

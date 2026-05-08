@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-08 after documenting rollover spread / broker-feed
-divergence behavior and refreshing the LPFS operator handoff.
+Last updated: 2026-05-08 after adding the FTMO challenge-profile frontier
+study and refreshing the LPFS operator handoff.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -26,7 +26,9 @@ file, and the JSONL journal before making operational decisions.
    IC Markets production runner.
 10. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-11. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+11. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+   buckets or income expectations.
+12. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native EA or Strategy Tester work.
 
 ## AI Agent Continuity Rules
@@ -310,6 +312,36 @@ historical processed/skipped signals for this baseline change.
 
 Live broker testing scales that ladder with `live_send.risk_bucket_scale=0.05`,
 so H4/H8 are `0.01%`, H12/D1 are `0.015%`, and W1 is `0.0375%`.
+
+FTMO challenge profile research is now separate from the live validation
+config. Latest run:
+`reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959`, with
+docs page `docs/ftmo_challenge_profiles.html`.
+
+- Source: current FTMO V22 separated, commission-adjusted trade set; initial
+  signal-candle spread gate overlaid from FTMO candle `spread_points` at the
+  live threshold `max_spread_risk_fraction=0.10`.
+- Fresh FTMO 100k Challenge profile: H4/H8 `0.20%`, H12/D1 `0.20%`, W1
+  `0.65%`. Results: `248.70%` 10-year return, `9.46%` risk-reserved DD,
+  `4.45%` estimated max daily-loss stress, `4.45%` max open risk, worst week
+  `-4.43%`, worst month `-4.68%`. Median month on 100k is about `$2,000`;
+  middle monthly range is about `$325` to `$3,783`. Rolling weekly-start
+  Challenge windows hit `+10%` in `463/522` windows with median `136.7` days,
+  and no modeled FTMO daily/max-loss failures.
+- Aggressive/funded profile: H4/H8 `0.20%`, H12/D1 `0.25%`, W1 `0.55%`.
+  Results: `270.12%` 10-year return, `9.14%` risk-reserved DD, `4.95%`
+  estimated max daily-loss stress, `4.95%` max open risk, worst week `-4.63%`,
+  worst month `-3.92%`. Median month on 100k is about `$2,143`; middle monthly
+  range is about `$464` to `$3,919`. This is warning-band risk because daily
+  stress is close to FTMO's `5%` daily-loss limit.
+- Spread overlay did not contradict the recommendation: initial spread-gated
+  return ratios were above `1.15` for the selected profiles. This does not mean
+  spread is always beneficial; it means the rows initially blocked by the
+  10%-of-risk spread gate were net negative in this historical candle-spread
+  approximation. Live retry/market recovery remains tick-dependent.
+- Do not change `config.local.json` or the FTMO VPS runner to these profile
+  values without a separate deployment decision. The current FTMO live runner
+  remains low-scale validation, not a challenge account profile.
 
 New MT5 account validation is now documented as a local-only path. Use
 `docs/lpfs_new_mt5_account_validation.md`,

@@ -121,6 +121,27 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("href=\"live_ops.html\"", html)
         self.assertNotIn("<script", html.lower())
 
+    def test_index_links_to_ftmo_challenge_profiles(self) -> None:
+        html = (DOCS_ROOT / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn("FTMO Challenge Profiles", html)
+        self.assertIn("href=\"ftmo_challenge_profiles.html\"", html)
+        self.assertIn("0.20 / 0.20 / 0.65", html)
+        self.assertTrue((DOCS_ROOT / "ftmo_challenge_profiles.html").exists())
+
+    def test_ftmo_challenge_profiles_page_shows_recommendation_and_boundaries(self) -> None:
+        html = (DOCS_ROOT / "ftmo_challenge_profiles.html").read_text(encoding="utf-8")
+        lower_html = html.lower()
+
+        self.assertIn("LPFS FTMO Challenge Profiles", html)
+        self.assertIn("Fresh FTMO Challenge", html)
+        self.assertIn("H4/H8 0.2% / H12/D1 0.2% / W1 0.65%", html)
+        self.assertIn("Aggressive / Funded", html)
+        self.assertIn("H4/H8 0.2% / H12/D1 0.25% / W1 0.55%", html)
+        self.assertIn("Spread Gate Overlay", html)
+        self.assertIn("No live configs, VPS runtime state, journals, orders, or scheduled tasks were touched.", html)
+        self.assertNotIn("<script", lower_html)
+
     def test_strategy_page_explains_current_strategy_and_limits(self) -> None:
         html = (DOCS_ROOT / "strategy.html").read_text(encoding="utf-8")
         lower_html = html.lower()

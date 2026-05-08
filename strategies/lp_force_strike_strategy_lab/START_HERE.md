@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-05-08 after documenting rollover spread / broker-feed
-divergence behavior and refreshing operator handoff guidance.
+Last updated: 2026-05-08 after adding the FTMO challenge-profile frontier
+study and refreshing operator handoff guidance.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -41,6 +41,11 @@ operational decisions.
   spread-wait placement lag. The spread gate and retry behavior matched the
   intended design; no patch is recommended unless the pattern repeats or
   materially harms PnL.
+- FTMO challenge-profile state: research-only frontier run
+  `reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959` selected
+  H4/H8 `0.20%`, H12/D1 `0.20%`, W1 `0.65%` as the fresh 100k Challenge
+  profile and H4/H8 `0.20%`, H12/D1 `0.25%`, W1 `0.55%` as the
+  aggressive/funded profile. This did not change live config or VPS runtime.
 - Production host: Amazon Lightsail Windows VPS.
 - Preferred remote access: Tailscale + OpenSSH using local alias `lpfs-vps`.
 - Broker truth: MT5 orders, positions, order history, and deal history.
@@ -65,7 +70,9 @@ operational decisions.
    `docs/dry_run_executor.md` before changing execution or notification code.
 9. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-10. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+10. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+   buckets or income expectations.
+11. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native MQL5 EA or Strategy Tester work.
 
 ## Source-Of-Truth Matrix
@@ -81,6 +88,7 @@ operational decisions.
 | Account and secrets | ignored `config.local.json` and local OS/user secrets | Never commit MT5 passwords, Telegram tokens, SSH private keys, or account credentials. |
 | IC account validation | `docs/account_validation.html`, `docs/lpfs_new_mt5_account_validation.md`, and `config.lpfs_new_mt5_account.example.json` | Local-only validation and smoke testing; do not touch VPS live account. |
 | IC production setup | `docs/lpfs_icmarkets_vps_runbook.md`, `config.lpfs_icmarkets_raw_spread.example.json`, and `scripts/Get-LpfsDualVpsStatus.ps1` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
+| FTMO challenge sizing | `docs/ftmo_challenge_profiles.html` and `reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959` | Research-only frontier; do not change FTMO live validation config without a separate deployment decision. |
 | Rollover/spread-wait behavior | `docs/live_ops.html`, `SESSION_HANDOFF.md`, and live JSONL journals | Treat Telegram as an alert only; verify MT5 history, journal rows, spread snapshots, and both VPS lanes before concluding a bug. |
 | Native EA migration | `docs/ea_migration.html`, `mql5/lpfs_ea/README.md`, and `mql5/lpfs_ea/Experts/LPFS/LPFS_EA.mq5` | Tester-only v1; do not attach to production live charts. |
 | Dashboard HTML | builder scripts in `scripts/` | Edit builders, then regenerate HTML; do not make HTML-only dashboard changes. |
@@ -165,3 +173,4 @@ Use one of these prompts to restart cleanly:
 - IC VPS audit: `Read START_HERE.md and docs/lpfs_icmarkets_vps_runbook.md, then run Get-LpfsDualVpsStatus.ps1 and verify LPFS_Live and LPFS_IC_Live from MT5/runtime state before making operational changes.`
 - EA migration: `Read START_HERE.md, docs/ea_migration.html, and mql5/lpfs_ea/README.md, then continue native MQL5 tester-only work without touching VPS runtime, live configs, live journals, or broker orders.`
 - Rollover/spread audit: `Read START_HERE.md, SESSION_HANDOFF.md, and docs/live_ops.html, then use MT5 history, both VPS journals, and gate-attribution reports before deciding whether a rollover spread event needs code or ops changes.`
+- FTMO challenge sizing: `Read START_HERE.md, SESSION_HANDOFF.md, and docs/ftmo_challenge_profiles.html, then inspect the latest lpfs_ftmo_challenge_frontier report before proposing any FTMO risk bucket or max-open-risk change.`

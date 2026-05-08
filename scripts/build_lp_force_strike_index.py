@@ -137,6 +137,21 @@ def _account_validation_card() -> str:
     """
 
 
+def _ftmo_challenge_profiles_card() -> str:
+    return """
+    <section id="ftmo-challenge-profiles" class="card featured">
+      <div class="status status-active">FTMO profiles</div>
+      <h2>FTMO Challenge Profiles</h2>
+      <p>Research-only frontier for a fresh FTMO 100k 2-Step account, including finer LPFS risk buckets, FTMO daily/max loss stress, spread-gate overlay, and realistic weekly/monthly income ranges.</p>
+      <div class="facts">
+        <div class="fact"><span>Fresh profile</span><strong>0.20 / 0.20 / 0.65</strong></div>
+        <div class="fact"><span>Boundary</span><strong>No live config changes</strong></div>
+      </div>
+      <a class="button" href="ftmo_challenge_profiles.html">Open FTMO Profiles</a>
+    </section>
+    """
+
+
 def _ea_migration_card() -> str:
     return """
     <section id="ea-migration" class="card featured">
@@ -198,6 +213,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
         _strategy_card(),
         _live_ops_card(),
         _account_validation_card(),
+        _ftmo_challenge_profiles_card(),
         _ea_migration_card(),
         _section_heading(
             "Current Research Pages",

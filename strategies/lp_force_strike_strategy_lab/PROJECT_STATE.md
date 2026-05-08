@@ -252,6 +252,21 @@ risk practical caps. This analysis was later used for a separately approved IC
 VPS live lane with its own config, runtime, MT5 account, Telegram channel, and
 scheduled task.
 
+Fresh FTMO challenge sizing now has a separate frontier study:
+`reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959` and
+`docs/ftmo_challenge_profiles.html`.
+
+- Fresh 100k FTMO Challenge profile: H4/H8 `0.20%`, H12/D1 `0.20%`, W1
+  `0.65%`; `248.70%` 10-year return, `9.46%` risk-reserved DD, `4.45%`
+  estimated max daily-loss stress, and `4.45%` max open risk.
+- Aggressive/funded profile: H4/H8 `0.20%`, H12/D1 `0.25%`, W1 `0.55%`;
+  `270.12%` 10-year return, `9.14%` risk-reserved DD, `4.95%` estimated max
+  daily-loss stress, and `4.95%` max open risk.
+- The study overlays the live `10%` spread-to-risk gate from stored FTMO candle
+  spreads, but flags that live retry/market recovery remains tick-dependent.
+- This study is research-only; it did not alter FTMO live validation config or
+  VPS runtime state.
+
 Config support:
 
 - `config.lpfs_new_mt5_account.example.json` now documents the IC bucket shape

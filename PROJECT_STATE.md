@@ -283,6 +283,21 @@ Live broker testing currently scales the V15 risk ladder with
 `live_send.risk_bucket_scale=0.05`, so H4/H8 are `0.01%`, H12/D1 are `0.015%`,
 and W1 is `0.0375%`.
 
+Fresh FTMO challenge sizing is now tracked separately from live validation.
+Latest research run:
+`reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959`, surfaced at
+`docs/ftmo_challenge_profiles.html`.
+
+- Fresh 100k FTMO Challenge profile: H4/H8 `0.20%`, H12/D1 `0.20%`, W1
+  `0.65%`; `248.70%` 10-year return, `9.46%` risk-reserved DD, `4.45%`
+  estimated max daily-loss stress, and `4.45%` max open risk.
+- Aggressive/funded profile: H4/H8 `0.20%`, H12/D1 `0.25%`, W1 `0.55%`;
+  `270.12%` 10-year return, `9.14%` risk-reserved DD, `4.95%` estimated max
+  daily-loss stress, and `4.95%` max open risk. This is close to FTMO's `5%`
+  daily-loss boundary.
+- This was research-only. No live config, VPS runtime state, journal, MT5
+  order, or scheduled task changed.
+
 Latest research decisions:
 
 - V16 bid/ask execution realism did not materially weaken V15. Keep current
