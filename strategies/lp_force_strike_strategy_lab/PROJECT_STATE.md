@@ -373,6 +373,35 @@ logic bug during future handoff.
   PnL. This documentation update made no live runtime, config, state, journal,
   task, or broker changes.
 
+## 2026-05-09 EURCHF Bid/Ask Fill Realism Observation
+
+This note documents live fill behavior that should not be mistaken for a stale
+order or missed-entry bug during future handoff.
+
+- IC live `EURCHF H12` `BUY_LIMIT` ticket `4420525163` was placed promptly at
+  entry `0.91447`, SL `0.91203`, TP `0.91691`, volume `0.02`. It filled later
+  at `2026-05-08 18:50:01 UTC` / `2026-05-09 02:50 SGT`.
+- The operator chart screenshot showed earlier candle lows below the entry
+  zone. This is consistent with the queried data because MT5 candles are
+  Bid-based. A live buy limit fills only when Ask is at or below the limit.
+- Read-only IC tick history showed the first tick with `ask <= 0.91447` at the
+  later live fill time, with about `bid=0.91442` and `ask=0.91447`. Earlier Bid
+  lows crossed/approached entry while Ask stayed above it.
+- Interpretation: expected broker Bid/Ask fill mechanics, not an LPFS live
+  runner bug. Do not patch or re-arm a signal from a Bid-only chart touch.
+- Backtest caveat: raw OHLC simulations can enter a buy limit earlier than live
+  when Bid low touches but Ask does not. V16 bid/ask realism approximates Ask
+  from each candle's `spread_points`, but exact intrabar fill timing requires
+  true tick Bid/Ask.
+- Feasibility probe: local IC MT5 exposed 10-year M1/H4/D1 candles and non-zero
+  M1 spread fields for all 28 LPFS FX pairs, but true tick Bid/Ask requested
+  from 2016 returned first ticks only around `2025-01`. Full 10-year true tick
+  replay is not currently available from this terminal. Recent/live tick audits
+  are available and should be used for incident-level validation.
+- Local ignored evidence packets were written under
+  `../../reports/live_ops/tick_history_feasibility/`. This documentation update
+  made no live runtime, config, state, journal, task, or broker changes.
+
 ## Experiment V1
 
 Experiment V1 is configured by

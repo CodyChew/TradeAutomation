@@ -375,6 +375,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         ["8", "Recovery path guard", "For market recovery, original stop and original 1R target must not have traded after the signal before recovery."],
         ["9", "Broker validation", "order_check must pass before any live send; pending requests carry the conservative broker backstop."],
         ["10", "Final send", "Pending sends place TRADE_ACTION_PENDING. Recovery sends TRADE_ACTION_DEAL with zero slippage by default."],
+        ["11", "Broker fill truth", "Live BUY_LIMIT fills require Ask <= entry; live SELL_LIMIT fills require Bid >= entry. A Bid-only candle touch is not proof that a buy limit should have filled."],
     ]
 
     rollover_rows = [
@@ -394,9 +395,19 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             "One-hour lag on 2026-05-08 was retryable spread_too_wide WAITING. Both VPS lanes were healthy and delayed orders placed after spread normalized near 06:00 SGT.",
         ],
         [
+            "EURCHF IC buy limit",
+            "2026-05-06 to 2026-05-09 SGT",
+            "IC EURCHF H12 BUY_LIMIT ticket 4420525163 was placed on time, but earlier chart lows were Bid lows. Tick history showed Ask first reached the 0.91447 limit only at the later live fill. Treat this as expected Bid/Ask fill mechanics, not a runner bug.",
+        ],
+        [
+            "Tick-data feasibility",
+            "10-year research",
+            "IC MT5 currently exposes 10-year M1/H4/D1 candles and non-zero M1 spread fields for all 28 LPFS FX pairs, but true tick Bid/Ask history only returned from around 2025-01. Full 10-year true tick replay is not currently feasible from this broker terminal.",
+        ],
+        [
             "Operator decision",
             "Monitor, do not patch",
-            "Keep the current spread gate and retry behavior. Build a dedicated read-only rollover report only if repeated events materially hurt PnL.",
+            "Keep the current spread gate and retry behavior. Build a dedicated read-only rollover or tick-fill report only if repeated events materially hurt PnL.",
         ],
     ]
 
@@ -747,6 +758,7 @@ Get-CimInstance Win32_Process |
             ("Broker closed", "Retryable WAITING", "If MT5 returns Market closed before placement, the signal key is not processed and the next cycles can retry."),
             ("After missed touch", "Default recovery", "If the pending entry was touched before placement, market recovery is attempted at a same-or-better executable price before final skip."),
             ("Recovery price", "Same-or-better", "Long recovery requires ask <= original entry. Short recovery requires bid >= original entry. Worse prices stay retryable WAITING until expiry or path invalidation."),
+            ("Pending fill truth", "Ask/Bid, not chart-only", "A buy limit fills on Ask at or below entry. A sell limit fills on Bid at or above entry. Bid-based candle lows can make a buy look touched before MT5 can execute it."),
             ("Recovery path", "From first touch", "Stop/target movement after first entry touch blocks late recovery; pre-touch target movement does not by itself skip the setup."),
             ("Recovery TP", "Recalculated 1R", "The original structure stop is kept and TP is reset to 1R from the actual market fill."),
             ("Recovery filling", "Broker-supported", "Market DEAL order_check tries supported IOC/FOK/RETURN modes instead of hardcoding the pending-order filling mode."),
@@ -767,8 +779,9 @@ Get-CimInstance Win32_Process |
       <div class="ops-grid">
         {_fact_grid([
             ("Current decision", "No patch", "The 2026-05-08 AUDNZD and CAD-cross placement-lag audit supports keeping the current spread gate and retry rules."),
-            ("Backtest caveat", "Bar-level realism", "The 10-year model includes candle spread through bid/ask simulation, but tick-only rollover spikes can be understated if they are not preserved in OHLC/spread data."),
-            ("Next trigger", "Repeat or PnL harm", "If rollover stops/waits cluster or materially hurt returns, add a read-only report grouped by signal key, broker lane, wait reason, later outcome, and FTMO-vs-IC divergence."),
+            ("EURCHF decision", "Expected fill mechanics", "The IC EURCHF H12 chart showed Bid lows below entry before live fill, but MT5 required Ask <= entry. Tick data supports the delayed fill."),
+            ("Backtest caveat", "Bar-level realism", "The 10-year model includes candle spread through bid/ask simulation, but tick-only rollover spikes and exact intrabar Ask/Bid paths can be understated if they are not preserved in OHLC/spread data."),
+            ("Next trigger", "Repeat or PnL harm", "If rollover stops/waits or Bid/Ask fill drift cluster or materially hurt returns, add a read-only report grouped by signal key, broker lane, wait reason, later outcome, and FTMO-vs-IC divergence."),
         ])}
       </div>
     </section>

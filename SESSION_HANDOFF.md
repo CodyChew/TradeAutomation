@@ -216,6 +216,12 @@ were changed.
   operator re-arm plan approves state surgery.
 - Rollover spread divergence can create broker-specific outcomes and should
   not be patched from one incident.
+- Bid-only chart touches are not broker fill proof. A live buy limit fills on
+  Ask at or below entry, and a live sell limit fills on Bid at or above entry;
+  verify MT5 ticks/history before treating delayed fills as defects.
+- Full 10-year true tick Bid/Ask replay is not currently available from the
+  local IC terminal. Use 10-year candle/spread approximation for broad
+  research and recent/live tick audits for incident-level fill timing.
 - Duplicate runner risk exists if a local live runner and VPS live runner run
   against the same account/state at the same time.
 - EA v1 remains Strategy Tester-only. Do not attach it to FTMO or IC live
@@ -294,6 +300,45 @@ changed.
   materially hurt PnL, build a read-only rollover report that groups journal
   rows by signal key and broker lane, measuring first WAITING reason, spread
   ratio, later placement/expiry/invalidation, and FTMO-vs-IC outcome.
+
+## 2026-05-09 EURCHF Bid/Ask Fill Realism Audit
+
+This was a read-only IC live-order/backtest-realism investigation. No live
+configs, VPS runtime files, scheduled tasks, state, journals, broker orders, or
+broker positions were changed.
+
+- Trigger question: IC `EURCHF H12` appeared to fill late even though the MT5
+  chart showed earlier candle lows below the entry zone.
+- Broker state: IC `EURCHF H12` `BUY_LIMIT` ticket `4420525163`, entry
+  `0.91447`, SL `0.91203`, TP `0.91691`, volume `0.02`. The order was placed
+  promptly after the signal, then filled at
+  `2026-05-08 18:50:01 UTC` / `2026-05-09 02:50 SGT`.
+- Finding: the screenshot is consistent with the queried data. MT5 candles are
+  Bid-based; a buy limit fills only when Ask is at or below the limit. Earlier
+  Bid lows crossed/approached the entry, but the executable Ask stayed above
+  entry. The first queried tick with `ask <= 0.91447` matched the later live
+  fill time (`bid` about `0.91442`, `ask` about `0.91447`).
+- Operator conclusion: expected broker Bid/Ask fill mechanics, not a runner
+  bug. Do not re-arm or patch this signal from the chart alone.
+- Backtest implication: a raw OHLC fill model can mark a buy-limit entry
+  earlier when Bid low crosses entry. V16-style candle-spread bid/ask realism
+  approximates `Ask = Bid + spread`, but it is still not a true tick-by-tick
+  Ask path and can differ around rollover/wide-spread periods.
+- Feasibility check: local IC MT5 had 10-year M1/H4/D1 bars and non-zero M1
+  spread fields for all 28 LPFS FX pairs, but true tick Bid/Ask history
+  requested from `2016-05-09` returned first ticks only around `2025-01`
+  for the 28-pair universe. Full 10-year true tick replay is therefore not
+  currently feasible from this IC terminal. Recent/live tick-level audits are
+  feasible and should be used for specific incidents.
+- Evidence artifacts were written locally under ignored
+  `reports/live_ops/tick_history_feasibility/`, including the IC tick probe,
+  2016 bar probe, and M1 spread probe. These are local evidence packets, not
+  committed source files.
+- Next research step if this repeats or affects PnL: build a read-only
+  tick-fill audit that compares journaled pending orders against available tick
+  Bid/Ask, classifies early candle-touch versus executable-touch drift, and
+  reports whether drift changes realized outcome. Do not replace the 10-year
+  benchmark until the incident-level audit shows material impact.
 
 ## 2026-05-07 EA Migration Scaffold
 

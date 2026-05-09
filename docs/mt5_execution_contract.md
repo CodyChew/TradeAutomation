@@ -248,6 +248,11 @@ It adds:
 - broker-session `Market closed` responses during pending-order or
   market-recovery `order_check`/`order_send` are retryable WAITING blocks. The
   signal is not marked processed, and true broker rejections remain permanent;
+- live pending-order fills are broker Bid/Ask events, not chart-only candle
+  touches. A `BUY_LIMIT` fills only when Ask is at or below the entry; a
+  `SELL_LIMIT` fills only when Bid is at or above the entry. Most MT5 candle
+  charts show Bid OHLC, so a buy-limit chart low below entry is not proof that
+  the order should already be filled;
 - late-start missed-entry recovery: after the signal candle, if the current or
   later MT5 bars already traded through the planned limit entry, the runner
   attempts default-on better-than-entry market recovery. If current executable
@@ -308,6 +313,28 @@ It adds:
 - best-effort runner start/stop process notifications so the operator can see
   when the program starts, exits by completed cycles or Ctrl+C, or stops after
   an uncaught runtime error.
+
+2026-05-09 IC EURCHF H12 case:
+
+- IC live `EURCHF H12` `BUY_LIMIT` ticket `4420525163` had entry `0.91447`.
+  It was placed promptly after the signal, but did not fill until
+  `2026-05-08 18:50:01 UTC` / `2026-05-09 02:50 SGT`.
+- The MT5 chart screenshot showed earlier candle lows below the entry zone,
+  which is consistent with Bid lows crossing the level. The broker fill
+  condition for a buy limit was Ask at or below `0.91447`.
+- A read-only IC tick query showed the first available tick with
+  `ask <= 0.91447` at the later live fill time, with approximately
+  `bid=0.91442` and `ask=0.91447`. This supports expected broker fill
+  mechanics, not a live runner bug.
+- Backtest implication: candle-only fills can mark a buy entry earlier than
+  live if they use Bid low without the exact intrabar Ask path. The V16-style
+  candle-spread approximation helps, but it is not the same as true tick
+  Bid/Ask replay.
+- Data feasibility check: IC MT5 currently exposes 10-year M1/H4/D1 candles
+  and non-zero M1 spread fields for all 28 LPFS FX pairs, but true tick
+  Bid/Ask history returned only from around `2025-01` in the local terminal.
+  A full 10-year true tick replay is therefore not currently feasible from
+  this broker terminal; recent/live tick audits are feasible.
 
 Telegram, heartbeat, logs, and the status command are reporting only. They must
 not decide whether a trade is valid. MT5 broker state, local state, and journal

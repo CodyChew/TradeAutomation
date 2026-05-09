@@ -239,6 +239,32 @@ Dedicated IC VPS production status:
   rows. Build a dedicated rollover report only if this pattern repeats or
   materially harms PnL.
 
+2026-05-09 EURCHF bid/ask fill-realism QA note:
+
+- IC `EURCHF H12` `BUY_LIMIT` ticket `4420525163` was placed promptly at
+  entry `0.91447`, but filled later at `2026-05-08 18:50:01 UTC` /
+  `2026-05-09 02:50 SGT`.
+- The operator chart screenshot showed earlier candle lows below the entry
+  area. This is consistent with the data: MT5 candles are Bid-based, while a
+  live buy limit fills only when Ask is at or below the entry. Earlier Bid lows
+  crossed/approached entry while Ask remained above it.
+- Read-only IC tick history showed the first tick with `ask <= 0.91447` at the
+  later live fill time, with roughly `bid=0.91442` and `ask=0.91447`.
+  Current interpretation: expected broker Bid/Ask fill mechanics, not a live
+  runner bug.
+- Backtest caveat: raw OHLC backtests can enter earlier than live if they treat
+  Bid low as a buy-limit fill. V16-style bid/ask realism approximates Ask from
+  candle spread, but exact intrabar Ask paths require true tick Bid/Ask.
+- Data feasibility probe: IC MT5 returned 10-year M1/H4/D1 candles and non-zero
+  M1 spread fields for all 28 LPFS pairs, but true tick Bid/Ask requested from
+  2016 returned first ticks only around `2025-01`. Full 10-year true tick
+  replay is not currently feasible from this terminal; recent/live tick audits
+  are feasible. Local ignored evidence lives under
+  `reports/live_ops/tick_history_feasibility/`.
+- Current decision: no code or ops patch. If more examples appear or PnL impact
+  becomes material, build a read-only tick-fill audit comparing candle-touch
+  time versus executable Bid/Ask touch time per journaled pending order.
+
 ## Current LP Rules
 
 LP levels are implemented in:
@@ -700,11 +726,12 @@ Live-send adapter facts:
 - Once a pending order is placed, spread widening does not auto-cancel it and
   does not currently trigger a dedicated Telegram alert.
 - Research gap: the historical baseline includes candle-spread cost drag, but
-  exits are still triggered from OHLC reference highs/lows rather than full
-  bid/ask paths. A short can be stopped live by Ask even if a Bid-only chart
-  does not show the stop touched. Before changing live behavior, rerun V9/V15
-  with bid/ask-aware trigger assumptions and compare a no-buffer baseline
-  against small Force Strike structure stop buffers.
+  exact intrabar Bid/Ask paths are still approximated from OHLC/spread bars. A
+  buy limit can fill later live if Bid low touches entry while Ask remains
+  above it, and a short can be stopped live by Ask even if a Bid-only chart does
+  not show the stop touched. Before changing live behavior, rerun the relevant
+  bid/ask-aware realism or tick-fill audit and compare against the current
+  baseline.
 - Late-start missed-entry guard: if MT5 bars after the signal candle already
   touched the planned pullback entry before the live order could be placed, the
   setup is rejected instead of placing a stale pending order.

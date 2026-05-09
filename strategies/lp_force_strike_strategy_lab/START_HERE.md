@@ -41,6 +41,11 @@ operational decisions.
   spread-wait placement lag. The spread gate and retry behavior matched the
   intended design; no patch is recommended unless the pattern repeats or
   materially harms PnL.
+- Bid/Ask fill-realism state: a 2026-05-09 IC `EURCHF H12` audit confirmed
+  that a Bid-only candle low below a buy-limit entry does not prove MT5 should
+  fill. Live `BUY_LIMIT` fills require Ask at or below entry. IC tick data
+  supported the later live fill; 10-year true tick Bid/Ask was not available
+  from the local IC terminal, while 10-year candles and M1 spread fields were.
 - FTMO challenge-profile state: research-only frontier run
   `reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959` selected
   H4/H8 `0.20%`, H12/D1 `0.20%`, W1 `0.65%` as the fresh 100k Challenge
@@ -96,7 +101,7 @@ operational decisions.
 | IC production setup | `docs/lpfs_icmarkets_vps_runbook.md`, `config.lpfs_icmarkets_raw_spread.example.json`, and `scripts/Get-LpfsDualVpsStatus.ps1` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
 | FTMO challenge sizing | `docs/ftmo_challenge_profiles.html` and `reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959` | Research-only frontier; do not change FTMO live validation config without a separate deployment decision. |
 | Weekly live performance | `docs/live_weekly_performance.html` and `reports/live_ops/lpfs_weekly_performance/` | Latest-week monitor only; use report packets for historical checkpoints until a trend view is built. |
-| Rollover/spread-wait behavior | `docs/live_ops.html`, `SESSION_HANDOFF.md`, and live JSONL journals | Treat Telegram as an alert only; verify MT5 history, journal rows, spread snapshots, and both VPS lanes before concluding a bug. |
+| Rollover/spread-wait and Bid/Ask fills | `docs/live_ops.html`, `docs/mt5_execution_contract.md`, `SESSION_HANDOFF.md`, and live JSONL journals | Treat Telegram/chart visuals as alerts only; verify MT5 Bid/Ask ticks, order history, journal rows, spread snapshots, and both VPS lanes before concluding a bug. |
 | Native EA migration | `docs/ea_migration.html`, `mql5/lpfs_ea/README.md`, and `mql5/lpfs_ea/Experts/LPFS/LPFS_EA.mq5` | Tester-only v1; do not attach to production live charts. |
 | Dashboard HTML | builder scripts in `scripts/` | Edit builders, then regenerate HTML; do not make HTML-only dashboard changes. |
 
@@ -171,9 +176,10 @@ production-adjacent.
 - A `VPS STARTED` Telegram card is an operating-system alert, not proof the
   trading loop is healthy. Always follow it with heartbeat, journal, and MT5
   broker-state checks.
-- Do not patch strategy or executor behavior from one rollover stopout or
-  single-broker quote divergence. First run a read-only dual-VPS/journal/MT5
-  audit and compare against the 10-year spread-inclusive evidence.
+- Do not patch strategy or executor behavior from one rollover stopout,
+  single-broker quote divergence, or Bid-only chart touch. First run a
+  read-only dual-VPS/journal/MT5 audit, inspect executable Bid/Ask where
+  available, and compare against the 10-year spread-inclusive evidence.
 
 ## Resume Prompts
 
@@ -186,5 +192,5 @@ Use one of these prompts to restart cleanly:
 - Second MT5 account validation: `Read START_HERE.md and docs/lpfs_new_mt5_account_validation.md, then audit the locally logged-in MT5 account before pulling data or running dry-run.`
 - IC VPS audit: `Read START_HERE.md and docs/lpfs_icmarkets_vps_runbook.md, then run Get-LpfsDualVpsStatus.ps1 and verify LPFS_Live and LPFS_IC_Live from MT5/runtime state before making operational changes.`
 - EA migration: `Read START_HERE.md, docs/ea_migration.html, and mql5/lpfs_ea/README.md, then continue native MQL5 tester-only work without touching VPS runtime, live configs, live journals, or broker orders.`
-- Rollover/spread audit: `Read START_HERE.md, SESSION_HANDOFF.md, and docs/live_ops.html, then use MT5 history, both VPS journals, and gate-attribution reports before deciding whether a rollover spread event needs code or ops changes.`
+- Rollover/spread/Bid-Ask audit: `Read START_HERE.md, SESSION_HANDOFF.md, docs/live_ops.html, and docs/mt5_execution_contract.md, then use MT5 history/ticks, both VPS journals, and gate-attribution reports before deciding whether a rollover spread or fill-timing event needs code or ops changes.`
 - FTMO challenge sizing: `Read START_HERE.md, SESSION_HANDOFF.md, and docs/ftmo_challenge_profiles.html, then inspect the latest lpfs_ftmo_challenge_frontier report before proposing any FTMO risk bucket or max-open-risk change.`
