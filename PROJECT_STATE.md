@@ -23,7 +23,7 @@ source of truth for strategy research and live execution work.
 - The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
   SSH key entries were removed from both VPSes.
 - Latest verified dual-VPS status packet from this PC:
-  `reports/live_ops/lpfs_dual_vps_status_20260511_003314.md`.
+  `reports/live_ops/lpfs_dual_vps_status_20260511_005949.md`.
 
 ## Read This First In A New Codex Session
 
