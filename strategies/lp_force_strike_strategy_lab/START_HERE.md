@@ -114,9 +114,9 @@ operational decisions.
   This checkout has the Python dependency layer installed and core coverage
   passing. Tailscale is installed/logged in at `100.118.29.124`, Git push auth
   works, and local MT5 read-only attach against the default config succeeded.
-  The remaining direct-VPS blocker is installing this laptop's new
-  `lpfs_vps_ed25519.pub` and `lpfs_ic_vps_ed25519.pub` keys into the matching
-  VPS `administrators_authorized_keys` files.
+  Direct SSH access to both VPS aliases is verified, both VPS checkouts are at
+  `837d9f2`, and `Get-LpfsDualVpsStatus.ps1` succeeded from this PC on
+  2026-05-11.
 - VPS production checkout: `C:\TradeAutomation`.
 - VPS production runtime root: `C:\TradeAutomationRuntime`.
 - VPS startup alert task: `LPFS_FTMO_Startup_Alert`.

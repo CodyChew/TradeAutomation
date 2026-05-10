@@ -136,6 +136,8 @@ New-PC verification completed:
   malformed MT5 retcodes and weekly-open market-closed attribution.
 - `.\venv\Scripts\python.exe scripts\run_core_coverage.py` passed with
   `100.00%` total line and branch coverage; LPFS discovery ran `322` tests.
+- After clarifying the gate-attribution test branch, the strict gate was rerun
+  and again passed at `100.00%` coverage with `322` LPFS tests.
 
 Git/GitHub state:
 
@@ -146,21 +148,29 @@ Git/GitHub state:
   GitHub hosts). Git CLI push/deploy sync does not depend on `gh` auth unless
   PR/issue workflows are needed.
 
-Direct VPS management is partially ready from this PC:
+Direct VPS management is ready from this PC:
 
 - `~\.ssh\config` now defines `lpfs-vps` and `lpfs-ic-vps`.
 - New local SSH keys were generated at `~\.ssh\lpfs_vps_ed25519` and
   `~\.ssh\lpfs_ic_vps_ed25519`.
-- Tailscale network reachability is present, and SSH reaches both VPS hosts,
-  but authentication is denied because the new laptop public keys are not yet
-  installed in each VPS `administrators_authorized_keys`.
-- `ssh lpfs-vps hostname` and `ssh lpfs-ic-vps hostname` currently fail with
-  `Permission denied (publickey,password,keyboard-interactive)`.
-
-To finish old-PC replacement for remote VPS operations, add this PC's new
-public keys to the matching VPS accounts, then rerun the identity, VPS git
-status, and `Get-LpfsLiveStatus.ps1` checks before making any production
-conclusion.
+- The user installed the new laptop public keys into each VPS
+  `administrators_authorized_keys`.
+- `ssh lpfs-vps hostname` returns `EC2AMAZ-ON6FOF2`.
+- `ssh lpfs-ic-vps hostname` returns `EC2AMAZ-DT73P0T`.
+- `whoami` returns each VPS `administrator` account.
+- Both VPS checkouts were fast-forwarded to `837d9f2` with
+  `git pull --ff-only origin main`; this was docs/tests only and did not
+  require or perform a live-runner restart.
+- `.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40`
+  succeeded from this PC and wrote
+  `reports/live_ops/lpfs_dual_vps_status_20260511_001138.md`.
+- Latest dual-VPS snapshot from that packet: FTMO and IC tasks both `Running`,
+  startup alert tasks `Ready`, kill switches clear, expected parent/child
+  runner process shape, fresh running heartbeats, MT5 connected/trade allowed,
+  and each lane had `1` pending order plus `1` active position. FTMO tracked
+  EURJPY D1 pending ticket `258799969` and GBPUSD D1 active position
+  `258801290`; IC tracked AUDNZD H4 pending ticket `4422248655` and EURCHF H12
+  active position `4420525163`.
 
 ## 2026-05-09 Code Freshness / Runner Health Check
 
