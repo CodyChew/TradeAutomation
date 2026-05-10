@@ -102,8 +102,8 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
 
 Latest verified packet from this PC:
 `reports/live_ops/lpfs_dual_vps_status_20260511_005949.md`. Both VPS repos
-were clean at `36a5b26`, both scheduled tasks were running, MT5 was connected
-and trade-allowed on both lanes, and both kill switches were clear.
+were clean on `main...origin/main`, both scheduled tasks were running, MT5 was
+connected and trade-allowed on both lanes, and both kill switches were clear.
 
 Environment boundary rule: local OneDrive is development; VPS
 `C:\TradeAutomation` plus each `C:\TradeAutomationRuntime*` root is production.
@@ -117,8 +117,8 @@ Current local machine for this session:
 - Host/user: `LAPTOP-BOHDIO8I` / `Cody`.
 - Local repo path: `C:\Users\Cody\OneDrive\Desktop\TradeAutomation`.
 - Branch state at initial onboarding: `main...origin/main` at `43aac99`.
-  Current verified post-documentation-sync state is `36a5b26` on this PC and
-  both VPS checkouts.
+  Current verified post-documentation-sync state is clean `main...origin/main`
+  on this PC and both VPS checkouts.
 - The Windows `python` on PATH resolves to Python 2.7, so project commands
   should explicitly use `.\venv\Scripts\python.exe`.
 - Tailscale is installed and logged in. This laptop has Tailscale IP
@@ -173,8 +173,8 @@ Direct VPS management is ready from this PC:
 - `ssh lpfs-vps hostname` returns `EC2AMAZ-ON6FOF2`.
 - `ssh lpfs-ic-vps hostname` returns `EC2AMAZ-DT73P0T`.
 - `whoami` returns each VPS `administrator` account.
-- Both VPS checkouts were fast-forwarded to `36a5b26` with
-  `git pull --ff-only origin main`; this was docs/tests/reporting only and did
+- Both VPS checkouts were fast-forwarded with `git pull --ff-only origin main`;
+  this was docs/tests/reporting only and did
   not require or perform a live-runner restart.
 - `.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40`
   succeeded from this PC and wrote

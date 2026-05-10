@@ -121,7 +121,7 @@ operational decisions.
   `lpfs-ic-vps` / `EC2AMAZ-DT73P0T` / `100.98.12.113`,
   `C:\TradeAutomation`, `C:\TradeAutomationRuntimeIC`, `LPFS_IC_Live`.
 - Direct SSH access to both VPS aliases is verified. After this documentation
-  refresh, both VPS checkouts were clean at `36a5b26`, and
+  refresh, both VPS checkouts were clean on `main...origin/main`, and
   `Get-LpfsDualVpsStatus.ps1` wrote
   `reports/live_ops/lpfs_dual_vps_status_20260511_005949.md` from this PC on
   2026-05-11.
