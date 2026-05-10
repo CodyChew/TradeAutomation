@@ -97,6 +97,71 @@ agents should start remote work with `ssh lpfs-vps hostname`, `ssh lpfs-vps
 whoami`, VPS `git status`, and the LPFS status packet before drawing
 operational conclusions.
 
+## 2026-05-10 New PC Onboarding Check
+
+Current local machine for this session:
+
+- Host/user: `LAPTOP-BOHDIO8I` / `Cody`.
+- Local repo path: `C:\Users\Cody\OneDrive\Desktop\TradeAutomation`.
+- Branch state at onboarding: `main...origin/main` at `43aac99`.
+- The Windows `python` on PATH resolves to Python 2.7, so project commands
+  should explicitly use `.\venv\Scripts\python.exe`.
+- Tailscale is installed and logged in. This laptop has Tailscale IP
+  `100.118.29.124` and can see both production VPS devices:
+  FTMO `100.115.34.38` and IC `100.98.12.113`.
+- The repo venv now has the operational Python packages installed:
+  `pandas`, `pyarrow`, `MetaTrader5`, `certifi`, `pytest`, and
+  `coverage[toml]`.
+- Local MT5 terminal discovered:
+  `C:\Program Files\MetaTrader 5\terminal64.exe`. The ignored local configs
+  use `mt5.use_existing_terminal_session=true` with no explicit terminal path,
+  so local MT5 commands require the intended terminal/account to already be
+  open and logged in before any dry-run or live-send cycle.
+- A read-only local MT5 probe against `config.local.json` succeeded: account
+  login/server matched expected config values, terminal was connected, and
+  terminal/account trading flags were true. Do not treat this as permission to
+  run local live-send while VPS production runners are active.
+- Ignored local configs are present and live-capable:
+  `config.local.json`,
+  `config.lpfs_icmarkets_raw_spread.local.json`, and
+  `config.lpfs_icmarkets_raw_spread.live_smoke.local.json`. Treat them as
+  real-account capable.
+
+New-PC verification completed:
+
+- `.\venv\Scripts\python.exe -m pytest strategies\lp_force_strike_strategy_lab\tests\test_dashboard_pages.py strategies\lp_force_strike_strategy_lab\tests\test_live_weekly_performance.py -q`
+  passed `35` tests.
+- `.\venv\Scripts\python.exe -m pytest strategies\lp_force_strike_strategy_lab\tests\test_live_executor.py strategies\lp_force_strike_strategy_lab\tests\test_live_gate_attribution.py -q`
+  passed `34` tests and `9` subtests after adding narrow coverage tests for
+  malformed MT5 retcodes and weekly-open market-closed attribution.
+- `.\venv\Scripts\python.exe scripts\run_core_coverage.py` passed with
+  `100.00%` total line and branch coverage; LPFS discovery ran `322` tests.
+
+Git/GitHub state:
+
+- GitHub read access works from this PC.
+- Git push auth works through Git Credential Manager:
+  `git push --dry-run origin main` returned `Everything up-to-date`.
+- GitHub CLI is installed but not logged in (`gh auth status` reports no
+  GitHub hosts). Git CLI push/deploy sync does not depend on `gh` auth unless
+  PR/issue workflows are needed.
+
+Direct VPS management is partially ready from this PC:
+
+- `~\.ssh\config` now defines `lpfs-vps` and `lpfs-ic-vps`.
+- New local SSH keys were generated at `~\.ssh\lpfs_vps_ed25519` and
+  `~\.ssh\lpfs_ic_vps_ed25519`.
+- Tailscale network reachability is present, and SSH reaches both VPS hosts,
+  but authentication is denied because the new laptop public keys are not yet
+  installed in each VPS `administrators_authorized_keys`.
+- `ssh lpfs-vps hostname` and `ssh lpfs-ic-vps hostname` currently fail with
+  `Permission denied (publickey,password,keyboard-interactive)`.
+
+To finish old-PC replacement for remote VPS operations, add this PC's new
+public keys to the matching VPS accounts, then rerun the identity, VPS git
+status, and `Get-LpfsLiveStatus.ps1` checks before making any production
+conclusion.
+
 ## 2026-05-09 Code Freshness / Runner Health Check
 
 Scope: local status refresh, pull-only VPS checkout update, weekly dashboard

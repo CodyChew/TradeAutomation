@@ -189,10 +189,14 @@ class LiveGateAttributionTests(unittest.TestCase):
                 {"event": "setup_rejected", "notification_event": {"status": "spread_too_wide", "signal_key": signal_key}},
                 {
                     "event": "setup_rejected",
-                    "occurred_at_utc": "2026-05-03T22:00:00+00:00",
+                    "occurred_at_utc": "2026-05-04T22:00:00+00:00",
                     "notification_event": {"status": "market_recovery_spread_too_wide", "signal_key": signal_key},
                 },
-                {"event": "setup_rejected", "notification_event": {"status": "market_closed", "signal_key": signal_key}},
+                {
+                    "event": "setup_rejected",
+                    "occurred_at_utc": "2026-05-03T22:15:00+00:00",
+                    "notification_event": {"status": "market_closed", "signal_key": signal_key},
+                },
                 {"event": "order_sent", "notification_event": {"status": "", "signal_key": signal_key}},
             ],
             weekly_open_window_hours=12,
@@ -201,6 +205,19 @@ class LiveGateAttributionTests(unittest.TestCase):
         self.assertEqual(summary.market_recovery_spread_waits, 1)
         self.assertEqual(summary.broker_session_waits, 1)
         self.assertEqual(summary.weekly_open_waits, 1)
+
+        recovery_summary = gate_module._build_signal_summary(
+            signal_key,
+            [
+                {
+                    "event": "setup_rejected",
+                    "occurred_at_utc": "2026-05-03T22:00:00+00:00",
+                    "notification_event": {"status": "market_recovery_spread_too_wide", "signal_key": signal_key},
+                },
+            ],
+            weekly_open_window_hours=12,
+        )
+        self.assertEqual(recovery_summary.weekly_open_waits, 1)
 
         self.assertEqual(gate_module._row_signal_key({}), "")
         self.assertEqual(gate_module._row_signal_key({"notification_event": {}, "decision": {"intent": "bad"}}), "")

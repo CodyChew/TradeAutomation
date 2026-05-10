@@ -485,6 +485,17 @@ class LiveExecutorTests(unittest.TestCase):
         self.assertIn("signal_closed_time_utc", invalid_placed)
         self.assertNotIn("placement_lag_seconds", invalid_placed)
 
+    def test_retryable_send_status_handles_non_numeric_retcodes(self) -> None:
+        blocked = live_module.LiveOrderSendOutcome(
+            sent=False,
+            request={},
+            retcode="not-a-retcode",
+            comment="Market closed",
+        )
+
+        self.assertEqual(live_module._retryable_order_send_block_status(blocked), "market_closed")
+        self.assertFalse(live_module._is_market_closed_block("not-a-retcode", ""))
+
     def test_state_round_trip_and_config_helpers(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "state.json"
