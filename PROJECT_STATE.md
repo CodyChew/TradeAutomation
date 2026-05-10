@@ -1,14 +1,29 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-09 after refreshing LPFS weekly performance status,
-fast-forwarding both VPS checkouts to the latest docs/reporting commit, and
-verifying both live runners remained operational.
+Last updated: 2026-05-11 after completing the new-PC handover, verifying
+Tailscale SSH/RDP after public RDP removal, and cleaning up old-PC access.
 
 ## Purpose
 
 This repository is a Python-first trading research workspace. TradingView is
 used for visual inspection, while Python modules and MT5 broker data are the
 source of truth for strategy research and live execution work.
+
+## Current Operations Access
+
+- Active local operations PC: `LAPTOP-BOHDIO8I`, Tailscale IP
+  `100.118.29.124`, repo
+  `C:\Users\Cody\OneDrive\Desktop\TradeAutomation`.
+- FTMO VPS: `lpfs-vps` / `EC2AMAZ-ON6FOF2` / `100.115.34.38`,
+  runtime `C:\TradeAutomationRuntime`, task `LPFS_Live`.
+- IC VPS: `lpfs-ic-vps` / `EC2AMAZ-DT73P0T` / `100.98.12.113`,
+  runtime `C:\TradeAutomationRuntimeIC`, task `LPFS_IC_Live`.
+- Public Lightsail RDP has been removed. Use Tailscale SSH for commands and
+  Tailscale RDP to the `100.x` VPS addresses for MT5 desktop review.
+- The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
+  SSH key entries were removed from both VPSes.
+- Latest verified dual-VPS status packet from this PC:
+  `reports/live_ops/lpfs_dual_vps_status_20260511_003314.md`.
 
 ## Read This First In A New Codex Session
 

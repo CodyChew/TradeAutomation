@@ -13,6 +13,16 @@ import pandas as pd
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _display_path(path_value: str | Path) -> str:
+    path = Path(path_value)
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
 SRC_ROOTS = [
     REPO_ROOT / "shared" / "market_data_lab" / "src",
     REPO_ROOT / "shared" / "backtest_engine_lab" / "src",
@@ -612,7 +622,7 @@ def _html_report(
     </section>
     {metric_glossary_html()}
   </main>
-  <footer>Generated from <code>{_escape(run_dir)}</code>. Research-only; no MT5 live calls.</footer>
+  <footer>Generated from <code>{_escape(_display_path(run_dir))}</code>. Research-only; no MT5 live calls.</footer>
 </body>
 </html>
 """

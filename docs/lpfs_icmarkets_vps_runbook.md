@@ -28,17 +28,24 @@ runtime root, state, journal, heartbeat, kill switch, and scheduled task.
 
 ## Current Verified IC VPS State
 
-Last verified on 2026-05-06 after the dedicated IC VPS was promoted from
-staging to its own live runner.
+Last verified on 2026-05-11 after the new-PC handover, old-PC access cleanup,
+and public RDP rule removal.
 
+- Active local operations PC: `LAPTOP-BOHDIO8I`, Tailscale IP
+  `100.118.29.124`, repo
+  `C:\Users\Cody\OneDrive\Desktop\TradeAutomation`.
 - SSH alias: `lpfs-ic-vps`.
 - Hostname: `EC2AMAZ-DT73P0T`.
 - Tailscale IP: `100.98.12.113`.
 - SSH user: `Administrator`.
 - Repo checkout: `C:\TradeAutomation`, clean `main...origin/main`. Pull latest
   `main` before any maintenance.
-- Python venv: `C:\TradeAutomation\venv` with `pandas`, `certifi`,
-  `MetaTrader5`, and `pytest` installed.
+- Python venv: `C:\TradeAutomation\venv` with `pandas`, `pyarrow`,
+  `MetaTrader5`, `certifi`, `pytest`, and `coverage[toml]` installed.
+- Public Lightsail RDP has been removed. Use Tailscale RDP to `100.98.12.113`
+  when MT5 desktop review is needed.
+- The old PC `cy-desktop` has been removed from Tailscale, and its old IC VPS
+  SSH key entry was removed from `administrators_authorized_keys`.
 - Focused IC-lane tests: `91 passed`.
 - MT5 terminal: `C:\Program Files\MetaTrader 5 IC Markets Global`.
 - MT5 account check: expected login matched, server `ICMarketsSC-MT5-2`,
@@ -108,7 +115,8 @@ Host lpfs-ic-vps
   IdentityFile ~/.ssh/lpfs_ic_vps_ed25519
 ```
 
-3. RDP only for MT5 login/visual review. Disconnect instead of signing out.
+3. RDP over Tailscale only for MT5 login/visual review. Disconnect instead of
+   signing out.
 4. Separate Telegram channel or group for IC LPFS notifications.
 5. Separate bot/chat ID in `config.lpfs_icmarkets_raw_spread.local.json`.
 6. GitHub remains the code migration channel. Local changes must be committed
@@ -145,7 +153,7 @@ an explicit trade-by-trade list is requested.
 6. Log into the IC account in MT5 and keep the terminal open.
 7. Create the IC Telegram channel/group and add the bot.
 8. Clone/pull `TradeAutomation` into `C:\TradeAutomation`.
-9. Create the venv and install dependencies.
+9. Create the venv and install dependencies from `requirements-dev.txt`.
 10. Copy `config.lpfs_icmarkets_raw_spread.example.json` to ignored
     `config.lpfs_icmarkets_raw_spread.local.json`.
 11. Fill only the IC-specific local values:
@@ -160,6 +168,14 @@ an explicit trade-by-trade list is requested.
     `live_send.live_send_enabled=true`, 28 explicit live symbols, and
     `risk_bucket_scale=2.0`.
 13. Create runtime folders and start with the kill switch active.
+
+Dependency install command:
+
+```powershell
+py -3.12 -m venv venv
+.\venv\Scripts\python -m pip install --upgrade pip
+.\venv\Scripts\python -m pip install -r requirements-dev.txt
+```
 
 ```powershell
 New-Item -ItemType Directory -Force -Path C:\TradeAutomationRuntimeIC\data\live\logs

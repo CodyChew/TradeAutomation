@@ -1,1 +1,6 @@
+certifi
+MetaTrader5
+pandas
+pyarrow
+pytest
 coverage[toml]>=7.6,<8

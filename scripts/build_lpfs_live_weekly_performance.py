@@ -63,6 +63,15 @@ DEFAULT_IC_TRADES = (
     / "ic_markets_raw_spread_commission_adjusted_trades.csv"
 )
 
+
+def _display_path(path_value: str | Path) -> str:
+    path = Path(path_value)
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
 SGT = "Asia/Singapore"
 RETRYABLE_STATUSES = {
     "spread_too_wide",
@@ -894,7 +903,7 @@ def build_dashboard_html(
       <h2>Manual Refresh Workflow</h2>
       <p class="callout">Default command: <code>.\\venv\\Scripts\\python.exe scripts\\build_lpfs_live_weekly_performance.py --latest</code></p>
       <p>The script reads over SSH, fingerprints the inputs, and prints <code>already up to date</code> without rewriting files when the latest report already matches current journals, state, benchmarks, and git heads. Use <code>--force</code> only when intentionally regenerating the same evidence.</p>
-      <p>Generated at <code>{escape(run_summary['generated_at_utc'])}</code>. Report packet: <code>{escape(run_summary['output_dir'])}</code>.</p>
+      <p>Generated at <code>{escape(run_summary['generated_at_utc'])}</code>. Report packet: <code>{escape(_display_path(run_summary['output_dir']))}</code>.</p>
     </section>
     {metric_glossary_html()}
   </main>

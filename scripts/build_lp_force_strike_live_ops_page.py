@@ -564,16 +564,28 @@ Get-CimInstance Win32_Process |
 
     remote_access_commands = [
         (
-            "Prove VPS hostname",
+            "Prove FTMO hostname",
             r"ssh lpfs-vps hostname",
         ),
         (
-            "Prove SSH user",
+            "Prove FTMO SSH user",
             r"ssh lpfs-vps whoami",
         ),
         (
-            "Verify VPS repo branch",
+            "Prove IC hostname",
+            r"ssh lpfs-ic-vps hostname",
+        ),
+        (
+            "Prove IC SSH user",
+            r"ssh lpfs-ic-vps whoami",
+        ),
+        (
+            "Verify FTMO repo branch",
             r'ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch"',
+        ),
+        (
+            "Verify IC repo branch",
+            r'ssh lpfs-ic-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch"',
         ),
         (
             "Fetch VPS live status packet",
@@ -824,13 +836,15 @@ Get-CimInstance Win32_Process |
 
     <section id="remote-access" aria-labelledby="remote-access-title">
       <h2 id="remote-access-title">Remote VPS Access</h2>
-      <p class="callout warning"><strong>First command before touching VPS:</strong> prove the host, user, repo branch, and live status packet through <code>ssh lpfs-vps</code>. Local OneDrive is development; <code>C:\TradeAutomation</code> plus <code>C:\TradeAutomationRuntime</code> is production.</p>
+      <p class="callout warning"><strong>First command before touching VPS:</strong> prove the host, user, repo branch, and live status packet through the SSH aliases and dual status script. Local OneDrive is development; <code>C:\TradeAutomation</code> plus each <code>C:\TradeAutomationRuntime*</code> root is production.</p>
       <div class="ops-grid">
         {_fact_grid([
-            ("Preferred access", "Tailscale + OpenSSH", "Use the private tailnet path instead of public SSH/RDP exposure for read-only audits and approved maintenance."),
-            ("Local PC", "cy-desktop", "Local Tailscale IP 100.105.200.52 and local repo C:\\Users\\chewc\\OneDrive\\Desktop\\TradeAutomation."),
-            ("VPS host", "EC2AMAZ-ON6FOF2", "VPS Tailscale IP 100.115.34.38, SSH user Administrator, alias lpfs-vps."),
-            ("SSH key", "~\\.ssh\\lpfs_vps_ed25519", "Local private key is ignored local material and must not be committed or pasted into docs/chat."),
+            ("Preferred access", "Tailscale SSH + RDP", "Use the private tailnet for command audits and MT5 desktop review. The public Lightsail RDP rule has been removed."),
+            ("Local PC", "LAPTOP-BOHDIO8I", "Local Tailscale IP 100.118.29.124 and repo C:\\Users\\Cody\\OneDrive\\Desktop\\TradeAutomation."),
+            ("FTMO VPS", "EC2AMAZ-ON6FOF2", "Tailscale IP 100.115.34.38, SSH alias lpfs-vps, runtime C:\\TradeAutomationRuntime, task LPFS_Live."),
+            ("IC VPS", "EC2AMAZ-DT73P0T", "Tailscale IP 100.98.12.113, SSH alias lpfs-ic-vps, runtime C:\\TradeAutomationRuntimeIC, task LPFS_IC_Live."),
+            ("Old PC cleanup", "cy-desktop removed", "The old machine is off the tailnet and its old SSH key entries were removed from both VPSes."),
+            ("SSH keys", "C:\\Users\\Cody\\.ssh", "Local private keys are ignored local material and must not be committed or pasted into docs/chat."),
         ])}
       </div>
       <div class="command-list">

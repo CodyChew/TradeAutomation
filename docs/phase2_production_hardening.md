@@ -191,17 +191,17 @@ powershell.exe
 - Arguments:
 
 ```text
--NoProfile -ExecutionPolicy Bypass -File "C:\Users\chewc\OneDrive\Desktop\TradeAutomation\scripts\run_lpfs_live_forever.ps1" -RepoRoot "C:\Users\chewc\OneDrive\Desktop\TradeAutomation" -ConfigPath "C:\Users\chewc\OneDrive\Desktop\TradeAutomation\config.local.json" -RuntimeRoot "C:\TradeAutomationRuntime" -Cycles 100000000 -SleepSeconds 30
+-NoProfile -ExecutionPolicy Bypass -File "C:\TradeAutomation\scripts\run_lpfs_live_forever.ps1" -RepoRoot "C:\TradeAutomation" -ConfigPath "C:\TradeAutomation\config.local.json" -RuntimeRoot "C:\TradeAutomationRuntime" -Cycles 100000000 -SleepSeconds 30
 ```
 
 - Start in:
 
 ```text
-C:\Users\chewc\OneDrive\Desktop\TradeAutomation
+C:\TradeAutomation
 ```
 
-For VPS use, disconnect the RDP session instead of signing out, so MT5 remains
-open in the user session.
+For VPS use, disconnect the Tailscale RDP session instead of signing out, so
+MT5 remains open in the user session.
 
 ## Startup Alert Task
 

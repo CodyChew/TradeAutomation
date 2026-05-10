@@ -879,54 +879,86 @@
 
     <section id="remote-access" aria-labelledby="remote-access-title">
       <h2 id="remote-access-title">Remote VPS Access</h2>
-      <p class="callout warning"><strong>First command before touching VPS:</strong> prove the host, user, repo branch, and live status packet through <code>ssh lpfs-vps</code>. Local OneDrive is development; <code>C:\TradeAutomation</code> plus <code>C:\TradeAutomationRuntime</code> is production.</p>
+      <p class="callout warning"><strong>First command before touching VPS:</strong> prove the host, user, repo branch, and live status packet through the SSH aliases and dual status script. Local OneDrive is development; <code>C:\TradeAutomation</code> plus each <code>C:\TradeAutomationRuntime*</code> root is production.</p>
       <div class="ops-grid">
 
         <article class="ops-fact">
           <span>Preferred access</span>
-          <strong>Tailscale + OpenSSH</strong>
-          <p>Use the private tailnet path instead of public SSH/RDP exposure for read-only audits and approved maintenance.</p>
+          <strong>Tailscale SSH + RDP</strong>
+          <p>Use the private tailnet for command audits and MT5 desktop review. The public Lightsail RDP rule has been removed.</p>
         </article>
 
 
         <article class="ops-fact">
           <span>Local PC</span>
-          <strong>cy-desktop</strong>
-          <p>Local Tailscale IP 100.105.200.52 and local repo C:\Users\chewc\OneDrive\Desktop\TradeAutomation.</p>
+          <strong>LAPTOP-BOHDIO8I</strong>
+          <p>Local Tailscale IP 100.118.29.124 and repo C:\Users\Cody\OneDrive\Desktop\TradeAutomation.</p>
         </article>
 
 
         <article class="ops-fact">
-          <span>VPS host</span>
+          <span>FTMO VPS</span>
           <strong>EC2AMAZ-ON6FOF2</strong>
-          <p>VPS Tailscale IP 100.115.34.38, SSH user Administrator, alias lpfs-vps.</p>
+          <p>Tailscale IP 100.115.34.38, SSH alias lpfs-vps, runtime C:\TradeAutomationRuntime, task LPFS_Live.</p>
         </article>
 
 
         <article class="ops-fact">
-          <span>SSH key</span>
-          <strong>~\.ssh\lpfs_vps_ed25519</strong>
-          <p>Local private key is ignored local material and must not be committed or pasted into docs/chat.</p>
+          <span>IC VPS</span>
+          <strong>EC2AMAZ-DT73P0T</strong>
+          <p>Tailscale IP 100.98.12.113, SSH alias lpfs-ic-vps, runtime C:\TradeAutomationRuntimeIC, task LPFS_IC_Live.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Old PC cleanup</span>
+          <strong>cy-desktop removed</strong>
+          <p>The old machine is off the tailnet and its old SSH key entries were removed from both VPSes.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>SSH keys</span>
+          <strong>C:\Users\Cody\.ssh</strong>
+          <p>Local private keys are ignored local material and must not be committed or pasted into docs/chat.</p>
         </article>
 
       </div>
       <div class="command-list">
 
         <div class="command-row">
-          <strong>Prove VPS hostname</strong>
+          <strong>Prove FTMO hostname</strong>
           <code>ssh lpfs-vps hostname</code>
         </div>
 
 
         <div class="command-row">
-          <strong>Prove SSH user</strong>
+          <strong>Prove FTMO SSH user</strong>
           <code>ssh lpfs-vps whoami</code>
         </div>
 
 
         <div class="command-row">
-          <strong>Verify VPS repo branch</strong>
+          <strong>Prove IC hostname</strong>
+          <code>ssh lpfs-ic-vps hostname</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Prove IC SSH user</strong>
+          <code>ssh lpfs-ic-vps whoami</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Verify FTMO repo branch</strong>
           <code>ssh lpfs-vps &quot;powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch&quot;</code>
+        </div>
+
+
+        <div class="command-row">
+          <strong>Verify IC repo branch</strong>
+          <code>ssh lpfs-ic-vps &quot;powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch&quot;</code>
         </div>
 
 

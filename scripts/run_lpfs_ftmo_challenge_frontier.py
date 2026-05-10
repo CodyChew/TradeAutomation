@@ -45,6 +45,14 @@ MAX_LOSS_WARNING_PCT = 9.5
 SPREAD_MATERIAL_RETURN_RATIO = 0.85
 
 
+def _display_path(path_value: str | Path) -> str:
+    path = Path(path_value)
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
 @dataclass(frozen=True)
 class RiskProfile:
     lower_risk_pct: float
@@ -892,7 +900,7 @@ def build_html_report(
         <li>FTMO rules modeled: 5% max daily loss and 10% max loss for 2-Step accounts.</li>
         <li>Risk buckets are account-percent targets before live broker volume rounding.</li>
         <li>No live configs, VPS runtime state, journals, orders, or scheduled tasks were touched.</li>
-        <li>Generated at {_escape(run_summary["generated_at_utc"])} into {_escape(run_summary["output_dir"])}.</li>
+        <li>Generated at {_escape(run_summary["generated_at_utc"])} into {_escape(_display_path(run_summary["output_dir"]))}.</li>
       </ul>
     </section>
     {metric_glossary_html()}

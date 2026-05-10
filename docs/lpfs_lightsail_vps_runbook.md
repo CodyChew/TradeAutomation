@@ -1,6 +1,7 @@
 # LPFS Amazon Lightsail VPS Runbook
 
-Last updated: 2026-05-06 after adding the boot-level Telegram startup alert.
+Last updated: 2026-05-11 after the new-PC handover, public RDP rule removal,
+and old-PC SSH access cleanup.
 
 This runbook moves the existing Python + MT5 live runner to Amazon Lightsail
 without rewriting strategy logic. The exact strategy behavior remains owned by
@@ -27,19 +28,25 @@ workspace unless changes are explicitly pushed/pulled to the VPS and
 ## Remote Maintenance Access
 
 The preferred remote-maintenance path is Tailscale plus OpenSSH over the
-private tailnet, not public SSH/RDP exposure.
+private tailnet, not public SSH/RDP exposure. Use Tailscale RDP when MT5 or
+desktop review is needed.
 
 Current proven access model:
 
-- Local development PC: `cy-desktop`, Tailscale IP `100.105.200.52`.
-- Local repo path: `C:\Users\chewc\OneDrive\Desktop\TradeAutomation`.
+- Active local development PC: `LAPTOP-BOHDIO8I`, Tailscale IP
+  `100.118.29.124`.
+- Local repo path: `C:\Users\Cody\OneDrive\Desktop\TradeAutomation`.
 - VPS host: `EC2AMAZ-ON6FOF2`, Tailscale IP `100.115.34.38`.
 - VPS SSH user: `Administrator`.
 - Local SSH alias: `lpfs-vps`.
-- Local SSH key: `~\.ssh\lpfs_vps_ed25519`.
+- Local SSH key: `C:\Users\Cody\.ssh\lpfs_vps_ed25519`.
 - VPS OpenSSH service: `sshd`.
 - VPS firewall rule: `OpenSSH-Tailscale-Only`, inbound TCP `22` from
   `100.64.0.0/10`.
+- Public Lightsail RDP has been removed. RDP to `100.115.34.38` over Tailscale
+  was verified from this PC after removal.
+- The old PC `cy-desktop` has been removed from Tailscale, and its old FTMO
+  VPS SSH key entry was removed from `administrators_authorized_keys`.
 
 Use the alias for read-only operator checks:
 
@@ -270,12 +277,15 @@ On the Lightsail instance:
 
 - Change or rotate Windows credentials after first setup.
 - Keep Windows Update enabled.
-- Restrict inbound RDP TCP 3389 to your current public IP where possible.
+- Keep public inbound RDP TCP 3389 disabled once Tailscale RDP is verified.
+  If Tailscale is unavailable during emergency recovery, temporarily restrict
+  public RDP to the current public IP and remove the rule again after access is
+  restored.
 - Do not open web-server ports unless needed.
 - Create a Lightsail snapshot after MT5, Python, repo, and config are working.
-- Optional: attach a static IP for stable RDP addressing. The live runner does
-  not need inbound public traffic for trading, but static IP can make support
-  and monitoring simpler.
+- Optional: attach a static IP for recovery/support workflows. The live runner
+  does not need inbound public traffic for trading, and normal RDP should use
+  the VPS Tailscale IP.
 
 ## Build Steps
 
@@ -292,13 +302,16 @@ On the Lightsail instance:
 2. Connect with RDP.
 
    AWS says Windows instances can take several minutes before RDP is ready.
-   Use the browser RDP client first, then your normal RDP client after the
-   password and firewall are set.
+   Use the browser RDP client for first provisioning if needed. After
+   Tailscale is installed and connected, use normal RDP to the VPS Tailscale
+   IP instead of public Lightsail RDP.
 
 3. Lock down firewall.
 
-   In Lightsail networking, restrict RDP to your current public IP or a small
-   trusted CIDR. AWS warns that allowing all IPs to RDP is a security risk.
+   In Lightsail networking, remove public RDP after Tailscale RDP is verified.
+   If public RDP is temporarily needed during setup or emergency recovery,
+   restrict it to the current public IP or a small trusted CIDR and remove it
+   again afterward. AWS warns that allowing all IPs to RDP is a security risk.
 
 4. Install MT5.
 
@@ -329,12 +342,13 @@ On the Lightsail instance:
    ```powershell
    py -3.12 -m venv venv
    .\venv\Scripts\python -m pip install --upgrade pip
-   .\venv\Scripts\python -m pip install pandas MetaTrader5 certifi coverage[toml]
+   .\venv\Scripts\python -m pip install -r requirements-dev.txt
    ```
 
-   `coverage[toml]` is needed for verification. `certifi` provides a stable CA
-   bundle for Telegram HTTPS delivery from Windows Server. For pure live
-   runtime, pandas, MetaTrader5, and certifi are the key external packages.
+   `requirements-dev.txt` includes the operational and verification packages:
+   `pandas`, `pyarrow`, `MetaTrader5`, `certifi`, `pytest`, and
+   `coverage[toml]`. `certifi` provides a stable CA bundle for Telegram HTTPS
+   delivery from Windows Server.
 
 8. Create local config.
 
@@ -417,7 +431,8 @@ C:\TradeAutomation
 ```
 
 After confirming the task starts the runner, disconnect RDP. Do not sign out,
-because signing out can close the interactive MT5 session.
+because signing out can close the interactive MT5 session. Prefer Tailscale RDP
+to `100.115.34.38`; public Lightsail RDP is not required for normal operation.
 
 Validated 2026-05-04 VPS checkpoint:
 
@@ -454,7 +469,7 @@ same time.
 
 ## Operator Quick Reference
 
-Run these from the VPS in PowerShell after RDP login:
+Run these from the VPS in PowerShell after Tailscale RDP login:
 
 ```powershell
 cd C:\TradeAutomation
@@ -692,7 +707,7 @@ If MT5 is disconnected:
 
 If the VPS reboots:
 
-- RDP in;
+- RDP in over Tailscale;
 - open MT5 if it is not already open;
 - confirm account/server;
 - run status command;

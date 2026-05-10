@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-05-09 after refreshing LPFS operations/documentation
-verification guidance and stable dashboard navigation.
+Last updated: 2026-05-11 after completing the new-PC handover, verifying
+Tailscale SSH/RDP after public RDP removal, and cleaning up old-PC access.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -56,11 +56,13 @@ operational decisions.
   chart; use timestamped packets under
   `reports/live_ops/lpfs_weekly_performance/` for historical checkpoints.
 - Production host: Amazon Lightsail Windows VPS.
-- Preferred remote access: Tailscale + OpenSSH using local alias `lpfs-vps`.
+- Preferred remote access: Tailscale + OpenSSH using local aliases `lpfs-vps`
+  and `lpfs-ic-vps`; use Tailscale RDP to the `100.x` VPS addresses when MT5
+  desktop review is needed.
 - Broker truth: MT5 orders, positions, order history, and deal history.
 - Runtime truth: `C:\TradeAutomationRuntime\data\live` on the VPS.
 - Local repo truth: tracked code and docs in
-  `C:\Users\chewc\OneDrive\Desktop\TradeAutomation`.
+  `C:\Users\Cody\OneDrive\Desktop\TradeAutomation` on `LAPTOP-BOHDIO8I`.
 
 ## Read Order
 
@@ -95,7 +97,7 @@ operational decisions.
 | Live broker state | MT5 on the VPS | Do not infer open exposure from Telegram alone. |
 | Live runtime state | `C:\TradeAutomationRuntime\data\live` on the VPS | Contains state, journal, heartbeat, logs, and kill switch. |
 | VPS restart awareness | Startup alert tasks plus Windows System event log | `VPS STARTED` Telegram means Windows booted; MT5/runner still need heartbeat confirmation. |
-| Remote VPS access | `docs/lpfs_lightsail_vps_runbook.md` | Tailscale + OpenSSH is preferred over public SSH/RDP exposure. |
+| Remote VPS access | `docs/lpfs_lightsail_vps_runbook.md` | Tailscale SSH is preferred for commands; use Tailscale RDP for MT5 desktop review. |
 | Account and secrets | ignored `config.local.json` and local OS/user secrets | Never commit MT5 passwords, Telegram tokens, SSH private keys, or account credentials. |
 | IC account validation | `docs/account_validation.html`, `docs/lpfs_new_mt5_account_validation.md`, and `config.lpfs_new_mt5_account.example.json` | Local-only validation and smoke testing; do not touch VPS live account. |
 | IC production setup | `docs/lpfs_icmarkets_vps_runbook.md`, `config.lpfs_icmarkets_raw_spread.example.json`, and `scripts/Get-LpfsDualVpsStatus.ps1` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
@@ -107,25 +109,23 @@ operational decisions.
 
 ## Environment Boundaries
 
-- Local development environment:
-  `C:\Users\chewc\OneDrive\Desktop\TradeAutomation`.
-- Current new-PC development environment observed on 2026-05-10:
+- Active local development environment:
   `C:\Users\Cody\OneDrive\Desktop\TradeAutomation` on `LAPTOP-BOHDIO8I`.
   This checkout has the Python dependency layer installed and core coverage
   passing. Tailscale is installed/logged in at `100.118.29.124`, Git push auth
   works, and local MT5 read-only attach against the default config succeeded.
-  Direct SSH access to both VPS aliases is verified, both VPS checkouts are at
-  `837d9f2`, and `Get-LpfsDualVpsStatus.ps1` succeeded from this PC on
-  2026-05-11.
-- VPS production checkout: `C:\TradeAutomation`.
-- VPS production runtime root: `C:\TradeAutomationRuntime`.
-- VPS startup alert task: `LPFS_FTMO_Startup_Alert`.
-- Local SSH alias: `lpfs-vps`.
-- VPS host: `EC2AMAZ-ON6FOF2`.
-- VPS Tailscale IP: `100.115.34.38`.
-- Local PC Tailscale IP: `100.105.200.52`.
-- VPS SSH user: `Administrator`.
-- Local SSH key: `~\.ssh\lpfs_vps_ed25519`.
+- FTMO production checkout/runtime/task:
+  `lpfs-vps` / `EC2AMAZ-ON6FOF2` / `100.115.34.38`,
+  `C:\TradeAutomation`, `C:\TradeAutomationRuntime`, `LPFS_Live`.
+- IC production checkout/runtime/task:
+  `lpfs-ic-vps` / `EC2AMAZ-DT73P0T` / `100.98.12.113`,
+  `C:\TradeAutomation`, `C:\TradeAutomationRuntimeIC`, `LPFS_IC_Live`.
+- Direct SSH access to both VPS aliases is verified. Before this documentation
+  refresh, both VPS checkouts were clean at `15b01fa`, and
+  `Get-LpfsDualVpsStatus.ps1` succeeded from this PC on 2026-05-11.
+- The old local PC `cy-desktop` has been removed from Tailscale, old-PC SSH
+  key entries were removed from both VPSes, and the public Lightsail RDP rule
+  has been removed. Tailscale SSH and RDP remain verified from this PC.
 
 Local edits do not affect the VPS until they are committed, pushed, pulled on
 the VPS, and the production task is intentionally restarted. VPS runtime files

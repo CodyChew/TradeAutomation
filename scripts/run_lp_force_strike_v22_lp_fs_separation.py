@@ -13,6 +13,16 @@ import pandas as pd
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _display_path(path_value: str | Path) -> str:
+    path = Path(path_value)
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
 SRC_ROOTS = [
     REPO_ROOT / "shared" / "market_data_lab" / "src",
     REPO_ROOT / "shared" / "backtest_engine_lab" / "src",
@@ -936,11 +946,11 @@ def _html_report(
 <section id="follow-up">
   <h2>Follow-Up Section</h2>
   <p class="callout"><strong>{_escape(decision.get('follow_up'))}</strong></p>
-  <p class="muted">Artifacts live under <code>{_escape(run_dir)}</code>. Datasets: {_fmt_int(run_summary.get('datasets'))}; failed: {_fmt_int(run_summary.get('failed_datasets'))}; trades: {_fmt_int(run_summary.get('trades'))}; signals: {_fmt_int(run_summary.get('signals'))}.</p>
+  <p class="muted">Artifacts live under <code>{_escape(_display_path(run_dir))}</code>. Datasets: {_fmt_int(run_summary.get('datasets'))}; failed: {_fmt_int(run_summary.get('failed_datasets'))}; trades: {_fmt_int(run_summary.get('trades'))}; signals: {_fmt_int(run_summary.get('signals'))}.</p>
 </section>
 {metric_glossary_html()}
 </main>
-<footer>Generated from <code>{_escape(run_dir)}</code>. Research-only evidence; production changes require a separate plan.</footer>
+<footer>Generated from <code>{_escape(_display_path(run_dir))}</code>. Research-only evidence; production changes require a separate plan.</footer>
 </body>
 </html>
 """

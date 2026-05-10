@@ -1,7 +1,8 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-09 after running the LPFS operations/documentation
-verification checkpoint and refreshing stable dashboard navigation.
+Last updated: 2026-05-11 after completing the new-PC handover, verifying
+Tailscale SSH/RDP after public RDP removal, and removing the old PC's VPS
+access.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -60,21 +61,31 @@ file, and the JSONL journal before making operational decisions.
 
 ## Remote VPS Access
 
-Tailscale + OpenSSH is now the preferred remote-maintenance path for read-only
-LPFS VPS audits and approved cleanup.
+Tailscale + OpenSSH is the preferred remote-maintenance path for read-only
+LPFS VPS audits and approved cleanup. Tailscale RDP is the preferred interactive
+path when MT5 or Windows desktop review is needed.
 
-- Local development PC: `cy-desktop`, Tailscale IP `100.105.200.52`.
-- Local repo path: `C:\Users\chewc\OneDrive\Desktop\TradeAutomation`.
-- Local SSH alias: `lpfs-vps`.
-- Local SSH key: `~\.ssh\lpfs_vps_ed25519`.
-- VPS host: `EC2AMAZ-ON6FOF2`, Tailscale IP `100.115.34.38`.
-- VPS SSH user: `Administrator`.
-- VPS repo path: `C:\TradeAutomation`.
-- VPS runtime root: `C:\TradeAutomationRuntime`.
-- VPS startup alert task: `LPFS_FTMO_Startup_Alert`.
-- VPS OpenSSH service: `sshd`.
-- VPS firewall rule: `OpenSSH-Tailscale-Only`, inbound TCP `22` from
+- Active local operations PC: `LAPTOP-BOHDIO8I`, Tailscale IP
+  `100.118.29.124`.
+- Local repo path: `C:\Users\Cody\OneDrive\Desktop\TradeAutomation`.
+- FTMO VPS: alias `lpfs-vps`, host `EC2AMAZ-ON6FOF2`, Tailscale IP
+  `100.115.34.38`, repo `C:\TradeAutomation`, runtime
+  `C:\TradeAutomationRuntime`, task `LPFS_Live`.
+- IC VPS: alias `lpfs-ic-vps`, host `EC2AMAZ-DT73P0T`, Tailscale IP
+  `100.98.12.113`, repo `C:\TradeAutomation`, runtime
+  `C:\TradeAutomationRuntimeIC`, task `LPFS_IC_Live`.
+- Local SSH keys are under `C:\Users\Cody\.ssh\`:
+  `lpfs_vps_ed25519` and `lpfs_ic_vps_ed25519`.
+- VPS OpenSSH firewall rule: `OpenSSH-Tailscale-Only`, inbound TCP `22` from
   `100.64.0.0/10`.
+- The public Lightsail RDP rule has been removed. Normal operations no longer
+  depend on a whitelisted public home/office IP; RDP over Tailscale to
+  `100.115.34.38` and `100.98.12.113` was verified from this PC after removal.
+- The old local machine `cy-desktop` was removed from Tailscale, and its old
+  VPS SSH key entries were removed from both VPSes.
+- Authorized-key backups left on the VPSes:
+  - FTMO: `C:\ProgramData\ssh\administrators_authorized_keys.bak_20260510_162359`.
+  - IC: `C:\ProgramData\ssh\administrators_authorized_keys.bak_20260510_162409`.
 
 Verified remote commands:
 
@@ -83,27 +94,31 @@ ssh lpfs-vps hostname
 ssh lpfs-vps whoami
 ssh lpfs-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 40 -LogLines 80"
 ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git status --short --branch"
+ssh lpfs-ic-vps hostname
+ssh lpfs-ic-vps whoami
 ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -StateFileName lpfs_ic_live_state.json -JournalFileName lpfs_ic_live_journal.jsonl -HeartbeatFileName lpfs_ic_live_heartbeat.json -LogFilter 'lpfs_ic_live_*.log' -JournalLines 40 -LogLines 80"
 .\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40
 ```
 
-The remote status packet verified a running heartbeat, the expected Windows
-parent/child process shape, `C:\TradeAutomationRuntime` as runtime root, and
-`main...origin/main` as the VPS repo state.
+Latest verified packet from this PC:
+`reports/live_ops/lpfs_dual_vps_status_20260511_003314.md`. Both VPS repos
+were clean at `15b01fa`, both scheduled tasks were running, MT5 was connected
+and trade-allowed on both lanes, and both kill switches were clear.
 
 Environment boundary rule: local OneDrive is development; VPS
-`C:\TradeAutomation` plus `C:\TradeAutomationRuntime` is production. Future
-agents should start remote work with `ssh lpfs-vps hostname`, `ssh lpfs-vps
-whoami`, VPS `git status`, and the LPFS status packet before drawing
-operational conclusions.
+`C:\TradeAutomation` plus each `C:\TradeAutomationRuntime*` root is production.
+Future agents should start remote work with host/user checks, VPS `git status`,
+and the LPFS status packet before drawing operational conclusions.
 
-## 2026-05-10 New PC Onboarding Check
+## 2026-05-10/11 New PC Onboarding And Cleanup
 
 Current local machine for this session:
 
 - Host/user: `LAPTOP-BOHDIO8I` / `Cody`.
 - Local repo path: `C:\Users\Cody\OneDrive\Desktop\TradeAutomation`.
-- Branch state at onboarding: `main...origin/main` at `43aac99`.
+- Branch state at initial onboarding: `main...origin/main` at `43aac99`.
+  Current verified pre-documentation-sync state was `15b01fa` on this PC and
+  both VPS checkouts.
 - The Windows `python` on PATH resolves to Python 2.7, so project commands
   should explicitly use `.\venv\Scripts\python.exe`.
 - Tailscale is installed and logged in. This laptop has Tailscale IP
@@ -158,12 +173,12 @@ Direct VPS management is ready from this PC:
 - `ssh lpfs-vps hostname` returns `EC2AMAZ-ON6FOF2`.
 - `ssh lpfs-ic-vps hostname` returns `EC2AMAZ-DT73P0T`.
 - `whoami` returns each VPS `administrator` account.
-- Both VPS checkouts were fast-forwarded to `837d9f2` with
+- Both VPS checkouts were fast-forwarded to `15b01fa` with
   `git pull --ff-only origin main`; this was docs/tests only and did not
   require or perform a live-runner restart.
 - `.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40`
   succeeded from this PC and wrote
-  `reports/live_ops/lpfs_dual_vps_status_20260511_001138.md`.
+  `reports/live_ops/lpfs_dual_vps_status_20260511_003314.md`.
 - Latest dual-VPS snapshot from that packet: FTMO and IC tasks both `Running`,
   startup alert tasks `Ready`, kill switches clear, expected parent/child
   runner process shape, fresh running heartbeats, MT5 connected/trade allowed,
@@ -179,6 +194,9 @@ Direct VPS management is ready from this PC:
   checks from this PC still succeeded, and the remaining key comments are
   `lpfs_vps_ed25519@LAPTOP-BOHDIO8I` and
   `lpfs_ic_vps_ed25519@LAPTOP-BOHDIO8I`.
+- The old PC `cy-desktop` was removed from the Tailscale tailnet. After that
+  removal and after the public Lightsail RDP rule was deleted, this PC still
+  reached both VPSes over Tailscale SSH and TCP `3389` RDP.
 
 ## 2026-05-09 Code Freshness / Runner Health Check
 
