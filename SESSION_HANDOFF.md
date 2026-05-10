@@ -171,6 +171,14 @@ Direct VPS management is ready from this PC:
   EURJPY D1 pending ticket `258799969` and GBPUSD D1 active position
   `258801290`; IC tracked AUDNZD H4 pending ticket `4422248655` and EURCHF H12
   active position `4420525163`.
+- On 2026-05-11, old-PC SSH public-key entries were removed from both VPS
+  `C:\ProgramData\ssh\administrators_authorized_keys` files after verifying
+  new-PC SSH access. Backups were left on the VPSes:
+  FTMO `administrators_authorized_keys.bak_20260510_162359` and IC
+  `administrators_authorized_keys.bak_20260510_162409`. Post-cleanup SSH
+  checks from this PC still succeeded, and the remaining key comments are
+  `lpfs_vps_ed25519@LAPTOP-BOHDIO8I` and
+  `lpfs_ic_vps_ed25519@LAPTOP-BOHDIO8I`.
 
 ## 2026-05-09 Code Freshness / Runner Health Check
 
