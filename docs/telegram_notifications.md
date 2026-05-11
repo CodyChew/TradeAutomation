@@ -141,6 +141,9 @@ comments, exact floats, and diagnostic fields stay in the JSONL journal.
 - other `setup_rejected` / `order_check_failed` / `order_rejected`: `SKIPPED`
   or `REJECTED`, human reason, key metric such as touched time, action taken,
   and signal ref.
+- `invalid_market` setup-rejection cards include the quote when available and
+  render inverted quotes as `Bid ... > Ask ...`. Equal bid/ask is a valid
+  zero-spread quote and should continue to the spread gate and broker checks.
 - `pending_expired` / `pending_cancelled`: `CANCELLED`, human reason, order
   ticket, action taken, and signal ref. If MT5 rejects the cancellation, the
   card says cancellation failed and the local pending item is kept for retry.

@@ -850,7 +850,13 @@ def process_trade_setup_dry_run(
         exposure=ExistingStrategyExposure(existing_signal_keys=state.order_checked_signal_keys),
         risk_buckets=risk_buckets_from_config(config),
     )
-    decision_event = notification_from_execution_decision(decision, mode="DRY_RUN")
+    decision_event = notification_from_execution_decision(
+        decision,
+        mode="DRY_RUN",
+        setup=setup,
+        market=market_snapshot,
+        price_digits=symbol_spec.digits,
+    )
     append_audit_event(
         config.journal_path,
         decision_event.kind,

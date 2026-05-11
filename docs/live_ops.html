@@ -593,6 +593,7 @@
     <section id="spread-policy" aria-labelledby="spread-policy-title">
       <h2 id="spread-policy-title">Spread Policy</h2>
       <p class="callout"><strong>Current behavior:</strong> a setup blocked because spread is too wide stays retryable. The runner records one WAITING alert, does not mark the signal processed, and can place the pending order on a future cycle if spread improves while the setup is still valid.</p>
+      <p class="callout"><strong>Zero-spread quotes:</strong> raw-spread feeds can report <code>bid == ask</code>. That is valid zero spread, so the runner allows it through spread gating, <code>order_check</code>, and the final pre-send quote refresh. Only inverted quotes, where bid is greater than ask, are local <code>invalid_market</code> skips.</p>
       <p class="callout"><strong>Market recovery:</strong> if spread was too wide first and the entry later touches before a pending order exists, the default live path tries a better-than-entry market recovery. It sends only if the current executable price is same-or-better than the original pending entry and spread is still no more than 10% of actual fill-to-stop risk. Worse-than-entry quotes are WAITING, not permanently skipped, while the actual 6-bar window remains open.</p>
       <p class="callout"><strong>Broker session:</strong> if MT5 returns <code>Market closed</code> before any order exists, the runner records WAITING, removes the processed signal key, and retries while the setup remains valid. True broker rejections and manual deletion of already placed orders remain final unless deliberately re-armed.</p>
       <p class="callout"><strong>Broker fill mode:</strong> market recovery uses <code>TRADE_ACTION_DEAL</code> and now chooses broker-supported market filling modes from symbol metadata. If MT5 rejects <code>order_check</code> with invalid or unsupported filling mode, the runner tries the next market filling mode and sends using the exact request that passed <code>order_check</code>.</p>
@@ -611,6 +612,13 @@
           <span>Before placement</span>
           <strong>Retryable WAITING</strong>
           <p>If spread is above 10% of risk distance, no order is placed yet and the same signal can be checked again.</p>
+        </article>
+
+
+        <article class="ops-fact">
+          <span>Zero spread</span>
+          <strong>Allowed</strong>
+          <p>If bid equals ask, spread is zero and the order can proceed to broker validation. If bid is greater than ask, the quote is inverted and skipped as invalid_market.</p>
         </article>
 
 

@@ -351,7 +351,7 @@ void BuildAndPlaceTesterOrder(const string symbol, const ENUM_TIMEFRAMES timefra
 
    double bid = SymbolInfoDouble(symbol, SYMBOL_BID);
    double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
-   if(bid <= 0.0 || ask <= 0.0 || bid >= ask)
+   if(bid <= 0.0 || ask <= 0.0 || bid > ask)
       return;
 
    if(!DynamicSpreadGatePass(ask - bid, risk))

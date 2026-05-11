@@ -12,7 +12,7 @@ import urllib.error
 import urllib.request
 from zoneinfo import ZoneInfo
 
-from .execution_contract import MT5ExecutionDecision
+from .execution_contract import MT5ExecutionDecision, signal_key_for_setup
 
 
 NotificationKind = Literal[
@@ -316,6 +316,9 @@ def notification_from_execution_decision(
     decision: MT5ExecutionDecision,
     *,
     mode: NotificationMode,
+    setup: Any | None = None,
+    market: Any | None = None,
+    price_digits: Any | None = None,
 ) -> NotificationEvent:
     """Convert an execution-contract decision into a notification event."""
 
@@ -349,14 +352,39 @@ def notification_from_execution_decision(
             },
         )
 
+    fields: dict[str, Any] = {"checks_completed": ", ".join(decision.checks) if decision.checks else "none"}
+    if market is not None:
+        for source_key, field_key in (
+            ("bid", "bid"),
+            ("ask", "ask"),
+            ("spread_points", "spread_points"),
+            ("time_utc", "quote_time_utc"),
+        ):
+            value = getattr(market, source_key, None)
+            if value not in (None, ""):
+                fields[field_key] = value.isoformat() if hasattr(value, "isoformat") else value
+    if price_digits not in (None, ""):
+        fields["price_digits"] = price_digits
+
+    signal_key = ""
+    if setup is not None:
+        try:
+            signal_key = signal_key_for_setup(setup)
+        except Exception:
+            signal_key = ""
+
     return NotificationEvent(
         kind="setup_rejected",
         mode=mode,
         title="Setup rejected before MT5 send",
         severity="warning",
+        symbol="" if setup is None else str(getattr(setup, "symbol", "") or "").upper(),
+        timeframe="" if setup is None else str(getattr(setup, "timeframe", "") or "").upper(),
+        side="" if setup is None else str(getattr(setup, "side", "") or "").upper(),
         status=decision.rejection_reason or "rejected",
+        signal_key=signal_key,
         message=decision.detail,
-        fields={"checks_completed": ", ".join(decision.checks) if decision.checks else "none"},
+        fields=fields,
     )
 
 
@@ -419,6 +447,7 @@ def _format_dry_run_message(event: NotificationEvent, *, max_field_value_length:
     if event.kind == "setup_rejected":
         lines = [
             "LPFS DRY RUN - SETUP SKIPPED",
+            f"Market: {_market_context(event)}",
             f"Reason: {event.status or 'rejected'}",
             "Status: rejected before broker check - no order sent.",
         ]
@@ -427,6 +456,7 @@ def _format_dry_run_message(event: NotificationEvent, *, max_field_value_length:
         checks = _field(event, "checks_completed")
         if checks:
             lines.append(f"Checks: {checks}")
+        _append_signal_id(lines, event, max_field_value_length=max_field_value_length)
         return "\n".join(lines)
 
     lines = [
@@ -916,6 +946,16 @@ def _human_key_metric(event: NotificationEvent) -> str:
         if limit is None:
             return f"Spread: {spread_text} of risk"
         return f"Spread: {spread_text} of risk | Limit {format_trader_percent(limit * 100.0, decimals=1)}"
+    if event.status == "invalid_market":
+        bid = event.fields.get("bid")
+        ask = event.fields.get("ask")
+        if bid not in (None, "") and ask not in (None, ""):
+            digits = event.fields.get("price_digits")
+            symbol = _market_symbol(event)
+            return (
+                f"Quote: Bid {format_trader_price(symbol, bid, price_digits=digits)} > "
+                f"Ask {format_trader_price(symbol, ask, price_digits=digits)}"
+            )
     order_ticket = event.fields.get("order_ticket")
     if order_ticket not in (None, ""):
         return f"Order: #{order_ticket}"

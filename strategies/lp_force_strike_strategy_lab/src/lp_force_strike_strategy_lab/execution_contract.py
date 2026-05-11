@@ -358,7 +358,7 @@ def _basic_rejection(
         return "invalid_account_equity", f"equity={account.equity:g}"
     if not _prices_are_finite(setup.entry_price, setup.stop_price, setup.target_price, market.bid, market.ask):
         return "non_finite_price", "Entry, stop, target, bid, and ask must be finite."
-    if market.bid >= market.ask:
+    if market.bid > market.ask:
         return "invalid_market", f"bid={market.bid:g} ask={market.ask:g}"
     spread = _spread_points(market, spec)
     if limits.max_spread_points is not None and spread > limits.max_spread_points:

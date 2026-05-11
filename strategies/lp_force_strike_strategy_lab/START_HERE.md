@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-05-11 after completing the new-PC handover, verifying
-Tailscale SSH/RDP after public RDP removal, and cleaning up old-PC access.
+Last updated: 2026-05-12 after verifying and patching raw-spread zero-quote
+handling for both live runners.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -41,6 +41,12 @@ operational decisions.
   spread-wait placement lag. The spread gate and retry behavior matched the
   intended design; no patch is recommended unless the pattern repeats or
   materially harms PnL.
+- Zero-spread quote state: a 2026-05-12 audit found IC skipped a `EURUSD H4
+  SHORT` at the 01:00 SGT run because the local execution contract treated
+  `bid == ask` as invalid. FTMO placed the matching order. The corrected
+  contract allows equal bid/ask as valid zero spread, keeps spread gates and
+  MT5 `order_check` in place, and rejects only inverted quotes where bid is
+  greater than ask.
 - Bid/Ask fill-realism state: a 2026-05-09 IC `EURCHF H12` audit confirmed
   that a Bid-only candle low below a buy-limit entry does not prove MT5 should
   fill. Live `BUY_LIMIT` fills require Ask at or below entry. IC tick data

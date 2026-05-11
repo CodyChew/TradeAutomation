@@ -1386,7 +1386,13 @@ def process_trade_setup_live_send(
         max_entry_wait_bars=config.max_entry_wait_bars,
         money_risk_per_lot_override=risk_per_lot,
     )
-    decision_event = notification_from_execution_decision(decision, mode="LIVE")
+    decision_event = notification_from_execution_decision(
+        decision,
+        mode="LIVE",
+        setup=setup,
+        market=first_market,
+        price_digits=symbol_spec.digits,
+    )
     append_audit_event(
         config.journal_path,
         decision_event.kind,

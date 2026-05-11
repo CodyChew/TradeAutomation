@@ -589,6 +589,12 @@ class LiveExecutorTests(unittest.TestCase):
         self.assertAlmostEqual(gate.spread_points or 0, 2.0)
         self.assertAlmostEqual(gate.spread_risk_fraction, 0.04)
 
+        zero = dynamic_spread_gate(_setup(), spec, MT5MarketSnapshot(bid=1.1020, ask=1.1020), max_spread_risk_fraction=0.10)
+        self.assertTrue(zero.passed)
+        self.assertEqual(zero.spread_price, 0.0)
+        self.assertEqual(zero.spread_points, 0.0)
+        self.assertEqual(zero.spread_risk_fraction, 0.0)
+
         wide = dynamic_spread_gate(_setup(), spec, MT5MarketSnapshot(bid=1.1000, ask=1.1020), max_spread_risk_fraction=0.10)
         self.assertFalse(wide.passed)
         invalid = dynamic_spread_gate(_setup(entry=1.1, stop=1.1), spec, market, max_spread_risk_fraction=0.10)
@@ -1412,6 +1418,25 @@ class LiveExecutorTests(unittest.TestCase):
 
             duplicate = process_trade_setup_live_send(mt5, _setup(), config=config, state=result.state)
             self.assertEqual(duplicate.status, "already_processed")
+
+            zero_spread_mt5 = FakeMT5()
+            zero_spread_mt5.tick = SimpleNamespace(
+                bid=1.1020,
+                ask=1.1020,
+                time_msc=int(pd.Timestamp("2026-01-01T04:02:00Z").timestamp() * 1000),
+                time=0,
+            )
+            zero_spread = process_trade_setup_live_send(
+                zero_spread_mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "zero_spread.jsonl")),
+                state=LiveExecutorState(),
+                market=MT5MarketSnapshot(bid=1.1020, ask=1.1020, time_utc="2026-01-01T04:00:00Z"),
+            )
+            self.assertEqual(zero_spread.status, "order_sent")
+            self.assertEqual(zero_spread.order_send.order_ticket if zero_spread.order_send else None, 9001)
+            self.assertGreaterEqual(len(zero_spread_mt5.order_check_requests), 1)
+            self.assertGreaterEqual(len(zero_spread_mt5.order_send_requests), 1)
 
             wide = process_trade_setup_live_send(
                 mt5,

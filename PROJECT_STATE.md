@@ -625,6 +625,11 @@ Execution contract facts:
   non-tradeable symbol, spread cap, broker stop/freeze distance, missing risk
   bucket, invalid tick/volume metadata, max open risk, same-symbol stack, and
   concurrent trade limits.
+- Raw-spread zero quotes are valid: `bid == ask` is zero spread and still flows
+  through spread gating plus MT5 `order_check`. Inverted quotes, where bid is
+  greater than ask, remain final local `invalid_market` rejections. This was
+  patched on 2026-05-12 after an IC `EURUSD H4 SHORT` 01:00 SGT skip while
+  FTMO placed the matching order.
 - Equality at the max-open-risk boundary is allowed; exceeding it is rejected.
 
 Telegram contract facts:
@@ -682,6 +687,8 @@ Live-send adapter facts:
 - Scaled risk ladder: H4/H8 `0.01%`, H12/D1 `0.015%`, W1 `0.0375%`.
 - Dynamic spread gate: spread must be <= 10% of the setup's entry-to-stop
   distance before `order_check` and again immediately before `order_send`.
+- Zero spread passes this gate with spread risk fraction `0.0`; inverted
+  bid/ask quotes fail earlier as invalid market.
 - Single-runner protection: a lock file beside `lpfs_live_state.json` prevents
   two live runners from managing the same state concurrently.
 - State persistence is atomic and broker-affecting state is saved immediately

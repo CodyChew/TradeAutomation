@@ -1,8 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-11 after completing the new-PC handover, verifying
-Tailscale SSH/RDP after public RDP removal, and removing the old PC's VPS
-access.
+Last updated: 2026-05-12 after verifying and patching raw-spread zero-quote
+handling for FTMO and IC live runners.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -38,6 +37,14 @@ file, and the JSONL journal before making operational decisions.
 
 ## AI Agent Continuity Rules
 
+- 2026-05-12 live execution note: IC skipped a 01:00 SGT `EURUSD H4 SHORT`
+  because the local execution contract rejected `bid == ask` (`1.17742` /
+  `1.17742`) as `invalid_market`, while FTMO placed the matching order. This
+  was a real concern: IC had two journal rows for the same processed signal and
+  no later order, and the IC spread gate itself passed with zero spread. The
+  corrected policy is that equal bid/ask is valid zero spread and must proceed
+  to spread gates plus MT5 broker checks; only inverted quotes where bid is
+  greater than ask are local `invalid_market` skips.
 - External Codex memory may be read-only. Treat this repo handoff plus
   `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` as the durable
   continuity layer for future AI agents.

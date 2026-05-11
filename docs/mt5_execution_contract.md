@@ -151,7 +151,7 @@ The executor must reject before sending if any of these are true:
 - symbol is not visible or not tradeable;
 - account equity is non-positive;
 - entry, stop, target, bid, or ask is non-finite;
-- bid is greater than or equal to ask;
+- bid is greater than ask;
 - spread exceeds the configured cap or live dynamic spread gate;
 - trade geometry is invalid:
   - long requires `stop < entry < target`;
@@ -173,6 +173,12 @@ The executor must reject before sending if any of these are true:
 - open risk plus new actual risk would exceed the configured max open risk.
 - the conservative broker backstop expiration is already at or before the
   current broker market time.
+
+Raw-spread zero quotes are valid at this contract boundary: `bid == ask` is a
+zero-spread quote, not an invalid market. It still flows through the configured
+spread gate, MT5 `order_check`, and the final pre-send quote refresh. Only an
+inverted quote, where bid is greater than ask, is rejected locally as
+`invalid_market`.
 
 Equality at the max-open-risk boundary is allowed. Exceeding it is rejected.
 

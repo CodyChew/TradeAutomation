@@ -159,6 +159,10 @@ order if the current bid/ask spread is no more than 10% of the setup's
 entry-to-stop distance. It checks this before `order_check` and again
 immediately before `order_send`.
 
+A raw-spread zero quote is valid: when `bid == ask`, the spread gate sees
+zero spread and can continue to broker validation. An inverted quote, where bid
+is greater than ask, remains a final local `invalid_market` rejection.
+
 Live-send also checks the MT5 bars between the signal candle and placement
 time. If the 50% pullback entry was already touched before the bot could place
 the pending order, the setup is rejected as a stale late-start signal. This
@@ -310,6 +314,8 @@ For detected setups, the runner:
   `max_spread_risk_fraction` of the entry-to-stop distance. This spread-only
   block does not mark the exact signal as processed, so a later cycle can place
   the order if spread improves before entry touch or expiry;
+- accepts raw-spread zero quotes as zero spread, while rejecting inverted
+  bid/ask quotes as invalid market before broker validation;
 - rejects already-expired pending windows before calling `order_check`;
 - rejects duplicate signal keys using local state;
 - logs live `bid`, `ask`, and `spread_points`;
@@ -420,6 +426,8 @@ Sensitive values must never appear in these files:
   before the pending order was placed.
 - Live-send treats spread-too-wide setups as retryable WAITING events. It can
   retry that same signal on a future cycle until entry touch or expiry.
+- Live-send treats `bid == ask` as valid zero spread. Only inverted quotes,
+  where bid is greater than ask, produce `invalid_market`.
 - Spread is only a placement gate. After an order is pending, spread widening
   does not auto-cancel it and does not currently trigger a dedicated Telegram
   alert.

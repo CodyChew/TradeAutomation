@@ -366,6 +366,31 @@ class NotificationTests(unittest.TestCase):
         self.assertEqual(checked_event.status, "entry_not_pending_pullback")
         self.assertEqual(checked_event.fields["checks_completed"], "basic_contract")
 
+        invalid_market_setup = _setup()
+        invalid_market_quote = MT5MarketSnapshot(bid=1.1021, ask=1.1020)
+        invalid_market = build_mt5_order_intent(
+            invalid_market_setup,
+            account=MT5AccountSnapshot(equity=100_000.0),
+            symbol_spec=_spec(),
+            market=invalid_market_quote,
+        )
+        invalid_event = notification_from_execution_decision(
+            invalid_market,
+            mode="LIVE",
+            setup=invalid_market_setup,
+            market=invalid_market_quote,
+            price_digits=_spec().digits,
+        )
+        invalid_message = format_notification_message(invalid_event)
+        self.assertEqual(invalid_event.kind, "setup_rejected")
+        self.assertEqual(invalid_event.status, "invalid_market")
+        self.assertEqual(invalid_event.symbol, "EURUSD")
+        self.assertIn("EURUSD H4 LONG", invalid_message)
+        self.assertNotIn("\nn/a\n", invalid_message)
+        self.assertIn("Reason: Invalid market", invalid_message)
+        self.assertIn("Quote: Bid 1.10210 > Ask 1.10200", invalid_message)
+        self.assertIn("Ref: EURUSD-H4-10-long", invalid_message)
+
         rejected_empty = MT5ExecutionDecision(status="rejected", rejection_reason=None, detail="manual reject")
         empty_event = notification_from_execution_decision(rejected_empty, mode="LIVE")
         self.assertEqual(empty_event.status, "rejected")

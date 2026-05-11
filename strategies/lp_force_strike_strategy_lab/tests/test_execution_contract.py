@@ -281,6 +281,19 @@ class ExecutionContractTests(unittest.TestCase):
         )
         self.assertEqual(open_risk.rejection_reason, "max_open_risk")
 
+    def test_accepts_zero_spread_market_quote(self) -> None:
+        decision = build_mt5_order_intent(
+            _setup(),
+            account=_account(),
+            symbol_spec=_spec(),
+            market=MT5MarketSnapshot(bid=1.1020, ask=1.1020),
+        )
+
+        self.assertTrue(decision.ready)
+        self.assertIsNotNone(decision.intent)
+        self.assertEqual(decision.intent.order_type, "BUY_LIMIT")
+        self.assertEqual(decision.rejection_reason, None)
+
     def test_rejects_basic_market_and_geometry_problems(self) -> None:
         cases = [
             ("symbol_mismatch", _setup(symbol="GBPUSD"), _spec(), MT5MarketSnapshot(bid=1.1018, ask=1.1020), _account(), ExecutionSafetyLimits()),
@@ -289,7 +302,7 @@ class ExecutionContractTests(unittest.TestCase):
             ("symbol_not_tradeable", _setup(), _spec(trade_allowed=False), MT5MarketSnapshot(bid=1.1018, ask=1.1020), _account(), ExecutionSafetyLimits()),
             ("invalid_account_equity", _setup(), _spec(), MT5MarketSnapshot(bid=1.1018, ask=1.1020), _account(0.0), ExecutionSafetyLimits()),
             ("non_finite_price", _setup(entry=float("nan")), _spec(), MT5MarketSnapshot(bid=1.1018, ask=1.1020), _account(), ExecutionSafetyLimits()),
-            ("invalid_market", _setup(), _spec(), MT5MarketSnapshot(bid=1.1020, ask=1.1020), _account(), ExecutionSafetyLimits()),
+            ("invalid_market", _setup(), _spec(), MT5MarketSnapshot(bid=1.1021, ask=1.1020), _account(), ExecutionSafetyLimits()),
             ("spread_too_wide", _setup(), _spec(), MT5MarketSnapshot(bid=1.1000, ask=1.1020), _account(), ExecutionSafetyLimits(max_spread_points=10)),
             ("invalid_trade_geometry", _setup(stop=1.1000), _spec(), MT5MarketSnapshot(bid=1.1018, ask=1.1020), _account(), ExecutionSafetyLimits()),
             ("invalid_trade_geometry", _short_setup(target=1.2000), _spec(), MT5MarketSnapshot(bid=1.1980, ask=1.1982), _account(), ExecutionSafetyLimits()),
