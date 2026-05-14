@@ -315,6 +315,18 @@ were changed.
   deal history are the source of truth.
 - `VPS STARTED` means Windows booted. It does not prove MT5 login, live runner
   health, or broker connectivity.
+- With the current interactive MT5 design, a full Windows reboot requires one
+  `Administrator` RDP logon on the affected VPS. RDP may be from the operations
+  PC or phone over Tailscale. Disconnect after recovery; do not sign out.
+- Phone RDP was verified on 2026-05-14 for both VPSes. Use Microsoft Windows
+  App or Microsoft Remote Desktop with Tailscale connected. FTMO PC name is
+  `100.115.34.38`, username `EC2AMAZ-ON6FOF2\Administrator`; IC PC name is
+  `100.98.12.113`, username `EC2AMAZ-DT73P0T\Administrator`; gateway none,
+  admin mode on.
+- Do not convert the live runners to `SYSTEM` boot tasks casually. A 2026-05-14
+  temporary SYSTEM/headless MT5 probe on IC did not complete cleanly; the
+  durable recovery path was the existing at-logon task after interactive
+  `Administrator` RDP login.
 - Runtime sync should compare the latest runtime commit, not only local
   `HEAD`, because docs/reporting commits may be ahead of the VPS checkout.
 - Retryable waits such as spread, AutoTrading disabled, market recovery, and
@@ -340,6 +352,39 @@ were changed.
   navigation refresh. For this checkpoint the stable page was rebuilt from the
   accepted `20260508_112959` report packet; a future improvement could add a
   first-class docs-only rebuild mode.
+
+## 2026-05-14 IC Reboot Recovery And Phone RDP Checkpoint
+
+This was an operational incident/recovery checkpoint. No repo code, live
+configs, scheduled-task definitions, runtime state files, journals, MT5 orders,
+or MT5 positions were edited.
+
+- IC Windows Update restarted `EC2AMAZ-DT73P0T` at `2026-05-14 12:44 SGT`.
+  Restart events showed planned Windows servicing/update reasons from
+  `svchost.exe` and `TrustedInstaller.exe`.
+- `LPFS_IC_Startup_Alert` sent the expected `VPS STARTED` Telegram card. This
+  was alert-only and did not start MT5 or the live runner.
+- Before interactive login, IC had no `Administrator` RDP session, no durable
+  `LPFS_IC_Live` runner process, and a stale heartbeat from before the reboot.
+- A short SSH-launched recovery attempt did start MT5 and sent a `RUNNER
+  STARTED` card, but that process tree did not survive as the durable
+  production runner. Do not use SSH-launched manual processes as the normal
+  recovery path for this design.
+- The user logged in via RDP; the existing `LPFS_IC_Live` at-logon task then
+  started in session `2`. After the user disconnected, `query user` showed
+  `administrator` in `Disc` state and the runner remained healthy.
+- Post-recovery IC verification: parent/child Python runner shape present,
+  heartbeat fresh at `2026-05-14T09:36:25Z`, `completed_cycles=193`, MT5
+  connected/trade allowed on `ICMarketsSC-MT5-2`, `4` IC strategy pending
+  orders, and `4` IC strategy positions.
+- Same-session FTMO verification: disconnected `Administrator` session,
+  parent/child Python runner shape present, heartbeat fresh at
+  `2026-05-14T09:35:13Z`, MT5 connected/trade allowed on `FTMO-Server`, `6`
+  FTMO strategy pending orders, and `5` FTMO strategy positions.
+- Phone RDP setup was verified by the user for both VPSes. If either VPS sends
+  `VPS STARTED`, the practical recovery is: connect phone to Tailscale, RDP to
+  the affected VPS as local `Administrator`, wait one to two minutes, then
+  disconnect without signing out.
 
 ## 2026-05-09 Operations / Documentation Verification Checkpoint
 

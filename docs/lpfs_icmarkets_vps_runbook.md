@@ -28,8 +28,8 @@ runtime root, state, journal, heartbeat, kill switch, and scheduled task.
 
 ## Current Verified IC VPS State
 
-Last verified on 2026-05-11 after the new-PC handover, old-PC access cleanup,
-and public RDP rule removal.
+Last verified on 2026-05-14 after an IC Windows Update reboot, phone RDP
+access test, and post-disconnect runner health check.
 
 - Active local operations PC: `LAPTOP-BOHDIO8I`, Tailscale IP
   `100.118.29.124`, repo
@@ -73,6 +73,16 @@ and public RDP rule removal.
   `SYSTEM` task. It sends IC Telegram `VPS STARTED` cards and journals
   `vps_startup_alert` into `lpfs_ic_live_journal.jsonl` without touching MT5 or
   live trading state.
+- Reboot recovery checkpoint: on 2026-05-14 Windows Update restarted the IC VPS.
+  `LPFS_IC_Startup_Alert` fired, but `LPFS_IC_Live` did not become durable
+  until an interactive `Administrator` RDP logon recreated the desktop session.
+  After logging in and then disconnecting, not signing out, `LPFS_IC_Live`
+  stayed running with fresh heartbeat, IC MT5 connected to
+  `ICMarketsSC-MT5-2`, and broker/state counts reconciled.
+- Latest spot check on 2026-05-14: IC had a disconnected `Administrator`
+  session, fresh `lpfs_ic_live_heartbeat.json`, parent/child Python runner
+  shape, MT5 connected/trade allowed, `4` IC strategy pending orders, and `4`
+  IC strategy positions.
 
 ## Files Needed On The IC VPS
 
@@ -142,6 +152,46 @@ cd C:\TradeAutomation
 
 Routine IC summaries should omit `--include-trades`. Add that flag only when
 an explicit trade-by-trade list is requested.
+
+## Reboot Recovery And Phone RDP
+
+The current IC live runner is intentionally an interactive at-logon task. The
+startup alert is boot-triggered, but the live runner and MT5 desktop session
+still require an `Administrator` logon after a full Windows reboot.
+
+Operational interpretation:
+
+- `LPFS IC LIVE | VPS STARTED` means Windows booted. It does not prove MT5,
+  `LPFS_IC_Live`, heartbeat freshness, or broker connectivity.
+- After any IC reboot alert, RDP in once over Tailscale, wait for MT5 and the
+  runner to start, then disconnect. Do not sign out.
+- A disconnected RDP session is healthy for this design. A signed-out session
+  can close MT5 and the runner.
+- Do not convert `LPFS_IC_Live` to a `SYSTEM` boot task without a separate
+  staged redesign. A 2026-05-14 temporary SYSTEM/headless MT5 probe did not
+  complete cleanly; the durable recovery path was the interactive
+  `Administrator` logon trigger.
+
+Phone RDP setup, using Microsoft Windows App or Microsoft Remote Desktop:
+
+```text
+PC name: 100.98.12.113
+Username: EC2AMAZ-DT73P0T\Administrator
+Fallback username: .\Administrator
+Gateway: none
+Admin mode: on
+Friendly name: LPFS IC VPS
+```
+
+Phone recovery steps:
+
+1. Connect the phone to Tailscale.
+2. Open the saved IC VPS RDP entry.
+3. Log in as `Administrator`.
+4. Wait one to two minutes for MT5 and `LPFS_IC_Live`.
+5. Disconnect the RDP session. Do not sign out.
+6. Confirm with Telegram runner cards or, when available from the operations
+   PC, the IC status command in this runbook.
 
 ## Setup Order
 
@@ -271,6 +321,13 @@ This is an alert-only task. It does not import MT5, does not place orders, and
 does not start the live runner. It exists so the operator gets a Telegram signal
 when Windows has rebooted, even before the RDP/logon-dependent MT5 session is
 restored.
+
+Current Windows Update posture observed on 2026-05-14: Windows automatic
+scheduled install is enabled (`AUOptions=4`) and no pending reboot registry key
+was present after the recovery. Planned update restarts are not fully random,
+but the exact next restart time should not be relied on. Treat any startup
+alert as a login-required signal until an unattended MT5 design is intentionally
+implemented and tested.
 
 ## Guardrails
 

@@ -1,7 +1,8 @@
 # LPFS Amazon Lightsail VPS Runbook
 
-Last updated: 2026-05-11 after the new-PC handover, public RDP rule removal,
-and old-PC SSH access cleanup.
+Last updated: 2026-05-14 after verifying post-reboot phone RDP recovery for
+the IC lane and confirming both FTMO and IC runners stay healthy after RDP
+disconnect.
 
 This runbook moves the existing Python + MT5 live runner to Amazon Lightsail
 without rewriting strategy logic. The exact strategy behavior remains owned by
@@ -104,6 +105,24 @@ Important limit: this task alerts that Windows came back. It does not make MT5
 or the live runner fully unattended. With the current at-logon runner design,
 RDP/logon is still required after a reboot to restore the interactive MT5
 session and start `LPFS_Live`.
+
+Mobile RDP recovery is valid for this failure mode. Install Tailscale and
+Microsoft Windows App or Microsoft Remote Desktop on the phone, connect the
+phone to the tailnet, then use:
+
+```text
+PC name: 100.115.34.38
+Username: EC2AMAZ-ON6FOF2\Administrator
+Fallback username: .\Administrator
+Gateway: none
+Admin mode: on
+Friendly name: LPFS FTMO VPS
+```
+
+After a `VPS STARTED` alert, log in once, wait for MT5 and `LPFS_Live`, then
+disconnect. Do not sign out. The same pattern applies to IC with PC name
+`100.98.12.113` and username `EC2AMAZ-DT73P0T\Administrator`; see
+`docs/lpfs_icmarkets_vps_runbook.md` for IC-specific paths and task names.
 
 ### Environment Boundaries
 
@@ -707,11 +726,12 @@ If MT5 is disconnected:
 
 If the VPS reboots:
 
-- RDP in over Tailscale;
+- RDP in over Tailscale from the operations PC or phone;
 - open MT5 if it is not already open;
 - confirm account/server;
 - run status command;
 - let Task Scheduler or the watchdog start the runner.
+- disconnect RDP after verification; do not sign out.
 
 If suspicious duplicate runner processes appear after starting `LPFS_Live`:
 

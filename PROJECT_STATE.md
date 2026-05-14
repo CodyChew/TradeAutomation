@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-11 after completing the new-PC handover, verifying
-Tailscale SSH/RDP after public RDP removal, and cleaning up old-PC access.
+Last updated: 2026-05-14 after verifying IC post-reboot recovery, phone RDP
+access to both VPSes, and healthy FTMO/IC runners after RDP disconnect.
 
 ## Purpose
 
@@ -22,8 +22,13 @@ source of truth for strategy research and live execution work.
   Tailscale RDP to the `100.x` VPS addresses for MT5 desktop review.
 - The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
   SSH key entries were removed from both VPSes.
-- Latest verified dual-VPS status packet from this PC:
-  `reports/live_ops/lpfs_dual_vps_status_20260511_005949.md`.
+- Latest verified dual-VPS live check from this PC was on 2026-05-14 after IC
+  reboot recovery: both FTMO and IC had disconnected `Administrator` RDP
+  sessions, running parent/child Python runner shape, fresh heartbeat, MT5
+  connected/trade allowed, and broker order/position counts matching state.
+- Phone RDP over Tailscale was verified for both VPSes. If a `VPS STARTED`
+  Telegram arrives, log in once as local `Administrator`, wait for MT5/runner,
+  then disconnect. Do not sign out.
 
 ## Read This First In A New Codex Session
 
