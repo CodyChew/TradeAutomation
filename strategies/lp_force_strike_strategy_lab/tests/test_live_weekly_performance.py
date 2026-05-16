@@ -353,6 +353,63 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         self.assertEqual(flag["consistency_status"], "review")
         self.assertIn("two_consecutive_weeks_below_historical_5th_percentile", flag["consistency_reasons"])
 
+    def test_pivot_live_week_history_latest_first_and_side_by_side(self) -> None:
+        history = [
+            {
+                "lane": "FTMO",
+                "week_label": "2026-05-04 05:00 SGT to 2026-05-09 05:00 SGT",
+                "week_start_sgt": "2026-05-04T05:00:00+08:00",
+                "completed_full_week": True,
+                "included_in_consistency": True,
+                "performance_status": "normal",
+                "closed_trades": 25,
+                "wins": 10,
+                "losses": 15,
+                "net_r": -5.33,
+                "historical_percentile": 10.5,
+                "partial_reasons": "",
+            },
+            {
+                "lane": "FTMO",
+                "week_label": "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT",
+                "week_start_sgt": "2026-05-11T05:00:00+08:00",
+                "completed_full_week": True,
+                "included_in_consistency": True,
+                "performance_status": "watch",
+                "closed_trades": 15,
+                "wins": 4,
+                "losses": 11,
+                "net_r": -7.08,
+                "historical_percentile": 5.94,
+                "partial_reasons": "",
+            },
+            {
+                "lane": "IC",
+                "week_label": "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT",
+                "week_start_sgt": "2026-05-11T05:00:00+08:00",
+                "completed_full_week": True,
+                "included_in_consistency": True,
+                "performance_status": "normal",
+                "closed_trades": 15,
+                "wins": 7,
+                "losses": 8,
+                "net_r": -1.29,
+                "historical_percentile": 23.9,
+                "partial_reasons": "",
+            },
+        ]
+
+        rows = weekly.pivot_live_week_history(history)
+
+        self.assertEqual(rows[0][0], "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT")
+        self.assertEqual(rows[0][1], "COMPLETED")
+        self.assertEqual(rows[0][2], "Both")
+        self.assertEqual(rows[0][3].value, "WATCH")
+        self.assertEqual(rows[0][7], "4/11")
+        self.assertEqual(rows[0][8].value, "NORMAL")
+        self.assertEqual(rows[0][12], "7/8")
+        self.assertEqual(rows[1][-1], "IC n/a")
+
     def test_generated_dashboard_contains_live_start_version_and_concern_context(self) -> None:
         run_summary = {
             "generated_at_utc": "2026-05-08T08:00:00+00:00",
@@ -476,6 +533,24 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
             [
                 {
                     "lane": "FTMO",
+                    "week_label": "2026-05-04 05:00 SGT to 2026-05-09 05:00 SGT",
+                    "week_start_sgt": "2026-05-04T05:00:00+08:00",
+                    "completed_full_week": False,
+                    "included_in_consistency": False,
+                    "completed_full_week_number": "",
+                    "performance_status": "normal",
+                    "closed_trades": 2,
+                    "wins": 1,
+                    "losses": 1,
+                    "net_r": -0.02,
+                    "net_pnl": 2.37,
+                    "win_rate": 0.5,
+                    "historical_percentile": 35.1,
+                    "historical_percentile_band": "p35.1",
+                    "partial_reasons": "portfolio_started_after_week_start;journal_started_after_week_start",
+                },
+                {
+                    "lane": "FTMO",
                     "week_label": "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT",
                     "week_start_sgt": "2026-05-11T05:00:00+08:00",
                     "completed_full_week": True,
@@ -491,7 +566,25 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
                     "historical_percentile": 5.94,
                     "historical_percentile_band": "<=p10",
                     "partial_reasons": "",
-                }
+                },
+                {
+                    "lane": "IC",
+                    "week_label": "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT",
+                    "week_start_sgt": "2026-05-11T05:00:00+08:00",
+                    "completed_full_week": True,
+                    "included_in_consistency": True,
+                    "completed_full_week_number": 1,
+                    "performance_status": "normal",
+                    "closed_trades": 15,
+                    "wins": 7,
+                    "losses": 8,
+                    "net_r": -1.29,
+                    "net_pnl": -6.05,
+                    "win_rate": 7 / 15,
+                    "historical_percentile": 23.9,
+                    "historical_percentile_band": "p23.9",
+                    "partial_reasons": "",
+                },
             ],
             [
                 {
@@ -521,7 +614,17 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         self.assertIn("Cause For Concern", html)
         self.assertIn("Evidence caveats", html)
         self.assertIn("Consistency Check", html)
-        self.assertIn("Live Week History", html)
+        self.assertIn("Live Week Comparison", html)
+        self.assertIn("FTMO W/L", html)
+        self.assertIn("IC W/L", html)
+        self.assertIn("4/11", html)
+        self.assertIn("7/8", html)
+        self.assertIn("IC n/a", html)
+        self.assertLess(
+            html.index("2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT"),
+            html.index("2026-05-04 05:00 SGT to 2026-05-09 05:00 SGT"),
+        )
+        self.assertNotIn("Live Week History", html)
         self.assertIn("Completed full weeks", html)
         self.assertIn("WATCH", html)
         self.assertIn("normal, watch, or review-worthy", html)

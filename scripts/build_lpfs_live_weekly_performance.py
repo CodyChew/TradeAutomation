@@ -100,6 +100,7 @@ RUNTIME_PATHS = [
     "concepts/force_strike_pattern_lab/src",
     "shared/backtest_engine_lab/src",
 ]
+LANE_DISPLAY_ORDER = ("FTMO", "IC")
 
 
 @dataclass(frozen=True)
@@ -121,6 +122,12 @@ class LaneInput:
     state_payload: dict[str, Any]
     vps_head: str
     fetch_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class TableCell:
+    value: Any
+    class_name: str = ""
 
 
 DEFAULT_LANES = [
@@ -788,6 +795,72 @@ def consistency_flag_row(lane: str, history_rows: Sequence[dict[str, Any]]) -> d
     }
 
 
+def pivot_live_week_history(history_rows: Sequence[dict[str, Any]]) -> list[list[Any]]:
+    by_week: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
+    for row in history_rows:
+        by_week[str(row["week_start_sgt"])][str(row["lane"])] = dict(row)
+
+    table_rows: list[list[Any]] = []
+    for week_start in sorted(by_week.keys(), reverse=True):
+        lane_rows = by_week[week_start]
+        first_row = next(iter(lane_rows.values()))
+        notes = week_notes(lane_rows)
+        row: list[Any] = [
+            first_row["week_label"],
+            week_type_label(lane_rows),
+            consistency_input_label(lane_rows),
+        ]
+        for lane in LANE_DISPLAY_ORDER:
+            row.extend(compact_lane_week_cells(lane_rows.get(lane)))
+        row.append(notes)
+        table_rows.append(row)
+    return table_rows
+
+
+def compact_lane_week_cells(row: dict[str, Any] | None) -> list[Any]:
+    if row is None:
+        return [muted_cell("n/a"), "n/a", "n/a", "n/a", "n/a"]
+    return [
+        status_cell(row.get("performance_status")),
+        fmt_r(row.get("net_r")),
+        percentile_text(row.get("historical_percentile")),
+        fmt_int(row.get("closed_trades")),
+        win_loss_text(row),
+    ]
+
+
+def week_type_label(lane_rows: dict[str, dict[str, Any]]) -> str:
+    if all(lane in lane_rows and bool(lane_rows[lane].get("completed_full_week")) for lane in LANE_DISPLAY_ORDER):
+        return "COMPLETED"
+    return "PARTIAL"
+
+
+def consistency_input_label(lane_rows: dict[str, dict[str, Any]]) -> str:
+    included = [lane for lane in LANE_DISPLAY_ORDER if bool(lane_rows.get(lane, {}).get("included_in_consistency"))]
+    if len(included) == len(LANE_DISPLAY_ORDER):
+        return "Both"
+    if included:
+        return " / ".join(included)
+    return "No"
+
+
+def week_notes(lane_rows: dict[str, dict[str, Any]]) -> str:
+    notes: list[str] = []
+    for lane in LANE_DISPLAY_ORDER:
+        row = lane_rows.get(lane)
+        if row is None:
+            notes.append(f"{lane} n/a")
+            continue
+        reasons = str(row.get("partial_reasons") or "")
+        if reasons:
+            notes.append(f"{lane}: {humanize_reasons(reasons)}")
+    return "; ".join(notes) if notes else "none"
+
+
+def humanize_reasons(raw: str) -> str:
+    return ", ".join(part.replace("_", " ") for part in raw.split(";") if part)
+
+
 def trailing_count(rows: Sequence[dict[str, Any]], predicate: Any) -> int:
     count = 0
     for row in reversed(rows):
@@ -1081,11 +1154,11 @@ def build_dashboard_html(
     flag_table = [
         [
             row["lane"],
-            str(row["concern_status"]).upper(),
+            status_cell(row["concern_status"]),
             row["concern_reasons"],
             row.get("evidence_caveats", "none"),
             fmt_r(row["net_r"]),
-            pct(float(row["historical_percentile"]) / 100.0) if row.get("historical_percentile") != "" else "n/a",
+            percentile_text(row.get("historical_percentile")),
             row["historical_percentile_band"],
             fmt_r(row["p10_week_r"]),
             fmt_r(row["p05_week_r"]),
@@ -1095,12 +1168,12 @@ def build_dashboard_html(
     consistency_table = [
         [
             row["lane"],
-            str(row["consistency_status"]).upper(),
+            status_cell(row["consistency_status"]),
             row["consistency_reasons"],
             fmt_int(row["completed_full_weeks"]),
             row["latest_completed_week"],
             fmt_r(row["latest_completed_net_r"]),
-            pct(float(row["latest_completed_percentile"]) / 100.0) if row.get("latest_completed_percentile") != "" else "n/a",
+            percentile_text(row.get("latest_completed_percentile")),
             fmt_int(row["p10_streak"]),
             fmt_int(row["p05_streak"]),
             fmt_int(row["last4_below_p10"]),
@@ -1108,26 +1181,7 @@ def build_dashboard_html(
         ]
         for row in consistency_flags
     ]
-    history_table = [
-        [
-            row["lane"],
-            row["week_label"],
-            str(row["completed_full_week"]),
-            str(row["included_in_consistency"]),
-            fmt_int(row["completed_full_week_number"]) if row["completed_full_week_number"] != "" else "",
-            str(row["performance_status"]).upper(),
-            fmt_int(row["closed_trades"]),
-            fmt_int(row["wins"]),
-            fmt_int(row["losses"]),
-            fmt_r(row["net_r"]),
-            fmt_money(row["net_pnl"]),
-            pct(row["win_rate"]),
-            pct(float(row["historical_percentile"]) / 100.0) if row.get("historical_percentile") != "" else "n/a",
-            row["historical_percentile_band"],
-            row["partial_reasons"],
-        ]
-        for row in sorted(live_week_history, key=lambda item: (str(item["week_start_sgt"]), str(item["lane"])), reverse=True)
-    ]
+    comparison_table = pivot_live_week_history(live_week_history)
     breakdown_table = [
         [
             row["lane"],
@@ -1171,7 +1225,7 @@ def build_dashboard_html(
           ("#status", "Status"),
           ("#summary", "Weekly Summary"),
           ("#consistency", "Consistency"),
-          ("#history", "Live History"),
+          ("#comparison", "Week Comparison"),
           ("#benchmark", "Backtest Benchmark"),
           ("#breakdown", "Breakdown"),
           ("#workflow", "Refresh Workflow"),
@@ -1183,7 +1237,7 @@ def build_dashboard_html(
       <p class="note">Latest dashboard window: <strong>{escape(run_summary.get('week_window_label'))}</strong>. It is marked complete after the Friday 21:00 UTC market close. Runtime changes and partial starts are evidence-quality caveats, while percentile status is measured against each lane's V22 weekly distribution.</p>
       <div class="kpis">{rows_html}</div>
       {combined_note}
-      {table_html(["Lane", "Status", "Performance reasons", "Evidence caveats", "Live Net R", "Historical percentile", "Band", "10th pct", "5th pct"], flag_table)}
+      {table_html(["Lane", "Status", "Performance reasons", "Evidence caveats", "Net R", "Historical percentile", "Band", "p10", "p5"], flag_table)}
     </section>
     <section id="summary">
       <h2>Live Weekly Summary</h2>
@@ -1193,17 +1247,17 @@ def build_dashboard_html(
     <section id="consistency">
       <h2>Consistency Check</h2>
       <p>Consistency flags ignore partial first weeks and use only completed full live weeks. Watch means repeated p10 underperformance; Review means repeated p5 or broad p10 underperformance.</p>
-      {table_html(["Lane", "Status", "Reasons", "Completed full weeks", "Latest completed week", "Latest Net R", "Latest percentile", "p10 streak", "p5 streak", "Last 4 <=p10", "Last 4 <=p5"], consistency_table)}
+      {table_html(["Lane", "Status", "Reasons", "Completed full weeks", "Latest completed week", "Latest net R", "Latest percentile", "p10 streak", "p5 streak", "Last 4 <=p10", "Last 4 <=p5"], consistency_table)}
     </section>
-    <section id="history">
-      <h2>Live Week History</h2>
-      <p>Rows are grouped by the live trading week: Sunday 21:00 UTC to Friday 21:00 UTC, displayed as Monday 05:00 to Saturday 05:00 SGT.</p>
-      {table_html(["Lane", "Week", "Completed", "Consistency input", "Full week #", "Performance", "Closed", "Wins", "Losses", "Net R", "Net PnL", "Win rate", "Historical percentile", "Band", "Partial reasons"], history_table)}
+    <section id="comparison">
+      <h2>Live Week Comparison</h2>
+      <p>Each row is one live trading week, shown latest first. FTMO and IC columns compare the same week window; partial startup weeks stay visible but do not count toward consistency unless marked as an input.</p>
+      {table_html(["Week", "Week type", "Consistency input", "FTMO status", "FTMO net R", "FTMO percentile", "FTMO closed", "FTMO W/L", "IC status", "IC net R", "IC percentile", "IC closed", "IC W/L", "Notes"], comparison_table)}
     </section>
     <section id="benchmark">
       <h2>Historical Weekly Benchmark</h2>
       <p>Benchmarks use the current V22 LP-before-FS separated trade population with commission-adjusted R. FTMO and IC are compared to their own broker-data lineage.</p>
-      {table_html(["Lane", "Benchmark", "Weeks", "Avg R", "Median R", "10th pct", "5th pct", "Worst R", "Worst week"], benchmark_table)}
+      {table_html(["Lane", "Benchmark", "Weeks", "Avg R", "Median R", "p10", "p5", "Worst R", "Worst week"], benchmark_table)}
     </section>
     <section id="breakdown">
       <h2>Loss Concentration Breakdown</h2>
@@ -1238,13 +1292,36 @@ def weekly_css() -> str:
       margin-top: 4px;
       color: var(--muted);
     }
+    .status-cell {
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+    .status-normal {
+      color: var(--good);
+    }
+    .status-watch {
+      color: var(--warn);
+    }
+    .status-review {
+      color: var(--bad);
+    }
+    .muted-cell {
+      color: var(--muted);
+    }
     """
 
 
 def table_html(headers: Sequence[str], rows: Sequence[Sequence[Any]]) -> str:
     head = "".join(f"<th>{escape(value)}</th>" for value in headers)
-    body = "".join("<tr>" + "".join(f"<td>{escape(value)}</td>" for value in row) + "</tr>" for row in rows)
+    body = "".join("<tr>" + "".join(table_cell_html(value) for value in row) + "</tr>" for row in rows)
     return f'<div class="table-scroll"><table class="data-table"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'
+
+
+def table_cell_html(value: Any) -> str:
+    if isinstance(value, TableCell):
+        class_attr = f' class="{escape(value.class_name)}"' if value.class_name else ""
+        return f"<td{class_attr}>{escape(value.value)}</td>"
+    return f"<td>{escape(value)}</td>"
 
 
 def collect_git_info(*, as_of_utc: pd.Timestamp) -> dict[str, Any]:
@@ -1373,6 +1450,22 @@ def escape(value: Any) -> str:
     return html.escape("" if value is None else str(value))
 
 
+def status_cell(value: Any) -> TableCell:
+    label = status_label(value)
+    if label == "N/A":
+        return muted_cell("n/a")
+    return TableCell(label, f"status-cell status-{label.lower()}")
+
+
+def muted_cell(value: Any) -> TableCell:
+    return TableCell(value, "muted-cell")
+
+
+def status_label(value: Any) -> str:
+    text = "" if value is None else str(value).strip()
+    return text.upper() if text else "N/A"
+
+
 def fmt_r(value: Any) -> str:
     if value is None or value == "":
         return "n/a"
@@ -1391,6 +1484,12 @@ def pct(value: Any) -> str:
     return f"{float(value) * 100:.1f}%"
 
 
+def percentile_text(value: Any) -> str:
+    if value is None or value == "":
+        return "n/a"
+    return f"{float(value):.1f}%"
+
+
 def pf(value: Any) -> str:
     if value is None or value == "":
         return "n/a"
@@ -1407,6 +1506,12 @@ def full_week_text(value: Any) -> str:
     count = int(value or 0)
     noun = "week" if count == 1 else "weeks"
     return f"{count} full {noun}"
+
+
+def win_loss_text(row: dict[str, Any] | None) -> str:
+    if row is None:
+        return "n/a"
+    return f"{fmt_int(row.get('wins'))}/{fmt_int(row.get('losses'))}"
 
 
 def short_text(value: Any, length: int = 7) -> str:
