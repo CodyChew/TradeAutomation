@@ -807,6 +807,7 @@ def pivot_live_week_history(history_rows: Sequence[dict[str, Any]]) -> list[list
         notes = week_notes(lane_rows)
         row: list[Any] = [
             first_row["week_label"],
+            live_week_number_label(lane_rows),
             week_type_label(lane_rows),
             consistency_input_label(lane_rows),
         ]
@@ -827,6 +828,23 @@ def compact_lane_week_cells(row: dict[str, Any] | None) -> list[Any]:
         fmt_int(row.get("closed_trades")),
         win_loss_text(row),
     ]
+
+
+def live_week_number_label(lane_rows: dict[str, dict[str, Any]]) -> str:
+    labels: list[str] = []
+    for lane in LANE_DISPLAY_ORDER:
+        row = lane_rows.get(lane)
+        if row is None:
+            labels.append(f"{lane} n/a")
+            continue
+        week_number = row.get("completed_full_week_number")
+        if week_number not in (None, ""):
+            labels.append(f"{lane} W{int(week_number)}")
+        elif bool(row.get("partial_week")):
+            labels.append(f"{lane} partial")
+        else:
+            labels.append(f"{lane} n/a")
+    return " / ".join(labels)
 
 
 def week_type_label(lane_rows: dict[str, dict[str, Any]]) -> str:
@@ -1111,10 +1129,10 @@ def build_dashboard_html(
             row["partial_reasons"],
             fmt_int(row.get("completed_full_live_weeks")),
             str(row.get("latest_week_complete")),
-            row["first_journal_utc"],
-            row["first_runner_utc"],
-            row["first_order_utc"],
-            row["first_closed_trade_utc"],
+            fmt_timestamp_sgt(row.get("first_journal_utc")),
+            fmt_timestamp_sgt(row.get("first_runner_utc")),
+            fmt_timestamp_sgt(row.get("first_order_utc")),
+            fmt_timestamp_sgt(row.get("first_closed_trade_utc")),
             short_text(row.get("local_head")),
             short_text(row.get("origin_head")),
             short_text(row.get("vps_head")),
@@ -1242,7 +1260,7 @@ def build_dashboard_html(
     <section id="summary">
       <h2>Live Weekly Summary</h2>
       <p>Portfolio starts are detected from the first journal row and first live order. Runtime synced means the VPS contains the latest local strategy/runtime commit even if local docs/reporting commits are ahead.</p>
-      {table_html(["Lane", "Partial", "Partial reasons", "Completed full weeks", "Latest complete", "First journal UTC", "First runner UTC", "First order UTC", "First closed UTC", "Local HEAD", "Origin HEAD", "VPS commit", "Fetch error", "Latest runtime", "Runtime synced", "Runtime changed", "Closed", "Net R", "Net PnL", "Win rate", "PF", "Worst symbol", "Worst TF", "Worst side", "Retry waits", "True rejects", "Pending", "Active"], summary_table)}
+      {table_html(["Lane", "Partial", "Partial reasons", "Completed full weeks", "Latest complete", "First journal (SGT)", "First runner (SGT)", "First order (SGT)", "First closed (SGT)", "Local HEAD", "Origin HEAD", "VPS commit", "Fetch error", "Latest runtime", "Runtime synced", "Runtime changed", "Closed", "Net R", "Net PnL", "Win rate", "PF", "Worst symbol", "Worst TF", "Worst side", "Retry waits", "True rejects", "Pending", "Active"], summary_table)}
     </section>
     <section id="consistency">
       <h2>Consistency Check</h2>
@@ -1251,8 +1269,8 @@ def build_dashboard_html(
     </section>
     <section id="comparison">
       <h2>Live Week Comparison</h2>
-      <p>Each row is one live trading week, shown latest first. FTMO and IC columns compare the same week window; partial startup weeks stay visible but do not count toward consistency unless marked as an input.</p>
-      {table_html(["Week", "Week type", "Consistency input", "FTMO status", "FTMO net R", "FTMO percentile", "FTMO closed", "FTMO W/L", "IC status", "IC net R", "IC percentile", "IC closed", "IC W/L", "Notes"], comparison_table)}
+      <p>Each row is one live trading week, shown latest first. Live week numbers are lane-specific because FTMO and IC started on different dates. Partial startup weeks stay visible but do not count toward consistency unless marked as an input.</p>
+      {table_html(["Week", "Live week", "Week type", "Consistency input", "FTMO status", "FTMO net R", "FTMO percentile", "FTMO closed", "FTMO W/L", "IC status", "IC net R", "IC percentile", "IC closed", "IC W/L", "Notes"], comparison_table)}
     </section>
     <section id="benchmark">
       <h2>Historical Weekly Benchmark</h2>
@@ -1268,7 +1286,7 @@ def build_dashboard_html(
       <h2>Manual Refresh Workflow</h2>
       <p class="callout">Default command: <code>.\\venv\\Scripts\\python.exe scripts\\build_lpfs_live_weekly_performance.py --latest</code></p>
       <p>The script reads over SSH, fingerprints the inputs, and prints <code>already up to date</code> without rewriting files when the latest report already matches current journals, state, benchmarks, and git heads. Use <code>--force</code> only when intentionally regenerating the same evidence.</p>
-      <p>Generated at <code>{escape(run_summary['generated_at_utc'])}</code>. Report packet: <code>{escape(_display_path(run_summary['output_dir']))}</code>.</p>
+      <p>Generated at <code>{escape(fmt_timestamp_sgt(run_summary['generated_at_utc']))}</code>. Report packet: <code>{escape(_display_path(run_summary['output_dir']))}</code>.</p>
     </section>
     {metric_glossary_html()}
   </main>
@@ -1488,6 +1506,16 @@ def percentile_text(value: Any) -> str:
     if value is None or value == "":
         return "n/a"
     return f"{float(value):.1f}%"
+
+
+def fmt_timestamp_sgt(value: Any) -> str:
+    if value is None or value == "":
+        return "n/a"
+    try:
+        timestamp = parse_timestamp(value).tz_convert(SGT)
+    except (TypeError, ValueError):
+        return str(value)
+    return f"{timestamp:%d %b %Y %H:%M SGT}"
 
 
 def pf(value: Any) -> str:

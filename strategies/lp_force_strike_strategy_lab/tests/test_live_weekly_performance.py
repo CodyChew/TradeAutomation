@@ -360,6 +360,7 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
                 "week_label": "2026-05-04 05:00 SGT to 2026-05-09 05:00 SGT",
                 "week_start_sgt": "2026-05-04T05:00:00+08:00",
                 "completed_full_week": True,
+                "completed_full_week_number": 1,
                 "included_in_consistency": True,
                 "performance_status": "normal",
                 "closed_trades": 25,
@@ -374,6 +375,7 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
                 "week_label": "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT",
                 "week_start_sgt": "2026-05-11T05:00:00+08:00",
                 "completed_full_week": True,
+                "completed_full_week_number": 2,
                 "included_in_consistency": True,
                 "performance_status": "watch",
                 "closed_trades": 15,
@@ -388,6 +390,7 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
                 "week_label": "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT",
                 "week_start_sgt": "2026-05-11T05:00:00+08:00",
                 "completed_full_week": True,
+                "completed_full_week_number": 1,
                 "included_in_consistency": True,
                 "performance_status": "normal",
                 "closed_trades": 15,
@@ -402,12 +405,13 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         rows = weekly.pivot_live_week_history(history)
 
         self.assertEqual(rows[0][0], "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT")
-        self.assertEqual(rows[0][1], "COMPLETED")
-        self.assertEqual(rows[0][2], "Both")
-        self.assertEqual(rows[0][3].value, "WATCH")
-        self.assertEqual(rows[0][7], "4/11")
-        self.assertEqual(rows[0][8].value, "NORMAL")
-        self.assertEqual(rows[0][12], "7/8")
+        self.assertEqual(rows[0][1], "FTMO W2 / IC W1")
+        self.assertEqual(rows[0][2], "COMPLETED")
+        self.assertEqual(rows[0][3], "Both")
+        self.assertEqual(rows[0][4].value, "WATCH")
+        self.assertEqual(rows[0][8], "4/11")
+        self.assertEqual(rows[0][9].value, "NORMAL")
+        self.assertEqual(rows[0][13], "7/8")
         self.assertEqual(rows[1][-1], "IC n/a")
 
     def test_generated_dashboard_contains_live_start_version_and_concern_context(self) -> None:
@@ -608,13 +612,17 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         self.assertIn("LPFS Live Weekly Performance", html)
         self.assertIn("FTMO", html)
         self.assertIn("IC", html)
-        self.assertIn("2026-04-30T19:48:13+00:00", html)
-        self.assertIn("2026-05-05T19:49:45+00:00", html)
+        self.assertIn("First journal (SGT)", html)
+        self.assertIn("01 May 2026 03:48 SGT", html)
+        self.assertIn("06 May 2026 03:49 SGT", html)
+        self.assertNotIn("2026-04-30T19:48:13+00:00", html)
         self.assertIn("Runtime synced", html)
         self.assertIn("Cause For Concern", html)
         self.assertIn("Evidence caveats", html)
         self.assertIn("Consistency Check", html)
         self.assertIn("Live Week Comparison", html)
+        self.assertIn("Live week", html)
+        self.assertIn("FTMO W2 / IC W1", html)
         self.assertIn("FTMO W/L", html)
         self.assertIn("IC W/L", html)
         self.assertIn("4/11", html)
