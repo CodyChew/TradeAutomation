@@ -167,6 +167,19 @@ def _git_info(*, runtime_changed: bool = True) -> dict[str, object]:
 
 
 class LiveWeeklyPerformanceTests(unittest.TestCase):
+    def test_weekend_uses_latest_completed_trading_week(self) -> None:
+        start, end = weekly.latest_sgt_week_window(weekly.parse_timestamp("2026-05-16T02:00:00Z"))
+
+        self.assertEqual(start.isoformat(), "2026-05-11T05:00:00+08:00")
+        self.assertEqual(end.isoformat(), "2026-05-16T05:00:00+08:00")
+
+    def test_weekday_open_market_week_is_still_partial(self) -> None:
+        start, end = weekly.latest_sgt_week_window(weekly.parse_timestamp("2026-05-13T02:00:00Z"))
+
+        self.assertEqual(start.isoformat(), "2026-05-11T05:00:00+08:00")
+        self.assertEqual(end.isoformat(), "2026-05-16T05:00:00+08:00")
+        self.assertLess(weekly.parse_timestamp("2026-05-13T02:00:00Z").tz_convert(weekly.SGT), end)
+
     def test_lane_start_detection_from_journal_rows(self) -> None:
         rows = [
             _row("runner_started", "2026-04-30T19:48:13Z", signal_key=""),
@@ -200,7 +213,21 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         self.assertIn("portfolio_started_after_week_start", rows["IC"]["partial_reasons"])
         self.assertIn("journal_started_after_week_start", rows["IC"]["partial_reasons"])
 
-    def test_runtime_change_in_week_downgrades_to_watch(self) -> None:
+    def test_live_week_history_excludes_partial_first_week_from_consistency(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            lane = _lane_input(tmp, "IC", first_journal="2026-05-05T19:49:36Z", first_order="2026-05-05T19:49:45Z")
+            benchmark = weekly.historical_weekly_benchmark(lane.config.benchmark_path)
+            history, _ = weekly.live_week_history_rows(lane, benchmark, weekly.parse_timestamp("2026-05-16T02:00:00Z"))
+
+        self.assertEqual(len(history), 2)
+        self.assertTrue(history[0]["partial_week"])
+        self.assertFalse(history[0]["included_in_consistency"])
+        self.assertFalse(history[1]["partial_week"])
+        self.assertTrue(history[1]["included_in_consistency"])
+        self.assertEqual(history[1]["completed_full_week_number"], 1)
+
+    def test_runtime_change_in_week_is_reported_as_evidence_caveat(self) -> None:
         row = {
             "lane": "FTMO",
             "partial_week": False,
@@ -213,8 +240,8 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         }
         flag = weekly.classify_week(row, {"p10_week_r": -2.0, "p05_week_r": -4.0, "weekly_r_values": [-4, -2, 0, 2]})
 
-        self.assertEqual(flag["concern_status"], "watch")
-        self.assertIn("runtime_changed_in_week", flag["concern_reasons"])
+        self.assertEqual(flag["concern_status"], "normal")
+        self.assertIn("runtime_changed_in_week", flag["evidence_caveats"])
 
     def test_unchanged_inputs_keep_same_fingerprint_and_main_skips_rewrite(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -271,16 +298,74 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         self.assertEqual(review_flag["concern_status"], "review")
         self.assertEqual(review_flag["historical_percentile_band"], "<=p5")
 
+    def test_consistency_flags_use_percentile_streaks(self) -> None:
+        history = [
+            {
+                "lane": "FTMO",
+                "week_start_sgt": "2026-05-04T05:00:00+08:00",
+                "week_label": "2026-05-04 05:00 SGT to 2026-05-09 05:00 SGT",
+                "included_in_consistency": True,
+                "net_r": -3.0,
+                "historical_percentile": 9.0,
+                "historical_percentile_band": "<=p10",
+            },
+            {
+                "lane": "FTMO",
+                "week_start_sgt": "2026-05-11T05:00:00+08:00",
+                "week_label": "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT",
+                "included_in_consistency": True,
+                "net_r": -3.5,
+                "historical_percentile": 8.0,
+                "historical_percentile_band": "<=p10",
+            },
+        ]
+
+        flag = weekly.consistency_flag_row("FTMO", history)
+
+        self.assertEqual(flag["consistency_status"], "watch")
+        self.assertIn("two_consecutive_weeks_below_historical_10th_percentile", flag["consistency_reasons"])
+        self.assertEqual(flag["completed_full_weeks"], 2)
+
+    def test_consistency_flags_review_on_repeated_p5(self) -> None:
+        history = [
+            {
+                "lane": "FTMO",
+                "week_start_sgt": "2026-05-04T05:00:00+08:00",
+                "week_label": "2026-05-04 05:00 SGT to 2026-05-09 05:00 SGT",
+                "included_in_consistency": True,
+                "net_r": -5.0,
+                "historical_percentile": 4.0,
+                "historical_percentile_band": "<=p5",
+            },
+            {
+                "lane": "FTMO",
+                "week_start_sgt": "2026-05-11T05:00:00+08:00",
+                "week_label": "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT",
+                "included_in_consistency": True,
+                "net_r": -6.0,
+                "historical_percentile": 3.0,
+                "historical_percentile_band": "<=p5",
+            },
+        ]
+
+        flag = weekly.consistency_flag_row("FTMO", history)
+
+        self.assertEqual(flag["consistency_status"], "review")
+        self.assertIn("two_consecutive_weeks_below_historical_5th_percentile", flag["consistency_reasons"])
+
     def test_generated_dashboard_contains_live_start_version_and_concern_context(self) -> None:
         run_summary = {
             "generated_at_utc": "2026-05-08T08:00:00+00:00",
             "output_dir": "reports/live_ops/lpfs_weekly_performance/test",
+            "week_window_label": "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT",
         }
         weekly_summary = [
             {
                 "lane": "FTMO",
                 "partial_week": True,
                 "partial_reasons": "week_in_progress",
+                "completed_full_live_weeks": 2,
+                "latest_week_complete": False,
                 "first_journal_utc": "2026-04-30T19:48:13+00:00",
                 "first_runner_utc": "2026-04-30T19:48:13+00:00",
                 "first_order_utc": "2026-04-30T19:48:18+00:00",
@@ -309,6 +394,8 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
                 "lane": "IC",
                 "partial_week": True,
                 "partial_reasons": "portfolio_started_after_week_start",
+                "completed_full_live_weeks": 1,
+                "latest_week_complete": False,
                 "first_journal_utc": "2026-05-05T19:49:36+00:00",
                 "first_runner_utc": "2026-05-05T19:49:36+00:00",
                 "first_order_utc": "2026-05-05T19:49:45+00:00",
@@ -339,6 +426,7 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
                 "lane": "FTMO",
                 "concern_status": "watch",
                 "concern_reasons": "partial_week;runtime_changed_in_week",
+                "evidence_caveats": "runtime_changed_in_week",
                 "net_r": -1.0,
                 "historical_percentile": 25.0,
                 "historical_percentile_band": "p25.0",
@@ -349,6 +437,7 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
                 "lane": "IC",
                 "concern_status": "watch",
                 "concern_reasons": "partial_week",
+                "evidence_caveats": "partial_week",
                 "net_r": 0.0,
                 "historical_percentile": 60.0,
                 "historical_percentile_band": "p60.0",
@@ -384,6 +473,42 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
                 },
             ],
             flags,
+            [
+                {
+                    "lane": "FTMO",
+                    "week_label": "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT",
+                    "week_start_sgt": "2026-05-11T05:00:00+08:00",
+                    "completed_full_week": True,
+                    "included_in_consistency": True,
+                    "completed_full_week_number": 2,
+                    "performance_status": "watch",
+                    "closed_trades": 15,
+                    "wins": 4,
+                    "losses": 11,
+                    "net_r": -7.08,
+                    "net_pnl": -61.77,
+                    "win_rate": 4 / 15,
+                    "historical_percentile": 5.94,
+                    "historical_percentile_band": "<=p10",
+                    "partial_reasons": "",
+                }
+            ],
+            [
+                {
+                    "lane": "FTMO",
+                    "consistency_status": "normal",
+                    "consistency_reasons": "no_consistent_underperformance",
+                    "completed_full_weeks": 2,
+                    "latest_completed_week": "2026-05-11 05:00 SGT to 2026-05-16 05:00 SGT",
+                    "latest_completed_net_r": -7.08,
+                    "latest_completed_percentile": 5.94,
+                    "p10_streak": 1,
+                    "p05_streak": 0,
+                    "last4_completed_weeks": 2,
+                    "last4_below_p10": 1,
+                    "last4_below_p05": 0,
+                }
+            ],
             run_summary,
         )
 
@@ -394,6 +519,10 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         self.assertIn("2026-05-05T19:49:45+00:00", html)
         self.assertIn("Runtime synced", html)
         self.assertIn("Cause For Concern", html)
+        self.assertIn("Evidence caveats", html)
+        self.assertIn("Consistency Check", html)
+        self.assertIn("Live Week History", html)
+        self.assertIn("Completed full weeks", html)
         self.assertIn("WATCH", html)
         self.assertIn("normal, watch, or review-worthy", html)
         self.assertNotIn("<script", html.lower())

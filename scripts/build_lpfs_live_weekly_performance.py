@@ -17,7 +17,7 @@ import json
 import subprocess
 import sys
 from collections import Counter, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
@@ -73,6 +73,19 @@ def _display_path(path_value: str | Path) -> str:
 
 
 SGT = "Asia/Singapore"
+TRADING_WEEK_START_UTC_WEEKDAY = 6  # Sunday, matching pandas Monday=0 indexing.
+TRADING_WEEK_START_UTC_HOUR = 21
+TRADING_WEEK_DURATION_DAYS = 5
+JOURNAL_EVENT_KEYWORDS = (
+    "runner_started",
+    "order_sent",
+    "order_adopted",
+    "position_opened",
+    "take_profit_hit",
+    "stop_loss_hit",
+    "position_closed",
+    "setup_rejected",
+)
 RETRYABLE_STATUSES = {
     "spread_too_wide",
     "market_recovery_not_better",
@@ -107,6 +120,7 @@ class LaneInput:
     lifecycle_rows: list[dict[str, Any]]
     state_payload: dict[str, Any]
     vps_head: str
+    fetch_metadata: dict[str, Any] = field(default_factory=dict)
 
 
 DEFAULT_LANES = [
@@ -169,6 +183,9 @@ def main() -> int:
         lane_breakdown=result["lane_breakdown"],
         historical_benchmark=result["historical_benchmark"],
         weekly_flags=result["weekly_flags"],
+        live_week_history=result["live_week_history"],
+        live_week_trade_details=result["live_week_trade_details"],
+        consistency_flags=result["consistency_flags"],
         run_summary=result["run_summary"],
     )
     print(f"weekly_performance_report={result['run_summary']['output_dir']}")
@@ -177,16 +194,32 @@ def main() -> int:
 
 
 def fetch_lane_input(config: LaneConfig) -> LaneInput:
-    first_line, lifecycle_lines, state_text, vps_head = fetch_remote_lane_text(config)
+    first_line, lifecycle_lines, state_text, vps_head, fetch_metadata = fetch_remote_lane_text(config)
     first_row = parse_json_line(first_line)
-    lifecycle_rows = [row for row in (parse_json_line(line) for line in lifecycle_lines) if row is not None]
-    state_payload = parse_json_line(state_text) or {}
+    lifecycle_rows: list[dict[str, Any]] = []
+    lifecycle_parse_errors = 0
+    for line in lifecycle_lines:
+        row = parse_json_line(line)
+        if row is None:
+            lifecycle_parse_errors += 1
+            continue
+        lifecycle_rows.append(row)
+    state_payload = parse_json_line(state_text)
+    state_parse_error = bool(state_text.strip()) and state_payload is None
+    metadata = {
+        **fetch_metadata,
+        "matched_lifecycle_rows": len(lifecycle_lines),
+        "parsed_lifecycle_rows": len(lifecycle_rows),
+        "lifecycle_parse_errors": lifecycle_parse_errors,
+        "state_parse_error": state_parse_error,
+    }
     return LaneInput(
         config=config,
         first_journal_row=first_row,
         lifecycle_rows=lifecycle_rows,
-        state_payload=state_payload,
+        state_payload=state_payload or {},
         vps_head=vps_head.strip(),
+        fetch_metadata=metadata,
     )
 
 
@@ -200,18 +233,30 @@ def safe_fetch_lane_input(config: LaneConfig) -> LaneInput:
             lifecycle_rows=[],
             state_payload={"fetch_error": str(exc)},
             vps_head="fetch_error",
+            fetch_metadata={"fetch_error": str(exc)},
         )
 
 
-def fetch_remote_lane_text(config: LaneConfig) -> tuple[str, list[str], str, str]:
+def fetch_remote_lane_text(config: LaneConfig) -> tuple[str, list[str], str, str, dict[str, Any]]:
+    patterns = "@(" + ",".join(f"'{keyword}'" for keyword in JOURNAL_EVENT_KEYWORDS) + ")"
     script = f"""
+$ErrorActionPreference = 'Stop'
 $journal = '{config.journal_path}'
 $state = '{config.state_path}'
 $repo = '{config.repo_root}'
+$patterns = {patterns}
+Write-Output '---META---'
+$journalItem = Get-Item -LiteralPath $journal
+[ordered]@{{
+  journal_path = $journal
+  journal_size_bytes = $journalItem.Length
+  journal_last_write_utc = $journalItem.LastWriteTimeUtc.ToString('o')
+  event_keywords = $patterns
+}} | ConvertTo-Json -Compress
 Write-Output '---FIRST---'
 Get-Content -LiteralPath $journal -First 1
 Write-Output '---LIFECYCLE---'
-Get-Content -LiteralPath $journal | Select-String -SimpleMatch '"notification_event"' | ForEach-Object {{ $_.Line }}
+Select-String -LiteralPath $journal -SimpleMatch -Pattern $patterns | ForEach-Object {{ $_.Line }}
 Write-Output '---STATE---'
 Get-Content -LiteralPath $state -Raw
 Write-Output '---HEAD---'
@@ -222,10 +267,10 @@ git -C $repo rev-parse HEAD
     current: str | None = None
     for line in raw.splitlines():
         marker = line.strip()
-        if marker in {"---FIRST---", "---LIFECYCLE---", "---STATE---", "---HEAD---"}:
+        if marker in {"---META---", "---FIRST---", "---LIFECYCLE---", "---STATE---", "---HEAD---"}:
             current = marker.strip("-")
             continue
-        if current == "STATE":
+        if current in {"META", "STATE"}:
             sections[current].append(line)
             continue
         if current in {"FIRST", "LIFECYCLE"} and line.strip().startswith("{"):
@@ -237,7 +282,8 @@ git -C $repo rev-parse HEAD
     lifecycle = [line for line in sections.get("LIFECYCLE", []) if line.strip().startswith("{")]
     state = "\n".join(sections.get("STATE", [])).strip()
     head = next((line.strip() for line in sections.get("HEAD", []) if line.strip() and not line.startswith("#<")), "")
-    return first, lifecycle, state, head
+    metadata = parse_json_line("\n".join(sections.get("META", [])).strip()) or {}
+    return first, lifecycle, state, head, metadata
 
 
 def first_json_line(lines: Sequence[str]) -> str:
@@ -268,6 +314,9 @@ def build_weekly_report(
     breakdown_rows: list[dict[str, Any]] = []
     benchmark_rows: list[dict[str, Any]] = []
     flag_rows: list[dict[str, Any]] = []
+    live_history_rows: list[dict[str, Any]] = []
+    live_trade_detail_rows: list[dict[str, Any]] = []
+    consistency_rows: list[dict[str, Any]] = []
     fingerprint_payload: dict[str, Any] = {
         "week_start_sgt": week_start_sgt.isoformat(),
         "week_end_sgt": week_end_sgt.isoformat(),
@@ -276,10 +325,17 @@ def build_weekly_report(
     }
 
     for lane_input in lane_inputs:
-        lane_summary = summarize_lane_week(lane_input, week_start_sgt, week_end_sgt, as_of_utc, git_info)
         benchmark = historical_weekly_benchmark(lane_input.config.benchmark_path)
+        history, trade_details = live_week_history_rows(lane_input, benchmark, as_of_utc)
+        consistency = consistency_flag_row(lane_input.config.name, history)
+        lane_summary = summarize_lane_week(lane_input, week_start_sgt, week_end_sgt, as_of_utc, git_info)
+        lane_summary["completed_full_live_weeks"] = consistency["completed_full_weeks"]
+        lane_summary["latest_week_complete"] = not bool(lane_summary["partial_week"])
         flag = classify_week(lane_summary, benchmark)
         weekly_rows.append(lane_summary)
+        live_history_rows.extend(history)
+        live_trade_detail_rows.extend(trade_details)
+        consistency_rows.append(consistency)
         benchmark_rows.append(
             {
                 "lane": lane_input.config.name,
@@ -295,6 +351,7 @@ def build_weekly_report(
                 "vps_head": lane_input.vps_head,
                 "state_hash": stable_hash(lane_input.state_payload),
                 "lifecycle_hash": stable_hash(lane_input.lifecycle_rows),
+                "fetch_metadata": lane_input.fetch_metadata,
                 "benchmark_path": str(lane_input.config.benchmark_path),
                 "benchmark_mtime": lane_input.config.benchmark_path.stat().st_mtime if lane_input.config.benchmark_path.exists() else None,
             }
@@ -311,6 +368,8 @@ def build_weekly_report(
         "docs_output": str(docs_output),
         "week_start_sgt": week_start_sgt.isoformat(),
         "week_end_sgt": week_end_sgt.isoformat(),
+        "week_window_label": week_window_label(week_start_sgt, week_end_sgt),
+        "week_is_complete": as_of_utc.tz_convert(SGT) >= week_end_sgt,
         "input_fingerprint": stable_hash(fingerprint_payload),
         "git": git_info,
         "lanes": [
@@ -320,6 +379,16 @@ def build_weekly_report(
                 "closed_trades": row["closed_trades"],
                 "net_r": row["net_r"],
                 "partial_week": row["partial_week"],
+                "completed_full_live_weeks": row.get("completed_full_live_weeks", 0),
+                "fetch_metadata": next(
+                    (lane.fetch_metadata for lane in lane_inputs if lane.config.name == row["lane"]),
+                    {},
+                ),
+                "state_hash": next(
+                    (stable_hash(lane.state_payload) for lane in lane_inputs if lane.config.name == row["lane"]),
+                    "",
+                ),
+                "vps_head": row.get("vps_head"),
             }
             for row in safe_weekly_rows
             if row["lane"] != "COMBINED"
@@ -331,6 +400,9 @@ def build_weekly_report(
         "lane_breakdown": breakdown_rows,
         "historical_benchmark": benchmark_rows,
         "weekly_flags": flag_rows,
+        "live_week_history": live_history_rows,
+        "live_week_trade_details": live_trade_detail_rows,
+        "consistency_flags": consistency_rows,
         "run_summary": run_summary,
     }
 
@@ -540,6 +612,191 @@ def lane_breakdown_rows(lane: str, trades: Sequence[LPFSLiveClosedTrade]) -> lis
     return rows
 
 
+def live_week_history_rows(
+    lane_input: LaneInput,
+    benchmark: dict[str, Any],
+    as_of_utc: pd.Timestamp,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    events = lane_input.lifecycle_rows
+    trades = build_closed_trade_summaries(events)
+    start_info = lane_start_info(lane_input.first_journal_row, events, trades)
+    first_live_utc = first_live_timestamp(start_info)
+    if first_live_utc is None:
+        return [], []
+
+    first_week_start_sgt, _ = trading_week_window_for_timestamp(first_live_utc)
+    latest_week_start_sgt, _ = latest_sgt_week_window(as_of_utc)
+    first_order_sgt = parse_timestamp(start_info["first_order_utc"]).tz_convert(SGT) if start_info.get("first_order_utc") else None
+    first_journal_sgt = parse_timestamp(start_info["first_journal_utc"]).tz_convert(SGT) if start_info.get("first_journal_utc") else None
+    now_sgt = as_of_utc.tz_convert(SGT)
+    fetch_error = str(lane_input.state_payload.get("fetch_error") or "")
+
+    history_rows: list[dict[str, Any]] = []
+    trade_rows: list[dict[str, Any]] = []
+    completed_full_count = 0
+    week_start_sgt = first_week_start_sgt
+    while week_start_sgt <= latest_week_start_sgt:
+        week_end_sgt = week_start_sgt + pd.Timedelta(days=TRADING_WEEK_DURATION_DAYS)
+        week_trades = select_trades_for_sgt_week(trades, week_start_sgt, week_end_sgt)
+        partial_reasons: list[str] = []
+        if now_sgt < week_end_sgt:
+            partial_reasons.append("week_in_progress")
+        if first_order_sgt is not None and first_order_sgt > week_start_sgt:
+            partial_reasons.append("portfolio_started_after_week_start")
+        if first_journal_sgt is not None and first_journal_sgt > week_start_sgt:
+            partial_reasons.append("journal_started_after_week_start")
+        if fetch_error:
+            partial_reasons.append("lane_fetch_incomplete")
+
+        values = [float(trade.r_result or 0.0) for trade in week_trades]
+        pnl_values = [float(trade.close_profit or 0.0) for trade in week_trades if trade.close_profit is not None]
+        wins = sum(1 for value in values if value > 0)
+        losses = sum(1 for value in values if value < 0)
+        gross_win = sum(value for value in values if value > 0)
+        gross_loss = abs(sum(value for value in values if value < 0))
+        net_r = sum(values)
+        percentile = historical_percentile(net_r, benchmark.get("weekly_r_values") or [])
+        performance_status, performance_reasons, percentile_band_value = classify_performance(net_r, benchmark)
+        partial_week = bool(partial_reasons)
+        completed_full_week = not partial_week and week_end_sgt <= now_sgt
+        included_in_consistency = completed_full_week and not fetch_error
+        if included_in_consistency:
+            completed_full_count += 1
+
+        row = {
+            "lane": lane_input.config.name,
+            "week_start_sgt": week_start_sgt.isoformat(),
+            "week_end_sgt": week_end_sgt.isoformat(),
+            "week_label": week_window_label(week_start_sgt, week_end_sgt),
+            "partial_week": partial_week,
+            "partial_reasons": ";".join(partial_reasons),
+            "completed_full_week": completed_full_week,
+            "completed_full_week_number": completed_full_count if included_in_consistency else "",
+            "included_in_consistency": included_in_consistency,
+            "closed_trades": len(week_trades),
+            "wins": wins,
+            "losses": losses,
+            "win_rate": safe_ratio(wins, len(week_trades)),
+            "net_r": net_r,
+            "net_pnl": sum(pnl_values) if pnl_values else 0.0,
+            "profit_factor": None if gross_loss == 0 else gross_win / gross_loss,
+            "historical_percentile": "" if percentile is None else percentile,
+            "historical_percentile_band": percentile_band_value,
+            "performance_status": performance_status,
+            "performance_reasons": ";".join(performance_reasons),
+        }
+        history_rows.append(row)
+
+        for trade in week_trades:
+            trade_rows.append(
+                {
+                    "lane": lane_input.config.name,
+                    "week_start_sgt": week_start_sgt.isoformat(),
+                    "week_end_sgt": week_end_sgt.isoformat(),
+                    "week_label": row["week_label"],
+                    "symbol": trade.symbol,
+                    "timeframe": trade.timeframe,
+                    "side": trade.side,
+                    "close_kind": trade.close_kind,
+                    "position_id": trade.position_id,
+                    "deal_ticket": trade.deal_ticket,
+                    "entry_price": trade.entry_price,
+                    "close_price": trade.close_price,
+                    "volume": trade.volume,
+                    "close_profit": trade.close_profit,
+                    "r_result": trade.r_result,
+                    "opened_utc": trade.opened_utc,
+                    "closed_utc": trade.closed_utc,
+                    "signal_key": trade.signal_key,
+                }
+            )
+
+        week_start_sgt = week_start_sgt + pd.Timedelta(days=7)
+
+    return history_rows, trade_rows
+
+
+def first_live_timestamp(start_info: dict[str, str | None]) -> pd.Timestamp | None:
+    timestamps = [
+        parse_timestamp(value)
+        for value in (
+            start_info.get("first_journal_utc"),
+            start_info.get("first_order_utc"),
+            start_info.get("first_closed_trade_utc"),
+        )
+        if value
+    ]
+    if not timestamps:
+        return None
+    return min(timestamps)
+
+
+def classify_performance(net_r: float, benchmark: dict[str, Any]) -> tuple[str, list[str], str]:
+    p10 = float(benchmark.get("p10_week_r") or 0.0)
+    p05 = float(benchmark.get("p05_week_r") or 0.0)
+    percentile = historical_percentile(net_r, benchmark.get("weekly_r_values") or [])
+    if net_r <= p05:
+        return "review", ["below_historical_5th_percentile"], "<=p5"
+    if net_r <= p10:
+        return "watch", ["below_historical_10th_percentile"], "<=p10"
+    return "normal", ["inside_expected_weekly_range"], "" if percentile is None else percentile_band(percentile)
+
+
+def consistency_flag_row(lane: str, history_rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    eligible = [
+        row
+        for row in sorted(history_rows, key=lambda item: str(item["week_start_sgt"]))
+        if bool(row.get("included_in_consistency"))
+    ]
+    latest = eligible[-1] if eligible else {}
+    last4 = eligible[-4:]
+    p10_streak = trailing_count(eligible, lambda row: str(row.get("historical_percentile_band")) in {"<=p10", "<=p5"})
+    p05_streak = trailing_count(eligible, lambda row: str(row.get("historical_percentile_band")) == "<=p5")
+    last4_below_p10 = sum(1 for row in last4 if str(row.get("historical_percentile_band")) in {"<=p10", "<=p5"})
+    last4_below_p05 = sum(1 for row in last4 if str(row.get("historical_percentile_band")) == "<=p5")
+
+    status = "normal"
+    reasons: list[str] = []
+    if p05_streak >= 2:
+        status = "review"
+        reasons.append("two_consecutive_weeks_below_historical_5th_percentile")
+    if last4_below_p10 >= 3:
+        status = "review"
+        reasons.append("three_of_last_four_weeks_below_historical_10th_percentile")
+    if status != "review" and p10_streak >= 2:
+        status = "watch"
+        reasons.append("two_consecutive_weeks_below_historical_10th_percentile")
+    if status != "review" and last4_below_p10 >= 2:
+        status = "watch"
+        reasons.append("two_of_last_four_weeks_below_historical_10th_percentile")
+    if not reasons:
+        reasons.append("no_consistent_underperformance" if eligible else "no_completed_full_live_weeks")
+
+    return {
+        "lane": lane,
+        "consistency_status": status,
+        "consistency_reasons": ";".join(reasons),
+        "completed_full_weeks": len(eligible),
+        "latest_completed_week": latest.get("week_label", ""),
+        "latest_completed_net_r": latest.get("net_r", ""),
+        "latest_completed_percentile": latest.get("historical_percentile", ""),
+        "p10_streak": p10_streak,
+        "p05_streak": p05_streak,
+        "last4_completed_weeks": len(last4),
+        "last4_below_p10": last4_below_p10,
+        "last4_below_p05": last4_below_p05,
+    }
+
+
+def trailing_count(rows: Sequence[dict[str, Any]], predicate: Any) -> int:
+    count = 0
+    for row in reversed(rows):
+        if not predicate(row):
+            break
+        count += 1
+    return count
+
+
 def combined_summary_row(
     weekly_rows: Sequence[dict[str, Any]],
     week_start_sgt: pd.Timestamp,
@@ -571,6 +828,8 @@ def combined_summary_row(
         "first_closed_trade_utc": "",
         "partial_week": any(bool(row["partial_week"]) for row in rows),
         "partial_reasons": "combined_from_lane_statuses",
+        "completed_full_live_weeks": min(int(row.get("completed_full_live_weeks") or 0) for row in rows),
+        "latest_week_complete": all(bool(row.get("latest_week_complete")) for row in rows),
         "vps_head": "",
         "fetch_error": ";".join(str(row.get("fetch_error") or "") for row in rows if row.get("fetch_error")),
         "local_head": rows[0].get("local_head"),
@@ -605,8 +864,7 @@ def historical_weekly_benchmark(path: Path) -> dict[str, Any]:
         data = data[data["separation_variant_id"] == "exclude_lp_pivot_inside_fs"].copy()
     value_col = "commission_adjusted_net_r" if "commission_adjusted_net_r" in data.columns else "net_r"
     data["exit_time_utc"] = pd.to_datetime(data["exit_time_utc"], utc=True)
-    exit_sgt = data["exit_time_utc"].dt.tz_convert(SGT)
-    data["week_start_sgt"] = exit_sgt.dt.normalize() - pd.to_timedelta(exit_sgt.dt.weekday, unit="D")
+    data["week_start_sgt"] = data["exit_time_utc"].map(lambda value: trading_week_window_for_timestamp(value)[0])
     weekly = data.groupby("week_start_sgt")[value_col].sum().sort_values()
     if weekly.empty:
         return {
@@ -634,45 +892,33 @@ def historical_weekly_benchmark(path: Path) -> dict[str, Any]:
 def classify_week(row: dict[str, Any], benchmark: dict[str, Any]) -> dict[str, Any]:
     if row["lane"] == "COMBINED":
         return {"concern_status": "watch", "concern_reasons": "combined_view"}
-    reasons: list[str] = []
-    status = "normal"
     net_r = float(row.get("net_r") or 0.0)
+    performance_status, performance_reasons, band = classify_performance(net_r, benchmark)
+    status = performance_status
+    reasons: list[str] = list(performance_reasons)
+    evidence_caveats: list[str] = []
     if row.get("partial_week"):
-        status = "watch"
-        reasons.append("partial_week")
+        status = "watch" if status == "normal" else status
+        evidence_caveats.append("partial_week")
     if row.get("runtime_changed_in_week"):
-        status = "watch"
-        reasons.append("runtime_changed_in_week")
+        evidence_caveats.append("runtime_changed_in_week")
     if not row.get("runtime_synced"):
-        status = "watch"
-        reasons.append("vps_not_confirmed_runtime_synced")
+        evidence_caveats.append("vps_not_confirmed_runtime_synced")
     if row.get("fetch_error"):
         status = "review"
-        reasons.append("lane_fetch_incomplete")
-    if net_r <= float(benchmark.get("p10_week_r") or 0.0):
-        status = "watch"
-        reasons.append("below_historical_10th_percentile")
-    if net_r <= float(benchmark.get("p05_week_r") or 0.0):
-        status = "review"
-        reasons.append("below_historical_5th_percentile")
+        evidence_caveats.append("lane_fetch_incomplete")
     if concentration_risk(row):
-        status = "watch" if status == "normal" else status
-        reasons.append("loss_concentration")
+        evidence_caveats.append("loss_concentration")
     percentile = historical_percentile(net_r, benchmark.get("weekly_r_values") or [])
-    if not reasons:
-        reasons.append("inside_expected_weekly_range")
     row["concern_status"] = status
     row["concern_reasons"] = ";".join(reasons)
+    row["evidence_caveats"] = ";".join(evidence_caveats) if evidence_caveats else "none"
     row["historical_percentile"] = "" if percentile is None else percentile
-    if net_r <= float(benchmark.get("p05_week_r") or 0.0):
-        row["historical_percentile_band"] = "<=p5"
-    elif net_r <= float(benchmark.get("p10_week_r") or 0.0):
-        row["historical_percentile_band"] = "<=p10"
-    else:
-        row["historical_percentile_band"] = "" if percentile is None else percentile_band(percentile)
+    row["historical_percentile_band"] = band
     return {
         "concern_status": status,
         "concern_reasons": row["concern_reasons"],
+        "evidence_caveats": row["evidence_caveats"],
         "net_r": net_r,
         "p10_week_r": benchmark.get("p10_week_r"),
         "p05_week_r": benchmark.get("p05_week_r"),
@@ -720,6 +966,9 @@ def write_outputs(
     lane_breakdown: Sequence[dict[str, Any]],
     historical_benchmark: Sequence[dict[str, Any]],
     weekly_flags: Sequence[dict[str, Any]],
+    live_week_history: Sequence[dict[str, Any]],
+    live_week_trade_details: Sequence[dict[str, Any]],
+    consistency_flags: Sequence[dict[str, Any]],
     run_summary: dict[str, Any],
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -727,8 +976,19 @@ def write_outputs(
     write_csv(output_dir / "lane_weekly_breakdown.csv", lane_breakdown)
     write_csv(output_dir / "historical_benchmark.csv", historical_benchmark)
     write_csv(output_dir / "weekly_flags.csv", weekly_flags)
+    write_csv(output_dir / "live_week_history.csv", live_week_history)
+    write_csv(output_dir / "live_week_trade_details.csv", live_week_trade_details)
+    write_csv(output_dir / "consistency_flags.csv", consistency_flags)
     (output_dir / "run_summary.json").write_text(json.dumps(run_summary, indent=2, sort_keys=True), encoding="utf-8")
-    dashboard = build_dashboard_html(weekly_summary, lane_breakdown, historical_benchmark, weekly_flags, run_summary)
+    dashboard = build_dashboard_html(
+        weekly_summary,
+        lane_breakdown,
+        historical_benchmark,
+        weekly_flags,
+        live_week_history,
+        consistency_flags,
+        run_summary,
+    )
     (output_dir / "dashboard.html").write_text(dashboard, encoding="utf-8")
     docs_output.parent.mkdir(parents=True, exist_ok=True)
     docs_output.write_text(dashboard, encoding="utf-8")
@@ -752,6 +1012,8 @@ def build_dashboard_html(
     lane_breakdown: Sequence[dict[str, Any]],
     historical_benchmark: Sequence[dict[str, Any]],
     weekly_flags: Sequence[dict[str, Any]],
+    live_week_history: Sequence[dict[str, Any]],
+    consistency_flags: Sequence[dict[str, Any]],
     run_summary: dict[str, Any],
 ) -> str:
     lane_rows = [row for row in weekly_summary if row["lane"] != "COMBINED"]
@@ -766,9 +1028,7 @@ def build_dashboard_html(
             [
                 row["lane"],
                 str(flag.get("concern_status", row.get("concern_status", "watch"))).upper(),
-                fmt_r(row["net_r"]),
-                fmt_int(row["closed_trades"]),
-                fmt_r(benchmark.get("p10_week_r")),
+                f"{fmt_r(row['net_r'])} | {fmt_int(row['closed_trades'])} closed | {full_week_text(row.get('completed_full_live_weeks'))}",
             ]
         )
     summary_table = [
@@ -776,6 +1036,8 @@ def build_dashboard_html(
             row["lane"],
             str(row["partial_week"]),
             row["partial_reasons"],
+            fmt_int(row.get("completed_full_live_weeks")),
+            str(row.get("latest_week_complete")),
             row["first_journal_utc"],
             row["first_runner_utc"],
             row["first_order_utc"],
@@ -821,6 +1083,7 @@ def build_dashboard_html(
             row["lane"],
             str(row["concern_status"]).upper(),
             row["concern_reasons"],
+            row.get("evidence_caveats", "none"),
             fmt_r(row["net_r"]),
             pct(float(row["historical_percentile"]) / 100.0) if row.get("historical_percentile") != "" else "n/a",
             row["historical_percentile_band"],
@@ -828,6 +1091,42 @@ def build_dashboard_html(
             fmt_r(row["p05_week_r"]),
         ]
         for row in weekly_flags
+    ]
+    consistency_table = [
+        [
+            row["lane"],
+            str(row["consistency_status"]).upper(),
+            row["consistency_reasons"],
+            fmt_int(row["completed_full_weeks"]),
+            row["latest_completed_week"],
+            fmt_r(row["latest_completed_net_r"]),
+            pct(float(row["latest_completed_percentile"]) / 100.0) if row.get("latest_completed_percentile") != "" else "n/a",
+            fmt_int(row["p10_streak"]),
+            fmt_int(row["p05_streak"]),
+            fmt_int(row["last4_below_p10"]),
+            fmt_int(row["last4_below_p05"]),
+        ]
+        for row in consistency_flags
+    ]
+    history_table = [
+        [
+            row["lane"],
+            row["week_label"],
+            str(row["completed_full_week"]),
+            str(row["included_in_consistency"]),
+            fmt_int(row["completed_full_week_number"]) if row["completed_full_week_number"] != "" else "",
+            str(row["performance_status"]).upper(),
+            fmt_int(row["closed_trades"]),
+            fmt_int(row["wins"]),
+            fmt_int(row["losses"]),
+            fmt_r(row["net_r"]),
+            fmt_money(row["net_pnl"]),
+            pct(row["win_rate"]),
+            pct(float(row["historical_percentile"]) / 100.0) if row.get("historical_percentile") != "" else "n/a",
+            row["historical_percentile_band"],
+            row["partial_reasons"],
+        ]
+        for row in sorted(live_week_history, key=lambda item: (str(item["week_start_sgt"]), str(item["lane"])), reverse=True)
     ]
     breakdown_table = [
         [
@@ -850,7 +1149,7 @@ def build_dashboard_html(
         )
     rows_html = "".join(
         f'<div class="kpi"><span>{escape(label)}</span><strong>{escape(value)}</strong><small>{escape(note)}</small></div>'
-        for label, value, note, _, _ in kpis
+        for label, value, note in kpis
     )
     title = "LPFS Live Weekly Performance"
     return f"""<!doctype html>
@@ -871,6 +1170,8 @@ def build_dashboard_html(
       section_links=[
           ("#status", "Status"),
           ("#summary", "Weekly Summary"),
+          ("#consistency", "Consistency"),
+          ("#history", "Live History"),
           ("#benchmark", "Backtest Benchmark"),
           ("#breakdown", "Breakdown"),
           ("#workflow", "Refresh Workflow"),
@@ -879,15 +1180,25 @@ def build_dashboard_html(
   <main>
     <section id="status">
       <h2>Cause For Concern</h2>
-      <p class="note">Current week is marked partial when the trading week is still in progress, the lane started after week start, or runtime changed inside the window. Partial first weeks are monitoring evidence, not a reason to change strategy rules.</p>
+      <p class="note">Latest dashboard window: <strong>{escape(run_summary.get('week_window_label'))}</strong>. It is marked complete after the Friday 21:00 UTC market close. Runtime changes and partial starts are evidence-quality caveats, while percentile status is measured against each lane's V22 weekly distribution.</p>
       <div class="kpis">{rows_html}</div>
       {combined_note}
-      {table_html(["Lane", "Status", "Reasons", "Live Net R", "Historical percentile", "Band", "10th pct", "5th pct"], flag_table)}
+      {table_html(["Lane", "Status", "Performance reasons", "Evidence caveats", "Live Net R", "Historical percentile", "Band", "10th pct", "5th pct"], flag_table)}
     </section>
     <section id="summary">
       <h2>Live Weekly Summary</h2>
       <p>Portfolio starts are detected from the first journal row and first live order. Runtime synced means the VPS contains the latest local strategy/runtime commit even if local docs/reporting commits are ahead.</p>
-      {table_html(["Lane", "Partial", "Partial reasons", "First journal UTC", "First runner UTC", "First order UTC", "First closed UTC", "Local HEAD", "Origin HEAD", "VPS commit", "Fetch error", "Latest runtime", "Runtime synced", "Runtime changed", "Closed", "Net R", "Net PnL", "Win rate", "PF", "Worst symbol", "Worst TF", "Worst side", "Retry waits", "True rejects", "Pending", "Active"], summary_table)}
+      {table_html(["Lane", "Partial", "Partial reasons", "Completed full weeks", "Latest complete", "First journal UTC", "First runner UTC", "First order UTC", "First closed UTC", "Local HEAD", "Origin HEAD", "VPS commit", "Fetch error", "Latest runtime", "Runtime synced", "Runtime changed", "Closed", "Net R", "Net PnL", "Win rate", "PF", "Worst symbol", "Worst TF", "Worst side", "Retry waits", "True rejects", "Pending", "Active"], summary_table)}
+    </section>
+    <section id="consistency">
+      <h2>Consistency Check</h2>
+      <p>Consistency flags ignore partial first weeks and use only completed full live weeks. Watch means repeated p10 underperformance; Review means repeated p5 or broad p10 underperformance.</p>
+      {table_html(["Lane", "Status", "Reasons", "Completed full weeks", "Latest completed week", "Latest Net R", "Latest percentile", "p10 streak", "p5 streak", "Last 4 <=p10", "Last 4 <=p5"], consistency_table)}
+    </section>
+    <section id="history">
+      <h2>Live Week History</h2>
+      <p>Rows are grouped by the live trading week: Sunday 21:00 UTC to Friday 21:00 UTC, displayed as Monday 05:00 to Saturday 05:00 SGT.</p>
+      {table_html(["Lane", "Week", "Completed", "Consistency input", "Full week #", "Performance", "Closed", "Wins", "Losses", "Net R", "Net PnL", "Win rate", "Historical percentile", "Band", "Partial reasons"], history_table)}
     </section>
     <section id="benchmark">
       <h2>Historical Weekly Benchmark</h2>
@@ -941,9 +1252,9 @@ def collect_git_info(*, as_of_utc: pd.Timestamp) -> dict[str, Any]:
     origin_head = git_output(["rev-parse", "origin/main"], check=False)
     latest_runtime_full = git_output(["log", "-1", "--format=%H", "--", *RUNTIME_PATHS], check=False)
     latest_runtime = git_output(["log", "-1", "--format=%h %aI %s", "--", *RUNTIME_PATHS], check=False)
-    week_start_sgt, _ = latest_sgt_week_window(as_of_utc)
+    week_start_sgt, week_end_sgt = latest_sgt_week_window(as_of_utc)
     since = week_start_sgt.tz_convert("UTC").isoformat()
-    until = as_of_utc.isoformat()
+    until = min(as_of_utc, week_end_sgt.tz_convert("UTC")).isoformat()
     runtime_window = git_output(
         ["log", f"--since={since}", f"--until={until}", "--format=%h %aI %s", "--", *RUNTIME_PATHS],
         check=False,
@@ -971,10 +1282,28 @@ def is_commit_ancestor(ancestor: str, descendant: str) -> bool:
 
 
 def latest_sgt_week_window(as_of_utc: pd.Timestamp) -> tuple[pd.Timestamp, pd.Timestamp]:
-    now_sgt = as_of_utc.tz_convert(SGT)
-    start = now_sgt.normalize() - pd.Timedelta(days=now_sgt.weekday())
-    end = start + pd.Timedelta(days=7)
-    return start, end
+    return trading_week_window_for_timestamp(as_of_utc)
+
+
+def trading_week_window_for_timestamp(timestamp: Any) -> tuple[pd.Timestamp, pd.Timestamp]:
+    value_utc = parse_timestamp(timestamp)
+    start_utc = latest_trading_week_start_utc(value_utc)
+    end_utc = start_utc + pd.Timedelta(days=TRADING_WEEK_DURATION_DAYS)
+    return start_utc.tz_convert(SGT), end_utc.tz_convert(SGT)
+
+
+def latest_trading_week_start_utc(as_of_utc: pd.Timestamp) -> pd.Timestamp:
+    value_utc = as_of_utc.tz_convert("UTC")
+    midnight = value_utc.normalize()
+    days_since_start = (value_utc.weekday() - TRADING_WEEK_START_UTC_WEEKDAY) % 7
+    start = midnight - pd.Timedelta(days=days_since_start) + pd.Timedelta(hours=TRADING_WEEK_START_UTC_HOUR)
+    if start > value_utc:
+        start -= pd.Timedelta(days=7)
+    return start
+
+
+def week_window_label(week_start_sgt: pd.Timestamp, week_end_sgt: pd.Timestamp) -> str:
+    return f"{week_start_sgt:%Y-%m-%d %H:%M SGT} to {week_end_sgt:%Y-%m-%d %H:%M SGT}"
 
 
 def latest_run_summary(report_root: Path) -> dict[str, Any] | None:
@@ -1072,6 +1401,12 @@ def fmt_int(value: Any) -> str:
     if value is None or value == "":
         return "0"
     return str(int(value))
+
+
+def full_week_text(value: Any) -> str:
+    count = int(value or 0)
+    noun = "week" if count == 1 else "weeks"
+    return f"{count} full {noun}"
 
 
 def short_text(value: Any, length: int = 7) -> str:
