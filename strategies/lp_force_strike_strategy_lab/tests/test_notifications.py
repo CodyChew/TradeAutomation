@@ -391,6 +391,19 @@ class NotificationTests(unittest.TestCase):
         self.assertIn("Quote: Bid 1.10210 > Ask 1.10200", invalid_message)
         self.assertIn("Ref: EURUSD-H4-10-long", invalid_message)
 
+        with mock.patch.object(notification_module, "signal_key_for_setup", side_effect=RuntimeError("bad setup")):
+            fallback_event = notification_from_execution_decision(
+                invalid_market,
+                mode="LIVE",
+                setup=invalid_market_setup,
+                market=invalid_market_quote,
+                price_digits=_spec().digits,
+            )
+        fallback_message = format_notification_message(fallback_event)
+        self.assertEqual(fallback_event.signal_key, "")
+        self.assertNotIn("Ref:", fallback_message)
+        self.assertIn("Quote: Bid 1.10210 > Ask 1.10200", fallback_message)
+
         rejected_empty = MT5ExecutionDecision(status="rejected", rejection_reason=None, detail="manual reject")
         empty_event = notification_from_execution_decision(rejected_empty, mode="LIVE")
         self.assertEqual(empty_event.status, "rejected")
@@ -924,6 +937,21 @@ class NotificationTests(unittest.TestCase):
             )
         )
         self.assertIn("Spread: 5.1% of risk", no_limit_spread)
+
+        invalid_without_quote = format_notification_message(
+            NotificationEvent(
+                kind="setup_rejected",
+                mode="LIVE",
+                title="Invalid market",
+                status="invalid_market",
+                symbol="EURUSD",
+                timeframe="H4",
+                side="LONG",
+            )
+        )
+        self.assertIn("Reason: Invalid market", invalid_without_quote)
+        self.assertIn("Action: No order placed", invalid_without_quote)
+        self.assertNotIn("Quote:", invalid_without_quote)
 
         unknown = format_notification_message(
             NotificationEvent(kind="setup_rejected", mode="LIVE", title="Unknown", status="custom_reason")

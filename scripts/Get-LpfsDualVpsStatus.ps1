@@ -20,6 +20,7 @@ function Invoke-RemotePowerShell {
         [string]$Script
     )
 
+    $SshOptions = @("-o", "BatchMode=yes", "-o", "ConnectTimeout=15")
     $RunId = [Guid]::NewGuid().ToString("N")
     $LocalTemp = Join-Path ([IO.Path]::GetTempPath()) "lpfs_dual_status_$RunId.ps1"
     $RemoteTempWin = "C:\Windows\Temp\lpfs_dual_status_$RunId.ps1"
@@ -27,17 +28,17 @@ function Invoke-RemotePowerShell {
 
     $Script | Set-Content -LiteralPath $LocalTemp -Encoding UTF8
     try {
-        & scp $LocalTemp "${Alias}:$RemoteTempScp" | Out-Null
+        & scp @SshOptions $LocalTemp "${Alias}:$RemoteTempScp" | Out-Null
         if ($LASTEXITCODE -ne 0) {
             throw "scp failed for $Alias"
         }
-        & ssh $Alias powershell -NoProfile -ExecutionPolicy Bypass -File $RemoteTempWin
+        & ssh @SshOptions $Alias powershell -NoProfile -ExecutionPolicy Bypass -File $RemoteTempWin
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "remote status script exited with code $LASTEXITCODE on $Alias"
         }
     } finally {
         Remove-Item -LiteralPath $LocalTemp -ErrorAction SilentlyContinue
-        & ssh $Alias powershell -NoProfile -ExecutionPolicy Bypass -Command "Remove-Item -LiteralPath '$RemoteTempWin' -ErrorAction SilentlyContinue" | Out-Null
+        & ssh @SshOptions $Alias powershell -NoProfile -ExecutionPolicy Bypass -Command "Remove-Item -LiteralPath '$RemoteTempWin' -ErrorAction SilentlyContinue" | Out-Null
     }
 }
 
@@ -214,11 +215,36 @@ def read_json(path):
     except Exception as exc:
         return {"_error": str(exc), "_path": str(path)}
 
-def tail_jsonl(path, limit=300):
+def tail_lines(path, limit):
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()[-limit:]
+        limit = max(0, int(limit))
+    except Exception:
+        limit = 0
+    if limit <= 0:
+        return []
+    try:
+        with path.open("rb") as handle:
+            handle.seek(0, 2)
+            position = handle.tell()
+            if position <= 0:
+                return []
+            chunks = []
+            newline_count = 0
+            block_size = 64 * 1024
+            while position > 0 and newline_count <= limit:
+                read_size = min(block_size, position)
+                position -= read_size
+                handle.seek(position)
+                chunk = handle.read(read_size)
+                chunks.append(chunk)
+                newline_count += chunk.count(b"\n")
+        data = b"".join(reversed(chunks))
+        return data.decode("utf-8", errors="replace").splitlines()[-limit:]
     except Exception:
         return []
+
+def tail_jsonl(path, limit=300):
+    lines = tail_lines(path, limit)
     rows = []
     for line in lines:
         try:
