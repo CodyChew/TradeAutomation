@@ -28,8 +28,8 @@ runtime root, state, journal, heartbeat, kill switch, and scheduled task.
 
 ## Current Verified IC VPS State
 
-Last verified on 2026-05-14 after an IC Windows Update reboot, phone RDP
-access test, and post-disconnect runner health check.
+Last verified on 2026-05-19 after the healthcheck wrapper fix, strict coverage
+recovery, and fast-forward-only sync of both VPS checkouts.
 
 - Active local operations PC: `LAPTOP-BOHDIO8I`, Tailscale IP
   `100.118.29.124`, repo
@@ -38,12 +38,17 @@ access test, and post-disconnect runner health check.
 - Hostname: `EC2AMAZ-DT73P0T`.
 - Tailscale IP: `100.98.12.113`.
 - SSH user: `Administrator`.
-- Repo checkout: `C:\TradeAutomation`, clean `main...origin/main`. Pull latest
-  `main` before any maintenance.
+- Repo checkout: `C:\TradeAutomation`, clean `main...origin/main` with
+  healthcheck patch `d38afd1` included. Pull latest `main` before any
+  maintenance.
 - Python venv: `C:\TradeAutomation\venv` with `pandas`, `pyarrow`,
   `MetaTrader5`, `certifi`, `pytest`, and `coverage[toml]` installed.
 - Public Lightsail RDP has been removed. Use Tailscale RDP to `100.98.12.113`
   when MT5 desktop review is needed.
+- Tailscale unattended mode is enabled on the IC VPS. Verify with
+  `tailscale debug prefs` and confirm `ForceDaemon=true`. This keeps tailnet
+  SSH/RDP available after Windows boots, before an `Administrator` desktop
+  login.
 - The old PC `cy-desktop` has been removed from Tailscale, and its old IC VPS
   SSH key entry was removed from `administrators_authorized_keys`.
 - Focused IC-lane tests: `91 passed`.
@@ -79,10 +84,12 @@ access test, and post-disconnect runner health check.
   After logging in and then disconnecting, not signing out, `LPFS_IC_Live`
   stayed running with fresh heartbeat, IC MT5 connected to
   `ICMarketsSC-MT5-2`, and broker/state counts reconciled.
-- Latest spot check on 2026-05-14: IC had a disconnected `Administrator`
-  session, fresh `lpfs_ic_live_heartbeat.json`, parent/child Python runner
-  shape, MT5 connected/trade allowed, `4` IC strategy pending orders, and `4`
-  IC strategy positions.
+- Latest spot check on 2026-05-19:
+  `reports/live_ops/lpfs_dual_vps_status_20260519_215820.md` showed
+  `LPFS_IC_Live` running with kill switch clear, fresh
+  `lpfs_ic_live_heartbeat.json`, parent/child Python runner shape, MT5
+  connected/trade allowed, `6` IC strategy pending orders, and `2` IC strategy
+  positions matching runtime state.
 
 ## Files Needed On The IC VPS
 
@@ -155,16 +162,19 @@ an explicit trade-by-trade list is requested.
 
 ## Reboot Recovery And Phone RDP
 
-The current IC live runner is intentionally an interactive at-logon task. The
-startup alert is boot-triggered, but the live runner and MT5 desktop session
-still require an `Administrator` logon after a full Windows reboot.
+The current IC live runner is intentionally an interactive at-logon task.
+Tailscale unattended mode should restore tailnet access after Windows boots,
+but the live runner and MT5 desktop session still require an `Administrator`
+logon after a full Windows reboot.
 
 Operational interpretation:
 
 - `LPFS IC LIVE | VPS STARTED` means Windows booted. It does not prove MT5,
   `LPFS_IC_Live`, heartbeat freshness, or broker connectivity.
 - After any IC reboot alert, RDP in once over Tailscale, wait for MT5 and the
-  runner to start, then disconnect. Do not sign out.
+  runner to start, then disconnect. Do not sign out. If Tailscale is
+  unexpectedly unavailable, temporarily whitelist the current operator public
+  IP for Lightsail RDP, recover, then remove the public RDP rule again.
 - A disconnected RDP session is healthy for this design. A signed-out session
   can close MT5 and the runner.
 - Do not convert `LPFS_IC_Live` to a `SYSTEM` boot task without a separate

@@ -1,8 +1,7 @@
 # LPFS Amazon Lightsail VPS Runbook
 
-Last updated: 2026-05-14 after verifying post-reboot phone RDP recovery for
-the IC lane and confirming both FTMO and IC runners stay healthy after RDP
-disconnect.
+Last updated: 2026-05-19 after the LPFS healthcheck bugfix, strict coverage
+recovery, and dual-VPS checkout sync.
 
 This runbook moves the existing Python + MT5 live runner to Amazon Lightsail
 without rewriting strategy logic. The exact strategy behavior remains owned by
@@ -15,6 +14,8 @@ The live production environment is the Amazon Lightsail Windows VPS, not the
 local OneDrive workspace.
 
 - VPS repo path: `C:\TradeAutomation`.
+- VPS repo status: clean `main...origin/main` with healthcheck patch `d38afd1`
+  included after the 2026-05-19 healthcheck sync.
 - VPS runtime root: `C:\TradeAutomationRuntime`.
 - VPS scheduled task: `LPFS_Live`.
 - VPS startup alert task: `LPFS_FTMO_Startup_Alert`.
@@ -46,6 +47,10 @@ Current proven access model:
   `100.64.0.0/10`.
 - Public Lightsail RDP has been removed. RDP to `100.115.34.38` over Tailscale
   was verified from this PC after removal.
+- Tailscale unattended mode is enabled on the FTMO VPS. Verify with
+  `tailscale debug prefs` and confirm `ForceDaemon=true`. This keeps tailnet
+  SSH/RDP available after Windows boots, before an `Administrator` desktop
+  login.
 - The old PC `cy-desktop` has been removed from Tailscale, and its old FTMO
   VPS SSH key entry was removed from `administrators_authorized_keys`.
 
@@ -61,6 +66,13 @@ ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; gi
 The remote access path has been verified from the local PC to the VPS over
 Tailscale. The status script returned a running heartbeat and the expected
 Windows parent/child process shape.
+
+Latest spot check on 2026-05-19:
+`reports/live_ops/lpfs_dual_vps_status_20260519_215820.md` showed `LPFS_Live`
+running with kill switch clear, fresh `lpfs_live_heartbeat.json`, MT5
+connected/trade allowed, `6` FTMO strategy pending orders, and `1` active FTMO
+strategy position matching runtime state. No live-runner restart was performed
+for the healthcheck/docs sync.
 
 ## Windows Restart Alerting
 
@@ -101,8 +113,9 @@ Select-String -Path C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl 
   Select-Object -Last 1
 ```
 
-Important limit: this task alerts that Windows came back. It does not make MT5
-or the live runner fully unattended. With the current at-logon runner design,
+Important limit: this task alerts that Windows came back. Tailscale unattended
+mode should restore tailnet SSH/RDP after boot, but it does not make MT5 or
+the live runner fully unattended. With the current at-logon runner design,
 RDP/logon is still required after a reboot to restore the interactive MT5
 session and start `LPFS_Live`.
 
@@ -119,10 +132,13 @@ Admin mode: on
 Friendly name: LPFS FTMO VPS
 ```
 
-After a `VPS STARTED` alert, log in once, wait for MT5 and `LPFS_Live`, then
-disconnect. Do not sign out. The same pattern applies to IC with PC name
-`100.98.12.113` and username `EC2AMAZ-DT73P0T\Administrator`; see
-`docs/lpfs_icmarkets_vps_runbook.md` for IC-specific paths and task names.
+After a `VPS STARTED` alert, use Tailscale RDP if reachable, log in once,
+wait for MT5 and `LPFS_Live`, then disconnect. Do not sign out. If Tailscale
+is unexpectedly unavailable, temporarily whitelist the current operator public
+IP for Lightsail RDP, recover, then remove the public RDP rule again. The same
+pattern applies to IC with PC name `100.98.12.113` and username
+`EC2AMAZ-DT73P0T\Administrator`; see `docs/lpfs_icmarkets_vps_runbook.md` for
+IC-specific paths and task names.
 
 ### Environment Boundaries
 

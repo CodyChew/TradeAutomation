@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-12 after verifying and patching raw-spread zero-quote
-handling for FTMO and IC live runners.
+Last updated: 2026-05-19 after the LPFS healthcheck bugfix, strict coverage
+recovery, and dual-VPS checkout sync.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -88,6 +88,10 @@ path when MT5 or Windows desktop review is needed.
 - The public Lightsail RDP rule has been removed. Normal operations no longer
   depend on a whitelisted public home/office IP; RDP over Tailscale to
   `100.115.34.38` and `100.98.12.113` was verified from this PC after removal.
+- Tailscale unattended mode is enabled on both VPSes
+  (`tailscale set --unattended=true`, verified as `ForceDaemon=true`). This
+  should restore tailnet SSH/RDP after Windows boots, before the
+  `Administrator` desktop session is recreated.
 - The old local machine `cy-desktop` was removed from Tailscale, and its old
   VPS SSH key entries were removed from both VPSes.
 - Authorized-key backups left on the VPSes:
@@ -108,14 +112,55 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
 ```
 
 Latest verified packet from this PC:
-`reports/live_ops/lpfs_dual_vps_status_20260511_005949.md`. Both VPS repos
-were clean on `main...origin/main`, both scheduled tasks were running, MT5 was
-connected and trade-allowed on both lanes, and both kill switches were clear.
+`reports/live_ops/lpfs_dual_vps_status_20260519_215820.md`. Both VPS repos
+were clean on `main...origin/main` with healthcheck patch `d38afd1` included,
+both scheduled tasks were running, MT5 was connected and trade-allowed on both
+lanes, both kill switches were clear, and broker order/position counts matched
+runtime state. FTMO had `6` strategy pending orders and `1` active strategy
+position; IC had `6` strategy pending orders and `2` active strategy positions.
 
 Environment boundary rule: local OneDrive is development; VPS
 `C:\TradeAutomation` plus each `C:\TradeAutomationRuntime*` root is production.
 Future agents should start remote work with host/user checks, VPS `git status`,
 and the LPFS status packet before drawing operational conclusions.
+
+## 2026-05-19 Healthcheck Bugfix And Docs Verification
+
+Scope: local healthcheck patch, strict coverage recovery, docs/state refresh,
+push to GitHub, fast-forward-only VPS checkout sync, and read-only live
+verification. No live configs, VPS runtime files, scheduled tasks, state files,
+journals, broker orders, broker positions, or runner processes were edited or
+restarted.
+
+- Confirmed `scripts/Get-LpfsDualVpsStatus.ps1` had a real scalability bug:
+  its generated remote snapshot read each full JSONL journal into memory before
+  taking the tail. With FTMO and IC journals around hundreds of MB, the wrapper
+  timed out while direct `Get-LpfsLiveStatus.ps1` checks still worked.
+- Commit `d38afd1` replaced the full-file JSONL read with bounded reverse
+  tailing and added SSH/SCP `BatchMode=yes` plus `ConnectTimeout=15`.
+- The same commit added notification tests for the signal-key fallback and
+  invalid-market-without-quote branches, restoring the strict coverage gate.
+- Verification passed:
+  - PowerShell syntax parse for `scripts\Get-LpfsDualVpsStatus.ps1`.
+  - `.\venv\Scripts\python.exe -m pytest strategies\lp_force_strike_strategy_lab\tests\test_notifications.py -q`
+    passed `12` tests and `3` subtests.
+  - `.\venv\Scripts\python.exe scripts\run_core_coverage.py` passed with
+    `100.00%` line and branch coverage across `433` scoped unittest cases.
+  - `.\venv\Scripts\python.exe scripts\verify_dataset_fingerprint.py` returned
+    `status=OK`, `fingerprint_datasets=168`, and `aggregation_checks=140`.
+  - `.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 5 -LogLines 10`
+    completed and wrote
+    `reports/live_ops/lpfs_dual_vps_status_20260519_215820.md`.
+- Both VPS checkouts were clean before sync, then fast-forwarded with
+  `git pull --ff-only origin main` to `d38afd1`. No runner restart was
+  required or performed because the live task processes keep their loaded code
+  and this change was ops/reporting/test code.
+- Final read-only live snapshot: FTMO and IC tasks `Running`, startup alert
+  tasks `Ready`, kill switches clear, fresh running heartbeats, MT5 connected
+  and trade allowed on both lanes, and broker strategy orders/positions matched
+  runtime state.
+- Journal rotation remains optional future hardening. It was intentionally not
+  implemented in this patch because it touches the live write path.
 
 ## 2026-05-10/11 New PC Onboarding And Cleanup
 
@@ -124,8 +169,8 @@ Current local machine for this session:
 - Host/user: `LAPTOP-BOHDIO8I` / `Cody`.
 - Local repo path: `C:\Users\Cody\OneDrive\Desktop\TradeAutomation`.
 - Branch state at initial onboarding: `main...origin/main` at `43aac99`.
-  Current verified post-documentation-sync state is clean `main...origin/main`
-  on this PC and both VPS checkouts.
+  Current verified 2026-05-19 healthcheck/docs-sync state is clean
+  `main...origin/main` on this PC and both VPS checkouts.
 - The Windows `python` on PATH resolves to Python 2.7, so project commands
   should explicitly use `.\venv\Scripts\python.exe`.
 - Tailscale is installed and logged in. This laptop has Tailscale IP
@@ -315,9 +360,13 @@ were changed.
   deal history are the source of truth.
 - `VPS STARTED` means Windows booted. It does not prove MT5 login, live runner
   health, or broker connectivity.
-- With the current interactive MT5 design, a full Windows reboot requires one
-  `Administrator` RDP logon on the affected VPS. RDP may be from the operations
-  PC or phone over Tailscale. Disconnect after recovery; do not sign out.
+- With the current interactive MT5 design, a full Windows reboot still
+  requires one `Administrator` RDP logon on the affected VPS. Tailscale
+  unattended mode should make that RDP path available over the tailnet before
+  login. Disconnect after recovery; do not sign out.
+- If Tailscale is unexpectedly unavailable after a boot alert, temporarily
+  whitelist the current operator public IP for Lightsail RDP, recover the
+  desktop session, then remove the public RDP rule again.
 - Phone RDP was verified on 2026-05-14 for both VPSes. Use Microsoft Windows
   App or Microsoft Remote Desktop with Tailscale connected. FTMO PC name is
   `100.115.34.38`, username `EC2AMAZ-ON6FOF2\Administrator`; IC PC name is

@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-14 after verifying IC post-reboot recovery, phone RDP
-access to both VPSes, and healthy FTMO/IC runners after RDP disconnect.
+Last updated: 2026-05-19 after the LPFS healthcheck bugfix, strict coverage
+recovery, and dual-VPS checkout sync.
 
 ## Purpose
 
@@ -20,12 +20,19 @@ source of truth for strategy research and live execution work.
   runtime `C:\TradeAutomationRuntimeIC`, task `LPFS_IC_Live`.
 - Public Lightsail RDP has been removed. Use Tailscale SSH for commands and
   Tailscale RDP to the `100.x` VPS addresses for MT5 desktop review.
+- Tailscale unattended mode is enabled on both VPSes
+  (`tailscale set --unattended=true`, verified as `ForceDaemon=true`) so
+  tailnet SSH/RDP should come back after Windows boots, before an
+  `Administrator` desktop login.
 - The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
   SSH key entries were removed from both VPSes.
-- Latest verified dual-VPS live check from this PC was on 2026-05-14 after IC
-  reboot recovery: both FTMO and IC had disconnected `Administrator` RDP
-  sessions, running parent/child Python runner shape, fresh heartbeat, MT5
-  connected/trade allowed, and broker order/position counts matching state.
+- Latest verified dual-VPS live check from this PC was on 2026-05-19 after the
+  healthcheck wrapper fix and VPS sync: both FTMO and IC were clean on
+  `main...origin/main` with healthcheck patch `d38afd1` included, had running
+  parent/child Python runner shape, fresh heartbeat, MT5 connected and trade
+  allowed, and broker
+  order/position counts matching state. The ignored packet is
+  `reports/live_ops/lpfs_dual_vps_status_20260519_215820.md`.
 - Phone RDP over Tailscale was verified for both VPSes. If a `VPS STARTED`
   Telegram arrives, log in once as local `Administrator`, wait for MT5/runner,
   then disconnect. Do not sign out.
@@ -105,7 +112,7 @@ Dataset regression gate:
 .\venv\Scripts\python scripts\verify_dataset_fingerprint.py
 ```
 
-Current result on 2026-04-29:
+Current result on 2026-05-19:
 
 - `status=OK`
 - `fingerprint_datasets=168`
@@ -123,9 +130,9 @@ Core logic regression gate:
 .\venv\Scripts\python scripts\run_core_coverage.py
 ```
 
-Current result on 2026-05-05:
+Current result on 2026-05-19:
 
-- 333 unittest cases across the scoped core labs after corrected V19.
+- 433 unittest cases across the scoped core labs.
 - `100.00%` line and branch coverage for the scoped core packages.
 - Scope and edge-case rules documented in `docs/testing_strategy.md`.
 
@@ -224,10 +231,13 @@ Dedicated IC VPS production status:
   `scripts/summarize_lpfs_live_gate_attribution.py`. It reads local journals or
   streams FTMO/IC journals over SSH, omits high-volume `market_snapshot` rows by
   default, and writes ignored Markdown under `reports/live_ops/`.
-- Latest read-only dual VPS status at 2026-05-06 21:16 SGT: FTMO task and IC
+- Latest read-only dual VPS status at 2026-05-19 21:58 SGT: FTMO task and IC
   task both running with fresh heartbeat, kill switches clear, clean
-  `main...origin/main`, and latest cycles at `140` frames with `orders_sent=0`,
-  `setups_blocked=0`, `setups_rejected=0`.
+  `main...origin/main` with healthcheck patch `d38afd1` included, and latest
+  cycles at `140` frames with `orders_sent=0`, `setups_blocked=0`,
+  `setups_rejected=0`. FTMO had `6` strategy pending orders and `1` active
+  strategy position; IC had `6` strategy pending orders and `2` active strategy
+  positions, matching runtime state in the status packet.
 - Latest generated attribution artifact:
   `reports/live_ops/lpfs_gate_attribution_20260506_2138.md` (ignored). It
   covered FTMO from `2026-05-05T08:42:28Z` to `2026-05-06T13:25:56Z` and IC from
