@@ -168,6 +168,12 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
 bounded shared-read stream. Use `--allow-full-scan` only when an explicit full
 historical scan is approved, then capture a fresh dual-VPS status packet.
 
+The status packet includes C: drive free-space fields. Treat
+`disk_status=warn` as a cleanup or sizing-review trigger, and
+`disk_status=action_required` as a blocker for heavy report scans, deploys, or
+large data collection until free space is addressed. Current policy is warn
+below `15 GB` or `25%` free, and action below `10 GB` or `15%` free.
+
 Compact IC performance summary from the IC VPS checkout:
 
 ```powershell

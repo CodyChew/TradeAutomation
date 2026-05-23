@@ -67,6 +67,12 @@ The remote access path has been verified from the local PC to the VPS over
 Tailscale. The status script returned a running heartbeat and the expected
 Windows parent/child process shape.
 
+The status script also reports C: drive free space. Treat `disk_status=warn`
+as a cleanup or sizing-review trigger, and `disk_status=action_required` as a
+blocker for heavy report scans, deploys, or large data collection until free
+space is addressed. Current policy is warn below `15 GB` or `25%` free, and
+action below `10 GB` or `15%` free.
+
 Latest spot check on 2026-05-23:
 `reports/live_ops/lpfs_dual_vps_status_20260523_140154.md` showed
 `LPFS_Live` running with kill switch clear, fresh `running`

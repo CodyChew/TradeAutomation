@@ -52,6 +52,51 @@ function Get-JsonField {
     return $Default
 }
 
+function Write-DiskStatus {
+    param([string]$Path)
+
+    $Drive = Split-Path -Path $Path -Qualifier
+    if ([string]::IsNullOrWhiteSpace($Drive)) {
+        $Drive = Split-Path -Path (Get-Location).Path -Qualifier
+    }
+    if ([string]::IsNullOrWhiteSpace($Drive)) {
+        Write-Host "disk_status=unknown"
+        Write-Host "disk_error=could_not_resolve_drive"
+        return
+    }
+
+    try {
+        $Disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$Drive'"
+        if ($null -eq $Disk -or $null -eq $Disk.Size -or $Disk.Size -le 0) {
+            Write-Host "disk_drive=$Drive"
+            Write-Host "disk_status=unknown"
+            Write-Host "disk_error=drive_not_found"
+            return
+        }
+
+        $FreeGb = [Math]::Round($Disk.FreeSpace / 1GB, 2)
+        $SizeGb = [Math]::Round($Disk.Size / 1GB, 2)
+        $FreePct = [Math]::Round(($Disk.FreeSpace / $Disk.Size) * 100, 1)
+        $Status = "ok"
+        if ($FreeGb -lt 10 -or $FreePct -lt 15) {
+            $Status = "action_required"
+        } elseif ($FreeGb -lt 15 -or $FreePct -lt 25) {
+            $Status = "warn"
+        }
+
+        Write-Host "disk_drive=$Drive"
+        Write-Host "disk_size_gb=$SizeGb"
+        Write-Host "disk_free_gb=$FreeGb"
+        Write-Host "disk_free_pct=$FreePct"
+        Write-Host "disk_status=$Status"
+        Write-Host "disk_policy=warn_below_15gb_or_25pct_action_below_10gb_or_15pct"
+    } catch {
+        Write-Host "disk_drive=$Drive"
+        Write-Host "disk_status=unknown"
+        Write-Host "disk_error=$($_.Exception.Message)"
+    }
+}
+
 Write-Host "LPFS live status"
 Write-Host "checked_at=$((Get-Date).ToString("o"))"
 Write-Host "runtime_root=$RuntimeRoot"
@@ -60,6 +105,9 @@ if (Test-Path -LiteralPath $KillSwitchPath) {
     Write-Host "kill_switch_path=$KillSwitchPath"
     Write-Host "kill_switch_note=$((Get-Content -LiteralPath $KillSwitchPath -Raw).Trim())"
 }
+
+Write-Host ""
+Write-DiskStatus -Path $RuntimeRoot
 
 $Processes = @(Get-CimInstance Win32_Process | Where-Object {
     $_.CommandLine -like "*run_lp_force_strike_live_executor.py*"

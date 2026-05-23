@@ -82,6 +82,12 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
 These commands should not edit MT5 orders, positions, journals, state, runtime
 files, or scheduled tasks.
 
+The LPFS status packet includes VPS disk free-space fields. Treat
+`disk_status=warn` as a cleanup or sizing-review trigger, and
+`disk_status=action_required` as a blocker for heavy report scans, deploys, or
+large data collection until free space is addressed. Current policy is warn
+below `15 GB` or `25%` free, and action below `10 GB` or `15%` free.
+
 ## Live Journal Read Safety
 
 Production LPFS journals and state files are actively written by the live
