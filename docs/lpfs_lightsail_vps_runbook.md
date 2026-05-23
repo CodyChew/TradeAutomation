@@ -1,7 +1,7 @@
 # LPFS Amazon Lightsail VPS Runbook
 
-Last updated: 2026-05-19 after the LPFS healthcheck bugfix, strict coverage
-recovery, and dual-VPS checkout sync.
+Last updated: 2026-05-23 after the LPFS weekly-report incident, runner
+recovery, diagnostic-logging upgrade, and journal-read safety update.
 
 This runbook moves the existing Python + MT5 live runner to Amazon Lightsail
 without rewriting strategy logic. The exact strategy behavior remains owned by
@@ -14,8 +14,8 @@ The live production environment is the Amazon Lightsail Windows VPS, not the
 local OneDrive workspace.
 
 - VPS repo path: `C:\TradeAutomation`.
-- VPS repo status: clean `main...origin/main` with healthcheck patch `d38afd1`
-  included after the 2026-05-19 healthcheck sync.
+- VPS repo status: clean `main...origin/main` at `32a71d9` in the 2026-05-23
+  recovery packet.
 - VPS runtime root: `C:\TradeAutomationRuntime`.
 - VPS scheduled task: `LPFS_Live`.
 - VPS startup alert task: `LPFS_FTMO_Startup_Alert`.
@@ -67,12 +67,28 @@ The remote access path has been verified from the local PC to the VPS over
 Tailscale. The status script returned a running heartbeat and the expected
 Windows parent/child process shape.
 
-Latest spot check on 2026-05-19:
-`reports/live_ops/lpfs_dual_vps_status_20260519_215820.md` showed `LPFS_Live`
-running with kill switch clear, fresh `lpfs_live_heartbeat.json`, MT5
-connected/trade allowed, `6` FTMO strategy pending orders, and `1` active FTMO
-strategy position matching runtime state. No live-runner restart was performed
-for the healthcheck/docs sync.
+Latest spot check on 2026-05-23:
+`reports/live_ops/lpfs_dual_vps_status_20260523_140154.md` showed
+`LPFS_Live` running with kill switch clear, fresh `running`
+`lpfs_live_heartbeat.json`, MT5 connected/trade allowed, `6` FTMO strategy
+pending orders, and `5` active FTMO strategy positions matching runtime state.
+This packet was taken after restarting the runner from the weekly-report
+incident.
+
+Journal read safety: do not run unbounded `Select-String`, `Get-Content -Raw`,
+or `[System.IO.File]::OpenText()` scans against
+`C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl` while the runner
+is live. If a full scan is explicitly approved, use a streaming `FileStream`
+opened with `FileShare.ReadWrite`, then run
+`.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 5 -LogLines 5` from the
+local repo to verify both production lanes afterward.
+
+Diagnostic logging: current code can write additive versioned `diagnostics`
+payloads on sparse signal/order/recovery/fill/close/block rows. These fields
+are for future live-vs-backtest analysis only and do not change strategy
+behavior. FTMO production journals only show them after the VPS checkout is
+pulled and `LPFS_Live` is intentionally restarted. See
+`docs/lpfs_diagnostic_logging.md`.
 
 ## Windows Restart Alerting
 
@@ -109,8 +125,24 @@ Smoke-test without rebooting:
 Start-ScheduledTask -TaskName LPFS_FTMO_Startup_Alert
 Start-Sleep -Seconds 90
 Get-ScheduledTaskInfo -TaskName LPFS_FTMO_Startup_Alert
-Select-String -Path C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl -Pattern "vps_startup_alert" |
-  Select-Object -Last 1
+$journal = "C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl"
+$stream = [System.IO.FileStream]::new(
+  $journal,
+  [System.IO.FileMode]::Open,
+  [System.IO.FileAccess]::Read,
+  [System.IO.FileShare]::ReadWrite
+)
+$reader = $null
+try {
+  $reader = [System.IO.StreamReader]::new($stream)
+  $latest = $null
+  while (($line = $reader.ReadLine()) -ne $null) {
+    if ($line.Contains("vps_startup_alert")) { $latest = $line }
+  }
+  $latest
+} finally {
+  if ($reader) { $reader.Close() } else { $stream.Close() }
+}
 ```
 
 Important limit: this task alerts that Windows came back. Tailscale unattended

@@ -23,6 +23,12 @@ from .execution_contract import (
     build_mt5_order_intent,
     signal_key_for_setup,
 )
+from .diagnostic_logging import (
+    DIAGNOSTIC_SCHEMA_VERSION,
+    build_setup_diagnostics,
+    enrich_diagnostics,
+    fields_with_diagnostics,
+)
 from .experiment import SkippedTrade, TradeModelCandidate, add_atr
 from .notifications import (
     NotificationDelivery,
@@ -804,8 +810,15 @@ def process_trade_setup_dry_run(
     """Run one tested setup through intent building and MT5 order_check only."""
 
     signal_key = signal_key_for_setup(setup)
+    setup_diagnostics = build_setup_diagnostics(setup, config=config, signal_key=signal_key)
     if signal_key in state.order_checked_signal_keys:
-        append_audit_event(config.journal_path, "signal_already_checked", signal_key=signal_key)
+        append_audit_event(
+            config.journal_path,
+            "signal_already_checked",
+            signal_key=signal_key,
+            diagnostic_schema_version=DIAGNOSTIC_SCHEMA_VERSION,
+            diagnostics=setup_diagnostics,
+        )
         return DryRunSetupResult(state=state, signal_key=signal_key, status="already_checked")
 
     signal_event = NotificationEvent(
@@ -817,19 +830,29 @@ def process_trade_setup_dry_run(
         timeframe=str(setup.timeframe).upper(),
         side=setup.side,
         signal_key=signal_key,
-        fields={
-            "setup_id": setup.setup_id,
-            "entry": setup.entry_price,
-            "stop_loss": setup.stop_price,
-            "take_profit": setup.target_price,
-        },
+        fields=fields_with_diagnostics(
+            {
+                "setup_id": setup.setup_id,
+                "entry": setup.entry_price,
+                "stop_loss": setup.stop_price,
+                "take_profit": setup.target_price,
+            },
+            setup_diagnostics,
+            execution={"execution_path": "dry_run_order_check", "stage": "signal_detected"},
+        ),
     )
     append_audit_event(
         config.journal_path,
         signal_event.kind,
         signal_key=signal_key,
         notification=format_notification_message(signal_event),
+        notification_event=signal_event.to_dict(),
         setup_id=setup.setup_id,
+        diagnostic_schema_version=DIAGNOSTIC_SCHEMA_VERSION,
+        diagnostics=enrich_diagnostics(
+            setup_diagnostics,
+            execution={"execution_path": "dry_run_order_check", "stage": "signal_detected"},
+        ),
     )
 
     account = account_snapshot_from_mt5(mt5_module)
@@ -857,12 +880,29 @@ def process_trade_setup_dry_run(
         market=market_snapshot,
         price_digits=symbol_spec.digits,
     )
+    decision_diagnostics = enrich_diagnostics(
+        setup_diagnostics,
+        market=market_snapshot,
+        execution={
+            "execution_path": "dry_run_order_check",
+            "stage": "order_intent_created",
+            "decision_status": decision.status,
+            "rejection_reason": decision.rejection_reason,
+        },
+    )
+    decision_event = replace(
+        decision_event,
+        fields=fields_with_diagnostics(decision_event.fields, decision_diagnostics),
+    )
     append_audit_event(
         config.journal_path,
         decision_event.kind,
         signal_key=signal_key,
         notification=format_notification_message(decision_event),
+        notification_event=decision_event.to_dict(),
         decision=decision.to_dict(),
+        diagnostic_schema_version=DIAGNOSTIC_SCHEMA_VERSION,
+        diagnostics=decision_diagnostics,
     )
     processed_state = _state_with_processed_key(state, signal_key)
     if not decision.ready or decision.intent is None:
@@ -882,12 +922,29 @@ def process_trade_setup_dry_run(
         signal_key=signal_key,
         fields={"retcode": outcome.retcode, "comment": outcome.comment},
     )
+    order_check_diagnostics = enrich_diagnostics(
+        setup_diagnostics,
+        market=market_snapshot,
+        execution={
+            "execution_path": "dry_run_order_check",
+            "stage": order_check_event.kind,
+            "order_check_retcode": outcome.retcode,
+            "order_check_comment": outcome.comment,
+        },
+    )
+    order_check_event = replace(
+        order_check_event,
+        fields=fields_with_diagnostics(order_check_event.fields, order_check_diagnostics),
+    )
     append_audit_event(
         config.journal_path,
         order_check_event.kind,
         signal_key=signal_key,
         notification=format_notification_message(order_check_event),
+        notification_event=order_check_event.to_dict(),
         order_check=outcome.to_dict(),
+        diagnostic_schema_version=DIAGNOSTIC_SCHEMA_VERSION,
+        diagnostics=order_check_diagnostics,
     )
     deliver_notification_best_effort(notifier, order_check_event)
     checked_state = _state_with_checked_key(processed_state, signal_key)

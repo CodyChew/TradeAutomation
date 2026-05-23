@@ -1,7 +1,8 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-19 after the LPFS healthcheck bugfix, strict coverage
-recovery, and dual-VPS checkout sync.
+Last updated: 2026-05-23 after the LPFS weekly performance analysis,
+report-generation incident, runner recovery, diagnostic-logging upgrade, and
+safety handoff refresh.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -10,33 +11,53 @@ file, and the JSONL journal before making operational decisions.
 ## Read First
 
 1. `SESSION_HANDOFF.md` for this latest operational snapshot.
-2. `strategies/lp_force_strike_strategy_lab/START_HERE.md` for the LPFS
+2. `PROJECT_STATE.md` for workspace context.
+3. `docs/system_troubleshooting.md` before troubleshooting live runners, MT5,
+   datasets, dashboards, or generated reports.
+4. `strategies/lp_force_strike_strategy_lab/START_HERE.md` for the LPFS
    first-read path, source-of-truth map, environment boundaries, and resume
    prompts.
-3. `PROJECT_STATE.md` for workspace context.
-4. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for LPFS detail.
-5. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+5. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for LPFS detail.
+6. `strategies/majority_flush_strategy_lab/START_HERE.md` before continuing the
+   Majority Flush strategy research lane.
+7. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before touching execution code.
-6. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
-7. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
+8. `docs/lpfs_diagnostic_logging.md` before changing LPFS journals,
+   diagnostic reports, or live-vs-backtest analysis fields.
+9. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
+10. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
    performance monitor, live start timestamps, version context, and
    backtest-distribution comparison.
-8. `docs/phase2_production_hardening.md` before operating the watchdog, kill
+11. `docs/phase2_production_hardening.md` before operating the watchdog, kill
    switch, heartbeat, status command, or Task Scheduler setup.
-9. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+12. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
-10. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+13. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
    IC Markets production runner.
-11. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+14. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-12. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+15. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
    buckets or income expectations. It is linked from the dashboard top
    navigation and the Home page FTMO Profiles section.
-13. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+16. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native EA or Strategy Tester work.
 
 ## AI Agent Continuity Rules
 
+- 2026-05-23 live-reporting incident: treat remote reads of production LPFS
+  journals/state as production-adjacent, not harmless reporting. The unsafe
+  pattern is opening live JSONL/state files without `FileShare.ReadWrite`,
+  especially full-file scans such as `Select-String`, `Get-Content -Raw`, or
+  `[System.IO.File]::OpenText()` against files the runner is writing. Use
+  bounded status scripts or shared-read streams, and verify both live runners
+  after any remote data collection that touches live journal/state files.
+- 2026-05-23 diagnostic logging upgrade: the next LPFS performance iteration
+  must use the additive `diagnostics` payload documented in
+  `docs/lpfs_diagnostic_logging.md`. This upgrade logs setup geometry,
+  strategy parameters, execution path, spread/market context, and backtest join
+  fields on sparse lifecycle rows only. It does not change live strategy rules
+  or MT5 order behavior, and it still requires an intentional runner restart on
+  each VPS before the new logging appears in production journals.
 - 2026-05-12 live execution note: IC skipped a 01:00 SGT `EURUSD H4 SHORT`
   because the local execution contract rejected `bid == ask` (`1.17742` /
   `1.17742`) as `invalid_market`, while FTMO placed the matching order. This
@@ -58,7 +79,8 @@ file, and the JSONL journal before making operational decisions.
   state, journal, MT5 orders/positions, and Telegram lifecycle cards.
 - If the change is docs-only and does not need runtime activation, say that no
   VPS runner restart is required. Still give a minimal VPS pull step if the
-  user wants the docs available on the VPS checkout.
+  user wants the docs available on the VPS checkout. If a task involved remote
+  live journal/state reads, include a fresh post-task dual-VPS status packet.
 - Never instruct future agents to edit VPS live state, journal, MT5 orders, or
   MT5 positions unless the user explicitly approves a separate operator plan.
 - EA migration work is local/tester-only until separately approved. Do not
@@ -112,17 +134,163 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
 ```
 
 Latest verified packet from this PC:
-`reports/live_ops/lpfs_dual_vps_status_20260519_215820.md`. Both VPS repos
-were clean on `main...origin/main` with healthcheck patch `d38afd1` included,
-both scheduled tasks were running, MT5 was connected and trade-allowed on both
-lanes, both kill switches were clear, and broker order/position counts matched
-runtime state. FTMO had `6` strategy pending orders and `1` active strategy
-position; IC had `6` strategy pending orders and `2` active strategy positions.
+`reports/live_ops/lpfs_dual_vps_status_20260523_140154.md`. At
+2026-05-23 14:01 SGT, both VPS repos were on `main...origin/main` at
+`32a71d9`, both scheduled tasks were `Running`, both kill switches were clear,
+both heartbeats were fresh and `running`, and both MT5 terminals were
+connected/trade-allowed. FTMO had `6` strategy pending orders and `5` active
+strategy positions; IC had `6` strategy pending orders and `5` active strategy
+positions. This packet is the recovery confirmation after the 2026-05-23
+weekly-report incident.
 
 Environment boundary rule: local OneDrive is development; VPS
 `C:\TradeAutomation` plus each `C:\TradeAutomationRuntime*` root is production.
 Future agents should start remote work with host/user checks, VPS `git status`,
 and the LPFS status packet before drawing operational conclusions.
+
+## 2026-05-23 LPFS Weekly Performance And Reporting Incident
+
+Scope requested by the user: analyze the just-ended forex week, decide whether
+LPFS is doing okay, and identify whether strategy iteration is warranted.
+
+Operational incident:
+
+- A first weekly-report run generated
+  `reports/live_ops/lpfs_weekly_performance/20260523_052046`, but FTMO journal
+  collection timed out while scanning the large production journal.
+- A local patch then replaced the remote `Select-String` scan in
+  `scripts/build_lpfs_live_weekly_performance.py` with a streaming
+  `[System.IO.File]::OpenText()` scan. That was still unsafe for live files
+  because it did not explicitly allow `FileShare.ReadWrite`.
+- Shortly afterward, both live tasks were found stopped: FTMO `LPFS_Live` and
+  IC `LPFS_IC_Live` were `Ready`, with `processes=0` and stale/error
+  heartbeats. The timing strongly points to the unsafe reporting scan as the
+  cause, although no traceback was captured in the status output.
+- Both tasks were restarted with Task Scheduler. Recovery packets at
+  `reports/live_ops/lpfs_dual_vps_status_20260523_135043.md`,
+  `reports/live_ops/lpfs_dual_vps_status_20260523_135248.md`, and finally
+  `reports/live_ops/lpfs_dual_vps_status_20260523_140154.md` confirmed both
+  lanes back to `Running` with fresh heartbeats, kill switches clear, MT5
+  connected/trade-allowed, and `6` pending / `5` active strategy items on each
+  lane.
+- No live config, scheduled-task definition, runtime state file, JSONL journal
+  contents, MT5 order, MT5 position, or broker history was manually edited.
+
+Current code/reporting state:
+
+- `scripts/build_lpfs_live_weekly_performance.py` is locally modified to open
+  remote journal/state reads through `FileStream(..., FileShare.ReadWrite)`.
+  Focused weekly-performance tests passed after this safer patch.
+- Do not run the full weekly collector against production journals again until
+  the user explicitly approves it or a maintenance window is chosen. If it is
+  run, immediately follow with
+  `.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 5 -LogLines 5` and record
+  the packet.
+- Latest complete weekly analysis packet:
+  `reports/live_ops/lpfs_weekly_performance/20260523_053222`.
+- Published local dashboard:
+  `docs/live_weekly_performance.html`.
+
+Weekly performance read:
+
+- Latest completed week window: 2026-05-18 05:00 SGT to 2026-05-23 05:00 SGT.
+- FTMO: `16` closed trades, `-2.0986R`, 7 wins / 9 losses, PF `0.7686`,
+  historical percentile `23.6`, worst timeframe `H8 -2.03R`.
+- IC: `21` closed trades, `-2.6723R`, 9 wins / 12 losses, PF `0.7725`,
+  historical percentile `17.6`, worst timeframe `H8 -4.99R`.
+- Completed-week trend: FTMO has three completed weeks below p30
+  (`10.5`, `5.9`, `23.6` percentiles). IC has two completed weeks below p30
+  (`23.9`, `17.6` percentiles). This is not an emergency stop signal by
+  itself, but it is enough to start strategy research iteration now.
+- Production-change threshold: do not alter live strategy from this sample
+  alone. Escalate toward a production iteration if another completed week is
+  below p30 on both lanes, either lane prints another p10 week, H8 remains the
+  worst timeframe next completed week, or the live sample reaches about
+  75-100 closed trades while still underperforming V22 expectations.
+- Research priority: analyze H8 drag plus cluster/correlation exposure. Test
+  H8 downweighting/filtering, session/spread regime filters, and max correlated
+  exposure before proposing any live rule or sizing change.
+
+## 2026-05-22 Majority Flush V1 And M30 Comparison
+
+Scope: research-only Majority Flush implementation, tests, 10-year local
+backtests, M30/all-timeframe comparison, and dashboard. No LPFS live runner,
+dry-run runner, runtime state, journal, local live-capable config, scheduled
+task, broker order, broker position, MQL5 EA, or generated live weekly
+dashboard file was changed.
+
+The current secondary research lane is a possible strategy based on
+`concepts/majority_flush_lab`. Use the existing `TradeAutomation` repo and keep
+the work under `strategies/majority_flush_strategy_lab`; do not copy the repo or
+fork a separate codebase for ordinary research/backtesting.
+
+Added or updated continuity files:
+
+- `docs/system_troubleshooting.md`: existing-system troubleshooting map with
+  live runner paths, FTMO/IC runtime boundaries, read-only audit commands, and
+  common failure paths.
+- `strategies/README.md`: strategy-lab organization rules.
+- `strategies/majority_flush_strategy_lab/START_HERE.md`: first-read workflow
+  for Majority Flush strategy research.
+- `strategies/majority_flush_strategy_lab/PROJECT_STATE.md`: current state,
+  latest V1 result, next work, feasibility gate, and non-goals.
+- `strategies/majority_flush_strategy_lab/docs/majority_flush_strategy_spec.md`:
+  fixed V1 signal and baseline trade model.
+- `docs/majority_flush_strategy.html`: generated dashboard from the full V1
+  baseline packet.
+
+Implemented code and config:
+
+- `strategies/majority_flush_strategy_lab/src/majority_flush_strategy_lab/`
+  with signal detection and baseline experiment code.
+- `strategies/majority_flush_strategy_lab/tests/` with focused unit tests.
+- `configs/strategies/majority_flush_strategy_baseline_v1.json`.
+- `configs/strategies/majority_flush_strategy_all_timeframes_v1.json`.
+- `scripts/run_majority_flush_baseline_experiment.py`.
+- `scripts/build_majority_flush_strategy_dashboard.py`.
+
+Verification:
+
+- Focused Majority Flush tests: `21` unittest cases passed.
+- Strict core gate: `454` unittest cases passed with `100.00%` line and branch
+  coverage across the scoped core packages before the M30 comparison.
+- Dataset fingerprint: `status=OK`, `fingerprint_datasets=168`,
+  `aggregation_checks=140`.
+- Original non-M30 sanity run:
+  `reports/strategies/majority_flush_strategy_baseline/sanity_20260522`,
+  `6` datasets, `2,159` signals, `2,157` trades, `0` failures.
+- Original non-M30 full run:
+  `reports/strategies/majority_flush_strategy_baseline/20260521_180025`,
+  `140` datasets, `35,642` signals, `35,557` trades, `85` skipped setups,
+  `0` failures.
+- M30 sanity run:
+  `reports/strategies/majority_flush_strategy_all_timeframes/sanity_m30_20260522`,
+  `3` datasets, `14,477` signals, `14,469` trades, `8` skipped setups,
+  `0` failures.
+- M30/all-timeframe full run:
+  `reports/strategies/majority_flush_strategy_all_timeframes/20260522_025142`,
+  `168` datasets, `175,295` signals, `174,968` trades, `327` skipped setups,
+  `0` failures.
+- Dashboard static check passed for M30 metrics, all-timeframe recommendation
+  table, report path, index link, and LPFS live-execution separation text.
+
+Latest M30/all-timeframe V1 result:
+
+- candidate: `next_open__flush_structure__1r`;
+- total net R: `-16,581.66`;
+- average net R: `-0.09477`;
+- win rate: `50.29%`;
+- profit factor: `0.8282`;
+- max closed-trade drawdown: `16,590.48R`;
+- dashboard decision: `reject_or_rework_baseline`.
+
+Timeframe read: `M30` was the clear failure point (`139,411` trades,
+`-16,576.46R`, avg `-0.1189R`, PF `0.7894`). The non-M30 set remains the prior
+roughly flat result (`-5.20R`). Keep `H8`, `H12`, `D1`, and `W1` for the next
+entry-model iteration; rework or deprioritize `H4`; do not keep raw M30 V1.
+
+Majority Flush remains research-only. It has no dry-run executor, no live-send
+path, no EA, no runtime root, and no VPS scheduled task.
 
 ## 2026-05-19 Healthcheck Bugfix And Docs Verification
 

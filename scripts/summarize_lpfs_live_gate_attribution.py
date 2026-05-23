@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import base64
 from collections import deque
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -50,7 +51,17 @@ def main() -> int:
         help="Hours after Sunday 21:00 UTC counted as weekly-open conditions.",
     )
     parser.add_argument("--detail-limit", type=int, default=20, help="Max notable signal rows per source; 0 means all.")
-    parser.add_argument("--tail-lines", type=int, default=None, help="Read only the last N JSONL rows from each journal.")
+    parser.add_argument(
+        "--tail-lines",
+        type=int,
+        default=200000,
+        help="Read only the last N JSONL rows from each journal. Default keeps active-file reads bounded.",
+    )
+    parser.add_argument(
+        "--allow-full-scan",
+        action="store_true",
+        help="Explicitly allow an unbounded full journal scan.",
+    )
     parser.add_argument(
         "--include-market-snapshots",
         action="store_true",
@@ -61,6 +72,8 @@ def main() -> int:
 
     if args.weekly_open_window_hours < 0:
         parser.error("--weekly-open-window-hours must be zero or positive")
+    if args.allow_full_scan:
+        args.tail_lines = None
     if args.tail_lines is not None and args.tail_lines <= 0:
         parser.error("--tail-lines must be positive")
     if not args.journal and not args.ssh_journal:
@@ -137,9 +150,11 @@ def _load_ssh_jsonl(
     tail_lines: int | None,
     include_market_snapshots: bool,
 ) -> list[dict[str, object]]:
-    tail_clause = "" if tail_lines is None else f" -Tail {int(tail_lines)}"
-    filter_clause = "" if include_market_snapshots else " | Where-Object { $_ -notlike '*\"event\": \"market_snapshot\"*' }"
-    remote_command = f"Get-Content -Path '{remote_path}'{tail_clause}{filter_clause}"
+    remote_command = _remote_shared_jsonl_reader_script(
+        remote_path,
+        tail_lines=tail_lines,
+        include_market_snapshots=include_market_snapshots,
+    )
     encoded = base64.b64encode(remote_command.encode("utf-16le")).decode("ascii")
     command = ["ssh", alias, "powershell", "-NoProfile", "-EncodedCommand", encoded]
     result = subprocess.run(command, check=False, capture_output=True, text=True)
@@ -147,6 +162,59 @@ def _load_ssh_jsonl(
         message = (result.stderr or result.stdout or "").strip()
         raise RuntimeError(f"Failed to read remote journal from {alias}:{remote_path}: {message}")
     return parse_jsonl_lines(result.stdout.splitlines())
+
+
+def _remote_shared_jsonl_reader_script(
+    remote_path: str,
+    *,
+    tail_lines: int | None,
+    include_market_snapshots: bool,
+) -> str:
+    tail_value = 0 if tail_lines is None else int(tail_lines)
+    include_value = "$true" if include_market_snapshots else "$false"
+    path_literal = json.dumps(remote_path)
+    return f"""
+$ErrorActionPreference = 'Stop'
+$Path = {path_literal}
+$TailLines = {tail_value}
+$IncludeMarketSnapshots = {include_value}
+function New-SharedTextReader([string]$Path) {{
+  $stream = [System.IO.FileStream]::new(
+    $Path,
+    [System.IO.FileMode]::Open,
+    [System.IO.FileAccess]::Read,
+    [System.IO.FileShare]::ReadWrite
+  )
+  [System.IO.StreamReader]::new($stream)
+}}
+$reader = New-SharedTextReader $Path
+try {{
+  if ($TailLines -gt 0) {{
+    $buffer = [System.Collections.Generic.Queue[string]]::new()
+    while (($line = $reader.ReadLine()) -ne $null) {{
+      if (-not $IncludeMarketSnapshots -and $line.Contains('"event": "market_snapshot"')) {{
+        continue
+      }}
+      $buffer.Enqueue($line)
+      while ($buffer.Count -gt $TailLines) {{
+        [void]$buffer.Dequeue()
+      }}
+    }}
+    foreach ($line in $buffer) {{
+      Write-Output $line
+    }}
+  }} else {{
+    while (($line = $reader.ReadLine()) -ne $null) {{
+      if (-not $IncludeMarketSnapshots -and $line.Contains('"event": "market_snapshot"')) {{
+        continue
+      }}
+      Write-Output $line
+    }}
+  }}
+}} finally {{
+  $reader.Close()
+}}
+"""
 
 
 def _filter_events(events: list[dict[str, object]], *, include_market_snapshots: bool) -> list[dict[str, object]]:

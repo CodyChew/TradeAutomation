@@ -28,8 +28,8 @@ runtime root, state, journal, heartbeat, kill switch, and scheduled task.
 
 ## Current Verified IC VPS State
 
-Last verified on 2026-05-19 after the healthcheck wrapper fix, strict coverage
-recovery, and fast-forward-only sync of both VPS checkouts.
+Last verified on 2026-05-23 after the LPFS weekly-report incident, runner
+recovery, diagnostic-logging upgrade, and journal-read safety update.
 
 - Active local operations PC: `LAPTOP-BOHDIO8I`, Tailscale IP
   `100.118.29.124`, repo
@@ -38,8 +38,8 @@ recovery, and fast-forward-only sync of both VPS checkouts.
 - Hostname: `EC2AMAZ-DT73P0T`.
 - Tailscale IP: `100.98.12.113`.
 - SSH user: `Administrator`.
-- Repo checkout: `C:\TradeAutomation`, clean `main...origin/main` with
-  healthcheck patch `d38afd1` included. Pull latest `main` before any
+- Repo checkout: `C:\TradeAutomation`, clean `main...origin/main` at
+  `32a71d9` in the 2026-05-23 recovery packet. Pull latest `main` before any
   maintenance.
 - Python venv: `C:\TradeAutomation\venv` with `pandas`, `pyarrow`,
   `MetaTrader5`, `certifi`, `pytest`, and `coverage[toml]` installed.
@@ -84,12 +84,26 @@ recovery, and fast-forward-only sync of both VPS checkouts.
   After logging in and then disconnecting, not signing out, `LPFS_IC_Live`
   stayed running with fresh heartbeat, IC MT5 connected to
   `ICMarketsSC-MT5-2`, and broker/state counts reconciled.
-- Latest spot check on 2026-05-19:
-  `reports/live_ops/lpfs_dual_vps_status_20260519_215820.md` showed
-  `LPFS_IC_Live` running with kill switch clear, fresh
+- Latest spot check on 2026-05-23:
+  `reports/live_ops/lpfs_dual_vps_status_20260523_140154.md` showed
+  `LPFS_IC_Live` running with kill switch clear, fresh `running`
   `lpfs_ic_live_heartbeat.json`, parent/child Python runner shape, MT5
-  connected/trade allowed, `6` IC strategy pending orders, and `2` IC strategy
-  positions matching runtime state.
+  connected/trade allowed, `6` IC strategy pending orders, and `5` IC strategy
+  positions matching runtime state. This packet was taken after restarting the
+  runner from the weekly-report incident.
+- Journal read safety: do not run unbounded `Select-String`,
+  `Get-Content -Raw`, or `[System.IO.File]::OpenText()` scans against
+  `C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl` while the
+  runner is live. If a full scan is explicitly approved, use a streaming
+  `FileStream` opened with `FileShare.ReadWrite`, then run
+  `.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 5 -LogLines 5` from the
+  local repo to verify both production lanes afterward.
+- Diagnostic logging: current code can write additive versioned `diagnostics`
+  payloads on sparse lifecycle rows. These fields are for future
+  live-vs-backtest analysis only and do not change IC strategy behavior.
+  Production IC journals only show them after the VPS checkout is pulled and
+  `LPFS_IC_Live` is intentionally restarted. See
+  `docs/lpfs_diagnostic_logging.md`.
 
 ## Files Needed On The IC VPS
 
@@ -149,6 +163,10 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
 .\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40
 .\venv\Scripts\python scripts\summarize_lpfs_live_gate_attribution.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl" --tail-lines 200000 --detail-limit 60 --output reports\live_ops\lpfs_gate_attribution_latest.md
 ```
+
+`summarize_lpfs_live_gate_attribution.py` defaults remote journal reads to a
+bounded shared-read stream. Use `--allow-full-scan` only when an explicit full
+historical scan is approved, then capture a fresh dual-VPS status packet.
 
 Compact IC performance summary from the IC VPS checkout:
 

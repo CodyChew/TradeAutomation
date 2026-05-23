@@ -1,7 +1,8 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-19 after the LPFS healthcheck bugfix, strict coverage
-recovery, and dual-VPS checkout sync.
+Last updated: 2026-05-23 after the LPFS weekly performance analysis,
+report-generation incident, live-runner recovery, diagnostic-logging upgrade,
+and continuity refresh.
 
 ## Purpose
 
@@ -26,13 +27,14 @@ source of truth for strategy research and live execution work.
   `Administrator` desktop login.
 - The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
   SSH key entries were removed from both VPSes.
-- Latest verified dual-VPS live check from this PC was on 2026-05-19 after the
-  healthcheck wrapper fix and VPS sync: both FTMO and IC were clean on
-  `main...origin/main` with healthcheck patch `d38afd1` included, had running
-  parent/child Python runner shape, fresh heartbeat, MT5 connected and trade
-  allowed, and broker
-  order/position counts matching state. The ignored packet is
-  `reports/live_ops/lpfs_dual_vps_status_20260519_215820.md`.
+- Latest verified dual-VPS live check from this PC was on 2026-05-23 after the
+  weekly-report incident and runner restart: both FTMO and IC were clean on
+  `main...origin/main` at `32a71d9`, had running parent/child Python runner
+  shape, fresh `running` heartbeat, kill switches clear, MT5 connected and
+  trade allowed, and broker order/position counts matching state. The ignored
+  packet is `reports/live_ops/lpfs_dual_vps_status_20260523_140154.md`.
+  FTMO had `6` strategy pending orders and `5` active strategy positions; IC
+  had `6` strategy pending orders and `5` active strategy positions.
 - Phone RDP over Tailscale was verified for both VPSes. If a `VPS STARTED`
   Telegram arrives, log in once as local `Administrator`, wait for MT5/runner,
   then disconnect. Do not sign out.
@@ -40,27 +42,33 @@ source of truth for strategy research and live execution work.
 ## Read This First In A New Codex Session
 
 1. `SESSION_HANDOFF.md` for the latest operational snapshot.
-2. `strategies/lp_force_strike_strategy_lab/START_HERE.md` for the LPFS
+2. `PROJECT_STATE.md` for the overall workspace state.
+3. `docs/system_troubleshooting.md` before troubleshooting existing live
+   runners, MT5 behavior, datasets, dashboards, or generated reports.
+4. `strategies/lp_force_strike_strategy_lab/START_HERE.md` for the LPFS
    first-read path, environment boundaries, and resume prompts.
-3. `PROJECT_STATE.md` for the overall workspace state.
-4. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for the current
+5. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for the current
    LP + Force Strike strategy research.
-5. `docs/strategy.html` for the current V13 mechanics + V15 risk-bucket guide.
-6. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+6. `strategies/majority_flush_strategy_lab/START_HERE.md` before continuing the
+   Majority Flush strategy research lane.
+7. `docs/strategy.html` for the current V13 mechanics + V15 risk-bucket guide.
+8. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before continuing execution work.
-7. `docs/phase2_production_hardening.md` before operating watchdogs,
+9. `docs/lpfs_diagnostic_logging.md` before changing LPFS diagnostic journals,
+   trade-diagnostic reports, or live-vs-backtest analysis fields.
+10. `docs/phase2_production_hardening.md` before operating watchdogs,
    kill-switch controls, heartbeat, status checks, or Task Scheduler setup.
-8. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+11. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
-9. `docs/lpfs_icmarkets_vps_runbook.md` before IC VPS maintenance.
-10. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+12. `docs/lpfs_icmarkets_vps_runbook.md` before IC VPS maintenance.
+13. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-11. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+14. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native MQL5 EA or Strategy Tester work.
-12. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
+15. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
    performance checkpoint.
-13. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
-14. `concepts/lp_levels_lab/PROJECT_STATE.md` and
+16. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
+17. `concepts/lp_levels_lab/PROJECT_STATE.md` and
    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
    concept behavior.
 
@@ -76,12 +84,17 @@ https://codychew.github.io/TradeAutomation/
 - `concepts/lp_levels_lab`: reusable LP levels concept.
 - `concepts/force_strike_pattern_lab`: reusable raw Force Strike pattern
   concept.
+- `concepts/majority_flush_lab`: reusable LP-based displacement/flush concept.
 - `shared/market_data_lab`: MT5 candle pulls, validation, Parquet storage, and
   dataset manifests.
 - `shared/backtest_engine_lab`: strategy-neutral OHLC bracket-trade simulator.
 - `strategies/lp_force_strike_strategy_lab`: active LP + Force Strike strategy
   research, MT5 execution contract, dry-run order-check adapter, and Telegram
   notification contract.
+- `strategies/majority_flush_strategy_lab`: research-only Majority Flush V1
+  baseline with tested Python signal/trade logic, config-driven 10-year
+  backtest runner, M30/all-timeframe comparison, and dashboard. It has no
+  dry-run, live runner, MQL5 EA, scheduled task, or production runtime.
 - `mql5/lpfs_ea`: isolated native MQL5 EA migration workspace. It is
   Strategy Tester-only in v1 and must not be treated as production live
   execution. Compile and tester load/config smoke passed; full-result smoke is
@@ -94,6 +107,91 @@ Local side labs that are not part of this repo are preserved beside the repo in
 `../TradingResearchLabs/`. The active repo root should stay focused on the
 tracked TradeAutomation structure above plus ignored local artifacts such as
 `data/`, `reports/`, `venv/`, and `venv.zip`.
+
+## LPFS Live Performance And Reporting Safety
+
+The latest complete weekly LPFS analysis is:
+
+- dashboard: `docs/live_weekly_performance.html`;
+- packet: `reports/live_ops/lpfs_weekly_performance/20260523_053222`;
+- completed week: 2026-05-18 05:00 SGT to 2026-05-23 05:00 SGT;
+- FTMO: `16` closed trades, `-2.0986R`, percentile `23.6`, PF `0.7686`;
+- IC: `21` closed trades, `-2.6723R`, percentile `17.6`, PF `0.7725`.
+
+Interpretation: FTMO has three completed weeks below p30, and IC has two
+completed weeks below p30. This is enough to start research iteration, but not
+enough by itself to change live production rules or sizing. The next research
+slice should focus on H8 drag and cluster/correlation exposure. Escalate toward
+a production change if another completed week is below p30 on both lanes,
+either lane has another p10 week, H8 remains the worst timeframe next completed
+week, or the combined live sample reaches about 75-100 closed trades while
+still underperforming V22 expectations.
+
+Reporting safety: remote scans of production LPFS journals/state are
+production-adjacent. On 2026-05-23, a weekly-report collection attempt that
+opened live files without explicit `FileShare.ReadWrite` likely stopped both
+live runners. Both runners were restarted and verified healthy in
+`reports/live_ops/lpfs_dual_vps_status_20260523_140154.md`. Future report
+code must use bounded reads or shared-read streams, and any full live journal
+collection must be followed by a fresh dual-VPS status packet.
+
+Diagnostic logging state: 2026-05-23 added versioned, additive LPFS
+`diagnostics` payloads for sparse signal/order/recovery/fill/close/block rows
+and a local report builder at `scripts/build_lpfs_trade_diagnostics.py`. This
+records setup geometry, strategy parameters, market/spread context, execution
+path, retcodes/lag, and backtest join fields for future live-vs-backtest
+analysis. It does not change live strategy behavior. See
+`docs/lpfs_diagnostic_logging.md`.
+
+## Majority Flush Strategy Lane
+
+The current secondary research lane is a possible strategy based on
+`concepts/majority_flush_lab`. Use the current repo, not a copied repo, and keep
+the work under `strategies/majority_flush_strategy_lab`.
+
+Current implementation state:
+
+- `strategies/majority_flush_strategy_lab/START_HERE.md` defines the read order,
+  safety boundary, staged workflow, latest baseline result, and handoff
+  requirements.
+- `strategies/majority_flush_strategy_lab/PROJECT_STATE.md` records that the
+  V1 baseline is implemented and not live-feasible yet.
+- `strategies/majority_flush_strategy_lab/docs/majority_flush_strategy_spec.md`
+  documents the fixed V1 signal and baseline trade model.
+- `configs/strategies/majority_flush_strategy_baseline_v1.json` drives the
+  first full run.
+- `configs/strategies/majority_flush_strategy_all_timeframes_v1.json` drives
+  the M30 plus H4/H8/H12/D1/W1 comparison.
+- `scripts/run_majority_flush_baseline_experiment.py` writes report packets.
+- `scripts/build_majority_flush_strategy_dashboard.py` builds
+  `docs/majority_flush_strategy.html`.
+- `strategies/README.md` defines strategy-lab rules so future strategy work
+  does not become root-level script sprawl.
+- `docs/system_troubleshooting.md` maps the existing LPFS live runners,
+  production runtime roots, audit commands, and common troubleshooting paths.
+
+Latest full 10-year M30/all-timeframe comparison:
+
+- report:
+  `reports/strategies/majority_flush_strategy_all_timeframes/20260522_025142`;
+- dashboard: `docs/majority_flush_strategy.html`;
+- datasets: `168`, failed datasets: `0`;
+- signals: `175,295`, trades: `174,968`, skipped: `327`;
+- candidate: `next_open__flush_structure__1r`;
+- total net R: `-16,581.66`, average net R: `-0.09477`, win rate `50.29%`,
+  profit factor `0.8282`, max closed-trade drawdown `16,590.48R`;
+- dashboard decision: `reject_or_rework_baseline`.
+
+Timeframe read: `M30` was materially negative (`-16,576.46R`, PF `0.7894`) and
+should not be kept in raw V1 form. The non-M30 set remains the prior roughly
+flat result (`-5.20R`). `H8`, `H12`, `D1`, and `W1` are worth keeping for the
+next iteration; `H4` should be reworked or deprioritized unless entry-model
+tests explain the drag.
+
+The Majority Flush lane is research-only. It must not touch `LPFS_Live`,
+`LPFS_IC_Live`, `C:\TradeAutomationRuntime`, `C:\TradeAutomationRuntimeIC`,
+live MT5 orders, broker positions, LPFS journals, LPFS state files, local
+live-capable configs, or the native LPFS EA.
 
 ## Current Dataset State
 
@@ -112,7 +210,7 @@ Dataset regression gate:
 .\venv\Scripts\python scripts\verify_dataset_fingerprint.py
 ```
 
-Current result on 2026-05-19:
+Current result on 2026-05-22:
 
 - `status=OK`
 - `fingerprint_datasets=168`
@@ -130,9 +228,9 @@ Core logic regression gate:
 .\venv\Scripts\python scripts\run_core_coverage.py
 ```
 
-Current result on 2026-05-19:
+Current result on 2026-05-22:
 
-- 433 unittest cases across the scoped core labs.
+- 454 unittest cases across the scoped core labs.
 - `100.00%` line and branch coverage for the scoped core packages.
 - Scope and edge-case rules documented in `docs/testing_strategy.md`.
 

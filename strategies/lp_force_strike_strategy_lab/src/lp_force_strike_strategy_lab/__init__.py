@@ -29,6 +29,14 @@ from .execution_contract import (
     setup_signal_time_utc,
     timeframe_delta,
 )
+from .diagnostic_logging import (
+    DIAGNOSTIC_SCHEMA_VERSION,
+    build_setup_diagnostics,
+    diagnostics_from_fields,
+    enrich_diagnostics,
+    fields_with_diagnostics,
+    flatten_diagnostics,
+)
 from .execution_realism import (
     ExecutionRealismVariant,
     build_bid_ask_trade_setup,
@@ -137,6 +145,7 @@ from .live_trade_summary import (
     LPFSLiveClosedTrade,
     build_closed_trade_summaries,
     build_recent_trade_summary_message,
+    closed_trade_diagnostic_rows,
     load_live_journal_events,
 )
 from .live_gate_attribution import (
@@ -185,6 +194,7 @@ __all__ = [
     "ExecutionSafetyLimits",
     "ExecutionRealismVariant",
     "DynamicSpreadGate",
+    "DIAGNOSTIC_SCHEMA_VERSION",
     "LPForceStrikeExperimentResult",
     "LPForceStrikeSignal",
     "LPFSProximity",
@@ -240,6 +250,7 @@ __all__ = [
     "broker_time_epoch_to_utc",
     "build_market_order_request",
     "build_current_v15_candidate",
+    "build_setup_diagnostics",
     "build_mt5_order_intent",
     "build_bid_ask_trade_setup",
     "build_order_check_request",
@@ -247,6 +258,7 @@ __all__ = [
     "build_trade_setup",
     "cancel_pending_order",
     "closed_trade_drawdown_metrics",
+    "closed_trade_diagnostic_rows",
     "classify_lp_fs_proximity",
     "classify_trade_row",
     "classify_tp_near_outcome",
@@ -255,10 +267,14 @@ __all__ = [
     "default_setup_provider",
     "deliver_notification_best_effort",
     "detect_lp_force_strike_signals",
+    "diagnostics_from_fields",
     "dynamic_spread_gate",
+    "enrich_diagnostics",
     "execution_safety_from_config",
     "fetch_closed_candles",
     "filter_trade_timeframes",
+    "fields_with_diagnostics",
+    "flatten_diagnostics",
     "format_notification_message",
     "format_trader_hold_time",
     "format_trader_percent",

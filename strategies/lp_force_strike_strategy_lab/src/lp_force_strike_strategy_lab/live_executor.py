@@ -36,6 +36,12 @@ from .dry_run_executor import (
     run_order_check,
     symbol_spec_from_mt5,
 )
+from .diagnostic_logging import (
+    DIAGNOSTIC_SCHEMA_VERSION,
+    build_setup_diagnostics,
+    enrich_diagnostics,
+    fields_with_diagnostics,
+)
 from .execution_contract import (
     ExistingStrategyExposure,
     ExecutionSafetyLimits,
@@ -135,6 +141,7 @@ class LiveTrackedOrder:
     max_entry_wait_bars: int = 6
     strategy_expiry_mode: str = "bar_count"
     broker_backstop_expiration_time_utc: str | None = None
+    diagnostics: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -147,6 +154,7 @@ class LiveTrackedOrder:
         values.setdefault("max_entry_wait_bars", 6)
         values.setdefault("strategy_expiry_mode", "bar_count")
         values.setdefault("broker_backstop_expiration_time_utc", None)
+        values.setdefault("diagnostics", None)
         return cls(**values)
 
 
@@ -171,6 +179,7 @@ class LiveTrackedPosition:
     comment: str
     setup_id: str
     price_digits: int | None = None
+    diagnostics: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -179,6 +188,7 @@ class LiveTrackedPosition:
     def from_dict(cls, payload: dict[str, Any]) -> "LiveTrackedPosition":
         values = {key: payload[key] for key in cls.__dataclass_fields__ if key in payload}
         values.setdefault("price_digits", None)
+        values.setdefault("diagnostics", None)
         return cls(**values)
 
 
@@ -1095,9 +1105,12 @@ def _process_market_recovery_live_send(
     symbol_spec: MT5SymbolExecutionSpec,
     missed_entry: MissedEntryCheck,
     bar_expiry: PendingBarExpiryCheck,
-    notifier: TelegramNotifier | None,
+    setup_diagnostics: dict[str, Any] | None = None,
+    notifier: TelegramNotifier | None = None,
 ) -> LiveSetupResult:
     signal_key = signal_key_for_setup(setup)
+    if setup_diagnostics is None:
+        setup_diagnostics = build_setup_diagnostics(setup, config=config, signal_key=signal_key)
     base_fields = {
         **missed_entry.to_dict(),
         "original_entry": float(setup.entry_price),
@@ -1112,6 +1125,11 @@ def _process_market_recovery_live_send(
             signal_key,
             base_fields,
         )
+        event = _with_event_diagnostics(
+            event,
+            setup_diagnostics,
+            execution={"stage": "entry_already_touched_before_placement", "execution_path": "market_recovery"},
+        )
         next_state = _with_processed_key(state, signal_key)
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:missed_entry", event)
         return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
@@ -1122,6 +1140,11 @@ def _process_market_recovery_live_send(
             "The pullback window expired by actual MT5 bar count before market recovery.",
             signal_key,
             {**base_fields, **bar_expiry.to_dict()},
+        )
+        event = _with_event_diagnostics(
+            event,
+            setup_diagnostics,
+            execution={"stage": "pending_expired_before_market_recovery", "execution_path": "market_recovery"},
         )
         next_state = _with_processed_key(state, signal_key)
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:bar_expired", event)
@@ -1143,6 +1166,12 @@ def _process_market_recovery_live_send(
             signal_key,
             recovery_check.to_dict(),
         )
+        event = _with_event_diagnostics(
+            event,
+            setup_diagnostics,
+            market=recovery_market,
+            execution={"stage": "market_recovery_check_unavailable", "execution_path": "market_recovery"},
+        )
         next_state = _with_processed_key(state, signal_key)
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:market_recovery_unavailable", event)
         return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
@@ -1152,6 +1181,16 @@ def _process_market_recovery_live_send(
             recovery_check.detail or "Missed pending entry is not eligible for market recovery.",
             signal_key,
             recovery_check.to_dict(),
+        )
+        event = _with_event_diagnostics(
+            event,
+            setup_diagnostics,
+            market=recovery_market,
+            execution={
+                "stage": recovery_check.status,
+                "execution_path": "market_recovery",
+                "spread_risk_fraction": recovery_check.spread_risk_fraction,
+            },
         )
         retryable_statuses = {
             "market_recovery_not_better",
@@ -1185,10 +1224,26 @@ def _process_market_recovery_live_send(
             signal_key,
             recovery_check.to_dict(),
         )
+        event = _with_event_diagnostics(
+            event,
+            setup_diagnostics,
+            market=recovery_market,
+            execution={"stage": "market_recovery_intent_failed", "execution_path": "market_recovery"},
+        )
         next_state = _with_processed_key(state, signal_key)
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:market_recovery_intent", event)
         return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
 
+    intent_diagnostics = enrich_diagnostics(
+        setup_diagnostics,
+        market=recovery_market,
+        execution={
+            "stage": "market_recovery_intent_created",
+            "execution_path": "market_recovery",
+            "broker_money_risk_per_lot": risk_per_lot,
+            "spread_risk_fraction": recovery_check.spread_risk_fraction,
+        },
+    )
     append_audit_event(
         config.journal_path,
         "market_recovery_intent_created",
@@ -1196,6 +1251,8 @@ def _process_market_recovery_live_send(
         recovery_check=recovery_check.to_dict(),
         intent=intent.to_dict(),
         broker_money_risk_per_lot=risk_per_lot,
+        diagnostic_schema_version=DIAGNOSTIC_SCHEMA_VERSION,
+        diagnostics=intent_diagnostics,
     )
     processed_state = _with_processed_key(state, signal_key)
     order_check = run_market_order_check(
@@ -1212,6 +1269,17 @@ def _process_market_recovery_live_send(
                 order_check.retcode,
                 order_check.comment,
                 {"execution_type": "market_recovery", **recovery_check.to_dict()},
+            )
+            event = _with_event_diagnostics(
+                event,
+                intent_diagnostics,
+                market=recovery_market,
+                execution={
+                    "stage": "market_recovery_order_check_blocked",
+                    "execution_path": "market_recovery",
+                    "order_check_retcode": order_check.retcode,
+                    "order_check_comment": order_check.comment,
+                },
             )
             retry_state = _without_processed_key(checked_state, signal_key)
             retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:market_closed", event)
@@ -1231,6 +1299,17 @@ def _process_market_recovery_live_send(
                 "comment": order_check.comment,
                 "execution_type": "market_recovery",
                 **recovery_check.to_dict(),
+            },
+        )
+        event = _with_event_diagnostics(
+            event,
+            intent_diagnostics,
+            market=recovery_market,
+            execution={
+                "stage": "market_recovery_order_check_failed",
+                "execution_path": "market_recovery",
+                "order_check_retcode": order_check.retcode,
+                "order_check_comment": order_check.comment,
             },
         )
         checked_state = _record_event_once(config, checked_state, notifier, f"market_recovery_check_failed:{signal_key}", event)
@@ -1255,6 +1334,18 @@ def _process_market_recovery_live_send(
                     **recovery_check.to_dict(),
                 },
             )
+            event = _with_event_diagnostics(
+                event,
+                intent_diagnostics,
+                market=recovery_market,
+                execution={
+                    "stage": "market_recovery_order_send_blocked",
+                    "execution_path": "market_recovery",
+                    "order_check_retcode": order_check.retcode,
+                    "order_send_retcode": outcome.retcode,
+                    "order_send_comment": outcome.comment,
+                },
+            )
             retry_state = _without_processed_key(checked_state, signal_key)
             retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:{retry_status}", event)
             return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check, order_send=outcome)
@@ -1275,13 +1366,44 @@ def _process_market_recovery_live_send(
                 **recovery_check.to_dict(),
             },
         )
+        event = _with_event_diagnostics(
+            event,
+            intent_diagnostics,
+            market=recovery_market,
+            execution={
+                "stage": "market_recovery_order_rejected",
+                "execution_path": "market_recovery",
+                "order_check_retcode": order_check.retcode,
+                "order_send_retcode": outcome.retcode,
+                "order_send_comment": outcome.comment,
+            },
+        )
         checked_state = _record_event_once(config, checked_state, notifier, f"market_recovery_rejected:{signal_key}", event)
         return LiveSetupResult(state=checked_state, signal_key=signal_key, status="order_rejected", order_check=order_check, order_send=outcome)
 
     position = _matching_broker_position_for_intent(mt5_module, intent, config, symbol_spec)
     if position is None:
         position = _fallback_market_recovery_position(mt5_module, intent, outcome, config)
-    tracked_position = _tracked_position_from_intent(intent, position, config, price_digits=symbol_spec.digits)
+    send_diagnostics = enrich_diagnostics(
+        intent_diagnostics,
+        market=recovery_market,
+        execution={
+            "stage": "market_recovery_sent",
+            "execution_path": "market_recovery",
+            "order_check_retcode": order_check.retcode,
+            "order_check_comment": order_check.comment,
+            "order_send_retcode": outcome.retcode,
+            "order_send_comment": outcome.comment,
+            "signal_to_fill_seconds": _signal_to_event_seconds(signal_key, intent.timeframe, _position_time_utc(position, config)),
+        },
+    )
+    tracked_position = _tracked_position_from_intent(
+        intent,
+        position,
+        config,
+        price_digits=symbol_spec.digits,
+        diagnostics=send_diagnostics,
+    )
     next_state = replace(checked_state, active_positions=(*checked_state.active_positions, tracked_position))
     save_live_state(config.state_path, next_state)
     event = _market_recovery_sent_event(tracked_position, outcome, recovery_check)
@@ -1309,8 +1431,15 @@ def process_trade_setup_live_send(
     """Validate, broker-check, and send one real live setup order."""
 
     signal_key = signal_key_for_setup(setup)
+    setup_diagnostics = build_setup_diagnostics(setup, config=config, signal_key=signal_key)
     if signal_key in state.processed_signal_keys:
-        append_audit_event(config.journal_path, "signal_already_processed", signal_key=signal_key)
+        append_audit_event(
+            config.journal_path,
+            "signal_already_processed",
+            signal_key=signal_key,
+            diagnostic_schema_version=DIAGNOSTIC_SCHEMA_VERSION,
+            diagnostics=setup_diagnostics,
+        )
         return LiveSetupResult(state=state, signal_key=signal_key, status="already_processed")
 
     account = account_snapshot_from_mt5(mt5_module)
@@ -1324,6 +1453,12 @@ def process_trade_setup_live_send(
             signal_key,
             missed_entry.to_dict(),
         )
+        event = _with_event_diagnostics(
+            event,
+            setup_diagnostics,
+            market=first_market,
+            execution={"stage": "missed_entry_check_unavailable", "execution_path": "pending_limit"},
+        )
         next_state = _with_processed_key(state, signal_key)
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:missed_entry_unavailable", event)
         return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
@@ -1335,6 +1470,12 @@ def process_trade_setup_live_send(
             "Could not confirm the live pending order is still inside the actual-bar pullback window.",
             signal_key,
             bar_expiry.to_dict(),
+        )
+        event = _with_event_diagnostics(
+            event,
+            setup_diagnostics,
+            market=first_market,
+            execution={"stage": "bar_expiry_check_unavailable", "execution_path": "pending_limit"},
         )
         next_state = _with_processed_key(state, signal_key)
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:bar_expiry_unavailable", event)
@@ -1349,6 +1490,7 @@ def process_trade_setup_live_send(
             symbol_spec=symbol_spec,
             missed_entry=missed_entry,
             bar_expiry=bar_expiry,
+            setup_diagnostics=setup_diagnostics,
             notifier=notifier,
         )
 
@@ -1358,6 +1500,12 @@ def process_trade_setup_live_send(
             "The pullback window expired by actual MT5 bar count before live placement.",
             signal_key,
             bar_expiry.to_dict(),
+        )
+        event = _with_event_diagnostics(
+            event,
+            setup_diagnostics,
+            market=first_market,
+            execution={"stage": "pending_expired_before_placement", "execution_path": "pending_limit"},
         )
         next_state = _with_processed_key(state, signal_key)
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:bar_expired", event)
@@ -1371,6 +1519,13 @@ def process_trade_setup_live_send(
     )
     if not pre_spread.passed:
         event = _rejection_event("spread_too_wide", "Spread is too large versus setup risk.", signal_key, pre_spread.to_dict())
+        event = _with_event_diagnostics(
+            event,
+            setup_diagnostics,
+            market=first_market,
+            spread_gate=pre_spread,
+            execution={"stage": "pre_spread_gate", "execution_path": "pending_limit"},
+        )
         next_state = _record_event_once(config, state, notifier, f"setup_blocked:{signal_key}:spread", event)
         return LiveSetupResult(state=next_state, signal_key=signal_key, status="blocked")
 
@@ -1393,6 +1548,19 @@ def process_trade_setup_live_send(
         market=first_market,
         price_digits=symbol_spec.digits,
     )
+    decision_diagnostics = enrich_diagnostics(
+        setup_diagnostics,
+        market=first_market,
+        spread_gate=pre_spread,
+        execution={
+            "stage": "order_intent_created",
+            "execution_path": "pending_limit",
+            "decision_status": decision.status,
+            "rejection_reason": decision.rejection_reason,
+            "broker_money_risk_per_lot": risk_per_lot,
+        },
+    )
+    decision_event = _with_event_diagnostics(decision_event, decision_diagnostics)
     append_audit_event(
         config.journal_path,
         decision_event.kind,
@@ -1400,6 +1568,8 @@ def process_trade_setup_live_send(
         notification=format_notification_message(decision_event),
         decision=decision.to_dict(),
         broker_money_risk_per_lot=risk_per_lot,
+        diagnostic_schema_version=DIAGNOSTIC_SCHEMA_VERSION,
+        diagnostics=decision_diagnostics,
     )
     processed_state = _with_processed_key(state, signal_key)
     if not decision.ready or decision.intent is None:
@@ -1411,6 +1581,18 @@ def process_trade_setup_live_send(
     if not order_check.passed:
         if _is_market_closed_block(order_check.retcode, order_check.comment):
             event = _retryable_broker_block_event("market_closed", signal_key, order_check.retcode, order_check.comment)
+            event = _with_event_diagnostics(
+                event,
+                decision_diagnostics,
+                market=first_market,
+                spread_gate=pre_spread,
+                execution={
+                    "stage": "order_check_blocked",
+                    "execution_path": "pending_limit",
+                    "order_check_retcode": order_check.retcode,
+                    "order_check_comment": order_check.comment,
+                },
+            )
             retry_state = _without_processed_key(checked_state, signal_key)
             retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:market_closed", event)
             return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check)
@@ -1426,6 +1608,18 @@ def process_trade_setup_live_send(
             signal_key=signal_key,
             fields={"retcode": order_check.retcode, "comment": order_check.comment},
         )
+        event = _with_event_diagnostics(
+            event,
+            decision_diagnostics,
+            market=first_market,
+            spread_gate=pre_spread,
+            execution={
+                "stage": "order_check_failed",
+                "execution_path": "pending_limit",
+                "order_check_retcode": order_check.retcode,
+                "order_check_comment": order_check.comment,
+            },
+        )
         checked_state = _record_event_once(config, checked_state, notifier, f"order_check_failed:{signal_key}", event)
         return LiveSetupResult(state=checked_state, signal_key=signal_key, status="order_check_failed", order_check=order_check)
 
@@ -1438,11 +1632,37 @@ def process_trade_setup_live_send(
     )
     if not final_spread.passed:
         event = _rejection_event("spread_too_wide_before_send", "Spread widened before order_send.", signal_key, final_spread.to_dict())
+        event = _with_event_diagnostics(
+            event,
+            decision_diagnostics,
+            market=final_market,
+            spread_gate=final_spread,
+            execution={"stage": "final_spread_gate", "execution_path": "pending_limit"},
+        )
         retry_state = _without_processed_key(checked_state, signal_key)
         retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:final_spread", event)
         return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check)
 
-    adopted = _adopt_existing_broker_item(mt5_module, decision.intent, config=config, state=checked_state, symbol_spec=symbol_spec, notifier=notifier)
+    send_diagnostics = enrich_diagnostics(
+        decision_diagnostics,
+        market=final_market,
+        spread_gate=final_spread,
+        execution={
+            "stage": "pre_order_send",
+            "execution_path": "pending_limit",
+            "order_check_retcode": order_check.retcode,
+            "order_check_comment": order_check.comment,
+        },
+    )
+    adopted = _adopt_existing_broker_item(
+        mt5_module,
+        decision.intent,
+        config=config,
+        state=checked_state,
+        symbol_spec=symbol_spec,
+        notifier=notifier,
+        diagnostics=send_diagnostics,
+    )
     if adopted is not None:
         return adopted
 
@@ -1451,6 +1671,18 @@ def process_trade_setup_live_send(
         retry_status = _retryable_order_send_block_status(outcome)
         if retry_status is not None:
             event = _retryable_broker_block_event(retry_status, signal_key, outcome.retcode, outcome.comment)
+            event = _with_event_diagnostics(
+                event,
+                send_diagnostics,
+                market=final_market,
+                spread_gate=final_spread,
+                execution={
+                    "stage": "order_send_blocked",
+                    "execution_path": "pending_limit",
+                    "order_send_retcode": outcome.retcode,
+                    "order_send_comment": outcome.comment,
+                },
+            )
             retry_state = _without_processed_key(checked_state, signal_key)
             retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:{retry_status}", event)
             return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check, order_send=outcome)
@@ -1466,10 +1698,38 @@ def process_trade_setup_live_send(
             signal_key=signal_key,
             fields={"retcode": outcome.retcode, "comment": outcome.comment},
         )
+        event = _with_event_diagnostics(
+            event,
+            send_diagnostics,
+            market=final_market,
+            spread_gate=final_spread,
+            execution={
+                "stage": "order_rejected",
+                "execution_path": "pending_limit",
+                "order_send_retcode": outcome.retcode,
+                "order_send_comment": outcome.comment,
+            },
+        )
         checked_state = _record_event_once(config, checked_state, notifier, f"order_rejected:{signal_key}", event)
         return LiveSetupResult(state=checked_state, signal_key=signal_key, status="order_rejected", order_check=order_check, order_send=outcome)
 
-    placed = _tracked_order_from_intent(decision.intent, outcome.order_ticket, price_digits=symbol_spec.digits)
+    placed_diagnostics = enrich_diagnostics(
+        send_diagnostics,
+        market=final_market,
+        spread_gate=final_spread,
+        execution={
+            "stage": "order_sent",
+            "execution_path": "pending_limit",
+            "order_send_retcode": outcome.retcode,
+            "order_send_comment": outcome.comment,
+        },
+    )
+    placed = _tracked_order_from_intent(
+        decision.intent,
+        outcome.order_ticket,
+        price_digits=symbol_spec.digits,
+        diagnostics=placed_diagnostics,
+    )
     next_state = replace(checked_state, pending_orders=(*checked_state.pending_orders, placed))
     save_live_state(config.state_path, next_state)
     event = _order_sent_event(placed, outcome, final_spread)
@@ -1706,7 +1966,35 @@ def _record_event_once(
     return next_state
 
 
-def _tracked_order_from_intent(intent: MT5OrderIntent, order_ticket: int, *, price_digits: int | None = None) -> LiveTrackedOrder:
+def _with_event_diagnostics(
+    event: NotificationEvent,
+    diagnostics: dict[str, Any] | None,
+    *,
+    market: MT5MarketSnapshot | None = None,
+    spread_gate: DynamicSpreadGate | None = None,
+    execution: dict[str, Any] | None = None,
+) -> NotificationEvent:
+    if not diagnostics and market is None and spread_gate is None and not execution:
+        return event
+    return replace(
+        event,
+        fields=fields_with_diagnostics(
+            event.fields,
+            diagnostics,
+            market=market,
+            spread_gate=spread_gate,
+            execution=execution,
+        ),
+    )
+
+
+def _tracked_order_from_intent(
+    intent: MT5OrderIntent,
+    order_ticket: int,
+    *,
+    price_digits: int | None = None,
+    diagnostics: dict[str, Any] | None = None,
+) -> LiveTrackedOrder:
     broker_backstop = intent.broker_backstop_expiration_time_utc or intent.expiration_time_utc
     signal_time = intent.signal_time_utc
     return LiveTrackedOrder(
@@ -1732,6 +2020,7 @@ def _tracked_order_from_intent(intent: MT5OrderIntent, order_ticket: int, *, pri
         max_entry_wait_bars=intent.max_entry_wait_bars,
         strategy_expiry_mode=intent.strategy_expiry_mode,
         broker_backstop_expiration_time_utc=broker_backstop.isoformat(),
+        diagnostics=diagnostics,
     )
 
 
@@ -1767,6 +2056,26 @@ def _placement_lag_seconds(placed_time_utc: Any, signal_closed_time_utc: pd.Time
     return int(max(0, (placed - signal_closed_time_utc).total_seconds()))
 
 
+def _signal_to_event_seconds(signal_key: str, timeframe: str, event_time_utc: Any) -> int | None:
+    signal_closed = _signal_closed_time_utc(_signal_time_from_signal_key(signal_key), timeframe)
+    if signal_closed is None:
+        return None
+    try:
+        event_time = _as_utc_timestamp(event_time_utc)
+    except Exception:
+        return None
+    return int(max(0, (event_time - signal_closed).total_seconds()))
+
+
+def _seconds_between(start_utc: Any, end_utc: Any) -> int | None:
+    try:
+        start = _as_utc_timestamp(start_utc)
+        end = _as_utc_timestamp(end_utc)
+    except Exception:
+        return None
+    return int(max(0, (end - start).total_seconds()))
+
+
 def _tracked_position_from_pending(pending: LiveTrackedOrder, position: Any, config: LiveSendExecutorConfig) -> LiveTrackedPosition:
     return LiveTrackedPosition(
         signal_key=pending.signal_key,
@@ -1786,6 +2095,7 @@ def _tracked_position_from_pending(pending: LiveTrackedOrder, position: Any, con
         comment=pending.comment,
         setup_id=pending.setup_id,
         price_digits=pending.price_digits,
+        diagnostics=pending.diagnostics,
     )
 
 
@@ -1795,6 +2105,7 @@ def _tracked_position_from_intent(
     config: LiveSendExecutorConfig,
     *,
     price_digits: int | None,
+    diagnostics: dict[str, Any] | None = None,
 ) -> LiveTrackedPosition:
     position_id = _position_id(position)
     return LiveTrackedPosition(
@@ -1815,6 +2126,7 @@ def _tracked_position_from_intent(
         comment=intent.comment,
         setup_id=intent.setup_id,
         price_digits=price_digits,
+        diagnostics=diagnostics,
     )
 
 
@@ -2041,13 +2353,14 @@ def _adopt_existing_broker_item(
     state: LiveExecutorState,
     symbol_spec: MT5SymbolExecutionSpec,
     notifier: TelegramNotifier | None = None,
+    diagnostics: dict[str, Any] | None = None,
 ) -> LiveSetupResult | None:
     order = _matching_broker_order_for_intent(mt5_module, intent, config, symbol_spec)
     if order is not None:
         ticket = int(getattr(order, "ticket", 0) or 0)
         if ticket <= 0:
             return None
-        tracked = _tracked_order_from_intent(intent, ticket, price_digits=symbol_spec.digits)
+        tracked = _tracked_order_from_intent(intent, ticket, price_digits=symbol_spec.digits, diagnostics=diagnostics)
         next_state = replace(state, pending_orders=(*state.pending_orders, tracked))
         save_live_state(config.state_path, next_state)
         event = _order_adopted_event(tracked, source="pending order", broker_item=order)
@@ -2069,7 +2382,13 @@ def _adopt_existing_broker_item(
     position = _matching_broker_position_for_intent(mt5_module, intent, config, symbol_spec)
     if position is None:
         return None
-    tracked_position = _tracked_position_from_intent(intent, position, config, price_digits=symbol_spec.digits)
+    tracked_position = _tracked_position_from_intent(
+        intent,
+        position,
+        config,
+        price_digits=symbol_spec.digits,
+        diagnostics=diagnostics,
+    )
     next_state = replace(state, active_positions=(*state.active_positions, tracked_position))
     save_live_state(config.state_path, next_state)
     event = _order_adopted_event(tracked_position, source="open position", broker_item=position)
@@ -2100,17 +2419,8 @@ def _adopted_outcome(mt5_module: Any, intent: MT5OrderIntent, ticket: int, sourc
 
 
 def _order_sent_event(order: LiveTrackedOrder, outcome: LiveOrderSendOutcome, spread: DynamicSpreadGate) -> NotificationEvent:
-    return NotificationEvent(
-        kind="order_sent",
-        mode="LIVE",
-        title="Live limit order placed",
-        severity="info",
-        symbol=order.symbol,
-        timeframe=order.timeframe,
-        side=order.side,
-        status="pending",
-        signal_key=order.signal_key,
-        fields={
+    fields = fields_with_diagnostics(
+        {
             "order_ticket": order.order_ticket,
             "order_type": order.order_type,
             "entry": order.entry_price,
@@ -2130,6 +2440,26 @@ def _order_sent_event(order: LiveTrackedOrder, outcome: LiveOrderSendOutcome, sp
             "retcode": outcome.retcode,
             "comment": outcome.comment,
         },
+        order.diagnostics,
+        spread_gate=spread,
+        execution={
+            "stage": "order_sent",
+            "execution_path": "pending_limit",
+            "order_send_retcode": outcome.retcode,
+            "order_send_comment": outcome.comment,
+        },
+    )
+    return NotificationEvent(
+        kind="order_sent",
+        mode="LIVE",
+        title="Live limit order placed",
+        severity="info",
+        symbol=order.symbol,
+        timeframe=order.timeframe,
+        side=order.side,
+        status="pending",
+        signal_key=order.signal_key,
+        fields=fields,
         message="closed-candle LP + Force Strike setup, 50% pullback entry, FS structure stop, 1R target.",
     )
 
@@ -2139,17 +2469,8 @@ def _market_recovery_sent_event(
     outcome: LiveOrderSendOutcome,
     recovery_check: MarketRecoveryCheck,
 ) -> NotificationEvent:
-    return NotificationEvent(
-        kind="market_recovery_sent",
-        mode="LIVE",
-        title="Live market recovery order placed",
-        severity="info",
-        symbol=active.symbol,
-        timeframe=active.timeframe,
-        side=active.side,
-        status="open",
-        signal_key=active.signal_key,
-        fields={
+    fields = fields_with_diagnostics(
+        {
             "position_id": active.position_id,
             "order_ticket": active.order_ticket,
             "deal_ticket": outcome.deal_ticket,
@@ -2174,22 +2495,32 @@ def _market_recovery_sent_event(
             "retcode": outcome.retcode,
             "comment": outcome.comment,
         },
+        active.diagnostics,
+        execution={
+            "stage": "market_recovery_sent",
+            "execution_path": "market_recovery",
+            "order_send_retcode": outcome.retcode,
+            "order_send_comment": outcome.comment,
+        },
+    )
+    return NotificationEvent(
+        kind="market_recovery_sent",
+        mode="LIVE",
+        title="Live market recovery order placed",
+        severity="info",
+        symbol=active.symbol,
+        timeframe=active.timeframe,
+        side=active.side,
+        status="open",
+        signal_key=active.signal_key,
+        fields=fields,
         message="Missed pending touch recovered with better-than-entry executable price, original structure stop, and recalculated 1R target.",
     )
 
 
 def _order_adopted_event(item: LiveTrackedOrder | LiveTrackedPosition, *, source: str, broker_item: Any) -> NotificationEvent:
-    return NotificationEvent(
-        kind="order_adopted",
-        mode="LIVE",
-        title="Existing live order adopted",
-        severity="warning",
-        symbol=item.symbol,
-        timeframe=item.timeframe,
-        side=item.side,
-        status="adopted",
-        signal_key=item.signal_key,
-        fields={
+    fields = fields_with_diagnostics(
+        {
             "adoption_source": source,
             "order_ticket": item.order_ticket,
             "position_id": getattr(item, "position_id", None),
@@ -2203,22 +2534,27 @@ def _order_adopted_event(item: LiveTrackedOrder | LiveTrackedPosition, *, source
             "price_digits": item.price_digits,
             "broker_comment": str(getattr(broker_item, "comment", "") or ""),
         },
+        item.diagnostics,
+        execution={"stage": "order_adopted", "execution_path": "adopted_existing_broker_item"},
+    )
+    return NotificationEvent(
+        kind="order_adopted",
+        mode="LIVE",
+        title="Existing live order adopted",
+        severity="warning",
+        symbol=item.symbol,
+        timeframe=item.timeframe,
+        side=item.side,
+        status="adopted",
+        signal_key=item.signal_key,
+        fields=fields,
         message=f"Existing MT5 {source} matched this LPFS setup; no new order sent.",
     )
 
 
 def _position_opened_event(active: LiveTrackedPosition, position: Any) -> NotificationEvent:
-    return NotificationEvent(
-        kind="position_opened",
-        mode="LIVE",
-        title="Live limit order filled",
-        severity="info",
-        symbol=active.symbol,
-        timeframe=active.timeframe,
-        side=active.side,
-        status="open",
-        signal_key=active.signal_key,
-        fields={
+    fields = fields_with_diagnostics(
+        {
             "position_id": active.position_id,
             "order_ticket": active.order_ticket,
             "fill_price": active.entry_price,
@@ -2231,6 +2567,24 @@ def _position_opened_event(active: LiveTrackedPosition, position: Any) -> Notifi
             "price_digits": active.price_digits,
             "broker_comment": str(getattr(position, "comment", "") or ""),
         },
+        active.diagnostics,
+        execution={
+            "stage": "position_opened",
+            "execution_path": "pending_limit",
+            "signal_to_fill_seconds": _signal_to_event_seconds(active.signal_key, active.timeframe, active.opened_time_utc),
+        },
+    )
+    return NotificationEvent(
+        kind="position_opened",
+        mode="LIVE",
+        title="Live limit order filled",
+        severity="info",
+        symbol=active.symbol,
+        timeframe=active.timeframe,
+        side=active.side,
+        status="open",
+        signal_key=active.signal_key,
+        fields=fields,
     )
 
 
@@ -2245,21 +2599,19 @@ def _close_event(active: LiveTrackedPosition, close: LiveCloseEvent) -> Notifica
         kind = "stop_loss_hit"
     else:
         kind = "position_closed"
-    return NotificationEvent(
-        kind=kind,
-        mode="LIVE",
-        title={
-            "take_profit_hit": "Take profit hit",
-            "stop_loss_hit": "Stop loss hit",
-            "position_closed": "Position closed",
-        }[kind],
-        severity="warning" if kind == "stop_loss_hit" else "info",
-        symbol=active.symbol,
-        timeframe=active.timeframe,
-        side=active.side,
-        status=close.close_reason,
-        signal_key=active.signal_key,
-        fields={
+    prior_execution = (active.diagnostics or {}).get("execution", {}) if isinstance(active.diagnostics, dict) else {}
+    execution_path = "market_recovery" if prior_execution.get("execution_path") == "market_recovery" else "pending_limit"
+    close_diagnostics = enrich_diagnostics(
+        active.diagnostics,
+        execution={
+            "stage": kind,
+            "execution_path": execution_path,
+            "fill_to_close_seconds": _seconds_between(active.opened_time_utc, close.close_time_utc),
+            "close_reason": close.close_reason,
+        },
+    )
+    fields = fields_with_diagnostics(
+        {
             "position_id": active.position_id,
             "deal_ticket": close.ticket,
             "entry": active.entry_price,
@@ -2275,6 +2627,23 @@ def _close_event(active: LiveTrackedPosition, close: LiveCloseEvent) -> Notifica
             "broker_comment": close.close_comment,
             "close_reason": close.close_reason,
         },
+        close_diagnostics,
+    )
+    return NotificationEvent(
+        kind=kind,
+        mode="LIVE",
+        title={
+            "take_profit_hit": "Take profit hit",
+            "stop_loss_hit": "Stop loss hit",
+            "position_closed": "Position closed",
+        }[kind],
+        severity="warning" if kind == "stop_loss_hit" else "info",
+        symbol=active.symbol,
+        timeframe=active.timeframe,
+        side=active.side,
+        status=close.close_reason,
+        signal_key=active.signal_key,
+        fields=fields,
     )
 
 
@@ -2293,6 +2662,11 @@ def _pending_cancelled_event(
     }
     if expiry_check is not None:
         fields.update(expiry_check.to_dict())
+    fields = fields_with_diagnostics(
+        fields,
+        order.diagnostics,
+        execution={"stage": "pending_expired" if expired else "pending_cancelled", "execution_path": "pending_limit"},
+    )
     return NotificationEvent(
         kind="pending_expired" if expired else "pending_cancelled",
         mode="LIVE",
@@ -2309,6 +2683,15 @@ def _pending_cancelled_event(
 
 def _pending_missing_event(order: LiveTrackedOrder, *, history_order: Any | None = None) -> NotificationEvent:
     status = "missing" if history_order is None else "history"
+    fields = fields_with_diagnostics(
+        {
+            "order_ticket": order.order_ticket,
+            "price_digits": order.price_digits,
+            "broker_comment": "" if history_order is None else str(getattr(history_order, "comment", "") or ""),
+        },
+        order.diagnostics,
+        execution={"stage": "pending_missing", "execution_path": "pending_limit"},
+    )
     return NotificationEvent(
         kind="pending_cancelled",
         mode="LIVE",
@@ -2319,11 +2702,7 @@ def _pending_missing_event(order: LiveTrackedOrder, *, history_order: Any | None
         side=order.side,
         status=status,
         signal_key=order.signal_key,
-        fields={
-            "order_ticket": order.order_ticket,
-            "price_digits": order.price_digits,
-            "broker_comment": "" if history_order is None else str(getattr(history_order, "comment", "") or ""),
-        },
+        fields=fields,
     )
 
 

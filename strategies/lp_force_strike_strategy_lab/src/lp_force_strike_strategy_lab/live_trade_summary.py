@@ -10,6 +10,7 @@ from typing import Any, Sequence
 
 import pandas as pd
 
+from .diagnostic_logging import diagnostics_from_fields, flatten_diagnostics
 from .notifications import (
     format_trader_hold_time,
     format_trader_price,
@@ -39,6 +40,7 @@ class LPFSLiveClosedTrade:
     closed_utc: str | None
     signal_key: str
     price_digits: int | None = None
+    diagnostics: dict[str, Any] | None = None
 
 
 def load_live_journal_events(path: str | Path) -> list[dict[str, Any]]:
@@ -88,6 +90,7 @@ def build_closed_trade_summaries(events: Sequence[dict[str, Any]]) -> list[LPFSL
         opened_fields = dict(opened.get("fields", {}) or {})
         order = orders_by_ticket.get(_safe_int(opened_fields.get("order_ticket")) or -1, {})
         order_fields = dict(order.get("fields", {}) or {})
+        diagnostics = _first_diagnostics(fields, opened_fields, order_fields)
 
         symbol = str(event.get("symbol") or opened.get("symbol") or order.get("symbol") or _signal_part(event, 1) or "")
         timeframe = str(event.get("timeframe") or opened.get("timeframe") or order.get("timeframe") or _signal_part(event, 2) or "")
@@ -115,6 +118,7 @@ def build_closed_trade_summaries(events: Sequence[dict[str, Any]]) -> list[LPFSL
                 closed_utc=_first_text(fields.get("closed_utc")),
                 signal_key=str(event.get("signal_key") or opened.get("signal_key") or order.get("signal_key") or ""),
                 price_digits=price_digits,
+                diagnostics=diagnostics or None,
             )
         )
 
@@ -373,6 +377,50 @@ def _safe_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _first_diagnostics(*field_payloads: dict[str, Any]) -> dict[str, Any]:
+    for fields in field_payloads:
+        diagnostics = diagnostics_from_fields(fields)
+        if diagnostics:
+            return diagnostics
+    return {}
+
+
+def closed_trade_diagnostic_rows(
+    events: Sequence[dict[str, Any]],
+    *,
+    lane: str = "",
+) -> list[dict[str, Any]]:
+    """Return one flattened diagnostic row per closed trade.
+
+    Older journals that predate diagnostic payloads still produce rows with the
+    result fields populated and diagnostic columns omitted.
+    """
+
+    rows: list[dict[str, Any]] = []
+    for trade in build_closed_trade_summaries(events):
+        base = {
+            "lane": lane,
+            "symbol": trade.symbol,
+            "timeframe": trade.timeframe,
+            "side": trade.side,
+            "close_kind": trade.close_kind,
+            "position_id": trade.position_id,
+            "deal_ticket": trade.deal_ticket,
+            "entry_price": trade.entry_price,
+            "close_price": trade.close_price,
+            "volume": trade.volume,
+            "close_profit": trade.close_profit,
+            "r_result": trade.r_result,
+            "opened_utc": trade.opened_utc,
+            "closed_utc": trade.closed_utc,
+            "signal_key": trade.signal_key,
+            "price_digits": trade.price_digits,
+        }
+        base.update(flatten_diagnostics(trade.diagnostics or {}))
+        rows.append(base)
+    return rows
 
 
 def _safe_int(value: Any) -> int | None:

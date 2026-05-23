@@ -900,6 +900,8 @@ class DryRunExecutorTests(unittest.TestCase):
             self.assertIn("LPFS DRY RUN - BROKER CHECK", ready_client.payloads[0]["text"])
             rows = _journal_rows(Path(config.journal_path))
             self.assertEqual(rows[0]["event"], "signal_detected")
+            self.assertEqual(rows[0]["diagnostic_schema_version"], 1)
+            self.assertEqual(rows[0]["notification_event"]["fields"]["diagnostics"]["setup"]["setup_id"], "EURUSD_H4_long")
             self.assertIn("market_snapshot", [row["event"] for row in rows])
             self.assertIn("order_intent_created", [row["event"] for row in rows])
             self.assertIn("order_check_passed", [row["event"] for row in rows])

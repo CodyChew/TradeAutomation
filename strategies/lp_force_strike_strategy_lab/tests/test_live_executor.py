@@ -1414,6 +1414,13 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(event_fields["latest_closed_candle_time_utc"], "2026-01-01T04:00:00+00:00")
             self.assertIn("placed_time_utc", event_fields)
             self.assertGreaterEqual(event_fields["placement_lag_seconds"], 0)
+            self.assertEqual(event_fields["diagnostic_schema_version"], 1)
+            diagnostics = event_fields["diagnostics"]
+            self.assertEqual(diagnostics["setup"]["setup_id"], "EURUSD_H4_long")
+            self.assertAlmostEqual(diagnostics["setup"]["risk_distance"], 0.005)
+            self.assertEqual(diagnostics["strategy"]["pivot_strength"], 3)
+            self.assertEqual(diagnostics["backtest_join"]["candidate_id"], "signal_zone_0p5_pullback__fs_structure__1r")
+            self.assertEqual(diagnostics["execution"]["execution_path"], "pending_limit")
             self.assertEqual(journal_row["telegram_message_id"], 1)
 
             duplicate = process_trade_setup_live_send(mt5, _setup(), config=config, state=result.state)
@@ -1604,8 +1611,12 @@ class LiveExecutorTests(unittest.TestCase):
             rows = [json.loads(line) for line in Path(config.journal_path).read_text(encoding="utf-8").splitlines()]
             self.assertEqual(rows[-1]["event"], "market_recovery_sent")
             self.assertEqual(rows[-1]["notification_event"]["fields"]["deal_ticket"], 9201)
+            recovery_diagnostics = rows[-1]["notification_event"]["fields"]["diagnostics"]
+            self.assertEqual(recovery_diagnostics["execution"]["execution_path"], "market_recovery")
+            self.assertEqual(recovery_diagnostics["setup"]["setup_id"], "EURUSD_H4_long")
             loaded = load_live_state(config.state_path)
             self.assertEqual(len(loaded.active_positions), 1)
+            self.assertEqual(loaded.active_positions[0].diagnostics["execution"]["execution_path"], "market_recovery")
 
     def test_process_live_setup_market_recovery_blocks_and_rejects_edge_paths(self) -> None:
         def recoverable_mt5() -> FakeMT5:

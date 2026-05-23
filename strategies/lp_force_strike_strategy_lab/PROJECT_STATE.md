@@ -1,8 +1,8 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-09 after refreshing weekly performance status,
-fast-forwarding both VPS checkouts to the latest docs/reporting commit, and
-verifying both live runners remained operational.
+Last updated: 2026-05-23 after the weekly live-performance analysis,
+reporting incident, runner recovery, diagnostic-logging upgrade, and
+journal-read safety update.
 
 ## Purpose
 
@@ -31,6 +31,11 @@ patterns. It now has these layers:
   at `../../docs/live_weekly_performance.html`, with timestamped packets under
   `../../reports/live_ops/lpfs_weekly_performance`. It is not yet a
   week-over-week trend chart.
+- diagnostic logging/reporting: additive versioned `diagnostics` payloads on
+  sparse signal/order/recovery/fill/close/block rows, documented at
+  `../../docs/lpfs_diagnostic_logging.md`, plus local report builder
+  `../../scripts/build_lpfs_trade_diagnostics.py`. This is logging-only and
+  does not alter strategy behavior.
 
 It now includes a combined TradingView visual indicator for LPFS chart review
 and alerts at `tradingview/lp_force_strike.pine`. V10-V13 add portfolio-style
@@ -68,6 +73,47 @@ Canonical LPFS restart file:
 `START_HERE.md`. Future AI agents should read it immediately after
 `SESSION_HANDOFF.md` to get the source-of-truth map, environment boundaries,
 VPS first commands, live-run safety rules, and resume prompts.
+
+## 2026-05-23 Live Weekly Performance And Reporting Incident
+
+Latest complete weekly analysis:
+
+- dashboard: `../../docs/live_weekly_performance.html`;
+- packet: `../../reports/live_ops/lpfs_weekly_performance/20260523_053222`;
+- week: 2026-05-18 05:00 SGT to 2026-05-23 05:00 SGT;
+- FTMO: `16` closed trades, `-2.0986R`, p23.6, PF `0.7686`, worst timeframe
+  `H8 -2.03R`;
+- IC: `21` closed trades, `-2.6723R`, p17.6, PF `0.7725`, worst timeframe
+  `H8 -4.99R`.
+
+Interpretation: this is a cause for research iteration, not a standalone live
+production change. FTMO has three completed weeks below p30, and IC has two
+completed weeks below p30. Start with H8 drag and cluster/correlation exposure.
+Escalate toward live-rule or sizing changes only after another completed week
+below p30 on both lanes, another p10 week on either lane, repeated H8
+underperformance next week, or a live sample around 75-100 closed trades that
+still underperforms V22 expectations.
+
+Operational incident: during this analysis, an unsafe remote report scan opened
+production journal/state files without explicit `FileShare.ReadWrite` and both
+live runners were later found stopped. FTMO `LPFS_Live` and IC `LPFS_IC_Live`
+were restarted and verified healthy in
+`../../reports/live_ops/lpfs_dual_vps_status_20260523_140154.md`: both tasks
+`Running`, fresh `running` heartbeats, kill switches clear, MT5 connected/trade
+allowed, and `6` pending / `5` active strategy items on each lane.
+
+Future live report code must use bounded status reads or stream live files with
+`FileShare.ReadWrite`. Do not run the full weekly collector against production
+journals again without explicit operator approval, and always follow any live
+journal/state collection with a fresh dual-VPS status packet.
+
+Diagnostic logging upgrade: this session added `diagnostics.schema_version=1`
+payloads so future analysis can decide whether live underperformance comes from
+setup quality, H8/timeframe concentration, spread/execution path, recovery
+behavior, or sample variance. The fields are additive and only appear in
+production after a deliberate VPS pull and runner restart. Do not change live
+heuristics until the enriched rows are compared with the 10-year
+commission-adjusted backtest and a separate strategy-change plan is approved.
 
 Future PnL backtests should load candles through
 `../../shared/market_data_lab` so this strategy uses the same broker data and
