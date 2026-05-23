@@ -1,8 +1,8 @@
 # TradeAutomation Session Handoff
 
 Last updated: 2026-05-23 after the LPFS weekly performance analysis,
-report-generation incident, runner recovery, diagnostic-logging upgrade, and
-safety handoff refresh.
+report-generation incident, runner recovery, diagnostic-logging upgrade,
+logging-only production deploy, and safety handoff refresh.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -56,8 +56,18 @@ file, and the JSONL journal before making operational decisions.
   `docs/lpfs_diagnostic_logging.md`. This upgrade logs setup geometry,
   strategy parameters, execution path, spread/market context, and backtest join
   fields on sparse lifecycle rows only. It does not change live strategy rules
-  or MT5 order behavior, and it still requires an intentional runner restart on
-  each VPS before the new logging appears in production journals.
+  or MT5 order behavior.
+- 2026-05-23 diagnostic logging deploy: commit `09fbb10` (`lpfs: add
+  diagnostic trade logging and safe reporting`) was pushed to `main`, pulled on
+  FTMO and IC with a kill-switch-first sequence, and both scheduled tasks were
+  restarted deliberately. Final packet:
+  `reports/live_ops/lpfs_dual_vps_status_20260523_153510.md`. Both lanes were
+  `Running`, kill switches clear, heartbeats fresh, MT5 connected/trade
+  allowed, broker/state counts reconciled at `6` pending orders and `5` active
+  positions each, and first post-deploy diagnostic signal rows were observed
+  with `diagnostic_schema_version=1` plus `diagnostics`. This was logging-only;
+  entries, exits, sizing, timeframe mix, spread gates, and recovery behavior
+  were unchanged.
 - 2026-05-12 live execution note: IC skipped a 01:00 SGT `EURUSD H4 SHORT`
   because the local execution contract rejected `bid == ask` (`1.17742` /
   `1.17742`) as `invalid_market`, while FTMO placed the matching order. This

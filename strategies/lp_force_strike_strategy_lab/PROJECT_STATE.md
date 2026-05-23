@@ -1,8 +1,8 @@
 # LP Force Strike Strategy Lab Project State
 
 Last updated: 2026-05-23 after the weekly live-performance analysis,
-reporting incident, runner recovery, diagnostic-logging upgrade, and
-journal-read safety update.
+reporting incident, runner recovery, diagnostic-logging upgrade, logging-only
+production deploy, and journal-read safety update.
 
 ## Purpose
 
@@ -110,10 +110,16 @@ journal/state collection with a fresh dual-VPS status packet.
 Diagnostic logging upgrade: this session added `diagnostics.schema_version=1`
 payloads so future analysis can decide whether live underperformance comes from
 setup quality, H8/timeframe concentration, spread/execution path, recovery
-behavior, or sample variance. The fields are additive and only appear in
-production after a deliberate VPS pull and runner restart. Do not change live
-heuristics until the enriched rows are compared with the 10-year
-commission-adjusted backtest and a separate strategy-change plan is approved.
+behavior, or sample variance. The fields are additive and were deployed as
+logging-only commit `09fbb10` with a deliberate VPS pull and runner restart on
+both FTMO and IC. Final deploy packet:
+`../../reports/live_ops/lpfs_dual_vps_status_20260523_153510.md`; both lanes
+were running, kill switches clear, MT5 trade allowed, and `6` pending / `5`
+active strategy items each. First post-deploy diagnostic signal rows were
+observed on both journals with `diagnostic_schema_version=1` plus
+`diagnostics`. Do not change live heuristics until the enriched rows are
+compared with the 10-year commission-adjusted backtest and a separate
+strategy-change plan is approved.
 
 Future PnL backtests should load candles through
 `../../shared/market_data_lab` so this strategy uses the same broker data and

@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-23 after the LPFS weekly performance analysis,
 report-generation incident, live-runner recovery, diagnostic-logging upgrade,
-and continuity refresh.
+logging-only production deploy, and continuity refresh.
 
 ## Purpose
 
@@ -28,13 +28,16 @@ source of truth for strategy research and live execution work.
 - The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
   SSH key entries were removed from both VPSes.
 - Latest verified dual-VPS live check from this PC was on 2026-05-23 after the
-  weekly-report incident and runner restart: both FTMO and IC were clean on
-  `main...origin/main` at `32a71d9`, had running parent/child Python runner
-  shape, fresh `running` heartbeat, kill switches clear, MT5 connected and
-  trade allowed, and broker order/position counts matching state. The ignored
-  packet is `reports/live_ops/lpfs_dual_vps_status_20260523_140154.md`.
-  FTMO had `6` strategy pending orders and `5` active strategy positions; IC
-  had `6` strategy pending orders and `5` active strategy positions.
+  logging-only diagnostic deploy: both FTMO and IC were clean on
+  `main...origin/main` at commit `09fbb10`, had running parent/child Python
+  runner shape, fresh `running` heartbeats, kill switches clear, MT5 connected
+  and trade allowed, and broker order/position counts matching state. The
+  ignored packet is
+  `reports/live_ops/lpfs_dual_vps_status_20260523_153510.md`. FTMO had `6`
+  strategy pending orders and `5` active strategy positions; IC had `6`
+  strategy pending orders and `5` active strategy positions. First post-deploy
+  diagnostic signal rows were observed on both journals with
+  `diagnostic_schema_version=1` plus `diagnostics`.
 - Phone RDP over Tailscale was verified for both VPSes. If a `VPS STARTED`
   Telegram arrives, log in once as local `Administrator`, wait for MT5/runner,
   then disconnect. Do not sign out.
@@ -141,7 +144,10 @@ and a local report builder at `scripts/build_lpfs_trade_diagnostics.py`. This
 records setup geometry, strategy parameters, market/spread context, execution
 path, retcodes/lag, and backtest join fields for future live-vs-backtest
 analysis. It does not change live strategy behavior. See
-`docs/lpfs_diagnostic_logging.md`.
+`docs/lpfs_diagnostic_logging.md`. Production deploy commit: `09fbb10`;
+final status packet:
+`reports/live_ops/lpfs_dual_vps_status_20260523_153510.md`; first diagnostic
+rows were observed on post-deploy signal lifecycle rows for both FTMO and IC.
 
 ## Majority Flush Strategy Lane
 

@@ -1,8 +1,8 @@
 # LPFS Start Here
 
 Last updated: 2026-05-23 after weekly live-performance analysis, reporting
-incident recovery, diagnostic-logging upgrade, and journal-read safety
-documentation.
+incident recovery, diagnostic-logging upgrade, logging-only production deploy,
+and journal-read safety documentation.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -75,8 +75,13 @@ operational decisions.
   to sparse signal/order/recovery/fill/close/block journal rows and a local
   report builder at `scripts/build_lpfs_trade_diagnostics.py`. This is
   logging/reporting only; it does not change entries, exits, sizing, timeframe
-  mix, spread gates, or market recovery behavior. Production journals only
-  show the new fields after an intentional VPS pull and runner restart.
+  mix, spread gates, or market recovery behavior. It was deployed to production
+  as commit `09fbb10` with deliberate kill-switch-first restarts on FTMO and
+  IC. Final packet:
+  `reports/live_ops/lpfs_dual_vps_status_20260523_153510.md`; both lanes were
+  running, kill switches clear, MT5 trade allowed, and first post-deploy
+  diagnostic signal rows were observed with `diagnostic_schema_version=1` plus
+  `diagnostics`.
 - Production host: Amazon Lightsail Windows VPS.
 - Preferred remote access: Tailscale + OpenSSH using local aliases `lpfs-vps`
   and `lpfs-ic-vps`; use Tailscale RDP to the `100.x` VPS addresses when MT5
