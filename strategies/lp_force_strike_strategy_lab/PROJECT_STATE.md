@@ -1,8 +1,9 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-23 after the weekly live-performance analysis,
+Last updated: 2026-05-26 after the weekly live-performance analysis,
 reporting incident, runner recovery, diagnostic-logging upgrade, logging-only
-production deploy, and journal-read safety update.
+production deploy, journal-read safety update, and offline diagnostic-report
+iteration policy.
 
 ## Purpose
 
@@ -34,8 +35,9 @@ patterns. It now has these layers:
 - diagnostic logging/reporting: additive versioned `diagnostics` payloads on
   sparse signal/order/recovery/fill/close/block rows, documented at
   `../../docs/lpfs_diagnostic_logging.md`, plus local report builder
-  `../../scripts/build_lpfs_trade_diagnostics.py`. This is logging-only and
-  does not alter strategy behavior.
+  `../../scripts/build_lpfs_trade_diagnostics.py`. This is logging/reporting
+  only and does not alter strategy behavior. Derived indicators are computed
+  offline from copied journals, benchmark CSVs, and local candle datasets.
 
 It now includes a combined TradingView visual indicator for LPFS chart review
 and alerts at `tradingview/lp_force_strike.pine`. V10-V13 add portfolio-style
@@ -86,13 +88,13 @@ Latest complete weekly analysis:
 - IC: `21` closed trades, `-2.6723R`, p17.6, PF `0.7725`, worst timeframe
   `H8 -4.99R`.
 
-Interpretation: this is a cause for research iteration, not a standalone live
-production change. FTMO has three completed weeks below p30, and IC has two
-completed weeks below p30. Start with H8 drag and cluster/correlation exposure.
-Escalate toward live-rule or sizing changes only after another completed week
-below p30 on both lanes, another p10 week on either lane, repeated H8
-underperformance next week, or a live sample around 75-100 closed trades that
-still underperforms V22 expectations.
+Interpretation: this is a cause for monitoring and diagnostic investigation,
+not a standalone live production change. FTMO has three completed weeks below
+p30, and IC has two completed weeks below p30. H8 is not a selected change
+candidate; it remains an example bucket unless enriched diagnostics prove a
+persistent cross-lane issue. Escalate toward candidate research only when the
+same timeframe/setup/regime weakness appears on both lanes and survives
+recent-window plus full-history backtest checks.
 
 Operational incident: during this analysis, an unsafe remote report scan opened
 production journal/state files without explicit `FileShare.ReadWrite` and both
@@ -109,8 +111,9 @@ journal/state collection with a fresh dual-VPS status packet.
 
 Diagnostic logging upgrade: this session added `diagnostics.schema_version=1`
 payloads so future analysis can decide whether live underperformance comes from
-setup quality, H8/timeframe concentration, spread/execution path, recovery
-behavior, or sample variance. The fields are additive and were deployed as
+setup quality, timeframe concentration, spread/execution path, recovery
+behavior, broker/feed divergence, or sample variance. The fields are additive
+and were deployed as
 logging-only commit `09fbb10` with a deliberate VPS pull and runner restart on
 both FTMO and IC. Final deploy packet:
 `../../reports/live_ops/lpfs_dual_vps_status_20260523_153510.md`; both lanes
@@ -118,7 +121,8 @@ were running, kill switches clear, MT5 trade allowed, and `6` pending / `5`
 active strategy items each. First post-deploy diagnostic signal rows were
 observed on both journals with `diagnostic_schema_version=1` plus
 `diagnostics`. Do not change live heuristics until the enriched rows are
-compared with the 10-year commission-adjusted backtest and a separate
+compared with recent 3/6/12 month benchmark windows, checked against the
+10-year commission-adjusted FTMO and IC backtests, and a separate
 strategy-change plan is approved.
 
 Future PnL backtests should load candles through
@@ -1921,3 +1925,28 @@ portfolio analytics are research-only closed-trade R simulations. V14 and V15
 add account-risk sizing. The execution contract defines broker-facing intent
 and rejection rules. The live-send adapter is real-order capable only through
 explicit ignored local config; dry-run remains order-check only.
+
+## 2026-05-26 Diagnostic Reporting Iteration Policy
+
+The current LPFS strategy-review goal is evidence collection and offline
+analysis, not a live heuristic change. H8 was discussed only as an example; it
+is not a selected change candidate. Any future timeframe-specific heuristic
+must be evidence-gated with FTMO/IC confluence, recent-window support, and
+full-history backtest guardrails.
+
+The local diagnostic report builder now owns the analysis workflow:
+
+- enrich copied live journal closed trades and benchmark backtest rows with
+  offline session/hour/weekday, setup bucket, recent-window, candle RSI,
+  momentum, ATR/volatility, tick-volume, spread-regime, and confluence fields;
+- emphasize recent 3, 6, and 12 month benchmark windows while keeping the
+  10-year FTMO and IC backtests as robustness guardrails;
+- compare timeframes as separate populations so higher-frequency signals do
+  not drown out sparse W1-style evidence;
+- classify single-lane weakness as broker/feed/execution review before
+  treating it as a strategy defect.
+
+Live runner CPU usage should remain unchanged for this work. Do not add
+indicator or percentile calculations to the live loop. Strategy changes remain
+a separate approval and deployment step after enriched evidence supports a
+small reversible defensive or constructive candidate.

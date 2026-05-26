@@ -1,8 +1,9 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-23 after the LPFS weekly performance analysis,
+Last updated: 2026-05-26 after the LPFS weekly performance analysis,
 report-generation incident, runner recovery, diagnostic-logging upgrade,
-logging-only production deploy, and safety handoff refresh.
+logging-only production deploy, safety handoff refresh, and offline
+diagnostic-report iteration policy.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -24,22 +25,25 @@ file, and the JSONL journal before making operational decisions.
    `docs/dry_run_executor.md` before touching execution code.
 8. `docs/lpfs_diagnostic_logging.md` before changing LPFS journals,
    diagnostic reports, or live-vs-backtest analysis fields.
-9. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
-10. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
+9. `docs/lpfs_strategy_iteration_context.md` for the current evidence-gated
+   strategy-iteration objective, scope, workflow, blockers, and fresh-chat
+   handoff.
+10. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
+11. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
    performance monitor, live start timestamps, version context, and
    backtest-distribution comparison.
-11. `docs/phase2_production_hardening.md` before operating the watchdog, kill
+12. `docs/phase2_production_hardening.md` before operating the watchdog, kill
    switch, heartbeat, status command, or Task Scheduler setup.
-12. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+13. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
-13. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+14. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
    IC Markets production runner.
-14. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+15. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-15. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+16. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
    buckets or income expectations. It is linked from the dashboard top
    navigation and the Home page FTMO Profiles section.
-16. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+17. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native EA or Strategy Tester work.
 
 ## AI Agent Continuity Rules
@@ -57,6 +61,13 @@ file, and the JSONL journal before making operational decisions.
   strategy parameters, execution path, spread/market context, and backtest join
   fields on sparse lifecycle rows only. It does not change live strategy rules
   or MT5 order behavior.
+- 2026-05-26 diagnostic reporting policy: the next LPFS strategy-review pass is
+  offline reporting only. Use copied journals, benchmark trade CSVs, and local
+  candle datasets to add session/hour/weekday, setup buckets, recent 3/6/12
+  month windows, candle RSI/momentum/ATR/volume/spread regimes, and FTMO/IC
+  confluence views. Do not add these calculations to the live runner loop.
+  H8 is not a selected change candidate; it remains an example unless enriched
+  evidence proves a persistent cross-lane issue.
 - 2026-05-23 diagnostic logging deploy: commit `09fbb10` (`lpfs: add
   diagnostic trade logging and safe reporting`) was pushed to `main`, pulled on
   FTMO and IC with a kill-switch-first sequence, and both scheduled tasks were
@@ -211,15 +222,17 @@ Weekly performance read:
 - Completed-week trend: FTMO has three completed weeks below p30
   (`10.5`, `5.9`, `23.6` percentiles). IC has two completed weeks below p30
   (`23.9`, `17.6` percentiles). This is not an emergency stop signal by
-  itself, but it is enough to start strategy research iteration now.
+  itself, but it is enough to monitor and investigate with enriched diagnostics.
 - Production-change threshold: do not alter live strategy from this sample
-  alone. Escalate toward a production iteration if another completed week is
-  below p30 on both lanes, either lane prints another p10 week, H8 remains the
-  worst timeframe next completed week, or the live sample reaches about
-  75-100 closed trades while still underperforming V22 expectations.
-- Research priority: analyze H8 drag plus cluster/correlation exposure. Test
-  H8 downweighting/filtering, session/spread regime filters, and max correlated
-  exposure before proposing any live rule or sizing change.
+  alone. Two weak weeks can justify monitoring/investigation if both lanes show
+  the same issue; three to four weak weeks can justify candidate research if
+  the same timeframe/setup/regime repeatedly underperforms. Any production
+  change still requires FTMO/IC confluence, recent-window improvement, and no
+  unacceptable degradation in the full 10-year benchmark.
+- Research priority: build and inspect the offline diagnostic trade report.
+  Consider both defensive and constructive candidates only after evidence
+  identifies the cause: filters/exposure reductions, or improvements to entry,
+  exit, stop/risk-distance, recovery, or regime-aware handling.
 
 ## 2026-05-22 Majority Flush V1 And M30 Comparison
 

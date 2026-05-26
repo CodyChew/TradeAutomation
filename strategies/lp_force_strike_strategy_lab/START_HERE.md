@@ -1,8 +1,9 @@
 # LPFS Start Here
 
-Last updated: 2026-05-23 after weekly live-performance analysis, reporting
+Last updated: 2026-05-26 after weekly live-performance analysis, reporting
 incident recovery, diagnostic-logging upgrade, logging-only production deploy,
-and journal-read safety documentation.
+journal-read safety documentation, and offline diagnostic-report iteration
+policy.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -62,9 +63,10 @@ operational decisions.
   `reports/live_ops/lpfs_weekly_performance/20260523_053222` covers the
   completed week from 2026-05-18 05:00 SGT to 2026-05-23 05:00 SGT. FTMO was
   `-2.10R` at p23.6; IC was `-2.67R` at p17.6. FTMO has three completed weeks
-  below p30, and IC has two completed weeks below p30. Start research
-  iteration on H8 drag and cluster/correlation exposure, but do not change
-  live strategy rules from this sample alone.
+  below p30, and IC has two completed weeks below p30. Treat this as a
+  monitor/investigate signal only; H8 is not a selected change candidate unless
+  future enriched diagnostics prove a persistent cross-lane issue. Do not
+  change live strategy rules from this sample alone.
 - Reporting safety state: on 2026-05-23, a weekly-report scan of production
   journals using unsafe file-open semantics likely stopped both live runners.
   Both runners were restarted and verified healthy in
@@ -82,6 +84,12 @@ operational decisions.
   running, kill switches clear, MT5 trade allowed, and first post-deploy
   diagnostic signal rows were observed with `diagnostic_schema_version=1` plus
   `diagnostics`.
+- Diagnostic reporting state: 2026-05-26 extends the local-only diagnostic
+  report workflow to enrich closed live trades and benchmark backtest trades
+  with offline time/session, setup bucket, recent-window, candle-indicator, and
+  FTMO/IC confluence views. This work must remain outside the live runner loop;
+  RSI, momentum, volume, and percentile features are computed from copied
+  journals and local candle datasets only.
 - Production host: Amazon Lightsail Windows VPS.
 - Preferred remote access: Tailscale + OpenSSH using local aliases `lpfs-vps`
   and `lpfs-ic-vps`; use Tailscale RDP to the `100.x` VPS addresses when MT5
@@ -104,17 +112,20 @@ operational decisions.
    performance checkpoint and backtest-distribution comparison.
 7. `docs/lpfs_diagnostic_logging.md` before changing LPFS journal diagnostic
    fields, trade diagnostic reports, or live-vs-backtest comparison logic.
-8. `docs/lpfs_lightsail_vps_runbook.md` before any VPS maintenance or remote
+8. `docs/lpfs_strategy_iteration_context.md` before continuing the current
+   evidence-gated strategy-iteration workflow or handing the task to a fresh
+   Codex chat.
+9. `docs/lpfs_lightsail_vps_runbook.md` before any VPS maintenance or remote
    access work.
-9. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+10. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
    IC Markets production runner.
-10. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+11. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before changing execution or notification code.
-11. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+12. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-12. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+13. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
    buckets or income expectations.
-13. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+14. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native MQL5 EA or Strategy Tester work.
 
 ## Source-Of-Truth Matrix
@@ -132,7 +143,7 @@ operational decisions.
 | IC production setup | `docs/lpfs_icmarkets_vps_runbook.md`, `config.lpfs_icmarkets_raw_spread.example.json`, and `scripts/Get-LpfsDualVpsStatus.ps1` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
 | FTMO challenge sizing | `docs/ftmo_challenge_profiles.html` and `reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959` | Research-only frontier; do not change FTMO live validation config without a separate deployment decision. |
 | Weekly live performance | `docs/live_weekly_performance.html` and `reports/live_ops/lpfs_weekly_performance/` | Latest-week monitor only; use report packets for historical checkpoints until a trend view is built. |
-| Per-trade live diagnostics | `docs/lpfs_diagnostic_logging.md`, LPFS journal `diagnostics` payloads, and `reports/live_ops/lpfs_trade_diagnostics/` | Additive logging only; use for live-vs-backtest analysis before proposing heuristic changes. |
+| Per-trade live diagnostics and strategy-iteration workflow | `docs/lpfs_diagnostic_logging.md`, `docs/lpfs_strategy_iteration_context.md`, LPFS journal `diagnostics` payloads, and `reports/live_ops/lpfs_trade_diagnostics/` | Additive/offline reporting only; use for live-vs-backtest analysis before proposing heuristic changes. |
 | Rollover/spread-wait and Bid/Ask fills | `docs/live_ops.html`, `docs/mt5_execution_contract.md`, `SESSION_HANDOFF.md`, and live JSONL journals | Treat Telegram/chart visuals as alerts only; verify MT5 Bid/Ask ticks, order history, journal rows, spread snapshots, and both VPS lanes before concluding a bug. |
 | Native EA migration | `docs/ea_migration.html`, `mql5/lpfs_ea/README.md`, and `mql5/lpfs_ea/Experts/LPFS/LPFS_EA.mq5` | Tester-only v1; do not attach to production live charts. |
 | Dashboard HTML | builder scripts in `scripts/` | Edit builders, then regenerate HTML; do not make HTML-only dashboard changes. |
@@ -240,5 +251,5 @@ Use one of these prompts to restart cleanly:
 - IC VPS audit: `Read START_HERE.md and docs/lpfs_icmarkets_vps_runbook.md, then run Get-LpfsDualVpsStatus.ps1 and verify LPFS_Live and LPFS_IC_Live from MT5/runtime state before making operational changes.`
 - EA migration: `Read START_HERE.md, docs/ea_migration.html, and mql5/lpfs_ea/README.md, then continue native MQL5 tester-only work without touching VPS runtime, live configs, live journals, or broker orders.`
 - Rollover/spread/Bid-Ask audit: `Read START_HERE.md, SESSION_HANDOFF.md, docs/live_ops.html, and docs/mt5_execution_contract.md, then use MT5 history/ticks, both VPS journals, and gate-attribution reports before deciding whether a rollover spread or fill-timing event needs code or ops changes.`
-- Diagnostic performance analysis: `Read START_HERE.md, docs/lpfs_diagnostic_logging.md, and docs/live_weekly_performance.html, then build or inspect lpfs_trade_diagnostics reports before proposing any LPFS heuristic change.`
+- Diagnostic performance analysis: `Read START_HERE.md, docs/lpfs_strategy_iteration_context.md, docs/lpfs_diagnostic_logging.md, and docs/live_weekly_performance.html, then build or inspect lpfs_trade_diagnostics reports before proposing any LPFS heuristic change.`
 - FTMO challenge sizing: `Read START_HERE.md, SESSION_HANDOFF.md, and docs/ftmo_challenge_profiles.html, then inspect the latest lpfs_ftmo_challenge_frontier report before proposing any FTMO risk bucket or max-open-risk change.`

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import csv
 import json
 import subprocess
 import sys
@@ -8,6 +9,8 @@ import tempfile
 import unittest
 from dataclasses import dataclass
 from pathlib import Path
+
+import pandas as pd
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -160,6 +163,7 @@ class DiagnosticLoggingTests(unittest.TestCase):
             tmp = Path(tmpdir)
             journal = tmp / "journal.jsonl"
             benchmark = tmp / "backtest.csv"
+            candle_root = tmp / "candles"
             diagnostics = build_setup_diagnostics(_setup(), config=LiveSendExecutorConfig(), signal_key="sig")
             rows = [
                 _row("position_opened", {"position_id": 1, "opened_utc": "2026-01-01T00:00:00Z"}),
@@ -173,9 +177,29 @@ class DiagnosticLoggingTests(unittest.TestCase):
             ]
             journal.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
             benchmark.write_text(
-                "symbol,timeframe,side,net_r,meta_risk_atr,meta_bars_from_lp_break\nEURUSD,H4,long,0.25,0.5,2\n",
+                (
+                    "symbol,timeframe,side,signal_index,entry_index,entry_time_utc,exit_time_utc,"
+                    "net_r,meta_risk_atr,meta_bars_from_lp_break,meta_fs_signal_time_utc\n"
+                    "EURUSD,H4,long,10,11,2026-01-01T00:00:00Z,2026-01-01T04:00:00Z,0.25,0.5,2,2026-01-01T00:00:00Z\n"
+                ),
                 encoding="utf-8",
             )
+            candle_dir = candle_root / "EURUSD" / "H4"
+            candle_dir.mkdir(parents=True)
+            candle_lines = ["time_utc,symbol,timeframe,open,high,low,close,tick_volume,spread_points,real_volume"]
+            start = "2025-12-28T00:00:00Z"
+            base = pd.Timestamp(start)
+            for index in range(30):
+                timestamp = base + pd.Timedelta(hours=4 * index)
+                open_price = 1.0900 + index * 0.0001
+                close_price = open_price + (0.0002 if index % 2 == 0 else -0.0001)
+                high_price = max(open_price, close_price) + 0.0003
+                low_price = min(open_price, close_price) - 0.0003
+                candle_lines.append(
+                    f"{timestamp.isoformat()},EURUSD,H4,{open_price:.5f},{high_price:.5f},{low_price:.5f},{close_price:.5f},"
+                    f"{100 + index},{index % 5},0"
+                )
+            (candle_dir / "EURUSD_H4.csv").write_text("\n".join(candle_lines), encoding="utf-8")
 
             result = subprocess.run(
                 [
@@ -185,6 +209,8 @@ class DiagnosticLoggingTests(unittest.TestCase):
                     f"FTMO={journal}",
                     "--benchmark-trades",
                     f"FTMO={benchmark}",
+                    "--candle-root",
+                    f"FTMO={candle_root}",
                     "--output-root",
                     str(tmp / "reports"),
                     "--as-of-utc",
@@ -198,8 +224,24 @@ class DiagnosticLoggingTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             output_dir = tmp / "reports" / "20260523_000000"
             self.assertTrue((output_dir / "closed_trade_diagnostics.csv").exists())
+            self.assertTrue((output_dir / "backtest_diagnostics.csv").exists())
             self.assertTrue((output_dir / "backtest_comparison.csv").exists())
+            self.assertTrue((output_dir / "timeframe_confluence.csv").exists())
             self.assertIn("LPFS Trade Diagnostics", (output_dir / "summary.md").read_text(encoding="utf-8"))
+            with (output_dir / "closed_trade_diagnostics.csv").open("r", encoding="utf-8", newline="") as handle:
+                closed_rows = list(csv.DictReader(handle))
+            self.assertEqual(closed_rows[0]["analysis_session_utc"], "asia_utc")
+            self.assertEqual(closed_rows[0]["timeframe_frequency_class"], "higher_frequency")
+            self.assertTrue(closed_rows[0]["candle_time_utc"].startswith("2026-01-01T00:00:00"))
+            self.assertIn(closed_rows[0]["candle_rsi_regime"], {"neutral", "oversold", "overbought"})
+            with (output_dir / "backtest_comparison.csv").open("r", encoding="utf-8", newline="") as handle:
+                comparison_rows = list(csv.DictReader(handle))
+            self.assertTrue(
+                any(row["group_by"] == "lane|timeframe|candle_rsi_regime" for row in comparison_rows)
+            )
+            with (output_dir / "timeframe_confluence.csv").open("r", encoding="utf-8", newline="") as handle:
+                confluence_rows = list(csv.DictReader(handle))
+            self.assertTrue(any(row["timeframe"] == "H4" for row in confluence_rows))
 
     def test_gate_attribution_remote_script_uses_shared_bounded_reader(self) -> None:
         module_path = WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_gate_attribution.py"
