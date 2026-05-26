@@ -1,6 +1,6 @@
 # Core Strategy Testing Strategy
 
-This repo treats Python core logic as the source of truth for LP + Force Strike
+This repo treats Python core logic as the source of truth for strategy
 research. Dashboards and generated reports explain results, but the strict
 coverage gate protects reusable strategy rules, market-data normalization, and
 portfolio/risk calculations.
@@ -20,6 +20,7 @@ The gate covers:
 - `shared/backtest_engine_lab/src`
 - `shared/market_data_lab/src`
 - `strategies/lp_force_strike_strategy_lab/src`
+- `strategies/majority_flush_strategy_lab/src`
 
 Generated dashboards, local data, local reports, and one-off research runners
 are outside the strict 100% core gate. If a runner grows reusable behavior, move
@@ -64,6 +65,9 @@ passed.
   stress metric.
 - EA v1 is Strategy Tester-only. It must not alter FTMO/IC live configs,
   runtime state, journals, scheduled tasks, or broker orders.
+- Majority Flush V1 is research-only. It must not alter LPFS live runners,
+  live-capable local configs, VPS runtime roots, journals, broker orders,
+  broker positions, scheduled tasks, or MQL5 files.
 
 ## Edge-Case Expectations
 

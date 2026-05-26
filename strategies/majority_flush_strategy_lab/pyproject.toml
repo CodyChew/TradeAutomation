@@ -1,0 +1,18 @@
+[project]
+name = "majority-flush-strategy-lab"
+version = "0.1.0"
+description = "Baseline strategy research for Majority Flush execution signals."
+requires-python = ">=3.11"
+dependencies = [
+  "pandas"
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src",
+  "../../concepts/majority_flush_lab/src",
+  "../../concepts/lp_levels_lab/src",
+  "../../concepts/force_strike_pattern_lab/src",
+  "../../shared/backtest_engine_lab/src"
+]
+testpaths = ["tests"]

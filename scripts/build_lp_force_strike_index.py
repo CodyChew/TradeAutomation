@@ -182,6 +182,21 @@ def _ea_migration_card() -> str:
     """
 
 
+def _majority_flush_strategy_card() -> str:
+    return """
+    <section id="majority-flush-strategy" class="card featured">
+      <div class="status status-neutral">Research lane</div>
+      <h2>Majority Flush Strategy Baseline</h2>
+      <p>Research-only V1 baseline for final-LP Majority Flush execution signals across the 10-year FTMO FX dataset. This lane is separate from LPFS live execution.</p>
+      <div class="facts">
+        <div class="fact"><span>Stage</span><strong>10-year baseline</strong></div>
+        <div class="fact"><span>Live impact</span><strong>None</strong></div>
+      </div>
+      <a class="button" href="majority_flush_strategy.html">Open Majority Flush</a>
+    </section>
+    """
+
+
 def _section_heading(title: str, body: str) -> str:
     return f"""
     <section class="section-heading">
@@ -231,6 +246,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
         _account_validation_card(),
         _ftmo_challenge_profiles_card(),
         _ea_migration_card(),
+        _majority_flush_strategy_card(),
         _section_heading(
             "Current Research Pages",
             "These are the current research snapshots that still feed the active LPFS strategy contract.",

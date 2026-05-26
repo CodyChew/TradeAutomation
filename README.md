@@ -4,14 +4,16 @@ Trading research workspace organized around reusable concepts and future
 strategies.
 
 Start a new handover or Codex session with `SESSION_HANDOFF.md`, then
-`strategies/lp_force_strike_strategy_lab/START_HERE.md`, then
-`PROJECT_STATE.md`.
+`PROJECT_STATE.md`. For LPFS operations, read
+`strategies/lp_force_strike_strategy_lab/START_HERE.md` and
+`docs/system_troubleshooting.md`. For the next Majority Flush research lane,
+read `strategies/majority_flush_strategy_lab/START_HERE.md`.
 
 ## Structure
 
 - `concepts/`: reusable indicators, signals, and market-structure modules.
 - `shared/`: reusable market data, backtest, and research infrastructure.
-- `strategies/`: future strategy labs that combine reusable concepts.
+- `strategies/`: strategy labs that combine reusable concepts.
 - `mql5/lpfs_ea/`: isolated native MQL5 EA migration workspace. V1 is
   Strategy Tester-only and separate from Python production live runners.
 - `data/`: local generated datasets, ignored by git.
@@ -28,18 +30,25 @@ unless they are intentionally promoted into tracked project assets.
   TradingView visualization and Python strategy/backtest logic.
 - `concepts/force_strike_pattern_lab`: raw Force Strike pattern concept with
   TradingView visualization and Python strategy/backtest logic.
+- `concepts/majority_flush_lab`: LP-based displacement/flush concept for future
+  strategy research.
 
 ## Current Strategies
 
 - `strategies/lp_force_strike_strategy_lab`: signal study combining LP level
   traps with raw Force Strike patterns, plus the current MT5 execution and
   Telegram notification contracts.
+- `strategies/majority_flush_strategy_lab`: research-only V1 baseline strategy
+  based on the Majority Flush concept, with tested Python signal/trade logic,
+  a 10-year backtest runner, M30/all-timeframe comparison, and a static
+  dashboard. It has no live execution path.
 
 ## Dashboards
 
 Static research dashboards are published from `docs/`:
 
 - Local entry point: `docs/index.html`
+- Majority Flush baseline: `docs/majority_flush_strategy.html`
 - GitHub Pages: `https://codychew.github.io/TradeAutomation/`
 
 The current LP + Force Strike research baseline is V13 mechanics plus V15 risk
@@ -61,7 +70,9 @@ not the current low-scale FTMO live-validation config.
 The current strategy guide and execution-readiness docs are:
 
 - `SESSION_HANDOFF.md`
+- `docs/system_troubleshooting.md`
 - `strategies/lp_force_strike_strategy_lab/START_HERE.md`
+- `strategies/majority_flush_strategy_lab/START_HERE.md`
 - `docs/strategy.html`
 - `docs/live_ops.html`
 - `docs/ftmo_challenge_profiles.html`

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Majority Flush Strategy Baseline</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #627181;
+      --line: #d8e0e8;
+      --accent: #22577a;
+      --good: #2e7d50;
+      --warn: #8a5a00;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 Inter, Segoe UI, Roboto, Arial, sans-serif; }
+    header { background: #17202a; color: white; padding: 32px max(18px, 6vw); border-bottom: 4px solid #57a773; }
+    header h1 { margin: 0 0 8px; font-size: clamp(24px, 5vw, 32px); }
+    header p { margin: 0; color: #d8e0e8; max-width: 980px; }
+    nav { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+    nav a { color: white; text-decoration: none; border: 1px solid rgba(255,255,255,.25); padding: 7px 10px; border-radius: 6px; background: rgba(255,255,255,.08); }
+    nav a.active { background: #57a773; border-color: #57a773; color: #17202a; font-weight: 700; }
+    main { padding: 24px max(18px, 6vw) 48px; display: grid; gap: 18px; }
+    section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; box-shadow: 0 1px 2px rgba(23,32,42,.05); }
+    h2 { margin: 0 0 10px; font-size: 20px; }
+    p { margin: 0 0 12px; color: var(--muted); }
+    .status { display: inline-block; border-radius: 999px; padding: 5px 9px; margin-bottom: 10px; font-size: 12px; font-weight: 700; background: #edf8f1; color: var(--good); border: 1px solid #b9dbc7; }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+    .metric { background: #f8fafb; border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+    .metric span { display: block; color: var(--muted); font-size: 12px; }
+    .metric strong { display: block; font-size: 22px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 18px; }
+    ul { margin: 0; padding-left: 20px; }
+    li { margin: 4px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 8px; vertical-align: top; }
+    th { background: #f8fafb; color: var(--muted); font-size: 12px; }
+    .empty { color: var(--muted); font-style: italic; }
+    code { background: #eef3f7; padding: 2px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Majority Flush Strategy Baseline</h1>
+    <p>research/backtest-only V1 baseline for final-LP Majority Flush execution signals. LPFS live execution, live runners, configs, runtime files, journals, broker state, and MQL5 files are out of scope.</p>
+    <nav aria-label="Dashboard pages">
+      <a href="index.html">Home</a>
+      <a class="active" href="majority_flush_strategy.html">Majority Flush</a>
+      <a href="strategy.html">LPFS Strategy</a>
+      <a href="live_ops.html">LPFS Live Ops</a>
+    </nav>
+  </header>
+  <main>
+    <section>
+      <div class="status">Rework</div>
+      <h2>Implementation State</h2>
+      <p>Baseline does not yet justify optimization; inspect signal quality before continuing.</p>
+      <div class="metrics"><div class="metric"><span>Datasets</span><strong>168</strong></div><div class="metric"><span>Signals</span><strong>175,295</strong></div><div class="metric"><span>Trades</span><strong>174,968</strong></div><div class="metric"><span>Skipped</span><strong>327</strong></div><div class="metric"><span>Avg R</span><strong>-0.09</strong></div><div class="metric"><span>Total R</span><strong>-16581.66</strong></div><div class="metric"><span>Win Rate</span><strong>50.3%</strong></div><div class="metric"><span>Profit Factor</span><strong>0.83</strong></div><div class="metric"><span>Max DD</span><strong>16590.48</strong></div></div>
+      <p>Generated: 2026-05-21 19:36:59 UTC. Latest report: <code>reports\strategies\majority_flush_strategy_all_timeframes\20260522_025142</code>.</p>
+    </section>
+    <section>
+      <h2>Rules Tested</h2>
+      <ul>
+        <li>Dataset: existing 10-year FTMO FX Parquet data.</li>
+        <li>Timeframes: M30, H4, H8, H12, D1, W1.</li>
+        <li>Pivot strength: 3; execution window: 6 bars including the LP-breaking candle as bar 1.</li>
+        <li>Short: upside flush into final resistance LP, bearish lower-third close strictly below the LP.</li>
+        <li>Long: downside flush into final support LP, bullish upper-third close strictly above the LP.</li>
+        <li>Entry: next candle open. Stop: flush structure. Target: 1R. Costs: candle spread enabled.</li>
+      </ul>
+    </section>
+    <div class="grid">
+      <section>
+        <h2>Timeframe Breakdown</h2>
+        <table><thead><tr><th>TF</th><th>Trades</th><th>Avg R</th><th>Total R</th><th>Win</th><th>PF</th><th>DD</th></tr></thead><tbody><tr><td>M30</td><td>139,411</td><td>-0.12</td><td>-16576.46</td><td>50.1%</td><td>0.79</td><td>16582.50</td></tr><tr><td>H4</td><td>17,418</td><td>-0.01</td><td>-259.02</td><td>50.9%</td><td>0.97</td><td>309.12</td></tr><tr><td>H8</td><td>8,360</td><td>0.00</td><td>39.70</td><td>51.3%</td><td>1.01</td><td>151.42</td></tr><tr><td>H12</td><td>5,918</td><td>0.02</td><td>93.39</td><td>51.6%</td><td>1.03</td><td>61.03</td></tr><tr><td>D1</td><td>3,195</td><td>0.02</td><td>76.53</td><td>51.7%</td><td>1.05</td><td>55.80</td></tr><tr><td>W1</td><td>666</td><td>0.07</td><td>44.19</td><td>53.6%</td><td>1.14</td><td>23.84</td></tr></tbody></table>
+      </section>
+      <section>
+        <h2>Skipped Attribution</h2>
+        <table><thead><tr><th>Reason</th><th>TF</th><th>Skipped</th></tr></thead><tbody><tr><td>invalid_stop</td><td>M30</td><td>241</td></tr><tr><td>invalid_stop</td><td>H4</td><td>47</td></tr><tr><td>invalid_stop</td><td>H8</td><td>21</td></tr><tr><td>invalid_stop</td><td>H12</td><td>9</td></tr><tr><td>invalid_stop</td><td>D1</td><td>3</td></tr><tr><td>no_next_candle</td><td>H8</td><td>2</td></tr><tr><td>no_next_candle</td><td>H12</td><td>1</td></tr><tr><td>no_next_candle</td><td>H4</td><td>1</td></tr><tr><td>no_next_candle</td><td>M30</td><td>1</td></tr><tr><td>no_next_candle</td><td>W1</td><td>1</td></tr></tbody></table>
+      </section>
+    </div>
+    <section>
+      <h2>M30 Impact</h2>
+      <p>M30 worsened the all-timeframe total by -16576.46R versus the non-M30 total.</p>
+      <div class="metrics">
+        <div class="metric"><span>M30 Trades</span><strong>139,411</strong></div>
+        <div class="metric"><span>M30 Total R</span><strong>-16576.46</strong></div>
+        <div class="metric"><span>M30 Avg R</span><strong>-0.1189</strong></div>
+        <div class="metric"><span>M30 PF</span><strong>0.79</strong></div>
+        <div class="metric"><span>Non-M30 Total R</span><strong>-5.20</strong></div>
+        <div class="metric"><span>All-Timeframe Total R</span><strong>-16581.66</strong></div>
+      </div>
+    </section>
+    <section>
+      <h2>Timeframe Recommendation</h2>
+      <table><thead><tr><th>TF</th><th>Trades</th><th>Avg R</th><th>Total R</th><th>PF</th><th>Recommendation</th></tr></thead><tbody><tr><td>M30</td><td>139,411</td><td>-0.1189</td><td>-16576.46</td><td>0.79</td><td>Rework or deprioritize</td></tr><tr><td>H4</td><td>17,418</td><td>-0.0149</td><td>-259.02</td><td>0.97</td><td>Rework or deprioritize</td></tr><tr><td>H8</td><td>8,360</td><td>0.0047</td><td>39.70</td><td>1.01</td><td>Keep for next iteration</td></tr><tr><td>H12</td><td>5,918</td><td>0.0158</td><td>93.39</td><td>1.03</td><td>Keep for next iteration</td></tr><tr><td>D1</td><td>3,195</td><td>0.0240</td><td>76.53</td><td>1.05</td><td>Keep for next iteration</td></tr><tr><td>W1</td><td>666</td><td>0.0664</td><td>44.19</td><td>1.14</td><td>Keep for next iteration</td></tr></tbody></table>
+    </section>
+    <section>
+      <h2>Symbol Breakdown</h2>
+      <table><thead><tr><th>Symbol</th><th>Trades</th><th>Avg R</th><th>Total R</th><th>Win</th><th>PF</th><th>DD</th></tr></thead><tbody><tr><td>AUDUSD</td><td>6,346</td><td>-0.03</td><td>-182.85</td><td>51.6%</td><td>0.94</td><td>238.40</td></tr><tr><td>USDCAD</td><td>6,322</td><td>-0.03</td><td>-204.33</td><td>50.8%</td><td>0.94</td><td>220.93</td></tr><tr><td>USDJPY</td><td>5,982</td><td>-0.04</td><td>-221.30</td><td>51.3%</td><td>0.93</td><td>259.38</td></tr><tr><td>GBPUSD</td><td>5,609</td><td>-0.04</td><td>-224.82</td><td>50.8%</td><td>0.92</td><td>243.48</td></tr><tr><td>EURAUD</td><td>6,500</td><td>-0.04</td><td>-247.04</td><td>51.3%</td><td>0.93</td><td>312.92</td></tr><tr><td>EURJPY</td><td>6,261</td><td>-0.04</td><td>-281.27</td><td>51.0%</td><td>0.91</td><td>295.54</td></tr><tr><td>GBPJPY</td><td>6,122</td><td>-0.05</td><td>-299.91</td><td>51.6%</td><td>0.91</td><td>329.81</td></tr><tr><td>EURUSD</td><td>6,231</td><td>-0.05</td><td>-302.61</td><td>52.0%</td><td>0.91</td><td>457.83</td></tr><tr><td>USDCHF</td><td>6,194</td><td>-0.05</td><td>-306.60</td><td>50.6%</td><td>0.91</td><td>314.49</td></tr><tr><td>AUDJPY</td><td>6,129</td><td>-0.05</td><td>-316.00</td><td>50.9%</td><td>0.90</td><td>342.31</td></tr><tr><td>GBPAUD</td><td>6,398</td><td>-0.06</td><td>-371.73</td><td>50.8%</td><td>0.89</td><td>378.34</td></tr><tr><td>EURGBP</td><td>6,018</td><td>-0.07</td><td>-416.79</td><td>50.7%</td><td>0.87</td><td>437.98</td></tr><tr><td>NZDUSD</td><td>6,221</td><td>-0.07</td><td>-435.09</td><td>51.5%</td><td>0.87</td><td>446.31</td></tr><tr><td>EURCAD</td><td>6,448</td><td>-0.08</td><td>-508.20</td><td>50.1%</td><td>0.85</td><td>511.27</td></tr><tr><td>GBPNZD</td><td>6,299</td><td>-0.09</td><td>-537.43</td><td>50.4%</td><td>0.84</td><td>545.61</td></tr><tr><td>CHFJPY</td><td>6,453</td><td>-0.09</td><td>-574.31</td><td>50.3%</td><td>0.84</td><td>582.31</td></tr><tr><td>CADJPY</td><td>6,256</td><td>-0.09</td><td>-584.87</td><td>50.3%</td><td>0.83</td><td>594.89</td></tr><tr><td>GBPCAD</td><td>6,356</td><td>-0.10</td><td>-629.55</td><td>49.7%</td><td>0.82</td><td>628.90</td></tr><tr><td>EURNZD</td><td>6,469</td><td>-0.12</td><td>-779.94</td><td>50.7%</td><td>0.79</td><td>786.38</td></tr><tr><td>EURCHF</td><td>5,917</td><td>-0.13</td><td>-793.17</td><td>49.2%</td><td>0.77</td><td>792.73</td></tr><tr><td>GBPCHF</td><td>6,178</td><td>-0.13</td><td>-813.12</td><td>49.9%</td><td>0.77</td><td>817.31</td></tr><tr><td>NZDJPY</td><td>6,271</td><td>-0.13</td><td>-845.81</td><td>49.5%</td><td>0.77</td><td>868.85</td></tr><tr><td>NZDCAD</td><td>6,358</td><td>-0.14</td><td>-867.12</td><td>49.4%</td><td>0.76</td><td>873.95</td></tr><tr><td>AUDCHF</td><td>6,416</td><td>-0.14</td><td>-890.91</td><td>49.8%</td><td>0.76</td><td>896.94</td></tr><tr><td>AUDCAD</td><td>6,473</td><td>-0.14</td><td>-927.83</td><td>49.5%</td><td>0.75</td><td>930.27</td></tr><tr><td>CADCHF</td><td>6,360</td><td>-0.18</td><td>-1159.73</td><td>49.8%</td><td>0.70</td><td>1163.26</td></tr><tr><td>AUDNZD</td><td>6,089</td><td>-0.23</td><td>-1419.11</td><td>46.1%</td><td>0.63</td><td>1419.57</td></tr><tr><td>NZDCHF</td><td>6,292</td><td>-0.23</td><td>-1440.22</td><td>48.7%</td><td>0.64</td><td>1440.63</td></tr></tbody></table>
+    </section>
+    <section>
+      <h2>Dataset Coverage</h2>
+      <table><thead><tr><th>Symbol</th><th>TF</th><th>Status</th><th>Rows</th><th>Signals</th><th>Trades</th><th>Skipped</th></tr></thead><tbody><tr><td>AUDCAD</td><td>M30</td><td>ok</td><td>124273</td><td>5152</td><td>5138</td><td>14</td></tr><tr><td>AUDCAD</td><td>H4</td><td>ok</td><td>15546</td><td>652</td><td>651</td><td>1</td></tr><tr><td>AUDCAD</td><td>H8</td><td>ok</td><td>7777</td><td>317</td><td>317</td><td>0</td></tr><tr><td>AUDCAD</td><td>H12</td><td>ok</td><td>5184</td><td>227</td><td>227</td><td>0</td></tr><tr><td>AUDCAD</td><td>D1</td><td>ok</td><td>2592</td><td>115</td><td>115</td><td>0</td></tr><tr><td>AUDCAD</td><td>W1</td><td>ok</td><td>521</td><td>25</td><td>25</td><td>0</td></tr><tr><td>AUDCHF</td><td>M30</td><td>ok</td><td>124243</td><td>5055</td><td>5048</td><td>7</td></tr><tr><td>AUDCHF</td><td>H4</td><td>ok</td><td>15543</td><td>670</td><td>669</td><td>1</td></tr><tr><td>AUDCHF</td><td>H8</td><td>ok</td><td>7775</td><td>324</td><td>324</td><td>0</td></tr><tr><td>AUDCHF</td><td>H12</td><td>ok</td><td>5184</td><td>236</td><td>236</td><td>0</td></tr><tr><td>AUDCHF</td><td>D1</td><td>ok</td><td>2592</td><td>110</td><td>110</td><td>0</td></tr><tr><td>AUDCHF</td><td>W1</td><td>ok</td><td>521</td><td>29</td><td>29</td><td>0</td></tr><tr><td>AUDJPY</td><td>M30</td><td>ok</td><td>124287</td><td>4854</td><td>4848</td><td>6</td></tr><tr><td>AUDJPY</td><td>H4</td><td>ok</td><td>15546</td><td>616</td><td>614</td><td>2</td></tr><tr><td>AUDJPY</td><td>H8</td><td>ok</td><td>7777</td><td>318</td><td>317</td><td>1</td></tr><tr><td>AUDJPY</td><td>H12</td><td>ok</td><td>5184</td><td>210</td><td>210</td><td>0</td></tr><tr><td>AUDJPY</td><td>D1</td><td>ok</td><td>2592</td><td>116</td><td>116</td><td>0</td></tr><tr><td>AUDJPY</td><td>W1</td><td>ok</td><td>521</td><td>24</td><td>24</td><td>0</td></tr><tr><td>AUDNZD</td><td>M30</td><td>ok</td><td>124273</td><td>4894</td><td>4880</td><td>14</td></tr><tr><td>AUDNZD</td><td>H4</td><td>ok</td><td>15546</td><td>558</td><td>552</td><td>6</td></tr><tr><td>AUDNZD</td><td>H8</td><td>ok</td><td>7777</td><td>297</td><td>295</td><td>2</td></tr><tr><td>AUDNZD</td><td>H12</td><td>ok</td><td>5184</td><td>222</td><td>222</td><td>0</td></tr><tr><td>AUDNZD</td><td>D1</td><td>ok</td><td>2592</td><td>114</td><td>114</td><td>0</td></tr><tr><td>AUDNZD</td><td>W1</td><td>ok</td><td>521</td><td>26</td><td>26</td><td>0</td></tr><tr><td>AUDUSD</td><td>M30</td><td>ok</td><td>124287</td><td>5011</td><td>5008</td><td>3</td></tr><tr><td>AUDUSD</td><td>H4</td><td>ok</td><td>15546</td><td>629</td><td>628</td><td>1</td></tr><tr><td>AUDUSD</td><td>H8</td><td>ok</td><td>7777</td><td>336</td><td>336</td><td>0</td></tr><tr><td>AUDUSD</td><td>H12</td><td>ok</td><td>5184</td><td>217</td><td>217</td><td>0</td></tr><tr><td>AUDUSD</td><td>D1</td><td>ok</td><td>2592</td><td>129</td><td>128</td><td>1</td></tr><tr><td>AUDUSD</td><td>W1</td><td>ok</td><td>521</td><td>29</td><td>29</td><td>0</td></tr><tr><td>CADCHF</td><td>M30</td><td>ok</td><td>124275</td><td>5124</td><td>5110</td><td>14</td></tr><tr><td>CADCHF</td><td>H4</td><td>ok</td><td>15546</td><td>653</td><td>649</td><td>4</td></tr><tr><td>CADCHF</td><td>H8</td><td>ok</td><td>7777</td><td>271</td><td>270</td><td>1</td></tr><tr><td>CADCHF</td><td>H12</td><td>ok</td><td>5184</td><td>193</td><td>193</td><td>0</td></tr><tr><td>CADCHF</td><td>D1</td><td>ok</td><td>2592</td><td>111</td><td>111</td><td>0</td></tr><tr><td>CADCHF</td><td>W1</td><td>ok</td><td>521</td><td>27</td><td>27</td><td>0</td></tr><tr><td>CADJPY</td><td>M30</td><td>ok</td><td>124274</td><td>5003</td><td>4996</td><td>7</td></tr><tr><td>CADJPY</td><td>H4</td><td>ok</td><td>15546</td><td>617</td><td>614</td><td>3</td></tr><tr><td>CADJPY</td><td>H8</td><td>ok</td><td>7777</td><td>319</td><td>319</td><td>0</td></tr><tr><td>CADJPY</td><td>H12</td><td>ok</td><td>5184</td><td>199</td><td>199</td><td>0</td></tr></tbody></table>
+    </section>
+    <section>
+      <h2>Next Research Step</h2>
+      <p>If the baseline remains worth continuing, the next iteration should test entry models only while keeping signal, stop, and target fixed. If the baseline is weak or concentrated, inspect signal examples before adding optimization degrees of freedom.</p>
+    </section>
+  </main>
+</body>
+</html>

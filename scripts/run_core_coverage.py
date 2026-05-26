@@ -18,6 +18,7 @@ SRC_ROOTS = [
     ROOT / "shared" / "backtest_engine_lab" / "src",
     ROOT / "shared" / "market_data_lab" / "src",
     ROOT / "strategies" / "lp_force_strike_strategy_lab" / "src",
+    ROOT / "strategies" / "majority_flush_strategy_lab" / "src",
 ]
 
 LABS = [
@@ -27,6 +28,7 @@ LABS = [
     ("backtest_engine", ROOT / "shared" / "backtest_engine_lab" / "tests"),
     ("market_data", ROOT / "shared" / "market_data_lab" / "tests"),
     ("lp_force_strike_strategy", ROOT / "strategies" / "lp_force_strike_strategy_lab" / "tests"),
+    ("majority_flush_strategy", ROOT / "strategies" / "majority_flush_strategy_lab" / "tests"),
 ]
 
 

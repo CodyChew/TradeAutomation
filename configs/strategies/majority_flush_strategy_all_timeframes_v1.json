@@ -1,0 +1,27 @@
+{
+  "experiment_name": "majority_flush_strategy_all_timeframes_v1",
+  "dataset_config": "configs/datasets/forex_major_crosses_10y.json",
+  "report_root": "reports/strategies/majority_flush_strategy_all_timeframes",
+  "docs_output_path": "docs/majority_flush_strategy.html",
+  "symbols": null,
+  "excluded_symbols": [],
+  "timeframes": [
+    "M30",
+    "H4",
+    "H8",
+    "H12",
+    "D1",
+    "W1"
+  ],
+  "pivot_strength": 3,
+  "max_bars_from_lp_break": 6,
+  "target_r": 1.0,
+  "costs": {
+    "use_candle_spread": true,
+    "fallback_spread_points": 0.0,
+    "entry_slippage_points": 0.0,
+    "exit_slippage_points": 0.0,
+    "round_turn_commission_points": 0.0
+  },
+  "drop_incomplete_latest_bar": true
+}

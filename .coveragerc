@@ -8,6 +8,7 @@ source =
     shared/backtest_engine_lab/src/backtest_engine_lab
     shared/market_data_lab/src/market_data_lab
     strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab
+    strategies/majority_flush_strategy_lab/src/majority_flush_strategy_lab
 
 [report]
 fail_under = 100
