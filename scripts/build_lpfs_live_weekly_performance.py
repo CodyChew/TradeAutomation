@@ -260,16 +260,50 @@ $journalItem = Get-Item -LiteralPath $journal
   journal_last_write_utc = $journalItem.LastWriteTimeUtc.ToString('o')
   event_keywords = $patterns
 }} | ConvertTo-Json -Compress
+function New-SharedTextReader([string]$Path) {{
+  $stream = [System.IO.FileStream]::new(
+    $Path,
+    [System.IO.FileMode]::Open,
+    [System.IO.FileAccess]::Read,
+    [System.IO.FileShare]::ReadWrite
+  )
+  [System.IO.StreamReader]::new($stream)
+}}
 Write-Output '---FIRST---'
-Get-Content -LiteralPath $journal -First 1
+$reader = New-SharedTextReader $journal
+try {{
+  $firstLine = $reader.ReadLine()
+  if ($null -ne $firstLine) {{
+    Write-Output $firstLine
+  }}
+}} finally {{
+  $reader.Close()
+}}
 Write-Output '---LIFECYCLE---'
-Select-String -LiteralPath $journal -SimpleMatch -Pattern $patterns | ForEach-Object {{ $_.Line }}
+$reader = New-SharedTextReader $journal
+try {{
+  while (($line = $reader.ReadLine()) -ne $null) {{
+    foreach ($pattern in $patterns) {{
+      if ($line.Contains($pattern)) {{
+        Write-Output $line
+        break
+      }}
+    }}
+  }}
+}} finally {{
+  $reader.Close()
+}}
 Write-Output '---STATE---'
-Get-Content -LiteralPath $state -Raw
+$reader = New-SharedTextReader $state
+try {{
+  Write-Output $reader.ReadToEnd()
+}} finally {{
+  $reader.Close()
+}}
 Write-Output '---HEAD---'
 git -C $repo rev-parse HEAD
 """
-    raw = ssh_powershell(config.ssh_alias, script, timeout=240)
+    raw = ssh_powershell(config.ssh_alias, script, timeout=420)
     sections: dict[str, list[str]] = defaultdict(list)
     current: str | None = None
     for line in raw.splitlines():
