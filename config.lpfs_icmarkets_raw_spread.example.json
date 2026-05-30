@@ -13,7 +13,7 @@
       "D1": 0.30,
       "W1": 0.75
     },
-    "intended_live_scale": 2.0,
+    "intended_live_scale": 1.0,
     "status": "example_only_copy_to_ignored_local_config"
   },
   "mt5": {
@@ -128,7 +128,7 @@
     "journal_path": "data/live/lpfs_ic_live_journal.jsonl",
     "state_path": "data/live/lpfs_ic_live_state.json",
     "max_lots_per_order": null,
-    "max_risk_pct_per_trade": 1.5,
+    "max_risk_pct_per_trade": 0.75,
     "risk_buckets_pct": {
       "H4": 0.25,
       "H8": 0.25,
@@ -136,8 +136,8 @@
       "D1": 0.30,
       "W1": 0.75
     },
-    "risk_bucket_scale": 2.0,
-    "max_open_risk_pct": 12.0,
+    "risk_bucket_scale": 1.0,
+    "max_open_risk_pct": 6.0,
     "max_same_symbol_stack": 4,
     "max_concurrent_strategy_trades": 17,
     "strategy_magic": 231500,

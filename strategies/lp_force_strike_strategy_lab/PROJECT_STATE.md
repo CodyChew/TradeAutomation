@@ -1,9 +1,9 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-30 after the Saturday weekly evidence checkpoint,
-first-month monthly evidence review, weekly-dashboard FTMO fetch-timeout
-caveat, diagnostic report generation from safe lifecycle snapshots, and
-evidence-gated next-step update.
+Last updated: 2026-05-31 ICT after the IC live scale-down, Saturday weekly
+evidence checkpoint, first-month monthly evidence review, weekly-dashboard
+FTMO fetch-timeout caveat, diagnostic report generation from safe lifecycle
+snapshots, and policy-ledger update.
 
 ## Purpose
 
@@ -38,6 +38,9 @@ patterns. It now has these layers:
   `../../scripts/build_lpfs_trade_diagnostics.py`. This is logging/reporting
   only and does not alter strategy behavior. Derived indicators are computed
   offline from copied journals, benchmark CSVs, and local candle datasets.
+- live sizing policy ledger: `../../configs/live_policy_ledger.csv` records
+  FTMO and IC policy epochs so future live analysis can segment strategy
+  performance from risk-policy changes.
 
 It now includes a combined TradingView visual indicator for LPFS chart review
 and alerts at `tradingview/lp_force_strike.pine`. V10-V13 add portfolio-style
@@ -455,9 +458,11 @@ Dedicated IC VPS live lane:
 - Telegram: separate IC channel.
 - Identity: magic `231500`, broker comment prefix `LPFSIC`.
 - Live sizing: IC growth-practical `risk_buckets_pct` with
-  `live_send.risk_bucket_scale=2.0`; effective targets are H4/H8 `0.50%`,
-  H12/D1 `0.60%`, W1 `1.50%`; guardrail
-  `live_send.max_risk_pct_per_trade=1.5`.
+  historical `live_send.risk_bucket_scale=2.0` preserved in
+  `../../configs/live_policy_ledger.csv`. The active future-order policy is
+  `risk_bucket_scale=1.0`, `max_risk_pct_per_trade=0.75`, and
+  `max_open_risk_pct=6.0`; existing IC pending orders and active positions are
+  not resized by the policy change.
 - One IC VPS live-send smoke cycle completed with `1` tracked pending order and
   `0` active positions.
 - Continuous task `LPFS_IC_Live` is installed/running through the watchdog

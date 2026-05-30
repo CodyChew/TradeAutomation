@@ -1,9 +1,10 @@
 # LPFS Start Here
 
-Last updated: 2026-05-30 after the Saturday weekly evidence checkpoint,
-first-month monthly evidence review, reporting incident recovery,
-diagnostic-logging upgrade, logging-only production deploy, journal-read safety
-documentation, and offline diagnostic-report iteration policy.
+Last updated: 2026-05-31 ICT after the IC live scale-down, Saturday weekly
+evidence checkpoint, first-month monthly evidence review, reporting incident
+recovery, diagnostic-logging upgrade, logging-only production deploy,
+journal-read safety documentation, and offline diagnostic-report iteration
+policy.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -26,6 +27,14 @@ operational decisions.
   completed, and continuous task `LPFS_IC_Live` is installed/running with its
   own runtime state, journal, heartbeat, logs, Telegram channel, magic
   `231500`, and broker comment prefix `LPFSIC`.
+- Live sizing policy source: `configs/live_policy_ledger.csv`. It records FTMO
+  scale `0.05`, historical IC scale `2.0`, and the active IC future-order
+  scale `1.0` policy. Use the ledger when segmenting live performance; do not
+  infer a strategy change from a sizing-policy epoch change.
+- IC scale-down boundary: the IC policy change affects only future live-send
+  order sizing after `2026-05-30T17:14:27Z` activation. It did not modify FTMO,
+  `dry_run`, live state, journals, existing pending orders, or active
+  positions.
 - VPS boot alert status: FTMO uses startup task `LPFS_FTMO_Startup_Alert`; IC
   uses startup task `LPFS_IC_Startup_Alert`. These tasks send Telegram
   `VPS STARTED` cards and journal `vps_startup_alert` rows after Windows boot,
@@ -121,22 +130,24 @@ operational decisions.
    and operator commands.
 6. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
    performance checkpoint and backtest-distribution comparison.
-7. `docs/lpfs_diagnostic_logging.md` before changing LPFS journal diagnostic
+7. `configs/live_policy_ledger.csv` before interpreting live performance across
+   FTMO/IC sizing-policy epochs or changing live risk settings.
+8. `docs/lpfs_diagnostic_logging.md` before changing LPFS journal diagnostic
    fields, trade diagnostic reports, or live-vs-backtest comparison logic.
-8. `docs/lpfs_strategy_iteration_context.md` before continuing the current
+9. `docs/lpfs_strategy_iteration_context.md` before continuing the current
    evidence-gated strategy-iteration workflow or handing the task to a fresh
    Codex chat.
-9. `docs/lpfs_lightsail_vps_runbook.md` before any VPS maintenance or remote
+10. `docs/lpfs_lightsail_vps_runbook.md` before any VPS maintenance or remote
    access work.
-10. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+11. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
    IC Markets production runner.
-11. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+12. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before changing execution or notification code.
-12. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+13. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-13. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+14. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
    buckets or income expectations.
-14. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+15. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native MQL5 EA or Strategy Tester work.
 
 ## Source-Of-Truth Matrix
@@ -147,6 +158,7 @@ operational decisions.
 | Research history | `docs/index.html`, version pages, and LPFS `PROJECT_STATE.md` | V1-V22 pages are audit history; V13/V15/V22 feed the current baseline. |
 | Live broker state | MT5 on the VPS | Do not infer open exposure from Telegram alone. |
 | Live runtime state | `C:\TradeAutomationRuntime\data\live` on the VPS | Contains state, journal, heartbeat, logs, and kill switch. |
+| Live sizing policy epochs | `configs/live_policy_ledger.csv` | Segment live analysis by policy epoch; do not scatter sizing-history notes across docs. |
 | VPS restart awareness | Startup alert tasks plus Windows System event log | `VPS STARTED` Telegram means Windows booted; MT5/runner still need heartbeat confirmation. |
 | Remote VPS access | `docs/lpfs_lightsail_vps_runbook.md` | Tailscale SSH is preferred for commands; use Tailscale RDP for MT5 desktop review. |
 | Account and secrets | ignored `config.local.json` and local OS/user secrets | Never commit MT5 passwords, Telegram tokens, SSH private keys, or account credentials. |

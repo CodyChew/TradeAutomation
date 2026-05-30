@@ -1,8 +1,8 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-30 after the LPFS Saturday weekly evidence checkpoint,
-first-month monthly evidence review, safe lifecycle-snapshot diagnostic report,
-and handoff refresh.
+Last updated: 2026-05-31 ICT after the IC live scale-down, LPFS Saturday
+weekly evidence checkpoint, first-month monthly evidence review,
+safe lifecycle-snapshot diagnostic report, and handoff refresh.
 
 ## Purpose
 
@@ -27,14 +27,22 @@ source of truth for strategy research and live execution work.
   `Administrator` desktop login.
 - The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
   SSH key entries were removed from both VPSes.
-- Latest verified dual-VPS live check from this PC was on 2026-05-30 after the
-  Saturday evidence checkpoint: both FTMO and IC were clean on
-  `main...origin/main` at commit `e12602d`, had running parent/child Python
-  runner shape, fresh `running` heartbeats, kill switches clear, MT5 connected
-  and trade allowed, and disk status OK. The ignored packet is
-  `reports/live_ops/lpfs_dual_vps_status_20260530_224231.md`. FTMO had `2`
-  strategy pending orders and `3` active strategy positions; IC had `1`
-  strategy pending order and `3` active strategy positions.
+- Latest verified dual-VPS live check from this PC was on 2026-05-31 ICT after
+  the IC scale-down maintenance: FTMO and IC both had running parent/child
+  Python runner shape, fresh `running` heartbeats, kill switches clear, MT5
+  connected and trade allowed, and disk status OK. The ignored packet is
+  `reports/live_ops/lpfs_dual_vps_status_20260531_001603.md`. FTMO remained
+  at `live_send.risk_bucket_scale=0.05`, `max_open_risk_pct=0.65`, with `2`
+  strategy pending orders and `3` active strategy positions. IC showed
+  `live_send.risk_bucket_scale=1`, `max_risk_pct_per_trade=0.75`,
+  `max_open_risk_pct=6`, with `1` strategy pending order and `3` active
+  strategy positions. Treat those counts as a historical snapshot only; capture
+  a fresh packet before future live operations.
+- Live sizing policy epochs are tracked in `configs/live_policy_ledger.csv`.
+  That ledger is the handoff source for distinguishing strategy performance
+  from risk-policy changes. It records FTMO scale `0.05`, historical IC scale
+  `2.0`, and the active IC scale `1.0` future-order policy. Existing IC
+  pending orders and active positions are not resized by this policy change.
 - Latest LPFS weekly checkpoint artifacts are
   `reports/live_ops/lpfs_weekly_performance/20260530_150637` and
   `reports/live_ops/lpfs_trade_diagnostics/20260530_153500`. The generated
@@ -65,21 +73,23 @@ source of truth for strategy research and live execution work.
 7. `docs/strategy.html` for the current V13 mechanics + V15 risk-bucket guide.
 8. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before continuing execution work.
-9. `docs/lpfs_diagnostic_logging.md` before changing LPFS diagnostic journals,
+9. `configs/live_policy_ledger.csv` before interpreting live performance across
+   FTMO/IC sizing-policy epochs or changing live risk settings.
+10. `docs/lpfs_diagnostic_logging.md` before changing LPFS diagnostic journals,
    trade-diagnostic reports, or live-vs-backtest analysis fields.
-10. `docs/phase2_production_hardening.md` before operating watchdogs,
+11. `docs/phase2_production_hardening.md` before operating watchdogs,
    kill-switch controls, heartbeat, status checks, or Task Scheduler setup.
-11. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+12. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
-12. `docs/lpfs_icmarkets_vps_runbook.md` before IC VPS maintenance.
-13. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+13. `docs/lpfs_icmarkets_vps_runbook.md` before IC VPS maintenance.
+14. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-14. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+15. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native MQL5 EA or Strategy Tester work.
-15. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
+16. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
    performance checkpoint.
-16. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
-17. `concepts/lp_levels_lab/PROJECT_STATE.md` and
+17. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
+18. `concepts/lp_levels_lab/PROJECT_STATE.md` and
    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
    concept behavior.
 
@@ -349,9 +359,12 @@ Dedicated IC VPS production status:
 - Startup alert task: `LPFS_IC_Startup_Alert`.
 - Config: ignored `config.lpfs_icmarkets_raw_spread.local.json`.
 - Broker: `ICMarketsSC-MT5-2`, company `Raw Trading Ltd`, currency `USD`.
-- Risk: IC growth-practical buckets `0.25% / 0.30% / 0.75%` with
-  `risk_bucket_scale=2.0`; effective targets are H4/H8 `0.50%`, H12/D1
-  `0.60%`, W1 `1.50%`.
+- Risk policy: see `configs/live_policy_ledger.csv`. The historical IC
+  scale-2 policy used IC growth-practical buckets `0.25% / 0.30% / 0.75%`
+  with `risk_bucket_scale=2.0`; the active future-order policy reduces IC
+  live sizing to `risk_bucket_scale=1.0`, `max_risk_pct_per_trade=0.75`, and
+  `max_open_risk_pct=6.0`. Existing IC pending orders and active positions are
+  not resized by this change.
 - Identity: magic `231500`, broker comment prefix `LPFSIC`, separate Telegram
   channel.
 - First IC VPS live-send smoke completed with `1` tracked pending order and

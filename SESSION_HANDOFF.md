@@ -1,8 +1,9 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-30 after the LPFS Saturday weekly evidence checkpoint,
-first-month monthly evidence review, safe lifecycle-snapshot diagnostic report,
-and evidence-gated next-step update.
+Last updated: 2026-05-31 ICT after the IC live scale-down, LPFS Saturday
+weekly evidence checkpoint, first-month monthly evidence review,
+safe lifecycle-snapshot diagnostic report, policy-ledger update, and
+evidence-gated next-step update.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -22,27 +23,29 @@ file, and the JSONL journal before making operational decisions.
    Majority Flush strategy research lane.
 7. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before touching execution code.
-8. `docs/lpfs_diagnostic_logging.md` before changing LPFS journals,
+8. `configs/live_policy_ledger.csv` before interpreting live performance across
+   FTMO/IC sizing-policy epochs or changing live risk settings.
+9. `docs/lpfs_diagnostic_logging.md` before changing LPFS journals,
    diagnostic reports, or live-vs-backtest analysis fields.
-9. `docs/lpfs_strategy_iteration_context.md` for the current evidence-gated
+10. `docs/lpfs_strategy_iteration_context.md` for the current evidence-gated
    strategy-iteration objective, scope, workflow, blockers, and fresh-chat
    handoff.
-10. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
-11. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
+11. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
+12. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
    performance monitor, live start timestamps, version context, and
    backtest-distribution comparison.
-12. `docs/phase2_production_hardening.md` before operating the watchdog, kill
+13. `docs/phase2_production_hardening.md` before operating the watchdog, kill
    switch, heartbeat, status command, or Task Scheduler setup.
-13. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+14. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
-14. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+15. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
    IC Markets production runner.
-15. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+16. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-16. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+17. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
    buckets or income expectations. It is linked from the dashboard top
    navigation and the Home page FTMO Profiles section.
-17. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+18. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native EA or Strategy Tester work.
 
 ## AI Agent Continuity Rules
@@ -114,6 +117,11 @@ file, and the JSONL journal before making operational decisions.
 - External Codex memory may be read-only. Treat this repo handoff plus
   `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` as the durable
   continuity layer for future AI agents.
+- Live sizing policy continuity is tracked in `configs/live_policy_ledger.csv`.
+  It records FTMO scale `0.05`, historical IC scale `2.0`, and the active IC
+  future-order scale `1.0` policy. Analysis should segment by policy epoch; the
+  IC scale-down does not imply a strategy-rule change and does not resize
+  existing IC pending orders or active positions.
 - For any LPFS live/runtime, Telegram, MT5 execution, scheduled-task, or VPS
   operations change, do not stop at a local patch. Carry the work to a clear
   completion state: focused tests, full relevant tests when practical, commit,
@@ -179,14 +187,17 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
 ```
 
 Latest verified packet from this PC:
-`reports/live_ops/lpfs_dual_vps_status_20260530_224231.md`. At
-2026-05-30 22:42 ICT, both VPS repos were on `main...origin/main` at
-`e12602d`, both scheduled tasks were `Running`, both kill switches were clear,
-both heartbeats were fresh and `running`, and both MT5 terminals were
-connected/trade-allowed. FTMO had `2` strategy pending orders and `3` active
-strategy positions; IC had `1` strategy pending order and `3` active strategy
-positions. This packet is the post-diagnostic-read confirmation after the
-2026-05-30 Saturday evidence checkpoint.
+`reports/live_ops/lpfs_dual_vps_status_20260531_001603.md`. At
+2026-05-31 00:16 ICT, both scheduled tasks were `Running`, both kill switches
+were clear, both heartbeats were fresh and `running`, and both MT5 terminals
+were connected/trade-allowed. FTMO remained at
+`live_send.risk_bucket_scale=0.05` with `2` strategy pending orders and `3`
+active strategy positions. IC was restarted through `LPFS_IC_Live` after the
+scale-down and showed `live_send.risk_bucket_scale=1`,
+`max_risk_pct_per_trade=0.75`, `max_open_risk_pct=6`, with `1` strategy
+pending order and `3` active strategy positions. Existing IC open items still
+show their original target risk from the historical scale-2 epoch; they were
+not resized.
 
 Environment boundary rule: local OneDrive is development; VPS
 `C:\TradeAutomation` plus each `C:\TradeAutomationRuntime*` root is production.
@@ -825,8 +836,11 @@ ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; gi
   `C:\TradeAutomationRuntimeIC`, ignored config
   `config.lpfs_icmarkets_raw_spread.local.json`, magic `231500`, broker comment
   prefix `LPFSIC`, and separate Telegram channel. `LPFS_IC_Live` is installed
-  and running with `risk_bucket_scale=2.0`. `LPFS_IC_Startup_Alert` is the
-  IC boot/restart Telegram task. Use
+  and running. IC live sizing policy epochs are tracked in
+  `configs/live_policy_ledger.csv`; the active future-order policy is
+  `risk_bucket_scale=1.0`, `max_risk_pct_per_trade=0.75`, and
+  `max_open_risk_pct=6.0`, while the historical scale-2 epoch remains
+  traceable. `LPFS_IC_Startup_Alert` is the IC boot/restart Telegram task. Use
   `docs/lpfs_icmarkets_vps_runbook.md` before maintenance.
 
 ## 2026-05-06 Restart Alert Hardening

@@ -297,6 +297,8 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("lpfs_ic_live_heartbeat.json", html)
         self.assertIn("scripts/Get-LpfsDualVpsStatus.ps1", html)
         self.assertIn("LPFS_IC_Live running", html)
+        self.assertIn("configs/live_policy_ledger.csv", html)
+        self.assertIn("ledger scale 1.0", html)
         self.assertIn("docs/lpfs_icmarkets_vps_runbook.md", html)
         self.assertIn("config.lpfs_icmarkets_raw_spread.example.json", html)
         self.assertIn("lpfs_live_heartbeat.json", html)

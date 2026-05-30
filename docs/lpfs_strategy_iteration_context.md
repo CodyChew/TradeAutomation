@@ -1,7 +1,8 @@
 # LPFS Strategy Iteration Context
 
-Last updated: 2026-05-30 after the Saturday weekly evidence checkpoint and
-first-month monthly evidence review.
+Last updated: 2026-05-31 ICT after the IC live scale-down, Saturday weekly
+evidence checkpoint, first-month monthly evidence review, and policy-ledger
+update.
 
 This is the durable handoff for the current LPFS diagnostic reporting and
 strategy-iteration work. A new Codex chat should be able to read this file,
@@ -27,6 +28,11 @@ future diagnostics prove a persistent cross-lane issue.
 
 - LPFS live operation has two production lanes: FTMO and IC. They run the same
   strategy and should be reviewed together for confluence.
+- Live sizing policy epochs are tracked in `configs/live_policy_ledger.csv`.
+  Use that ledger when reading live results across FTMO and IC so analysis does
+  not mix strategy performance with risk-policy changes. The active IC
+  scale-down is a future-order sizing policy change, not a strategy-rule
+  change.
 - The latest completed weekly checkpoint is
   `reports/live_ops/lpfs_weekly_performance/20260530_150637`. Its generated
   dashboard has an FTMO fetch-timeout caveat, so the authoritative FTMO
@@ -82,7 +88,8 @@ Not approved now:
 - Live strategy heuristic changes.
 - Per-timeframe rules beyond existing risk buckets.
 - Entry, exit, stop, target, recovery, spread, risk, or exposure changes.
-- Config default changes.
+- Config default changes, except the separately executed IC future-order
+  scale-down captured in `configs/live_policy_ledger.csv`.
 - Live runner loop indicator calculations.
 - VPS deployment or runner restarts for this reporting-only work.
 - Manual edits to live state, journals, MT5 orders, MT5 positions, or history.

@@ -677,6 +677,11 @@ Get-CimInstance Win32_Process |
             "Dedicated IC Markets VPS migration plan, file manifest, Tailscale/SSH alias, Telegram channel, and LPFS_IC_Live commands.",
         ),
         (
+            "Live policy ledger",
+            "configs/live_policy_ledger.csv",
+            "Tracked FTMO and IC sizing-policy epochs so performance analysis can separate strategy behavior from risk-policy changes.",
+        ),
+        (
             "IC config example",
             "config.lpfs_icmarkets_raw_spread.example.json",
             "Fail-closed example for the IC production runner with separate magic, comment prefix, runtime files, and Telegram settings.",
@@ -888,7 +893,7 @@ Get-CimInstance Win32_Process |
             ("Current production", "LPFS_IC_Live running", "The IC VPS has its own at-logon task, runtime root, heartbeat, logs, state, journal, Telegram channel, and MT5 account."),
             ("Startup alert", "LPFS_IC_Startup_Alert", "At-startup SYSTEM task sends IC Telegram boot/restart cards into the IC channel and journals into lpfs_ic_live_journal.jsonl."),
             ("Latest IC live smoke", "1 pending order placed", "The first IC VPS live-send cycle completed before continuous task startup; broker/runtime reconciliation is captured by the dual VPS status report."),
-            ("Sizing", "scale 2.0", "The IC live config uses the IC growth-practical 0.25/0.30/0.75 bucket shape with risk_bucket_scale=2.0 and max_risk_pct_per_trade=1.5."),
+            ("Sizing policy", "ledger scale 1.0", "See configs/live_policy_ledger.csv. The active IC live policy keeps the 0.25/0.30/0.75 bucket shape, uses risk_bucket_scale=1.0, max_risk_pct_per_trade=0.75, and keeps the historical scale-2 epoch traceable."),
         ])}
       </div>
       <p class="callout">Full IC migration and communication-channel setup is documented in <code>docs/lpfs_icmarkets_vps_runbook.md</code>.</p>

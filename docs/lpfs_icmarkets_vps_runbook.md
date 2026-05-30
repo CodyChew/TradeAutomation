@@ -31,6 +31,20 @@ runtime root, state, journal, heartbeat, kill switch, and scheduled task.
 Last verified on 2026-05-23 after the LPFS weekly-report incident, runner
 recovery, diagnostic-logging upgrade, and journal-read safety update.
 
+Latest local dual-VPS packet before the IC scale-down plan:
+`reports/live_ops/lpfs_dual_vps_status_20260530_224231.md`. It showed IC
+`LPFS_IC_Live` running, kill switch clear, heartbeat fresh, MT5 connected and
+trade allowed, `live_send.risk_bucket_scale=2`,
+`max_risk_pct_per_trade=1.5`, and `max_open_risk_pct=12`. Treat that packet as
+a historical snapshot; capture a fresh pre-change packet before maintenance.
+
+Latest local dual-VPS packet after the IC scale-down maintenance:
+`reports/live_ops/lpfs_dual_vps_status_20260531_001603.md`. It showed FTMO
+unchanged and running at scale `0.05`, and IC running at
+`live_send.risk_bucket_scale=1`, `max_risk_pct_per_trade=0.75`, and
+`max_open_risk_pct=6`, with kill switch clear, fresh heartbeat, MT5 connected
+and trade allowed, and broker/state counts reconciled.
+
 - Active local operations PC: `LAPTOP-BOHDIO8I`, Tailscale IP
   `100.118.29.124`, repo
   `C:\Users\Cody\OneDrive\Desktop\TradeAutomation`.
@@ -104,6 +118,94 @@ recovery, diagnostic-logging upgrade, and journal-read safety update.
   Production IC journals only show them after the VPS checkout is pulled and
   `LPFS_IC_Live` is intentionally restarted. See
   `docs/lpfs_diagnostic_logging.md`.
+
+## Live Sizing Policy Ledger
+
+Tracked live sizing-policy epochs are recorded in
+`configs/live_policy_ledger.csv`. Use that ledger for handoff and performance
+analysis instead of repeating full sizing history across docs.
+
+- FTMO remains unchanged at `risk_bucket_scale=0.05`,
+  `max_risk_pct_per_trade=0.75`, and `max_open_risk_pct=0.65`.
+- IC historical production used the IC growth-practical bucket shape
+  `0.25% / 0.30% / 0.75%` with `risk_bucket_scale=2.0`,
+  `max_risk_pct_per_trade=1.5`, and `max_open_risk_pct=12.0`.
+- The active IC scale-down keeps the IC bucket shape but changes future
+  live-send order sizing to `risk_bucket_scale=1.0`,
+  `max_risk_pct_per_trade=0.75`, and `max_open_risk_pct=6.0`.
+- This policy does not resize or cancel existing IC pending orders or active
+  positions and does not edit live state, journals, or `dry_run` settings.
+
+## IC Scale-Down Maintenance Procedure
+
+Use this procedure for IC live sizing changes. It is IC-only; do not change
+FTMO commands, config, runtime files, state, journals, orders, or positions.
+
+1. Capture fresh pre-change status from the local repo:
+
+```powershell
+.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40
+```
+
+2. Set the IC kill switch:
+
+```powershell
+ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -Reason 'IC scale-down maintenance'"
+```
+
+3. Poll IC status until it is paused:
+
+```powershell
+ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -StateFileName lpfs_ic_live_state.json -JournalFileName lpfs_ic_live_journal.jsonl -HeartbeatFileName lpfs_ic_live_heartbeat.json -LogFilter 'lpfs_ic_live_*.log' -JournalLines 10 -LogLines 20"
+```
+
+Required before editing the ignored config:
+
+- `kill_switch_active=True`
+- `processes=0`
+- heartbeat status is `kill_switch`, `stopped`, or otherwise no longer
+  `running`
+- FTMO was not touched
+
+If IC still shows running processes after a few minutes, stop and inspect. Do
+not force-kill or edit config without a separate decision.
+
+4. Back up and edit only the IC VPS ignored config:
+
+```powershell
+ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -Command `$path='C:\TradeAutomation\config.lpfs_icmarkets_raw_spread.local.json'; `$stamp=Get-Date -Format 'yyyyMMdd_HHmmss'; Copy-Item -LiteralPath `$path -Destination (`$path + '.bak_' + `$stamp + '_scale_down'); `$cfg=Get-Content -LiteralPath `$path -Raw | ConvertFrom-Json; `$cfg.live_send.risk_bucket_scale=1.0; `$cfg.live_send.max_risk_pct_per_trade=0.75; `$cfg.live_send.max_open_risk_pct=6.0; `$cfg | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath `$path -Encoding UTF8"
+```
+
+5. Validate config load and effective buckets without sending orders:
+
+```powershell
+ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -Command Set-Location C:\TradeAutomation; `$env:PYTHONPATH='C:\TradeAutomation\strategies\lp_force_strike_strategy_lab\src;C:\TradeAutomation\concepts\lp_levels_lab\src;C:\TradeAutomation\concepts\force_strike_pattern_lab\src;C:\TradeAutomation\shared\backtest_engine_lab\src'; .\venv\Scripts\python -c `"from lp_force_strike_strategy_lab import load_live_send_settings, live_risk_buckets_from_config; s=load_live_send_settings('config.lpfs_icmarkets_raw_spread.local.json'); b=live_risk_buckets_from_config(s.executor); print('scale', s.executor.risk_bucket_scale); print('max_trade', s.executor.max_risk_pct_per_trade); print('max_open', s.executor.max_open_risk_pct); print('buckets', b)`""
+```
+
+Expected output includes `scale 1.0`, `max_trade 0.75`, `max_open 6.0`, and
+effective buckets H4/H8 `0.25`, H12/D1 `0.30`, W1 `0.75`.
+
+6. Clear the IC kill switch:
+
+```powershell
+ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAutomation\scripts\Set-LpfsKillSwitch.ps1 -RuntimeRoot C:\TradeAutomationRuntimeIC -Clear"
+```
+
+7. Start the scheduled IC task, not a second manual runner:
+
+```powershell
+ssh lpfs-ic-vps "powershell -NoProfile -Command Start-ScheduledTask -TaskName LPFS_IC_Live"
+```
+
+8. Wait one to two minutes, then capture post-change status:
+
+```powershell
+.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40
+```
+
+The post-change packet must show IC scale `1.0`, max trade `0.75`, max open
+`6.0`, fresh IC `running` heartbeat, IC MT5 connected/trade allowed,
+broker/state count reconciliation, and FTMO unchanged.
 
 ## Files Needed On The IC VPS
 
@@ -250,7 +352,7 @@ Phone recovery steps:
     `live_send.live_send_enabled=false` until the staged checks pass. The
     promoted IC VPS now uses `live_send.execution_mode="LIVE_SEND"`,
     `live_send.live_send_enabled=true`, 28 explicit live symbols, and
-    `risk_bucket_scale=2.0`.
+    the sizing policy recorded in `configs/live_policy_ledger.csv`.
 13. Create runtime folders and start with the kill switch active.
 
 Dependency install command:
@@ -371,6 +473,8 @@ implemented and tested.
 - Do not reuse FTMO Telegram channel for IC.
 - Do not run IC and FTMO from the same MT5 terminal.
 - Do not enable a second IC live-send process while `LPFS_IC_Live` is running.
-- Do not change IC live sizing without rerunning a one-cycle reconciliation.
+- Do not change IC live sizing without a kill-switch-first pause, config-load
+  validation, restart through `LPFS_IC_Live`, and fresh post-change dual-VPS
+  status packet.
 - Telegram is an alert channel only. MT5 orders/positions plus the JSONL journal
   remain the audit source of truth.
