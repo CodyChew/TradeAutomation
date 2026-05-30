@@ -1,6 +1,7 @@
 # LPFS Strategy Iteration Context
 
-Last updated: 2026-05-26.
+Last updated: 2026-05-30 after the Saturday weekly evidence checkpoint and
+first-month monthly evidence review.
 
 This is the durable handoff for the current LPFS diagnostic reporting and
 strategy-iteration work. A new Codex chat should be able to read this file,
@@ -10,9 +11,10 @@ without needing prior conversation history.
 ## Current Objective
 
 Make LPFS strategy iteration evidence-based without changing live trading
-behavior. The immediate objective is to collect and analyze enriched live trade
-diagnostics, compare FTMO and IC together, and produce defensible future
-strategy-change candidates only after enough evidence exists.
+behavior. The immediate objective is to run offline first-month cause
+attribution from enriched live trade diagnostics, compare FTMO and IC together,
+and produce defensible future strategy-change candidates only after enough
+evidence exists.
 
 The current work is reporting/context only. It is not a live strategy change,
 not a live deployment, and not approval to change entries, exits, risk,
@@ -25,11 +27,30 @@ future diagnostics prove a persistent cross-lane issue.
 
 - LPFS live operation has two production lanes: FTMO and IC. They run the same
   strategy and should be reviewed together for confluence.
-- The latest completed weekly performance packet available in the docs is
-  `reports/live_ops/lpfs_weekly_performance/20260523_053222`.
-- FTMO has three completed weeks below p30, and IC has two completed weeks
-  below p30. This is enough to monitor and investigate, not enough to change
-  live strategy behavior.
+- The latest completed weekly checkpoint is
+  `reports/live_ops/lpfs_weekly_performance/20260530_150637`. Its generated
+  dashboard has an FTMO fetch-timeout caveat, so the authoritative FTMO
+  checkpoint read is the supplemental local-snapshot review at
+  `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`.
+- 2026-05-30 latest completed week, 2026-05-25 05:00 SGT to 2026-05-30
+  05:00 SGT: FTMO had 13 closed trades, `-0.56R`, 6 wins / 7 losses, PF
+  `0.92`, historical percentile `p32.4`; IC had 16 closed trades, `-3.63R`,
+  7 wins / 9 losses, PF `0.67`, historical percentile `p12.5`.
+- This was mixed rather than a clean cross-lane failure: FTMO was acceptable
+  and IC was weak/watch but still above p10. Current confluence is H4 weakness
+  (`-4.37R` combined over 17 trades), while H8 was not weak this week
+  (`+0.14R` combined over 8 trades).
+- FTMO previously had three completed weeks below p30, and IC had two
+  completed weeks below p30. The 2026-05-30 weekly checkpoint alone does not
+  justify a live strategy change, but the first-month monthly view escalates
+  the next step from passive monitoring to offline investigation now.
+- First-month monthly review: `docs/lpfs_monthly_evidence_20260530.md`.
+  Against the accepted V22 separated commission-adjusted monthly backtest
+  distribution, FTMO May 2026 live closed trades are `-15.09R` over 71 trades
+  at monthly p1.67, and IC is `-13.47R` over 61 trades at monthly p0.83.
+  The 10-year backtest did not have every month profitable: FTMO had 28 losing
+  months out of 120, and IC had 20 losing months out of 121. The current live
+  month is still near the historical lower tail and warrants cause attribution.
 - Diagnostic lifecycle logging has already been deployed to production as a
   logging-only change. It adds sparse `diagnostics` payloads to signal/order/
   recovery/fill/close/block events.
@@ -38,7 +59,10 @@ future diagnostics prove a persistent cross-lane issue.
   deployed to the VPS and does not need a runner restart unless the user later
   wants the report code available on the VPS checkout.
 - Current enriched closed-trade sample is still too small for an informed live
-  heuristic change.
+  heuristic change. The 2026-05-30 diagnostic report has 29 closed trades with
+  `diagnostic_schema_version`; all 29 are from the latest week, but only 16
+  have full setup geometry, spread gate, order retcode, and backtest join
+  fields.
 
 ## Approved Scope
 
@@ -71,13 +95,18 @@ Intentional LPFS diagnostic/reporting/context files changed in this work:
 - `strategies/lp_force_strike_strategy_lab/tests/test_diagnostic_logging.py`
 - `docs/lpfs_diagnostic_logging.md`
 - `docs/lpfs_strategy_iteration_context.md`
+- `PROJECT_STATE.md`
 - `SESSION_HANDOFF.md`
+- `docs/live_weekly_performance.html`
+- `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`
+- `docs/lpfs_monthly_evidence_20260530.md`
 - `strategies/lp_force_strike_strategy_lab/START_HERE.md`
 - `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md`
 
-Current local worktree also contains unrelated dirty files and untracked
-Majority Flush work. Do not stage, revert, or mix those files into an LPFS
-diagnostic commit unless separately reviewed.
+Current local worktree may contain uncommitted documentation/report artifacts
+from the 2026-05-30 checkpoint. Run `git status --short` before staging and do
+not stage, revert, or mix unrelated files into an LPFS diagnostic/reporting
+commit unless separately reviewed.
 
 ## Files To Inspect First
 
@@ -258,9 +287,13 @@ surface hypotheses and evidence quality.
 ## Current Blockers
 
 - Current enriched live closed-trade sample is too small for a live strategy
-  change.
+  change, but the live first-month monthly underperformance is strong enough
+  to justify offline cause-attribution research now.
 - Production diagnostic rows are only useful after enough real lifecycle and
   close events accumulate.
+- The 2026-05-30 generated weekly dashboard hit an FTMO fetch timeout, so the
+  FTMO weekly result must be read from the local lifecycle-snapshot review
+  until the weekly report path supports bounded/local lifecycle input.
 - True 10-year tick-level Bid/Ask/order-book data is not available from the
   current IC terminal; candle data and M1 spread fields are available.
 - The current diagnostic report supports offline indicator/regime analysis, but
@@ -272,7 +305,8 @@ surface hypotheses and evidence quality.
 
 - How many enriched closed live trades will accumulate per timeframe over the
   next several weeks?
-- Will FTMO and IC show the same weak buckets after enough enriched data exists?
+- Are the first-month FTMO and IC losses driven by the same weak buckets or by
+  broker/feed/execution divergence?
 - Are weak weeks explained by sample variance, setup quality, execution,
   broker/feed divergence, timeframe/session concentration, or market regime?
 - Which constructive improvements, if any, can improve recent performance
@@ -297,18 +331,29 @@ handoff.
 ## Recommended Next Implementation Steps
 
 1. Keep the live runners unchanged.
-2. Commit the intended LPFS diagnostic/reporting/context files separately from
-   unrelated dirty files.
-3. Let production collect more sparse lifecycle diagnostics naturally.
-4. At the next weekly checkpoint, safely collect local journal copies and build
+2. Start offline first-month cause attribution from
+   `reports/live_ops/lpfs_trade_diagnostics/20260530_153500`, with the monthly
+   tail-risk result as the reason for escalation.
+3. Compare FTMO and IC by timeframe, symbol, side, session/weekday, setup
+   geometry, spread-risk, execution path, recovery path, and candle-derived
+   recent-regime fields.
+4. Check whether any weak bucket is also weak in recent 3/6/12 month V22
+   benchmark windows and not just the full 10-year average.
+5. Let production collect more sparse lifecycle diagnostics naturally.
+6. At the next weekly checkpoint, safely collect local journal copies and build
    the diagnostic report.
-5. Review `timeframe_confluence.csv` and `backtest_comparison.csv` for
+7. Review `timeframe_confluence.csv` and `backtest_comparison.csv` for
    cross-lane, recent-window, and timeframe-normalized signals.
-6. If evidence thresholds are met, create a separate research plan for one
+8. Watch H4 specifically because the 2026-05-30 checkpoint showed cross-lane
+   H4 weakness, but do not change H4 rules unless repeated enriched evidence
+   and recent/full backtests support it.
+9. Improve weekly reporting so it can use bounded/local lifecycle snapshots
+   and does not produce incomplete FTMO rows after a remote fetch timeout.
+10. If evidence thresholds are met, create a separate research plan for one
    small reversible heuristic candidate.
-7. Backtest any candidate on both FTMO and IC recent windows plus full-history
+11. Backtest any candidate on both FTMO and IC recent windows plus full-history
    guardrails.
-8. Request explicit user approval before any live strategy-change deployment.
+12. Request explicit user approval before any live strategy-change deployment.
 
 ## Next Codex Handoff
 

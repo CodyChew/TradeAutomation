@@ -1,9 +1,9 @@
 # LPFS Start Here
 
-Last updated: 2026-05-26 after weekly live-performance analysis, reporting
-incident recovery, diagnostic-logging upgrade, logging-only production deploy,
-journal-read safety documentation, and offline diagnostic-report iteration
-policy.
+Last updated: 2026-05-30 after the Saturday weekly evidence checkpoint,
+first-month monthly evidence review, reporting incident recovery,
+diagnostic-logging upgrade, logging-only production deploy, journal-read safety
+documentation, and offline diagnostic-report iteration policy.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -60,13 +60,24 @@ operational decisions.
   profile and H4/H8 `0.20%`, H12/D1 `0.25%`, W1 `0.55%` as the
   aggressive/funded profile. This did not change live config or VPS runtime.
 - Weekly performance state: latest packet
-  `reports/live_ops/lpfs_weekly_performance/20260523_053222` covers the
-  completed week from 2026-05-18 05:00 SGT to 2026-05-23 05:00 SGT. FTMO was
-  `-2.10R` at p23.6; IC was `-2.67R` at p17.6. FTMO has three completed weeks
-  below p30, and IC has two completed weeks below p30. Treat this as a
-  monitor/investigate signal only; H8 is not a selected change candidate unless
-  future enriched diagnostics prove a persistent cross-lane issue. Do not
-  change live strategy rules from this sample alone.
+  `reports/live_ops/lpfs_weekly_performance/20260530_150637` covers the
+  completed week from 2026-05-25 05:00 SGT to 2026-05-30 05:00 SGT, but the
+  generated dashboard has an FTMO fetch-timeout caveat. Use
+  `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`
+  for the authoritative checkpoint read. FTMO was `-0.56R` at p32.4; IC was
+  `-3.63R` at p12.5. H4 was the current cross-lane weak bucket, while H8 was
+  not weak this week. This weekly view alone does not approve a live strategy
+  change.
+- First-month monthly evidence state: review
+  `docs/lpfs_monthly_evidence_20260530.md`.
+  Against the accepted V22 separated commission-adjusted monthly backtest
+  distribution, FTMO May 2026 live closed trades are `-15.09R` over 71 trades
+  at monthly p1.67, and IC is `-13.47R` over 61 trades at monthly p0.83. The
+  10-year backtest had losing months, so one losing month is not impossible,
+  but this live month is near the lower historical tail. Escalate to offline
+  cause-attribution research now; do not change live strategy rules, sizing,
+  execution, config defaults, state, journals, MT5 orders, or MT5 positions
+  from this evidence alone.
 - Reporting safety state: on 2026-05-23, a weekly-report scan of production
   journals using unsafe file-open semantics likely stopped both live runners.
   Both runners were restarted and verified healthy in

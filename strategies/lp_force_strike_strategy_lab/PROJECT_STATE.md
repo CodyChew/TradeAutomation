@@ -1,9 +1,9 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-26 after the weekly live-performance analysis,
-reporting incident, runner recovery, diagnostic-logging upgrade, logging-only
-production deploy, journal-read safety update, and offline diagnostic-report
-iteration policy.
+Last updated: 2026-05-30 after the Saturday weekly evidence checkpoint,
+first-month monthly evidence review, weekly-dashboard FTMO fetch-timeout
+caveat, diagnostic report generation from safe lifecycle snapshots, and
+evidence-gated next-step update.
 
 ## Purpose
 
@@ -124,6 +124,76 @@ observed on both journals with `diagnostic_schema_version=1` plus
 compared with recent 3/6/12 month benchmark windows, checked against the
 10-year commission-adjusted FTMO and IC backtests, and a separate
 strategy-change plan is approved.
+
+## 2026-05-30 Weekly Evidence Checkpoint
+
+Latest checkpoint artifacts:
+
+- pre-check status:
+  `../../reports/live_ops/lpfs_dual_vps_status_20260530_220531.md`;
+- generated weekly report:
+  `../../reports/live_ops/lpfs_weekly_performance/20260530_150637`;
+- supplemental local-snapshot review:
+  `../../reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`;
+- post-weekly-read status:
+  `../../reports/live_ops/lpfs_dual_vps_status_20260530_222052.md`;
+- lifecycle snapshots:
+  `../../reports/live_ops/lpfs_journal_snapshots/20260530_222052`;
+- diagnostic report:
+  `../../reports/live_ops/lpfs_trade_diagnostics/20260530_153500`;
+- post-diagnostic-read status:
+  `../../reports/live_ops/lpfs_dual_vps_status_20260530_224231.md`.
+
+Operational status: both FTMO and IC remained healthy after all production-
+journal reads. Scheduled tasks were `Running`, kill switches were clear,
+heartbeats were fresh, MT5 was connected/trade-allowed, and disk status was OK.
+
+Important caveat: the generated weekly dashboard hit an FTMO fetch timeout, so
+do not use its FTMO row as performance evidence for this checkpoint. Use the
+local-snapshot review instead.
+
+Latest completed week, 2026-05-25 05:00 SGT to 2026-05-30 05:00 SGT:
+
+- FTMO: 13 closed trades, `-0.56R`, 6 wins / 7 losses, PF `0.92`,
+  historical percentile `p32.4`. This is acceptable/normal variance.
+- IC: 16 closed trades, `-3.63R`, 7 wins / 9 losses, PF `0.67`,
+  historical percentile `p12.5`. This is weak/watch, but not below p10.
+
+Confluence read:
+
+- Weekly performance diverged: FTMO acceptable, IC weak.
+- Current cross-lane weak bucket is H4: FTMO H4 `-0.66R` over 7 trades and IC
+  H4 `-3.72R` over 10 trades, combined `-4.37R` over 17 trades.
+- H8 was not weak this week: FTMO H8 `+0.08R` over 4 trades and IC H8
+  `+0.06R` over 4 trades.
+- D1 was weak but too sparse: combined `-2.00R` over 2 trades.
+- Session, weekday, spread-risk, risk-ATR, RSI/momentum, and setup-geometry
+  hypotheses are now visible, but sample sizes remain too small for a live
+  heuristic change.
+
+Diagnostic availability: the local diagnostic report has 132 closed live
+trades, 29 closed trades with `diagnostic_schema_version`, and candle
+enrichment for all 132 closed rows. All 29 latest-week closed trades had a
+diagnostic schema marker, but only 16 had full setup geometry, spread gate,
+order retcode, and backtest join fields.
+
+First-month monthly review: `../../docs/lpfs_monthly_evidence_20260530.md`.
+Using the accepted V22 separated commission-adjusted monthly backtest
+distribution, FTMO May 2026 live closed trades are `-15.09R` over 71 trades at
+monthly p1.67, and IC is `-13.47R` over 61 trades at monthly p0.83. The
+10-year backtest did not make every month profitable: FTMO had 28 losing months
+out of 120, and IC had 20 losing months out of 121. Even so, the current live
+month is near the lower historical tail.
+
+Decision: no live strategy change. The monthly evidence is strong enough to
+start offline first-month cause attribution now, but not enough by itself to
+change production rules. Continue collecting enriched diagnostics, investigate
+whether the loss is concentrated by timeframe, symbol, side, session/weekday,
+setup geometry, spread/execution quality, recovery path, or recent market
+regime, and require FTMO/IC confluence plus recent/full backtest support before
+any heuristic candidate. The next reporting/tooling improvement is to make the
+weekly report consume bounded/local lifecycle snapshots so FTMO does not time
+out and produce an incomplete dashboard row.
 
 Future PnL backtests should load candles through
 `../../shared/market_data_lab` so this strategy uses the same broker data and

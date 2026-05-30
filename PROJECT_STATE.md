@@ -1,8 +1,8 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-23 after the LPFS weekly performance analysis,
-report-generation incident, live-runner recovery, diagnostic-logging upgrade,
-logging-only production deploy, and continuity refresh.
+Last updated: 2026-05-30 after the LPFS Saturday weekly evidence checkpoint,
+first-month monthly evidence review, safe lifecycle-snapshot diagnostic report,
+and handoff refresh.
 
 ## Purpose
 
@@ -27,17 +27,25 @@ source of truth for strategy research and live execution work.
   `Administrator` desktop login.
 - The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
   SSH key entries were removed from both VPSes.
-- Latest verified dual-VPS live check from this PC was on 2026-05-23 after the
-  logging-only diagnostic deploy: both FTMO and IC were clean on
-  `main...origin/main` at commit `09fbb10`, had running parent/child Python
+- Latest verified dual-VPS live check from this PC was on 2026-05-30 after the
+  Saturday evidence checkpoint: both FTMO and IC were clean on
+  `main...origin/main` at commit `e12602d`, had running parent/child Python
   runner shape, fresh `running` heartbeats, kill switches clear, MT5 connected
-  and trade allowed, and broker order/position counts matching state. The
-  ignored packet is
-  `reports/live_ops/lpfs_dual_vps_status_20260523_153510.md`. FTMO had `6`
-  strategy pending orders and `5` active strategy positions; IC had `6`
-  strategy pending orders and `5` active strategy positions. First post-deploy
-  diagnostic signal rows were observed on both journals with
-  `diagnostic_schema_version=1` plus `diagnostics`.
+  and trade allowed, and disk status OK. The ignored packet is
+  `reports/live_ops/lpfs_dual_vps_status_20260530_224231.md`. FTMO had `2`
+  strategy pending orders and `3` active strategy positions; IC had `1`
+  strategy pending order and `3` active strategy positions.
+- Latest LPFS weekly checkpoint artifacts are
+  `reports/live_ops/lpfs_weekly_performance/20260530_150637` and
+  `reports/live_ops/lpfs_trade_diagnostics/20260530_153500`. The generated
+  weekly dashboard has an FTMO fetch-timeout caveat, so use
+  `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`
+  for the authoritative 2026-05-30 FTMO/IC performance read.
+- The first-month monthly review is `docs/lpfs_monthly_evidence_20260530.md`.
+  It escalates LPFS from passive monitoring to offline cause-attribution
+  investigation: FTMO May 2026 live closed trades are `-15.09R` at monthly
+  p1.67, and IC is `-13.47R` at monthly p0.83 versus the accepted V22
+  separated commission-adjusted monthly distributions.
 - Phone RDP over Tailscale was verified for both VPSes. If a `VPS STARTED`
   Telegram arrives, log in once as local `Administrator`, wait for MT5/runner,
   then disconnect. Do not sign out.
@@ -113,22 +121,45 @@ tracked TradeAutomation structure above plus ignored local artifacts such as
 
 ## LPFS Live Performance And Reporting Safety
 
-The latest complete weekly LPFS analysis is:
+The latest Saturday LPFS weekly evidence checkpoint is:
 
 - dashboard: `docs/live_weekly_performance.html`;
-- packet: `reports/live_ops/lpfs_weekly_performance/20260523_053222`;
-- completed week: 2026-05-18 05:00 SGT to 2026-05-23 05:00 SGT;
-- FTMO: `16` closed trades, `-2.0986R`, percentile `23.6`, PF `0.7686`;
-- IC: `21` closed trades, `-2.6723R`, percentile `17.6`, PF `0.7725`.
+- weekly report packet:
+  `reports/live_ops/lpfs_weekly_performance/20260530_150637`;
+- authoritative local snapshot review:
+  `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`;
+- diagnostic comparison packet:
+  `reports/live_ops/lpfs_trade_diagnostics/20260530_153500`;
+- completed week: 2026-05-25 05:00 SGT to 2026-05-30 05:00 SGT;
+- FTMO: `13` closed trades, `-0.5616R`, percentile `32.4`, PF `0.9199`;
+- IC: `16` closed trades, `-3.6258R`, percentile `12.5`, PF `0.6652`;
+- final operations packet:
+  `reports/live_ops/lpfs_dual_vps_status_20260530_224231.md`.
 
-Interpretation: FTMO has three completed weeks below p30, and IC has two
-completed weeks below p30. This is enough to start research iteration, but not
-enough by itself to change live production rules or sizing. The next research
-slice should focus on H8 drag and cluster/correlation exposure. Escalate toward
-a production change if another completed week is below p30 on both lanes,
-either lane has another p10 week, H8 remains the worst timeframe next completed
-week, or the combined live sample reaches about 75-100 closed trades while
-still underperforming V22 expectations.
+Important caveat: the generated weekly dashboard packet has a FTMO remote-fetch
+timeout. Do not use the dashboard's FTMO row as authoritative for the
+2026-05-30 checkpoint. The local snapshot review above is the authoritative
+source for the latest FTMO metrics. The IC row in the dashboard was collected
+successfully.
+
+Interpretation: the latest week was mixed, not a clean cross-lane failure.
+FTMO was acceptable/normal variance at p32.4. IC was weak and remains on watch
+at p12.5, but it was not a p10/p5 event. H4 was the current shared weak bucket
+for the latest week; H8 was flat/slightly positive and is not a current change
+candidate from this checkpoint.
+
+Monthly interpretation: the first live month is a stronger concern than the
+latest weekly p10/p5 labels alone. Using the accepted V22 separated,
+commission-adjusted monthly backtest distribution, losing months exist in the
+10-year benchmark, but the current live May 2026 result is near the historical
+tail: FTMO `-15.09R` over 71 trades at p1.67, and IC `-13.47R` over 61 trades
+at p0.83. This is enough to start offline cause-attribution research now. It
+is not enough by itself to change live production rules.
+
+No live strategy heuristic, risk, entry, exit, broker, or execution change is
+approved. Keep collecting enriched diagnostics, start offline first-month
+cause attribution, and improve weekly reporting so bounded local lifecycle
+snapshots can be used when remote collection times out.
 
 Reporting safety: remote scans of production LPFS journals/state are
 production-adjacent. On 2026-05-23, a weekly-report collection attempt that

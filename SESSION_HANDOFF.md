@@ -1,9 +1,8 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-26 after the LPFS weekly performance analysis,
-report-generation incident, runner recovery, diagnostic-logging upgrade,
-logging-only production deploy, safety handoff refresh, and offline
-diagnostic-report iteration policy.
+Last updated: 2026-05-30 after the LPFS Saturday weekly evidence checkpoint,
+first-month monthly evidence review, safe lifecycle-snapshot diagnostic report,
+and evidence-gated next-step update.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -68,6 +67,31 @@ file, and the JSONL journal before making operational decisions.
   confluence views. Do not add these calculations to the live runner loop.
   H8 is not a selected change candidate; it remains an example unless enriched
   evidence proves a persistent cross-lane issue.
+- 2026-05-30 weekly evidence checkpoint: the generated weekly dashboard wrote
+  `reports/live_ops/lpfs_weekly_performance/20260530_150637` and refreshed
+  `docs/live_weekly_performance.html`, but the FTMO row has a fetch-timeout
+  caveat and must not be used as the FTMO performance source. Use the
+  supplemental local-snapshot review at
+  `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`.
+  Latest week, 2026-05-25 05:00 SGT to 2026-05-30 05:00 SGT: FTMO was
+  acceptable at 13 closed trades, `-0.56R`, PF `0.92`, p32.4; IC was weak/watch
+  at 16 closed trades, `-3.63R`, PF `0.67`, p12.5. Weekly performance diverged
+  by lane. Current cross-lane weakness is H4 (`-4.37R` over 17 combined
+  trades), while H8 was not weak this week (`+0.14R` over 8 combined trades).
+  No live strategy change is approved; keep collecting and investigate H4 only
+  if the weakness repeats or crosses evidence thresholds.
+- 2026-05-30 first-month monthly evidence review:
+  `docs/lpfs_monthly_evidence_20260530.md`.
+  Against the accepted V22 separated commission-adjusted monthly backtest
+  distribution, FTMO May 2026 live closed trades are `-15.09R` over 71 trades
+  at monthly p1.67, and IC is `-13.47R` over 61 trades at monthly p0.83. The
+  10-year backtest did not make every month profitable: FTMO had 28 losing
+  months out of 120, and IC had 20 losing months out of 121. The live first
+  month is nevertheless near the historical lower tail. Escalate the next step
+  from passive monitoring to offline first-month cause attribution now, while
+  keeping live entries, exits, sizing, timeframe mix, spread gates, recovery
+  behavior, broker/execution logic, config defaults, MT5 orders/positions,
+  live state, and journals unchanged.
 - 2026-05-23 diagnostic logging deploy: commit `09fbb10` (`lpfs: add
   diagnostic trade logging and safe reporting`) was pushed to `main`, pulled on
   FTMO and IC with a kill-switch-first sequence, and both scheduled tasks were
@@ -155,14 +179,14 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
 ```
 
 Latest verified packet from this PC:
-`reports/live_ops/lpfs_dual_vps_status_20260523_140154.md`. At
-2026-05-23 14:01 SGT, both VPS repos were on `main...origin/main` at
-`32a71d9`, both scheduled tasks were `Running`, both kill switches were clear,
+`reports/live_ops/lpfs_dual_vps_status_20260530_224231.md`. At
+2026-05-30 22:42 ICT, both VPS repos were on `main...origin/main` at
+`e12602d`, both scheduled tasks were `Running`, both kill switches were clear,
 both heartbeats were fresh and `running`, and both MT5 terminals were
-connected/trade-allowed. FTMO had `6` strategy pending orders and `5` active
-strategy positions; IC had `6` strategy pending orders and `5` active strategy
-positions. This packet is the recovery confirmation after the 2026-05-23
-weekly-report incident.
+connected/trade-allowed. FTMO had `2` strategy pending orders and `3` active
+strategy positions; IC had `1` strategy pending order and `3` active strategy
+positions. This packet is the post-diagnostic-read confirmation after the
+2026-05-30 Saturday evidence checkpoint.
 
 Environment boundary rule: local OneDrive is development; VPS
 `C:\TradeAutomation` plus each `C:\TradeAutomationRuntime*` root is production.
