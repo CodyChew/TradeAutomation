@@ -352,27 +352,24 @@ Fill, close, expiry, and cancellation cards reply to the original
 `ORDER PLACED` Telegram message when Telegram returns a message ID. Raw broker
 comments, retcodes, exact floats, and diagnostics stay in the JSONL journal.
 
-Print a manual performance summary. The default output is metric-only and does
-not list exact trades; add `--include-trades` only when the old detailed trade
-list is needed:
+Print a manual performance summary from a safely collected local journal copy.
+The default output is metric-only and does not list exact trades; add
+`--include-trades` only when the old detailed trade list is needed:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --days 7
+$journalCopy = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\lpfs_live_journal.jsonl"
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal $journalCopy --days 7
 ```
 
 Post that same summary to Telegram:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --weeks 4 --post-telegram
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal $journalCopy --weeks 4 --post-telegram
 ```
 
-On the VPS, include the runtime root because production live state and journal
-files live outside the repo:
-
-```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --weeks 4 --post-telegram
-```
+Do not point this compact summary reader at an active VPS runtime root or live
+journal. Collect the local copy with the approved shared-read procedure in
+`docs/system_troubleshooting.md`.
 
 The full V15 dry-run universe is the 28 AUD/CAD/CHF/EUR/GBP/JPY/NZD/USD
 major/cross pairs across `H4`, `H8`, `H12`, `D1`, and `W1`. That is 140
@@ -441,5 +438,9 @@ Sensitive values must never appear in these files:
 - The live runner sends and journals start/stop process notifications when
   Telegram is configured. Stop cards are emitted for completed cycles, Ctrl+C,
   and uncaught runtime errors after state save is attempted.
-- No MT5 retry policy yet.
-- No kill-switch implementation beyond notification event support.
+- There is no generic MT5 retry loop. Selected transient WAITING outcomes are
+  deliberately reconsidered on later polling cycles until entry touch or
+  bar-count expiry makes the setup invalid.
+- The kill switch prevents startup and new live cycles, including during the
+  sleep between cycles. It does not close positions or delete broker pending
+  orders by itself.

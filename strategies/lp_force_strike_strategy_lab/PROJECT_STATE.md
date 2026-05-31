@@ -1333,12 +1333,11 @@ Fill, close, expiry, and cancellation alerts reply to the original
 `ORDER PLACED` or `ORDER ADOPTED` Telegram message when Telegram returns a
 message ID. The live state stores those IDs under `telegram_message_ids`. The
 manual performance summary script is
-`../../scripts/summarize_lpfs_live_trades.py --config config.local.json --days
-7` or `--weeks 4`; it is metric-only by default and lists exact trades only
-with `--include-trades`. On the VPS, include
-`--runtime-root C:\TradeAutomationRuntime` because production live state and
-journal files live outside the repo checkout. Routine Telegram summaries should
-omit `--include-trades`; the flag is only for explicit long-form trade lists.
+`../../scripts/summarize_lpfs_live_trades.py`; run it against a safely collected
+local journal copy with `--journal`, not an active VPS runtime root or live
+journal path. It is metric-only by default and lists exact trades only with
+`--include-trades`. Routine Telegram summaries should omit `--include-trades`;
+the flag is only for explicit long-form trade lists.
 
 Runner start/stop cards are intentionally separate from trade lifecycle cards.
 They show the sleep-after-cycle setting, requested/completed cycles, runtime,

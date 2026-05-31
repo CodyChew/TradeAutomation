@@ -79,6 +79,8 @@ while ($true) {
 
     "[$(Get-Date -Format o)] runner exited with code $ExitCode" | Tee-Object -FilePath $LogPath -Append | Out-Null
 
+    # WARNING: Exit code 2 (state lock already held) currently falls through to
+    # restart handling. Changing that watchdog policy requires a separate review.
     if ($ExitCode -eq 0 -or $ExitCode -eq 130 -or $ExitCode -eq 3 -or $ExitCode -eq 4) {
         exit $ExitCode
     }

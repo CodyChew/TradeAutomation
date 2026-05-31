@@ -135,18 +135,23 @@ cycle.
 - redirects stdout/stderr to timestamped log files;
 - passes `--runtime-root`, `--kill-switch-path`, and `--heartbeat-path`;
 - restarts after unexpected non-zero crashes;
-- does not restart after normal completion, Ctrl+C, or kill-switch exit.
+- does not restart after normal completion, Ctrl+C, kill-switch exit, or
+  runtime-state migration refusal.
 
 Expected exit codes:
 
 | Code | Meaning | Watchdog action |
 |---:|---|---|
 | 0 | requested cycles completed | stop |
-| 2 | another runner already holds the state lock | stop |
+| 2 | another runner already holds the state lock | currently restarts unless `-MaxRestarts` is exceeded; separate fail-closed review required |
 | 3 | kill switch active | stop |
 | 4 | runtime state migration required | stop |
 | 130 | Ctrl+C / user stop | stop |
 | other | unexpected crash | restart unless `-MaxRestarts` is exceeded |
+
+WARNING: the code-`2` lock-contention row documents current watchdog behavior,
+not the desired policy. The live runner itself exits before MT5 initialization,
+but changing the watchdog restart branch requires a separate logic-change PR.
 
 The live runner still keeps the existing single-runner lock beside the resolved
 state file. A watchdog restart should not duplicate orders because the live

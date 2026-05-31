@@ -109,6 +109,9 @@ Safe patterns:
 - prefer `scripts/summarize_lpfs_live_gate_attribution.py --tail-lines 200000`
   for remote gate-attribution reads; it uses `FileShare.ReadWrite` and now
   requires `--allow-full-scan` for unbounded remote scans;
+- run `scripts/summarize_lpfs_live_trades.py` only against a safely collected
+  local journal copy. Do not pass an active VPS `--runtime-root` or active live
+  `--journal` path to that compact summary reader;
 - prefer bounded tails or already-generated report packets for historical
   evidence;
 - when a full scan is explicitly approved, open with
@@ -117,6 +120,11 @@ Safe patterns:
   line by line;
 - immediately run `.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 5
   -LogLines 5` afterward and record the packet path.
+
+The generated `docs/live_ops.html` page still contains direct runtime-root
+compact-summary examples. Treat those examples as stale until a separate
+documentation-generator-only follow-up updates the page builder and regenerates
+the static page.
 
 Incident reference: on 2026-05-23, an LPFS weekly-report collection attempt
 used an unsafe live-file open while scanning production journals and both live

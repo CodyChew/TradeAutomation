@@ -321,6 +321,8 @@ def main() -> int:
         state_file_name=args.runtime_state_file_name,
         journal_file_name=args.runtime_journal_file_name,
     )
+    # This CLI can place real orders. Validate every live-send acknowledgement
+    # before importing or initializing MT5.
     validate_live_send_settings(settings)
     if (
         str(args.runtime_root).strip()
@@ -377,6 +379,7 @@ def main() -> int:
         )
         return KILL_SWITCH_EXIT_CODE
 
+    # Acquire the state-adjacent single-runner lock before MT5 initialization.
     runner_lock = LiveRunnerLock(_runner_lock_path(settings.executor.state_path))
     try:
         runner_lock.acquire()

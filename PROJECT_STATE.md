@@ -959,11 +959,10 @@ Live-send adapter facts:
   state exists and the new runtime-root state is missing, the runner exits until
   state is copied or `--allow-empty-runtime-state` is intentionally used after
   broker-state verification.
-- Manual performance summary:
-  `scripts/summarize_lpfs_live_trades.py --config config.local.json --days 7`
-  or `--weeks 4` with optional `--post-telegram`; on the VPS add
-  `--runtime-root C:\TradeAutomationRuntime`. It is metric-only by default and
-  lists exact trades only with `--include-trades`.
+- Manual performance summary: run `scripts/summarize_lpfs_live_trades.py`
+  against a safely collected local journal copy with `--journal`. Do not pass
+  an active VPS runtime root or live journal path. It is metric-only by default
+  and lists exact trades only with `--include-trades`.
 - Routine Telegram summaries should omit `--include-trades`. Latest compact
   weekly posts on 2026-05-06: FTMO reported `16` closed trades, `43.8%` win
   rate, net PnL `-37.85`, total `-1.88R`; IC raw-spread reported no closed

@@ -1188,25 +1188,23 @@ status, and SGT start/stop time. The `30s` setting is a sleep after each
 completed scan, not a fixed wall-clock launch interval. They are best-effort
 Telegram UX and are also journaled.
 
-Manual performance summary, metric-only by default:
+Manual performance summary from a safely collected local journal copy,
+metric-only by default:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --days 7
+$journalCopy = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\lpfs_live_journal.jsonl"
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal $journalCopy --days 7
 ```
 
 Post compact summary:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --weeks 4 --post-telegram
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal $journalCopy --weeks 4 --post-telegram
 ```
 
-On the VPS, production journal/state live under `C:\TradeAutomationRuntime`, so
-the summary commands must include `--runtime-root`:
-
-```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --weeks 4 --post-telegram
-```
+Do not point this compact summary reader at an active VPS runtime root or live
+journal. Collect the local copy with the approved shared-read procedure in
+`docs/system_troubleshooting.md`.
 
 Do not add `--include-trades` for routine Telegram summaries. That flag is the
 explicit long-form override and appends the trade-by-trade list.
