@@ -28,11 +28,14 @@ source of truth for strategy research and live execution work.
   `Administrator` desktop login.
 - The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
   SSH key entries were removed from both VPSes.
-- Latest verified dual-VPS live check from this PC was on 2026-05-31 ICT after
-  the post-scale-down logging audit: FTMO and IC both had running parent/child
-  Python runner shape, fresh `running` heartbeats, kill switches clear, MT5
-  connected and trade allowed, and disk status OK. The ignored packet is
-  `reports/live_ops/lpfs_dual_vps_status_20260531_115757.md`. FTMO remained
+- Latest verified dual-VPS live check from this PC was on 2026-05-31 22:05 ICT
+  after the watchdog lock-contention hardening rollout: FTMO and IC both had
+  scheduled tasks `Running`, `task_multiple_instances=IgnoreNew`, running
+  parent/child Python runner shape, fresh `running` heartbeats, kill switches
+  clear, MT5 connected and trade allowed, disk status OK, and journals actively
+  appending rows. Both VPS repo checkouts were at the active runtime-hardening
+  commit `3657323`. The captured packet is
+  `reports/live_ops/lpfs_dual_vps_status_20260531_220518.md`. FTMO remained
   at `live_send.risk_bucket_scale=0.05`, `max_open_risk_pct=0.65`, with `2`
   strategy pending orders and `3` active strategy positions. IC showed
   `live_send.risk_bucket_scale=1`, `max_risk_pct_per_trade=0.75`,

@@ -220,13 +220,16 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
 ```
 
 Latest verified packet from this PC:
-`reports/live_ops/lpfs_dual_vps_status_20260531_115757.md`. At
-2026-05-31 11:57 ICT, both scheduled tasks were `Running`, both kill switches
-were clear, both heartbeats were fresh and `running`, and both MT5 terminals
-were connected/trade-allowed. FTMO remained at
+`reports/live_ops/lpfs_dual_vps_status_20260531_220518.md`. At
+2026-05-31 22:05 ICT, both scheduled tasks were `Running`,
+`task_multiple_instances=IgnoreNew`, both kill switches were clear, both
+heartbeats were fresh and `running`, both MT5 terminals were
+connected/trade-allowed, both disks were OK, and both journals were actively
+appending rows. Both VPS repo checkouts were at the active runtime-hardening
+commit `3657323`. FTMO remained at
 `live_send.risk_bucket_scale=0.05` with `2` strategy pending orders and `3`
-active strategy positions. IC was restarted through `LPFS_IC_Live` after the
-scale-down and showed `live_send.risk_bucket_scale=1`,
+active strategy positions. IC remained at the post-scale-down
+`live_send.risk_bucket_scale=1`,
 `max_risk_pct_per_trade=0.75`, `max_open_risk_pct=6`, with `1` strategy
 pending order and `3` active strategy positions. Existing IC open items still
 show their original target risk from the historical scale-2 epoch; they were
