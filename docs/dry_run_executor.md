@@ -352,23 +352,25 @@ Fill, close, expiry, and cancellation cards reply to the original
 `ORDER PLACED` Telegram message when Telegram returns a message ID. Raw broker
 comments, retcodes, exact floats, and diagnostics stay in the JSONL journal.
 
-Print a manual performance summary from a safely collected local journal copy.
-The default output is metric-only and does not list exact trades; add
-`--include-trades` only when the old detailed trade list is needed:
+Print a manual performance summary from a collector-produced local journal
+snapshot. The default output is metric-only and does not list exact trades;
+add `--include-trades` only when the old detailed trade list is needed:
 
 ```powershell
-$journalCopy = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\lpfs_live_journal.jsonl"
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal $journalCopy --days 7
+.\venv\Scripts\python scripts\collect_lpfs_live_journal_snapshots.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl"
+.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 5 -LogLines 5
+$journalSnapshot = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\ftmo_lpfs_journal_snapshot.jsonl"
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --journal-snapshot $journalSnapshot --days 7
 ```
 
 Post that same summary to Telegram:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal $journalCopy --weeks 4 --post-telegram
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal-snapshot $journalSnapshot --weeks 4 --post-telegram
 ```
 
 Do not point this compact summary reader at an active VPS runtime root or live
-journal. Collect the local copy with the approved shared-read procedure in
+journal. Collect the local snapshot with the approved bounded shared-read procedure in
 `docs/system_troubleshooting.md`.
 
 The full V15 dry-run universe is the 28 AUD/CAD/CHF/EUR/GBP/JPY/NZD/USD

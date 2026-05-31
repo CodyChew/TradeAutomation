@@ -55,8 +55,8 @@ MT5 account dumps to diagnostics.
 
 ## Report Command
 
-Build the additive local diagnostic report from safely collected local journal
-copies:
+Build the additive local diagnostic report from operator-supplied local journal
+evidence:
 
 ```powershell
 .\venv\Scripts\python scripts\build_lpfs_trade_diagnostics.py `
@@ -88,6 +88,12 @@ Files:
 Older journals remain valid input. Rows before this schema simply have blank or
 missing diagnostic columns.
 
+Diagnostics intentionally remain flexible offline tooling: `--journal` may
+point to archived, historical, synthetic, or safely collected local copies and
+does not require a collector manifest. For production evidence, prefer
+snapshots produced by `scripts/collect_lpfs_live_journal_snapshots.py`. Never
+pass an active VPS runtime journal path directly.
+
 Offline indicator enrichment uses local candle roots only. The report defaults
 to `data/raw/ftmo/forex` for FTMO and `data/raw/lpfs_new_mt5_account/forex` for
 IC when those folders exist, and can be overridden with:
@@ -118,9 +124,23 @@ Approved readers must:
 - verify both live runners after any remote collection that touches active
   production files.
 
-`scripts/summarize_lpfs_live_gate_attribution.py` now defaults to
-`--tail-lines 200000`, uses a shared-read stream for remote SSH journals, and
-requires `--allow-full-scan` for an unbounded full remote scan.
+For routine compact summaries, use
+`scripts/collect_lpfs_live_journal_snapshots.py`. It defaults to an exact
+`64 MiB` source suffix, captures a fixed source byte range through a shared
+read, excludes `market_snapshot` rows unless `--include-market-snapshots` is
+explicitly requested, and publishes an ignored local snapshot plus manifest.
+Use a larger `--max-source-bytes` only intentionally and `--allow-full-scan`
+only with explicit approval. Capture a fresh dual-VPS status packet after
+collection.
+
+`scripts/summarize_lpfs_live_gate_attribution.py` defaults to
+`--tail-lines 200000` and uses a shared-read stream for remote SSH journals.
+Its tail limit bounds returned rows, but the reader still streams the full
+source before returning the tail. Byte-bounded gate-attribution optimization
+is deferred.
+
+The weekly performance collector remains separate and unchanged. Its
+calculations are not replaced by the compact-summary snapshot workflow.
 
 ## Iteration Gate
 

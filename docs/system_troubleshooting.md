@@ -107,11 +107,25 @@ Safe patterns:
 
 - prefer `scripts/Get-LpfsDualVpsStatus.ps1` for current status;
 - prefer `scripts/summarize_lpfs_live_gate_attribution.py --tail-lines 200000`
-  for remote gate-attribution reads; it uses `FileShare.ReadWrite` and now
-  requires `--allow-full-scan` for unbounded remote scans;
-- run `scripts/summarize_lpfs_live_trades.py` only against a safely collected
-  local journal copy. Do not pass an active VPS `--runtime-root` or active live
-  `--journal` path to that compact summary reader;
+  for remote gate-attribution reads; it uses `FileShare.ReadWrite`, but the
+  tail limit bounds returned rows rather than remote source work. It still
+  streams the full journal before returning its tail. Byte-bounded
+  gate-attribution optimization is deferred;
+- collect routine compact-summary evidence with
+  `scripts/collect_lpfs_live_journal_snapshots.py`. It captures a fixed
+  point-in-time source range through `FileShare.ReadWrite`, defaults to an
+  exact `64 MiB` suffix, excludes high-volume `market_snapshot` rows by
+  default, validates complete JSONL rows locally, and publishes ignored local
+  snapshots with a sibling `manifest.json`;
+- run `scripts/summarize_lpfs_live_trades.py` only with
+  `--journal-snapshot` pointing to a collector-produced local snapshot. The
+  compact reader rejects missing or mismatched manifests and rejects
+  `--days` / `--weeks` requests when a truncated snapshot cannot prove the
+  requested historical coverage;
+- use `--max-source-bytes` for an explicitly larger bounded snapshot. Use
+  collector `--allow-full-scan` only after explicit approval, and add
+  `--include-market-snapshots` only for forensic evidence that needs those
+  high-volume rows;
 - prefer bounded tails or already-generated report packets for historical
   evidence;
 - when a full scan is explicitly approved, open with
@@ -121,10 +135,14 @@ Safe patterns:
 - immediately run `.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 5
   -LogLines 5` afterward and record the packet path.
 
-The generated `docs/live_ops.html` page still contains direct runtime-root
-compact-summary examples. Treat those examples as stale until a separate
-documentation-generator-only follow-up updates the page builder and regenerates
-the static page.
+`scripts/build_lpfs_trade_diagnostics.py --journal` remains an offline,
+operator-supplied evidence tool for archived, historical, synthetic, or safely
+collected local copies. It intentionally does not require a collector manifest.
+Never pass it an active VPS runtime path.
+
+The heavier weekly performance collector remains operationally separate and
+unchanged. Its calculations and explicit shared-read behavior are not replaced
+by the compact-summary snapshot workflow.
 
 Incident reference: on 2026-05-23, an LPFS weekly-report collection attempt
 used an unsafe live-file open while scanning production journals and both live

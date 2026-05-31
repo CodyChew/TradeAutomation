@@ -123,6 +123,16 @@ Future live report code must use bounded status reads or stream live files with
 journals again without explicit operator approval, and always follow any live
 journal/state collection with a fresh dual-VPS status packet.
 
+Compact-summary snapshot hardening adds
+`../../scripts/collect_lpfs_live_journal_snapshots.py`: routine collection is
+an exact `64 MiB` fixed-range suffix read through `FileShare.ReadWrite`, with
+high-volume `market_snapshot` rows excluded by default and source byte offsets
+recorded in a local manifest. Unbounded collection requires
+`--allow-full-scan`. Compact summaries now require the collector-produced
+manifest-backed `--journal-snapshot`; diagnostics remain flexible offline
+tooling for operator-supplied local evidence. Weekly calculations remain
+separate and unchanged.
+
 Diagnostic logging upgrade: this session added `diagnostics.schema_version=1`
 payloads so future analysis can decide whether live underperformance comes from
 setup quality, timeframe concentration, spread/execution path, recovery
@@ -1345,10 +1355,11 @@ Fill, close, expiry, and cancellation alerts reply to the original
 message ID. The live state stores those IDs under `telegram_message_ids`. The
 manual performance summary script is
 `../../scripts/summarize_lpfs_live_trades.py`; run it against a safely collected
-local journal copy with `--journal`, not an active VPS runtime root or live
-journal path. It is metric-only by default and lists exact trades only with
-`--include-trades`. Routine Telegram summaries should omit `--include-trades`;
-the flag is only for explicit long-form trade lists.
+collector-produced local journal snapshot with `--journal-snapshot`, not an
+active VPS runtime root or live journal path. Capture a fresh dual-VPS status
+packet immediately after collection. It is metric-only by default and lists
+exact trades only with `--include-trades`. Routine Telegram summaries should
+omit `--include-trades`; the flag is only for explicit long-form trade lists.
 
 Runner start/stop cards are intentionally separate from trade lifecycle cards.
 They show the sleep-after-cycle setting, requested/completed cycles, runtime,

@@ -461,12 +461,22 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             r'.\venv\Scripts\python scripts\summarize_lpfs_live_gate_attribution.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl" --tail-lines 200000 --detail-limit 60 --output reports\live_ops\lpfs_gate_attribution_latest.md',
         ),
         (
-            "Print compact 7-day performance summary",
-            r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7",
+            "Collect bounded local journal snapshots",
+            r'.\venv\Scripts\python scripts\collect_lpfs_live_journal_snapshots.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl"',
         ),
         (
-            "Post compact 4-week performance summary to Telegram",
-            r".\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --weeks 4 --post-telegram",
+            "Mandatory health packet after journal snapshot collection",
+            r".\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 5 -LogLines 5",
+        ),
+        (
+            "Print manifest-backed FTMO 7-day performance summary",
+            r"""$journalSnapshot = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\ftmo_lpfs_journal_snapshot.jsonl"
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --journal-snapshot $journalSnapshot --days 7""",
+        ),
+        (
+            "Post manifest-backed FTMO 4-week performance summary to Telegram",
+            r"""$journalSnapshot = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\ftmo_lpfs_journal_snapshot.jsonl"
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal-snapshot $journalSnapshot --weeks 4 --post-telegram""",
         ),
         (
             "Run strict core coverage",
@@ -917,6 +927,8 @@ Get-CimInstance Win32_Process |
             ("Watch", "Retryable waits are not final rejects", "Spread waits, AutoTrading-disabled waits, market-recovery waits, and broker market-closed waits should stay retryable while the setup remains valid."),
             ("Watch", "True rejects stay final", "Manual deletion and true broker rejects remain final unless an explicit operator re-arm plan approves state surgery."),
             ("Watch", "SSH/report fetch failures must be visible", "Weekly reporting must mark lane fetch failures as incomplete instead of treating missing journal/state data as a clean result."),
+            ("Protection", "Compact summaries require local snapshots", "Collect a bounded shared-read journal snapshot, capture a fresh dual-VPS health packet, then run the manifest-backed compact summary locally. Direct active-journal summary reads are rejected."),
+            ("Watch", "Gate attribution still scans the source", "Gate attribution uses FileShare.ReadWrite and bounds returned rows by default, but it still streams the full remote source before returning its tail. A byte-bounded optimization is deferred."),
             ("Watch", "EA v1 remains tester-only", "The native MQL5 EA scaffold is Strategy Tester-only. Do not attach it to FTMO or IC live charts during v1."),
             ("Limit", "Not a daemon", "The runner only keeps checking when started with multiple cycles or wrapped by an external scheduler/process manager."),
             ("Alert", "Boot alert is not MT5 recovery", "The startup alert can tell you Windows rebooted before login; MT5 and the at-logon runner still require the interactive session unless a separate auto-logon/service design is approved."),

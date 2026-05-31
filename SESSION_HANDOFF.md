@@ -63,6 +63,15 @@ file, and the JSONL journal before making operational decisions.
   strategy parameters, execution path, spread/market context, and backtest join
   fields on sparse lifecycle rows only. It does not change live strategy rules
   or MT5 order behavior.
+- Compact-summary snapshot hardening: use
+  `scripts/collect_lpfs_live_journal_snapshots.py` for routine exact `64 MiB`
+  fixed-range shared-read suffix snapshots, then capture a fresh
+  `Get-LpfsDualVpsStatus.ps1` packet. The compact summary accepts only a
+  collector-produced, manifest-backed `--journal-snapshot` and rejects
+  historical windows that a truncated snapshot cannot prove. Diagnostics
+  remain flexible offline tooling for operator-supplied local evidence. Do not
+  pass active VPS runtime journal paths. Weekly calculations remain separate
+  and unchanged.
 - 2026-05-31 watchdog hardening contract: each live Task Scheduler task must use
   `MultipleInstances=IgnoreNew`; the PowerShell watchdog stops on child exit
   code `2`; and the Python state-adjacent lock remains the final pre-MT5
@@ -1216,22 +1225,24 @@ status, and SGT start/stop time. The `30s` setting is a sleep after each
 completed scan, not a fixed wall-clock launch interval. They are best-effort
 Telegram UX and are also journaled.
 
-Manual performance summary from a safely collected local journal copy,
+Manual performance summary from a collector-produced local journal snapshot,
 metric-only by default:
 
 ```powershell
-$journalCopy = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\lpfs_live_journal.jsonl"
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal $journalCopy --days 7
+.\venv\Scripts\python scripts\collect_lpfs_live_journal_snapshots.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl"
+.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 5 -LogLines 5
+$journalSnapshot = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\ftmo_lpfs_journal_snapshot.jsonl"
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --journal-snapshot $journalSnapshot --days 7
 ```
 
 Post compact summary:
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal $journalCopy --weeks 4 --post-telegram
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal-snapshot $journalSnapshot --weeks 4 --post-telegram
 ```
 
 Do not point this compact summary reader at an active VPS runtime root or live
-journal. Collect the local copy with the approved shared-read procedure in
+journal. Collect the local snapshot with the approved bounded shared-read procedure in
 `docs/system_troubleshooting.md`.
 
 Do not add `--include-trades` for routine Telegram summaries. That flag is the

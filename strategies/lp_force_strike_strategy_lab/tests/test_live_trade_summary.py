@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import importlib.util
 import json
 import subprocess
 import sys
@@ -7,6 +9,8 @@ import tempfile
 import unittest
 from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -46,6 +50,30 @@ def _journal_row(kind: str, *, fields: dict, symbol: str = "EURUSD", side: str =
             "fields": fields,
         },
     }
+
+
+def _write_snapshot(
+    path: Path,
+    rows: list[dict],
+    *,
+    reached_source_start: bool = True,
+    first_event_timestamp: str = "2026-01-01T00:00:00+00:00",
+) -> None:
+    snapshot = ("\n".join(json.dumps(row) for row in rows) + "\n").encode("utf-8")
+    path.write_bytes(snapshot)
+    manifest = {
+        "schema_version": 1,
+        "snapshots": [
+            {
+                "snapshot_filename": path.name,
+                "snapshot_sha256": hashlib.sha256(snapshot).hexdigest(),
+                "snapshot_bytes": len(snapshot),
+                "reached_source_start": reached_source_start,
+                "first_event_timestamp": first_event_timestamp,
+            }
+        ],
+    }
+    (path.parent / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
 
 class LiveTradeSummaryTests(unittest.TestCase):
@@ -223,7 +251,6 @@ class LiveTradeSummaryTests(unittest.TestCase):
     def test_summary_loads_jsonl_and_script_prints_without_posting(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             journal = Path(tmpdir) / "journal.jsonl"
-            config = Path(tmpdir) / "config.local.json"
             rows = [
                 _journal_row("position_opened", fields={"position_id": 1, "opened_utc": "2026-01-01T00:00:00+00:00"}),
                 _journal_row(
@@ -241,7 +268,6 @@ class LiveTradeSummaryTests(unittest.TestCase):
                 ),
             ]
             journal.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
-            config.write_text(json.dumps({"live_send": {"journal_path": str(journal)}}), encoding="utf-8")
 
             loaded = load_live_journal_events(journal)
             self.assertEqual(len(loaded), 2)
@@ -249,13 +275,16 @@ class LiveTradeSummaryTests(unittest.TestCase):
             self.assertEqual(len(load_live_journal_events(journal)), 2)
             with self.assertRaises(FileNotFoundError):
                 load_live_journal_events(Path(tmpdir) / "missing.jsonl")
+            _write_snapshot(journal, rows)
 
             result = subprocess.run(
                 [
                     sys.executable,
                     str(WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_trades.py"),
                     "--config",
-                    str(config),
+                    str(Path(tmpdir) / "missing-config.json"),
+                    "--journal-snapshot",
+                    str(journal),
                     "--limit",
                     "1",
                 ],
@@ -268,37 +297,12 @@ class LiveTradeSummaryTests(unittest.TestCase):
             self.assertIn("LPFS LIVE | PERFORMANCE SUMMARY", result.stdout)
             self.assertIn("Closed trades 1", result.stdout)
 
-            runtime_root = Path(tmpdir) / "runtime"
-            runtime_journal = runtime_root / "data" / "live" / "lpfs_live_journal.jsonl"
-            runtime_journal.parent.mkdir(parents=True)
-            runtime_journal.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
-            runtime_result = subprocess.run(
+            detail_result = subprocess.run(
                 [
                     sys.executable,
                     str(WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_trades.py"),
-                    "--config",
-                    str(config),
-                    "--runtime-root",
-                    str(runtime_root),
-                    "--limit",
-                    "1",
-                ],
-                cwd=WORKSPACE_ROOT,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-            self.assertEqual(runtime_result.returncode, 0, runtime_result.stderr)
-            self.assertIn("LPFS LIVE | PERFORMANCE SUMMARY", runtime_result.stdout)
-
-            days_result = subprocess.run(
-                [
-                    sys.executable,
-                    str(WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_trades.py"),
-                    "--config",
-                    str(config),
-                    "--runtime-root",
-                    str(runtime_root),
+                    "--journal-snapshot",
+                    str(journal),
                     "--include-trades",
                     "--limit",
                     "1",
@@ -308,26 +312,120 @@ class LiveTradeSummaryTests(unittest.TestCase):
                 capture_output=True,
                 check=False,
             )
-            self.assertEqual(days_result.returncode, 0, days_result.stderr)
-            self.assertIn("LPFS LIVE | PERFORMANCE SUMMARY", days_result.stdout)
-            self.assertIn("1) EURUSD H4 LONG", days_result.stdout)
+            self.assertEqual(detail_result.returncode, 0, detail_result.stderr)
+            self.assertIn("LPFS LIVE | PERFORMANCE SUMMARY", detail_result.stdout)
+            self.assertIn("1) EURUSD H4 LONG", detail_result.stdout)
 
-            missing_result = subprocess.run(
+            runtime_result = subprocess.run(
                 [
                     sys.executable,
                     str(WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_trades.py"),
-                    "--config",
-                    str(config),
+                    "--journal-snapshot",
+                    str(journal),
                     "--runtime-root",
-                    str(Path(tmpdir) / "missing-runtime"),
+                    str(Path(tmpdir) / "runtime"),
                 ],
                 cwd=WORKSPACE_ROOT,
                 text=True,
                 capture_output=True,
                 check=False,
             )
-            self.assertEqual(missing_result.returncode, 2)
-            self.assertIn("--runtime-root C:\\TradeAutomationRuntime", missing_result.stderr)
+            self.assertEqual(runtime_result.returncode, 2)
+            self.assertIn("unrecognized arguments: --runtime-root", runtime_result.stderr)
+
+            journal_result = subprocess.run(
+                [
+                    sys.executable,
+                    str(WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_trades.py"),
+                    "--journal-snapshot",
+                    str(journal),
+                    "--journal",
+                    str(journal),
+                ],
+                cwd=WORKSPACE_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(journal_result.returncode, 2)
+            self.assertIn("unrecognized arguments: --journal", journal_result.stderr)
+
+    def test_summary_script_rejects_missing_manifest_tampering_and_unproven_coverage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            journal = Path(tmpdir) / "journal.jsonl"
+            rows = [_journal_row("position_opened", fields={"position_id": 1})]
+            journal.write_text(json.dumps(rows[0]) + "\n", encoding="utf-8")
+            missing_manifest = self._run_summary(journal)
+            self.assertEqual(missing_manifest.returncode, 2)
+            self.assertIn("Collector manifest not found", missing_manifest.stderr)
+
+            _write_snapshot(journal, rows)
+            journal.write_text('{"event":"tampered"}\n', encoding="utf-8")
+            tampered = self._run_summary(journal)
+            self.assertEqual(tampered.returncode, 2)
+            self.assertIn("SHA-256", tampered.stderr)
+
+            _write_snapshot(
+                journal,
+                rows,
+                reached_source_start=False,
+                first_event_timestamp="2999-01-01T00:00:00+00:00",
+            )
+            truncated = self._run_summary(journal, "--days", "7")
+            self.assertEqual(truncated.returncode, 2)
+            self.assertIn("cannot prove coverage", truncated.stderr)
+
+    def test_summary_posting_passes_the_printed_message_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            journal = Path(tmpdir) / "journal.jsonl"
+            rows = [
+                _journal_row("position_opened", fields={"position_id": 1}),
+                _journal_row(
+                    "take_profit_hit",
+                    fields={"position_id": 1, "close_profit": 1.0, "r_result": 1.0},
+                ),
+            ]
+            _write_snapshot(journal, rows)
+            script_path = WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_trades.py"
+            spec = importlib.util.spec_from_file_location("summary_script", script_path)
+            self.assertIsNotNone(spec)
+            module = importlib.util.module_from_spec(spec)
+            assert spec and spec.loader
+            spec.loader.exec_module(module)
+            sent: list[str] = []
+
+            class Notifier:
+                def send_message(self, message: str) -> SimpleNamespace:
+                    sent.append(message)
+                    return SimpleNamespace(sent=True, error="", status="sent")
+
+            with (
+                mock.patch.object(module, "load_live_send_settings", return_value=object()),
+                mock.patch.object(module, "telegram_notifier_from_settings", return_value=(Notifier(), None)),
+                mock.patch.object(
+                    sys,
+                    "argv",
+                    [str(script_path), "--journal-snapshot", str(journal), "--post-telegram"],
+                ),
+            ):
+                self.assertEqual(module.main(), 0)
+
+            self.assertEqual(sent, [build_recent_trade_summary_message(events=rows)])
+
+    def _run_summary(self, journal: Path, *extra_args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                sys.executable,
+                str(WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_trades.py"),
+                "--journal-snapshot",
+                str(journal),
+                *extra_args,
+            ],
+            cwd=WORKSPACE_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
 
     def test_summary_private_fallback_branches(self) -> None:
         events = [

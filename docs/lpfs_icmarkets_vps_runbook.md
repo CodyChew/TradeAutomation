@@ -266,9 +266,9 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
 .\venv\Scripts\python scripts\summarize_lpfs_live_gate_attribution.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl" --tail-lines 200000 --detail-limit 60 --output reports\live_ops\lpfs_gate_attribution_latest.md
 ```
 
-`summarize_lpfs_live_gate_attribution.py` defaults remote journal reads to a
-bounded shared-read stream. Use `--allow-full-scan` only when an explicit full
-historical scan is approved, then capture a fresh dual-VPS status packet.
+`summarize_lpfs_live_gate_attribution.py` uses a shared-read stream and bounds
+returned rows by default, but it still streams the full journal source before
+returning its tail. Byte-bounded gate-attribution optimization is deferred.
 
 The status packet includes C: drive free-space fields. Treat
 `disk_status=warn` as a cleanup or sizing-review trigger, and
@@ -276,18 +276,22 @@ The status packet includes C: drive free-space fields. Treat
 large data collection until free space is addressed. Current policy is warn
 below `15 GB` or `25%` free, and action below `10 GB` or `15%` free.
 
-Compact IC performance summary from a safely collected local journal copy:
+Compact IC performance summary from a collector-produced local journal
+snapshot:
 
 ```powershell
 cd C:\TradeAutomation
-$journalCopy = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\lpfs_ic_live_journal.jsonl"
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.lpfs_icmarkets_raw_spread.local.json --journal $journalCopy --weeks 1 --post-telegram
+.\venv\Scripts\python scripts\collect_lpfs_live_journal_snapshots.py --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl"
+.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 5 -LogLines 5
+$journalSnapshot = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\ic_lpfs_journal_snapshot.jsonl"
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.lpfs_icmarkets_raw_spread.local.json --journal-snapshot $journalSnapshot --weeks 1 --post-telegram
 ```
 
 Routine IC summaries should omit `--include-trades`. Add that flag only when
 an explicit trade-by-trade list is requested. Do not point the compact summary
-reader at the active IC runtime journal; use the shared-read collection
-procedure in `docs/system_troubleshooting.md`.
+reader at the active IC runtime journal. The collector defaults to an exact
+`64 MiB` suffix and requires `--allow-full-scan` for unbounded collection; use
+the procedure in `docs/system_troubleshooting.md`.
 
 ## Reboot Recovery And Phone RDP
 

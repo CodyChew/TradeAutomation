@@ -200,6 +200,16 @@ live runners. Both runners were restarted and verified healthy in
 code must use bounded reads or shared-read streams, and any full live journal
 collection must be followed by a fresh dual-VPS status packet.
 
+Reporting snapshot hardening: compact summaries now require a
+collector-produced local `--journal-snapshot` with a matching sibling
+`manifest.json`. Use `scripts/collect_lpfs_live_journal_snapshots.py` for the
+routine exact `64 MiB` shared-read suffix workflow, then capture a fresh
+dual-VPS status packet before local summary use. The collector records fixed
+source byte offsets, excludes high-volume `market_snapshot` rows by default,
+and requires `--allow-full-scan` for unbounded collection. Diagnostics remain
+flexible offline tooling for operator-supplied local evidence. Weekly
+performance calculations remain separate and unchanged.
+
 Diagnostic logging state: 2026-05-23 added versioned, additive LPFS
 `diagnostics` payloads for sparse signal/order/recovery/fill/close/block rows
 and a local report builder at `scripts/build_lpfs_trade_diagnostics.py`. This
@@ -975,9 +985,11 @@ Live-send adapter facts:
   state exists and the new runtime-root state is missing, the runner exits until
   state is copied or `--allow-empty-runtime-state` is intentionally used after
   broker-state verification.
-- Manual performance summary: run `scripts/summarize_lpfs_live_trades.py`
-  against a safely collected local journal copy with `--journal`. Do not pass
-  an active VPS runtime root or live journal path. It is metric-only by default
+- Manual performance summary: use
+  `scripts/collect_lpfs_live_journal_snapshots.py`, capture a fresh dual-VPS
+  status packet, then run `scripts/summarize_lpfs_live_trades.py` against the
+  collector-produced local copy with `--journal-snapshot`. Do not pass an
+  active VPS runtime root or live journal path. It is metric-only by default
   and lists exact trades only with `--include-trades`.
 - Routine Telegram summaries should omit `--include-trades`. Latest compact
   weekly posts on 2026-05-06: FTMO reported `16` closed trades, `43.8%` win

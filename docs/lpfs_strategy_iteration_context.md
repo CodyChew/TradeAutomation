@@ -239,6 +239,13 @@ Build a diagnostic report from local journal copies:
   --journal "IC=path\to\lpfs_ic_live_journal.jsonl"
 ```
 
+Diagnostics accept archived, historical, synthetic, or safely collected local
+evidence. Prefer `scripts/collect_lpfs_live_journal_snapshots.py` for
+production journal evidence, capture a fresh dual-VPS status packet after the
+collection, and never pass an active VPS runtime journal path to the diagnostic
+builder. Compact summaries are stricter: they require a collector-produced,
+manifest-backed `--journal-snapshot`.
+
 Optional explicit candle roots:
 
 ```powershell

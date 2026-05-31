@@ -105,6 +105,13 @@ operational decisions.
   `reports/live_ops/lpfs_dual_vps_status_20260523_140154.md`. Remote live
   journal/state reads must use bounded status scripts or `FileShare.ReadWrite`
   shared reads, followed by a fresh dual-VPS status packet.
+- Compact-summary snapshot state: use
+  `scripts/collect_lpfs_live_journal_snapshots.py` for routine exact `64 MiB`
+  shared-read suffix snapshots, then capture a fresh dual-VPS status packet.
+  `scripts/summarize_lpfs_live_trades.py` requires the collector-produced
+  manifest-backed `--journal-snapshot`. Diagnostics remain flexible offline
+  tooling for operator-supplied local evidence; never pass active VPS runtime
+  journal paths. Weekly calculations remain separate and unchanged.
 - Diagnostic logging state: 2026-05-23 added additive `diagnostics` payloads
   to sparse signal/order/recovery/fill/close/block journal rows and a local
   report builder at `scripts/build_lpfs_trade_diagnostics.py`. This is
@@ -265,6 +272,10 @@ production-adjacent.
   `Select-String`, `Get-Content -Raw`, or `[System.IO.File]::OpenText()` scans
   against production JSONL/state files. Approved full scans must use
   `FileShare.ReadWrite` and be followed by a fresh dual-VPS status packet.
+- For compact summaries, collect a bounded local manifest-backed snapshot
+  first. The collector defaults to an exact `64 MiB` suffix, excludes
+  `market_snapshot` rows unless explicitly requested for forensics, records
+  source byte offsets, and requires `--allow-full-scan` for unbounded reads.
 - Diagnostic logging is not a strategy iteration. Do not deploy heuristic
   changes from the current weekly underperformance until enriched live rows are
   compared with the 10-year backtest and a separate change plan is approved.

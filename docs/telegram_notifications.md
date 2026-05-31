@@ -158,18 +158,22 @@ Live fill, close, expiry, and cancellation cards reply to the original
 `message_id`. Missing message IDs or Telegram failures do not affect trading or
 reconciliation.
 
-Manual performance summaries can be printed or posted from a safely collected
-local journal copy. The default output is metric-only and does not list exact
-trades; add `--include-trades` only for the older per-trade detail list.
+Manual performance summaries can be printed or posted from a collector-produced
+local journal snapshot. The compact reader verifies the sibling manifest and
+snapshot SHA-256 before calculating. The default output is metric-only and does
+not list exact trades; add `--include-trades` only for the older per-trade
+detail list.
 
 ```powershell
-$journalCopy = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\lpfs_live_journal.jsonl"
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal $journalCopy --days 7
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal $journalCopy --weeks 4 --post-telegram
+.\venv\Scripts\python scripts\collect_lpfs_live_journal_snapshots.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl"
+.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 5 -LogLines 5
+$journalSnapshot = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\ftmo_lpfs_journal_snapshot.jsonl"
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --journal-snapshot $journalSnapshot --days 7
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal-snapshot $journalSnapshot --weeks 4 --post-telegram
 ```
 
 Do not point this compact summary reader at an active VPS runtime root or live
-journal. Collect the local copy with the approved shared-read procedure in
+journal. Collect the local snapshot with the approved bounded shared-read procedure in
 `docs/system_troubleshooting.md`.
 
 The summary pairs enriched `notification_event` rows from

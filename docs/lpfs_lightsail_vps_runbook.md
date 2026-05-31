@@ -84,8 +84,11 @@ incident.
 Journal read safety: do not run unbounded `Select-String`, `Get-Content -Raw`,
 or `[System.IO.File]::OpenText()` scans against
 `C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl` while the runner
-is live. If a full scan is explicitly approved, use a streaming `FileStream`
-opened with `FileShare.ReadWrite`, then run
+is live. Use `scripts/collect_lpfs_live_journal_snapshots.py` for routine
+compact-summary evidence; it defaults to an exact `64 MiB` suffix, reads a
+fixed byte range through `FileShare.ReadWrite`, and publishes only ignored
+local snapshots with a manifest. If a full scan is explicitly approved, use
+collector `--allow-full-scan`, then run
 `.\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 5 -LogLines 5` from the
 local repo to verify both production lanes afterward.
 

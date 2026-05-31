@@ -1,7 +1,8 @@
-"""Build LPFS closed-trade diagnostic reports from journal rows.
+"""Build LPFS closed-trade diagnostic reports from operator-supplied local rows.
 
-The script is local/reporting-only. It does not read active VPS files directly;
-copy or safely fetch journal rows first, then pass local paths with --journal.
+The script is local/reporting-only. It accepts archived, synthetic, or safely
+collected local journal copies with --journal. Never pass an active VPS runtime
+journal path directly.
 """
 
 from __future__ import annotations

@@ -23,16 +23,20 @@ from lp_force_strike_strategy_lab.live_trade_summary import (  # noqa: E402
     build_recent_trade_summary_message,
     load_live_journal_events,
 )
+from lpfs_journal_snapshot import (  # noqa: E402
+    SnapshotError,
+    require_snapshot_period_coverage,
+    validate_manifest_backed_snapshot,
+)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--config", default="config.local.json", help="Ignored local config JSON path.")
-    parser.add_argument("--journal", default=None, help="Override the live journal path.")
     parser.add_argument(
-        "--runtime-root",
-        default=None,
-        help="Runtime root containing data/live/lpfs_live_journal.jsonl, e.g. C:\\TradeAutomationRuntime.",
+        "--journal-snapshot",
+        required=True,
+        help="Collector-produced local journal snapshot with a matching sibling manifest.json.",
     )
     period = parser.add_mutually_exclusive_group()
     period.add_argument("--days", type=int, default=None, help="Summarize trades closed in the last N days.")
@@ -51,19 +55,15 @@ def main() -> int:
     if args.weeks is not None and args.weeks <= 0:
         parser.error("--weeks must be positive")
 
-    settings = load_live_send_settings(args.config)
-    journal_path = args.journal or (
-        str(Path(args.runtime_root) / "data" / "live" / "lpfs_live_journal.jsonl")
-        if args.runtime_root
-        else settings.executor.journal_path
-    )
     try:
+        journal_path, _, manifest_entry = validate_manifest_backed_snapshot(args.journal_snapshot)
+        require_snapshot_period_coverage(manifest_entry, days=args.days, weeks=args.weeks)
         events = load_live_journal_events(journal_path)
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, SnapshotError) as exc:
         print(str(exc), file=sys.stderr)
         print(
-            "Hint: on the VPS, pass --runtime-root C:\\TradeAutomationRuntime "
-            "or --journal C:\\TradeAutomationRuntime\\data\\live\\lpfs_live_journal.jsonl.",
+            "Hint: collect a bounded local snapshot with scripts\\collect_lpfs_live_journal_snapshots.py, "
+            "then pass its JSONL file with --journal-snapshot.",
             file=sys.stderr,
         )
         return 2
@@ -79,6 +79,7 @@ def main() -> int:
     if not args.post_telegram:
         return 0
 
+    settings = load_live_send_settings(args.config)
     notifier, warning = telegram_notifier_from_settings(settings)  # type: ignore[arg-type]
     if notifier is None:
         print(f"Telegram not configured: {warning or 'disabled'}", file=sys.stderr)
