@@ -3,7 +3,8 @@
 Last updated: 2026-05-31 ICT after the IC live scale-down, Saturday weekly
 evidence checkpoint, first-month monthly evidence review, weekly-dashboard
 FTMO fetch-timeout caveat, diagnostic report generation from safe lifecycle
-snapshots, and policy-ledger update.
+snapshots, policy-ledger update, and watchdog lock-contention hardening
+rollout.
 
 ## Purpose
 
@@ -29,6 +30,12 @@ patterns. It now has these layers:
   `MultipleInstances=IgnoreNew`, the PowerShell watchdog stops on child exit
   code `2`, and the Python state-adjacent lock remains the final pre-MT5
   duplicate-runner boundary.
+- watchdog hardening deploy: documentation PR `#1` squash-merged as `9dcfafc`
+  and watchdog PR `#2` squash-merged as `3657323`. Both VPSes pulled
+  `3657323` on 2026-05-31 ICT with kill-switch-first restarts, IC first as the
+  canary. Final packet:
+  `../../reports/live_ops/lpfs_dual_vps_status_20260531_193551.md`. See
+  `../../SESSION_HANDOFF.md` for continuity and reconciliation details.
 - native EA migration: isolated MQL5 Strategy Tester-only scaffold under
   `../../mql5/lpfs_ea`, with Python parity fixtures and a local MetaEditor
   compile helper. It is not production live execution.
