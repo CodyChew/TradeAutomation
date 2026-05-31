@@ -26,6 +26,11 @@ Generated dashboards, local data, local reports, and one-off research runners
 are outside the strict 100% core gate. If a runner grows reusable behavior, move
 that behavior into a core package and cover it there.
 
+The Windows watchdog has local subprocess coverage in
+`strategies/lp_force_strike_strategy_lab/tests/test_live_runner.py`. It uses a
+temporary runtime root and fake `.cmd` child to verify terminal/restart exit-code
+handling without importing MT5 or touching live runtime files.
+
 The native MQL5 EA migration is protected by parity/static tests rather than
 the Python branch-coverage gate. The tracked fixture at
 `mql5/lpfs_ea/fixtures/canonical_lpfs_ea_fixture.json` must match Python truth,

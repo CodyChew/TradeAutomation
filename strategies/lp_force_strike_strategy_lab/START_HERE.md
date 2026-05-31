@@ -235,6 +235,9 @@ production-adjacent.
   its own ignored config, state, journal, and reconciliation plan.
 - Do not run a manual IC live runner while `LPFS_IC_Live` is active on the IC
   VPS; use the kill switch/status packet first.
+- Require `task_multiple_instances=IgnoreNew` for both live scheduled tasks. The
+  watchdog stops on child exit code `2`, and the Python runner lock remains the
+  final pre-MT5 duplicate-runner boundary.
 - Do not attach the native MQL5 EA to FTMO or IC live charts during v1. It is
   Strategy Tester-only until a separate demo/live EA deployment plan is
   approved.

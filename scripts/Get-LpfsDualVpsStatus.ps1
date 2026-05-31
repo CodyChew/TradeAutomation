@@ -122,6 +122,7 @@ if (`$null -eq `$Task) {
     Write-Output "task_state=missing"
 } else {
     Write-Output "task_state=`$(`$Task.State)"
+    Write-Output "task_multiple_instances=`$(`$Task.Settings.MultipleInstances)"
     `$TaskInfo = Get-ScheduledTaskInfo -TaskName `$TaskName -ErrorAction SilentlyContinue
     if (`$null -ne `$TaskInfo) {
         Write-Output "task_last_run_time=`$(`$TaskInfo.LastRunTime.ToString("o"))"

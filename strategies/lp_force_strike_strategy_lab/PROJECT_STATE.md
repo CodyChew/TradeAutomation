@@ -25,6 +25,10 @@ patterns. It now has these layers:
 - ops alerting: at-startup Telegram boot cards and `vps_startup_alert` journal
   rows for Windows restarts, without importing MT5 or touching live trading
   state.
+- watchdog hardening: live Task Scheduler tasks should use
+  `MultipleInstances=IgnoreNew`, the PowerShell watchdog stops on child exit
+  code `2`, and the Python state-adjacent lock remains the final pre-MT5
+  duplicate-runner boundary.
 - native EA migration: isolated MQL5 Strategy Tester-only scaffold under
   `../../mql5/lpfs_ea`, with Python parity fixtures and a local MetaEditor
   compile helper. It is not production live execution.

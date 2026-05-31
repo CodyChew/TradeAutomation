@@ -143,15 +143,18 @@ Expected exit codes:
 | Code | Meaning | Watchdog action |
 |---:|---|---|
 | 0 | requested cycles completed | stop |
-| 2 | another runner already holds the state lock | currently restarts unless `-MaxRestarts` is exceeded; separate fail-closed review required |
+| 2 | another runner already holds the state lock | stop |
 | 3 | kill switch active | stop |
 | 4 | runtime state migration required | stop |
 | 130 | Ctrl+C / user stop | stop |
 | other | unexpected crash | restart unless `-MaxRestarts` is exceeded |
 
-WARNING: the code-`2` lock-contention row documents current watchdog behavior,
-not the desired policy. The live runner itself exits before MT5 initialization,
-but changing the watchdog restart branch requires a separate logic-change PR.
+Duplicate-runner protection has three layers:
+
+- configure the live Task Scheduler task with `MultipleInstances=IgnoreNew`;
+- stop the watchdog when the child runner returns code `2`;
+- keep the Python state-adjacent lock before MT5 initialization as the final
+  broker-safety boundary.
 
 The live runner still keeps the existing single-runner lock beside the resolved
 state file. A watchdog restart should not duplicate orders because the live
@@ -187,6 +190,8 @@ Recommended task settings:
   configured.
 - Run only when the user is logged on, because MT5 is a GUI terminal and the
   Python API attaches to that user session.
+- If the task is already running: do not start a new instance. Configure Task
+  Scheduler with `MultipleInstances=IgnoreNew`.
 - Program:
 
 ```text

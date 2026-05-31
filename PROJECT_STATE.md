@@ -62,6 +62,12 @@ source of truth for strategy research and live execution work.
 - Phone RDP over Tailscale was verified for both VPSes. If a `VPS STARTED`
   Telegram arrives, log in once as local `Administrator`, wait for MT5/runner,
   then disconnect. Do not sign out.
+- Live watchdog overlap policy: each live Task Scheduler task must use
+  `MultipleInstances=IgnoreNew`; the PowerShell watchdog stops when its child
+  reports state-lock contention as exit code `2`; and the Python state-adjacent
+  lock still runs before MT5 initialization. A VPS pull alone does not activate
+  a changed watchdog script. Preserve live state and use a kill-switch-first
+  intentional task restart.
 
 ## Read This First In A New Codex Session
 
