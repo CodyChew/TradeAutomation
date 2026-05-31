@@ -424,6 +424,8 @@ def validate_live_send_settings(settings: LiveSendSettings) -> None:
 
 
 def load_live_state(path: str | Path) -> LiveExecutorState:
+    """Load restart-continuity state, or an empty local view when absent."""
+
     state_path = Path(path)
     if not state_path.exists():
         return LiveExecutorState()
@@ -446,6 +448,8 @@ def load_live_state(path: str | Path) -> LiveExecutorState:
 
 
 def save_live_state(path: str | Path, state: LiveExecutorState) -> None:
+    """Persist restart-continuity state used around broker-affecting operations."""
+
     state_path = Path(path)
     state_path.parent.mkdir(parents=True, exist_ok=True)
     payload = json.dumps(state.to_dict(), indent=2)
@@ -484,6 +488,8 @@ def live_execution_safety_from_config(config: LiveSendExecutorConfig) -> Executi
 
 
 def live_risk_buckets_from_config(config: LiveSendExecutorConfig) -> dict[str, float]:
+    """Return timeframe risk buckets as percentage points of account equity."""
+
     from .execution_contract import V15_EFFICIENT_RISK_BUCKET_PCT
 
     if config.risk_bucket_scale <= 0:
@@ -1315,6 +1321,8 @@ def _process_market_recovery_live_send(
         checked_state = _record_event_once(config, checked_state, notifier, f"market_recovery_check_failed:{signal_key}", event)
         return LiveSetupResult(state=checked_state, signal_key=signal_key, status="order_check_failed", order_check=order_check)
 
+    # TODO: Unlike pending-limit sends, this path does not perform broker-item
+    # adoption before order_send. Review ambiguous-send restart idempotency.
     outcome = send_market_recovery_order(
         mt5_module,
         intent,
@@ -1405,6 +1413,7 @@ def _process_market_recovery_live_send(
         diagnostics=send_diagnostics,
     )
     next_state = replace(checked_state, active_positions=(*checked_state.active_positions, tracked_position))
+    # Persist broker-affecting state before best-effort notification delivery.
     save_live_state(config.state_path, next_state)
     event = _market_recovery_sent_event(tracked_position, outcome, recovery_check)
     thread_key = f"order:{tracked_position.order_ticket}"
@@ -1654,6 +1663,8 @@ def process_trade_setup_live_send(
             "order_check_comment": order_check.comment,
         },
     )
+    # WARNING: Keep exact broker-item adoption before order_send. Moving this
+    # later can duplicate pending orders when broker truth leads local state.
     adopted = _adopt_existing_broker_item(
         mt5_module,
         decision.intent,
@@ -1731,6 +1742,7 @@ def process_trade_setup_live_send(
         diagnostics=placed_diagnostics,
     )
     next_state = replace(checked_state, pending_orders=(*checked_state.pending_orders, placed))
+    # Persist broker-affecting state before best-effort notification delivery.
     save_live_state(config.state_path, next_state)
     event = _order_sent_event(placed, outcome, final_spread)
     next_state = _record_event_once(
@@ -1849,6 +1861,7 @@ def run_live_send_cycle(
 ) -> LiveCycleResult:
     """Run one finite live-send polling cycle."""
 
+    # Reconcile MT5 broker truth before scanning completed candles for new sends.
     current_state = reconcile_live_state(mt5_module, config=config, state=state, notifier=notifier)
     save_live_state(config.state_path, current_state)
     frames_processed = 0
@@ -1890,6 +1903,8 @@ def run_live_send_cycle(
 
 
 def current_strategy_orders(mt5_module: Any, config: LiveSendExecutorConfig) -> tuple[Any, ...]:
+    """Return configured-symbol broker pending orders filtered by strategy magic."""
+
     orders: list[Any] = []
     for symbol in config.symbols:
         result = mt5_module.orders_get(symbol=symbol)
@@ -1898,6 +1913,8 @@ def current_strategy_orders(mt5_module: Any, config: LiveSendExecutorConfig) -> 
 
 
 def current_strategy_positions(mt5_module: Any, config: LiveSendExecutorConfig) -> tuple[Any, ...]:
+    """Return configured-symbol broker positions filtered by strategy magic."""
+
     positions: list[Any] = []
     for symbol in config.symbols:
         result = mt5_module.positions_get(symbol=symbol)
@@ -2311,6 +2328,12 @@ def _fallback_market_recovery_position(
     outcome: LiveOrderSendOutcome,
     config: LiveSendExecutorConfig,
 ) -> Any:
+    """Build local continuity metadata when an acknowledged fill is not yet visible.
+
+    This fallback is not broker truth. Later MT5 reconciliation remains
+    authoritative for the position lifecycle.
+    """
+
     ticket = outcome.order_ticket or outcome.deal_ticket or int(pd.Timestamp.now(tz="UTC").timestamp())
     position_type = getattr(mt5_module, "ORDER_TYPE_BUY", 0) if intent.side == "long" else getattr(mt5_module, "ORDER_TYPE_SELL", 1)
     now_msc = int(pd.Timestamp.now(tz="UTC").timestamp() * 1000)
@@ -3014,6 +3037,8 @@ def _with_processed_key(state: LiveExecutorState, signal_key: str) -> LiveExecut
 
 
 def _without_processed_key(state: LiveExecutorState, signal_key: str) -> LiveExecutorState:
+    """Re-arm a signal after an explicitly retryable WAITING outcome."""
+
     return replace(state, processed_signal_keys=tuple(key for key in state.processed_signal_keys if key != signal_key))
 
 

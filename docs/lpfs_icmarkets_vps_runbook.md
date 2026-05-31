@@ -276,15 +276,18 @@ The status packet includes C: drive free-space fields. Treat
 large data collection until free space is addressed. Current policy is warn
 below `15 GB` or `25%` free, and action below `10 GB` or `15%` free.
 
-Compact IC performance summary from the IC VPS checkout:
+Compact IC performance summary from a safely collected local journal copy:
 
 ```powershell
 cd C:\TradeAutomation
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.lpfs_icmarkets_raw_spread.local.json --journal C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl --weeks 1 --post-telegram
+$journalCopy = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\lpfs_ic_live_journal.jsonl"
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.lpfs_icmarkets_raw_spread.local.json --journal $journalCopy --weeks 1 --post-telegram
 ```
 
 Routine IC summaries should omit `--include-trades`. Add that flag only when
-an explicit trade-by-trade list is requested.
+an explicit trade-by-trade list is requested. Do not point the compact summary
+reader at the active IC runtime journal; use the shared-read collection
+procedure in `docs/system_troubleshooting.md`.
 
 ## Reboot Recovery And Phone RDP
 

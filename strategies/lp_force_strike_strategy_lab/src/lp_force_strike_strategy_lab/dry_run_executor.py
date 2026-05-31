@@ -671,6 +671,12 @@ def default_setup_provider(
     timeframe: str,
     config: DryRunExecutorConfig,
 ) -> Sequence[TradeSetup | SkippedTrade]:
+    """Return setups only for signals on the latest completed MT5 candle.
+
+    ``fetch_closed_candles`` already removed the current still-forming candle.
+    This restriction avoids live intrabar signal drift and lookahead behavior.
+    """
+
     if frame.empty:
         return []
     latest_closed_index = len(frame) - 1

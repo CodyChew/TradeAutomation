@@ -158,22 +158,19 @@ Live fill, close, expiry, and cancellation cards reply to the original
 `message_id`. Missing message IDs or Telegram failures do not affect trading or
 reconciliation.
 
-Manual performance summaries can be printed or posted. The default output is
-metric-only and does not list exact trades; add `--include-trades` only for the
-older per-trade detail list.
+Manual performance summaries can be printed or posted from a safely collected
+local journal copy. The default output is metric-only and does not list exact
+trades; add `--include-trades` only for the older per-trade detail list.
 
 ```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --days 7
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --weeks 4 --post-telegram
+$journalCopy = "reports\live_ops\lpfs_journal_snapshots\<snapshot>\lpfs_live_journal.jsonl"
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal $journalCopy --days 7
+.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --journal $journalCopy --weeks 4 --post-telegram
 ```
 
-On the VPS, live state and journal files are under `C:\TradeAutomationRuntime`,
-so include the runtime root:
-
-```powershell
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --days 7
-.\venv\Scripts\python scripts\summarize_lpfs_live_trades.py --config config.local.json --runtime-root C:\TradeAutomationRuntime --weeks 4 --post-telegram
-```
+Do not point this compact summary reader at an active VPS runtime root or live
+journal. Collect the local copy with the approved shared-read procedure in
+`docs/system_troubleshooting.md`.
 
 The summary pairs enriched `notification_event` rows from
 `data/live/lpfs_live_journal.jsonl`; older sparse rows may be skipped.

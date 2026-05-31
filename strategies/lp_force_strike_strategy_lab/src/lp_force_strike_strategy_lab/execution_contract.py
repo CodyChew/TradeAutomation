@@ -14,6 +14,7 @@ from backtest_engine_lab import TradeSetup
 OrderType = Literal["BUY_LIMIT", "SELL_LIMIT", "BUY", "SELL"]
 ExecutionDecisionStatus = Literal["ready", "rejected"]
 
+# Values are percentage points of account equity, not decimal fractions.
 V15_EFFICIENT_RISK_BUCKET_PCT: dict[str, float] = {
     "H4": 0.20,
     "H8": 0.20,
@@ -30,6 +31,7 @@ TIMEFRAME_DELTAS: dict[str, pd.Timedelta] = {
     "W1": pd.Timedelta(days=7),
 }
 
+# Emergency broker-side padding only; live strategy expiry uses actual bar count.
 BROKER_BACKSTOP_PADDING: dict[str, pd.Timedelta] = {
     "H4": pd.Timedelta(days=10),
     "H8": pd.Timedelta(days=10),
