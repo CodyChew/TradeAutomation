@@ -122,6 +122,14 @@ file, and the JSONL journal before making operational decisions.
   future-order scale `1.0` policy. Analysis should segment by policy epoch; the
   IC scale-down does not imply a strategy-rule change and does not resize
   existing IC pending orders or active positions.
+- Diagnostic lifecycle payloads already preserve
+  `diagnostics.strategy.risk_bucket_scale`, and flattened trade reports expose
+  `diagnostic_strategy_risk_bucket_scale`. The current offline report builder
+  does not yet assign `policy_id` from `configs/live_policy_ledger.csv` or
+  automatically group comparisons by policy epoch. Until that reporting
+  enhancement is added, segment IC pre-scale and post-scale rows explicitly
+  using the ledger activation boundary `2026-05-30T17:14:27Z` plus the
+  flattened diagnostic scale field.
 - For any LPFS live/runtime, Telegram, MT5 execution, scheduled-task, or VPS
   operations change, do not stop at a local patch. Carry the work to a clear
   completion state: focused tests, full relevant tests when practical, commit,
@@ -187,8 +195,8 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
 ```
 
 Latest verified packet from this PC:
-`reports/live_ops/lpfs_dual_vps_status_20260531_001603.md`. At
-2026-05-31 00:16 ICT, both scheduled tasks were `Running`, both kill switches
+`reports/live_ops/lpfs_dual_vps_status_20260531_115757.md`. At
+2026-05-31 11:57 ICT, both scheduled tasks were `Running`, both kill switches
 were clear, both heartbeats were fresh and `running`, and both MT5 terminals
 were connected/trade-allowed. FTMO remained at
 `live_send.risk_bucket_scale=0.05` with `2` strategy pending orders and `3`

@@ -35,6 +35,12 @@ operational decisions.
   order sizing after `2026-05-30T17:14:27Z` activation. It did not modify FTMO,
   `dry_run`, live state, journals, existing pending orders, or active
   positions.
+- Diagnostic policy-epoch note: sparse lifecycle diagnostics already preserve
+  `diagnostics.strategy.risk_bucket_scale`, and flattened report rows expose
+  `diagnostic_strategy_risk_bucket_scale`. The current offline report builder
+  does not yet assign ledger `policy_id` or automatically group comparisons by
+  sizing epoch. Segment IC rows explicitly using the ledger activation time and
+  diagnostic scale field until that reporting enhancement is implemented.
 - VPS boot alert status: FTMO uses startup task `LPFS_FTMO_Startup_Alert`; IC
   uses startup task `LPFS_IC_Startup_Alert`. These tasks send Telegram
   `VPS STARTED` cards and journal `vps_startup_alert` rows after Windows boot,

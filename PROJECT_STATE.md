@@ -28,10 +28,10 @@ source of truth for strategy research and live execution work.
 - The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
   SSH key entries were removed from both VPSes.
 - Latest verified dual-VPS live check from this PC was on 2026-05-31 ICT after
-  the IC scale-down maintenance: FTMO and IC both had running parent/child
+  the post-scale-down logging audit: FTMO and IC both had running parent/child
   Python runner shape, fresh `running` heartbeats, kill switches clear, MT5
   connected and trade allowed, and disk status OK. The ignored packet is
-  `reports/live_ops/lpfs_dual_vps_status_20260531_001603.md`. FTMO remained
+  `reports/live_ops/lpfs_dual_vps_status_20260531_115757.md`. FTMO remained
   at `live_send.risk_bucket_scale=0.05`, `max_open_risk_pct=0.65`, with `2`
   strategy pending orders and `3` active strategy positions. IC showed
   `live_send.risk_bucket_scale=1`, `max_risk_pct_per_trade=0.75`,
@@ -43,6 +43,11 @@ source of truth for strategy research and live execution work.
   from risk-policy changes. It records FTMO scale `0.05`, historical IC scale
   `2.0`, and the active IC scale `1.0` future-order policy. Existing IC
   pending orders and active positions are not resized by this policy change.
+- Diagnostic trade rows already flatten `diagnostics.strategy.risk_bucket_scale`
+  as `diagnostic_strategy_risk_bucket_scale`. The current offline diagnostic
+  report does not yet assign ledger `policy_id` or automatically group results
+  by sizing-policy epoch. Segment IC rows explicitly around
+  `2026-05-30T17:14:27Z` until that reporting enhancement is added.
 - Latest LPFS weekly checkpoint artifacts are
   `reports/live_ops/lpfs_weekly_performance/20260530_150637` and
   `reports/live_ops/lpfs_trade_diagnostics/20260530_153500`. The generated

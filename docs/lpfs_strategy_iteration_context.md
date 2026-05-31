@@ -33,6 +33,13 @@ future diagnostics prove a persistent cross-lane issue.
   not mix strategy performance with risk-policy changes. The active IC
   scale-down is a future-order sizing policy change, not a strategy-rule
   change.
+- Diagnostic lifecycle payloads already preserve
+  `diagnostics.strategy.risk_bucket_scale`, and flattened trade reports expose
+  `diagnostic_strategy_risk_bucket_scale`. The current offline report builder
+  does not yet assign ledger `policy_id` or automatically group comparisons by
+  sizing-policy epoch. Until that enhancement exists, segment IC rows
+  explicitly using the ledger activation boundary `2026-05-30T17:14:27Z` and
+  the flattened diagnostic scale field.
 - The latest completed weekly checkpoint is
   `reports/live_ops/lpfs_weekly_performance/20260530_150637`. Its generated
   dashboard has an FTMO fetch-timeout caveat, so the authoritative FTMO
@@ -305,6 +312,9 @@ surface hypotheses and evidence quality.
   current IC terminal; candle data and M1 spread fields are available.
 - The current diagnostic report supports offline indicator/regime analysis, but
   any actual heuristic candidate still needs separate research/backtest work.
+- The current diagnostic report preserves sizing scale per enriched trade but
+  does not yet derive `policy_id` from `configs/live_policy_ledger.csv` or
+  automatically produce policy-epoch comparison groups.
 - There are unrelated dirty/untracked files in the local worktree that must not
   be mixed into LPFS diagnostic commits.
 
@@ -344,23 +354,28 @@ handoff.
 3. Compare FTMO and IC by timeframe, symbol, side, session/weekday, setup
    geometry, spread-risk, execution path, recovery path, and candle-derived
    recent-regime fields.
-4. Check whether any weak bucket is also weak in recent 3/6/12 month V22
+4. Segment IC analysis by the historical scale-2 and active scale-1 policy
+   epochs from `configs/live_policy_ledger.csv`; do not attribute PnL-size
+   changes to strategy quality.
+5. Check whether any weak bucket is also weak in recent 3/6/12 month V22
    benchmark windows and not just the full 10-year average.
-5. Let production collect more sparse lifecycle diagnostics naturally.
-6. At the next weekly checkpoint, safely collect local journal copies and build
+6. Let production collect more sparse lifecycle diagnostics naturally.
+7. At the next weekly checkpoint, safely collect local journal copies and build
    the diagnostic report.
-7. Review `timeframe_confluence.csv` and `backtest_comparison.csv` for
+8. Review `timeframe_confluence.csv` and `backtest_comparison.csv` for
    cross-lane, recent-window, and timeframe-normalized signals.
-8. Watch H4 specifically because the 2026-05-30 checkpoint showed cross-lane
+9. Watch H4 specifically because the 2026-05-30 checkpoint showed cross-lane
    H4 weakness, but do not change H4 rules unless repeated enriched evidence
    and recent/full backtests support it.
-9. Improve weekly reporting so it can use bounded/local lifecycle snapshots
+10. Improve weekly reporting so it can use bounded/local lifecycle snapshots
    and does not produce incomplete FTMO rows after a remote fetch timeout.
-10. If evidence thresholds are met, create a separate research plan for one
+11. Add offline policy-ledger enrichment so future diagnostic reports derive a
+   stable `policy_id` and comparison groups from lane plus lifecycle timestamp.
+12. If evidence thresholds are met, create a separate research plan for one
    small reversible heuristic candidate.
-11. Backtest any candidate on both FTMO and IC recent windows plus full-history
+13. Backtest any candidate on both FTMO and IC recent windows plus full-history
    guardrails.
-12. Request explicit user approval before any live strategy-change deployment.
+14. Request explicit user approval before any live strategy-change deployment.
 
 ## Next Codex Handoff
 
