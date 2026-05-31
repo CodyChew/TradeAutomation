@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -58,6 +60,91 @@ class RecordingNotifier:
 
 
 class LiveRunnerNotificationTests(unittest.TestCase):
+    def _run_watchdog_stub(self, tmpdir: str, exit_code: int, *, max_restarts: int) -> tuple[subprocess.CompletedProcess[str], int]:
+        powershell = shutil.which("powershell.exe")
+        if powershell is None:
+            self.skipTest("Windows PowerShell is required for watchdog subprocess coverage.")
+
+        root = Path(tmpdir)
+        runtime_root = root / "runtime"
+        live_dir = runtime_root / "data" / "live"
+        live_dir.mkdir(parents=True)
+        state_path = live_dir / DEFAULT_STATE_NAME
+        sentinel_state = b'{"sentinel":"unchanged"}\n'
+        state_path.write_bytes(sentinel_state)
+        config_path = root / "config.local.json"
+        config_path.write_text("{}\n", encoding="utf-8")
+        count_path = root / "child_invocations.txt"
+        fake_child = root / "fake_python.cmd"
+        fake_child.write_text(
+            "\r\n".join(
+                [
+                    "@echo off",
+                    f'set "COUNT_FILE={count_path}"',
+                    'if exist "%COUNT_FILE%" (set /p COUNT=<"%COUNT_FILE%") else (set COUNT=0)',
+                    "set /a COUNT+=1",
+                    '> "%COUNT_FILE%" echo %COUNT%',
+                    f"exit /b {exit_code}",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        result = subprocess.run(
+            [
+                powershell,
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(WORKSPACE_ROOT / "scripts" / "run_lpfs_live_forever.ps1"),
+                "-RepoRoot",
+                str(WORKSPACE_ROOT),
+                "-ConfigPath",
+                str(config_path),
+                "-RuntimeRoot",
+                str(runtime_root),
+                "-PythonPath",
+                str(fake_child),
+                "-Cycles",
+                "1",
+                "-SleepSeconds",
+                "0",
+                "-RestartDelaySeconds",
+                "0",
+                "-MaxRestarts",
+                str(max_restarts),
+            ],
+            cwd=WORKSPACE_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+
+        self.assertEqual(state_path.read_bytes(), sentinel_state)
+        self.assertFalse((live_dir / DEFAULT_JOURNAL_NAME).exists())
+        self.assertFalse((live_dir / "lpfs_live_heartbeat.json").exists())
+        return result, int(count_path.read_text(encoding="utf-8").strip())
+
+    def test_watchdog_terminal_child_codes_stop_without_retrying(self) -> None:
+        for exit_code in (0, 2, 3, 4, 130):
+            with self.subTest(exit_code=exit_code), tempfile.TemporaryDirectory() as tmpdir:
+                result, invocations = self._run_watchdog_stub(tmpdir, exit_code, max_restarts=1)
+                self.assertEqual(result.returncode, exit_code)
+                self.assertEqual(invocations, 1)
+
+    def test_watchdog_unexpected_child_code_restarts_until_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result, invocations = self._run_watchdog_stub(tmpdir, 5, max_restarts=1)
+            self.assertEqual(result.returncode, 5)
+            self.assertEqual(invocations, 2)
+
+    def test_dual_vps_status_reports_live_task_overlap_policy(self) -> None:
+        script = (WORKSPACE_ROOT / "scripts" / "Get-LpfsDualVpsStatus.ps1").read_text(encoding="utf-8")
+        self.assertIn('Write-Output "task_multiple_instances=`$(`$Task.Settings.MultipleInstances)"', script)
+
     def test_runner_lock_blocks_second_holder_and_releases(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             lock_path = _runner_lock_path(Path(tmpdir) / "state.json")

@@ -490,6 +490,8 @@ Recommended settings:
 
 - General: run only when user is logged on.
 - Trigger: at logon.
+- If the task is already running: do not start a new instance. Configure Task
+  Scheduler with `MultipleInstances=IgnoreNew`.
 - Action program: `powershell.exe`
 - Arguments:
 
@@ -511,6 +513,7 @@ Validated 2026-05-04 VPS checkpoint:
 
 - Final task name: `LPFS_Live`.
 - Trigger: at logon.
+- Overlap policy: `MultipleInstances=IgnoreNew`.
 - Wrapper command: `run_lpfs_live_forever.ps1` with `Cycles 100000000` and
   `SleepSeconds 30`.
 - Production runtime: `C:\TradeAutomationRuntime`.

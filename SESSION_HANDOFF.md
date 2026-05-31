@@ -63,6 +63,13 @@ file, and the JSONL journal before making operational decisions.
   strategy parameters, execution path, spread/market context, and backtest join
   fields on sparse lifecycle rows only. It does not change live strategy rules
   or MT5 order behavior.
+- 2026-05-31 watchdog hardening contract: each live Task Scheduler task must use
+  `MultipleInstances=IgnoreNew`; the PowerShell watchdog stops on child exit
+  code `2`; and the Python state-adjacent lock remains the final pre-MT5
+  duplicate-runner boundary. A VPS pull alone does not activate a changed
+  watchdog script. Preserve live state and use a kill-switch-first intentional
+  task restart, IC first as the lower-risk canary and FTMO only after a healthy
+  IC status packet.
 - 2026-05-26 diagnostic reporting policy: the next LPFS strategy-review pass is
   offline reporting only. Use copied journals, benchmark trade CSVs, and local
   candle datasets to add session/hour/weekday, setup buckets, recent 3/6/12

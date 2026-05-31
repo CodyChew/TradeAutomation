@@ -440,6 +440,9 @@ Task Scheduler action for `LPFS_IC_Live`:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\TradeAutomation\scripts\run_lpfs_live_forever.ps1" -RepoRoot "C:\TradeAutomation" -ConfigPath "C:\TradeAutomation\config.lpfs_icmarkets_raw_spread.local.json" -RuntimeRoot "C:\TradeAutomationRuntimeIC" -StateFileName "lpfs_ic_live_state.json" -JournalFileName "lpfs_ic_live_journal.jsonl" -HeartbeatFileName "lpfs_ic_live_heartbeat.json" -LogPrefix "lpfs_ic_live" -Cycles 100000000 -SleepSeconds 30
 ```
 
+If the task is already running: do not start a new instance. Configure Task
+Scheduler with `MultipleInstances=IgnoreNew`.
+
 `LPFS_IC_Live` is now installed. Do not replace it or start a second manual
 runner while the scheduled task is running. Use `Get-LpfsDualVpsStatus.ps1`,
 the gate-attribution report, or the IC status command above before maintenance.

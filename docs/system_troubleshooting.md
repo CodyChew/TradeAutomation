@@ -139,6 +139,10 @@ Runner appears duplicated:
   plus its child Python interpreter.
 - Confirm `parent_pid`, executable paths, heartbeat freshness, log freshness,
   runtime root, and single-runner lock before calling it a duplicate.
+- Confirm the dual-VPS status packet reports
+  `task_multiple_instances=IgnoreNew`. The live task should reject overlapping
+  Task Scheduler launches, the watchdog should stop on child exit code `2`, and
+  the Python runner lock remains the final pre-MT5 safety boundary.
 
 Heartbeat is stale or missing:
 
