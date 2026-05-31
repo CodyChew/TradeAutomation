@@ -2,7 +2,8 @@
 
 Last updated: 2026-05-31 ICT after the IC live scale-down, LPFS Saturday
 weekly evidence checkpoint, first-month monthly evidence review,
-safe lifecycle-snapshot diagnostic report, and handoff refresh.
+safe lifecycle-snapshot diagnostic report, watchdog lock-contention hardening
+rollout, and handoff refresh.
 
 ## Purpose
 
@@ -68,6 +69,12 @@ source of truth for strategy research and live execution work.
   lock still runs before MT5 initialization. A VPS pull alone does not activate
   a changed watchdog script. Preserve live state and use a kill-switch-first
   intentional task restart.
+- Watchdog hardening deploy: documentation PR `#1` squash-merged as `9dcfafc`
+  and watchdog PR `#2` squash-merged as `3657323`. On 2026-05-31 ICT, both
+  VPSes pulled `3657323` with deliberate kill-switch-first restarts, IC first
+  as the canary. Final healthy packet:
+  `reports/live_ops/lpfs_dual_vps_status_20260531_193551.md`. See
+  `SESSION_HANDOFF.md` for continuity hashes and reconciliation details.
 
 ## Read This First In A New Codex Session
 

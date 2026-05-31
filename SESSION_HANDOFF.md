@@ -2,8 +2,8 @@
 
 Last updated: 2026-05-31 ICT after the IC live scale-down, LPFS Saturday
 weekly evidence checkpoint, first-month monthly evidence review,
-safe lifecycle-snapshot diagnostic report, policy-ledger update, and
-evidence-gated next-step update.
+safe lifecycle-snapshot diagnostic report, policy-ledger update, watchdog
+lock-contention hardening rollout, and evidence-gated next-step update.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -70,6 +70,24 @@ file, and the JSONL journal before making operational decisions.
   watchdog script. Preserve live state and use a kill-switch-first intentional
   task restart, IC first as the lower-risk canary and FTMO only after a healthy
   IC status packet.
+- 2026-05-31 watchdog hardening deploy: documentation PR `#1` squash-merged as
+  `9dcfafc`; watchdog PR `#2` squash-merged as `3657323`. Both VPSes pulled
+  `3657323` with kill-switch-first restarts, IC first and FTMO only after IC
+  packets `reports/live_ops/lpfs_dual_vps_status_20260531_192519.md` and
+  `reports/live_ops/lpfs_dual_vps_status_20260531_192733.md` were healthy more
+  than 90 seconds apart. Final packet:
+  `reports/live_ops/lpfs_dual_vps_status_20260531_193551.md`. Both tasks were
+  `Running`, `task_multiple_instances=IgnoreNew`, kill switches clear,
+  expected two-entry Windows venv parent/child process shape, heartbeats
+  advancing, and MT5 connected/trade allowed. Broker/state reconciliation was
+  FTMO `2` pending orders plus `3` active positions and IC `1` pending order
+  plus `3` active positions. Paused-pull continuity hashes remained unchanged:
+  FTMO state
+  `E12F040429956A2BE39472228BA4FF54470A770D68CE7DAEC85EBD12E3CCAB3E`;
+  IC state
+  `3F9AF6E7A3680CAD5007DA8231A2F380E7DDFACE72EE7E8607E31552B831DC9F`.
+  Journals, ignored configs, task actions, broker orders, and positions were
+  preserved. The IC timestamped config backup remained untouched.
 - 2026-05-26 diagnostic reporting policy: the next LPFS strategy-review pass is
   offline reporting only. Use copied journals, benchmark trade CSVs, and local
   candle datasets to add session/hour/weekday, setup buckets, recent 3/6/12

@@ -3,8 +3,8 @@
 Last updated: 2026-05-31 ICT after the IC live scale-down, Saturday weekly
 evidence checkpoint, first-month monthly evidence review, reporting incident
 recovery, diagnostic-logging upgrade, logging-only production deploy,
-journal-read safety documentation, and offline diagnostic-report iteration
-policy.
+journal-read safety documentation, watchdog lock-contention hardening rollout,
+and offline diagnostic-report iteration policy.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -27,6 +27,12 @@ operational decisions.
   completed, and continuous task `LPFS_IC_Live` is installed/running with its
   own runtime state, journal, heartbeat, logs, Telegram channel, magic
   `231500`, and broker comment prefix `LPFSIC`.
+- Watchdog hardening deploy: documentation PR `#1` squash-merged as `9dcfafc`
+  and watchdog PR `#2` squash-merged as `3657323`. Both VPSes pulled
+  `3657323` with deliberate kill-switch-first restarts on 2026-05-31 ICT, IC
+  first as the canary. Final packet:
+  `reports/live_ops/lpfs_dual_vps_status_20260531_193551.md`. See
+  `SESSION_HANDOFF.md` for continuity and reconciliation details.
 - Live sizing policy source: `configs/live_policy_ledger.csv`. It records FTMO
   scale `0.05`, historical IC scale `2.0`, and the active IC future-order
   scale `1.0` policy. Use the ledger when segmenting live performance; do not
