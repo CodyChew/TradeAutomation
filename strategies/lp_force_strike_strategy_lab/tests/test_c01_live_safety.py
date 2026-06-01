@@ -824,6 +824,8 @@ class C01LiveSafetyTests(unittest.TestCase):
 
     def test_status_tool_distinguishes_unknown_from_zero(self) -> None:
         script = (WORKSPACE_ROOT / "scripts" / "Get-LpfsDualVpsStatus.ps1").read_text(encoding="utf-8")
+        self.assertIn("account_info=ERROR/UNKNOWN", script)
+        self.assertIn("terminal_info=ERROR/UNKNOWN", script)
         self.assertIn("orders_get=ERROR/UNKNOWN", script)
         self.assertIn("positions_get=ERROR/UNKNOWN", script)
         self.assertNotIn("orders = mt5.orders_get() or ()", script)

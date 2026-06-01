@@ -317,6 +317,10 @@ try:
     if mt5.initialize():
         account = mt5.account_info()
         terminal = mt5.terminal_info()
+        if account is None:
+            raise RuntimeError("account_info=ERROR/UNKNOWN last_error=" + repr(mt5.last_error()))
+        if terminal is None:
+            raise RuntimeError("terminal_info=ERROR/UNKNOWN last_error=" + repr(mt5.last_error()))
         orders = mt5.orders_get()
         if orders is None:
             raise RuntimeError("orders_get=ERROR/UNKNOWN last_error=" + repr(mt5.last_error()))
