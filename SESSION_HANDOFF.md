@@ -1,6 +1,6 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-01 ICT during the contained LPFS C-01 live-safety repair.
+Last updated: 2026-06-02 ICT after LPFS C-01 Stage 0 read-only evidence review.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -95,9 +95,21 @@ file, and the JSONL journal before making operational decisions.
   fail-closed order and position reads. Local verification passed: PowerShell
   parse check, targeted C-01 tests `37`, full LPFS suite `392`, strict core
   coverage `6396` statements plus `2190` branches at `100.00%`, and
-  `git diff --check`. Deployment remains blocked pending final diff review.
-  After approval, Stage 0 must capture fresh read-only MT5 evidence for both
-  lanes before any VPS pull.
+  `git diff --check`.
+- C-01 Stage 0 read-only evidence review passed point-in-time on 2026-06-02
+  ICT. The authoritative ignored local packet is
+  `reports/live_ops/lpfs_c01_stage0/20260601_233746`; its `manifest.json`
+  SHA-256 is
+  `0ea210c27637b6eb69b7383920bf76e673ec2db6794bb02ec73b580abdefca4e`.
+  It confirms both kill switches active, both scheduled tasks disabled,
+  runner process count `0` on both lanes, zero LPFS broker pending orders,
+  unchanged active-position inventory (FTMO `3`, IC `2`), and
+  `live_send.market_recovery_mode="disabled"` on both lanes. The earlier
+  packet `reports/live_ops/lpfs_c01_stage0/20260601_233513` is incomplete and
+  superseded. No VPS pull, v2 state write, reconcile-only execution, canary,
+  task enablement, watchdog restart, or broker mutation occurred. The next
+  gate is explicit operator approval for FTMO-only Stage 1. Do not touch IC or
+  pull either VPS before that approval.
 - 2026-05-23 live-reporting incident: treat remote reads of production LPFS
   journals/state as production-adjacent, not harmless reporting. The unsafe
   pattern is opening live JSONL/state files without `FileShare.ReadWrite`,
