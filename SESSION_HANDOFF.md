@@ -1,9 +1,6 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-05-31 ICT after the IC live scale-down, LPFS Saturday
-weekly evidence checkpoint, first-month monthly evidence review,
-safe lifecycle-snapshot diagnostic report, policy-ledger update, watchdog
-lock-contention hardening rollout, and evidence-gated next-step update.
+Last updated: 2026-06-01 ICT during the contained LPFS C-01 live-safety repair.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -12,44 +9,77 @@ file, and the JSONL journal before making operational decisions.
 ## Read First
 
 1. `SESSION_HANDOFF.md` for this latest operational snapshot.
-2. `PROJECT_STATE.md` for workspace context.
-3. `docs/system_troubleshooting.md` before troubleshooting live runners, MT5,
+2. `docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
+3. `PROJECT_STATE.md` for workspace context.
+4. `docs/system_troubleshooting.md` before troubleshooting live runners, MT5,
    datasets, dashboards, or generated reports.
-4. `strategies/lp_force_strike_strategy_lab/START_HERE.md` for the LPFS
+5. `strategies/lp_force_strike_strategy_lab/START_HERE.md` for the LPFS
    first-read path, source-of-truth map, environment boundaries, and resume
    prompts.
-5. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for LPFS detail.
-6. `strategies/majority_flush_strategy_lab/START_HERE.md` before continuing the
+6. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for LPFS detail.
+7. `strategies/majority_flush_strategy_lab/START_HERE.md` before continuing the
    Majority Flush strategy research lane.
-7. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+8. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before touching execution code.
-8. `configs/live_policy_ledger.csv` before interpreting live performance across
+9. `configs/live_policy_ledger.csv` before interpreting live performance across
    FTMO/IC sizing-policy epochs or changing live risk settings.
-9. `docs/lpfs_diagnostic_logging.md` before changing LPFS journals,
+10. `docs/lpfs_diagnostic_logging.md` before changing LPFS journals,
    diagnostic reports, or live-vs-backtest analysis fields.
-10. `docs/lpfs_strategy_iteration_context.md` for the current evidence-gated
+11. `docs/lpfs_strategy_iteration_context.md` for the current evidence-gated
    strategy-iteration objective, scope, workflow, blockers, and fresh-chat
    handoff.
-11. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
-12. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
+12. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
+13. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
    performance monitor, live start timestamps, version context, and
    backtest-distribution comparison.
-13. `docs/phase2_production_hardening.md` before operating the watchdog, kill
+14. `docs/phase2_production_hardening.md` before operating the watchdog, kill
    switch, heartbeat, status command, or Task Scheduler setup.
-14. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+15. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
-15. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+16. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
    IC Markets production runner.
-16. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+17. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-17. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+18. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
    buckets or income expectations. It is linked from the dashboard top
    navigation and the Home page FTMO Profiles section.
-18. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+19. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native EA or Strategy Tester work.
 
 ## AI Agent Continuity Rules
 
+- 2026-06-01 C-01 containment is the current operational priority. Read
+  `docs/lpfs_c01_live_safety_release.md` before any LPFS operation. Both VPS
+  machines remain powered on, both kill switches are active, `LPFS_Live` and
+  `LPFS_IC_Live` are disabled, and runner process count is `0` on both lanes.
+  Strict read-only MT5 exports confirmed zero LPFS broker pending orders,
+  FTMO `3` active positions, and IC `2` active positions. Active positions are
+  untouched and supervised broker-side. Do not clear kill switches, enable
+  tasks, start watchdogs, deploy, run reconcile-only mode, run a canary, edit
+  runtime state/journals, or modify broker exposure without a separate
+  operator-approved deployment step.
+- C-01 deployment order is `FTMO` first, then `IC`. Earlier `IC`-first
+  instructions below are historical watchdog-rollout guidance and do not apply
+  to the C-01 release.
+- C-01 is a correctness issue: historical MT5 epochs were reinterpreted
+  through `Europe/Helsinki`. The local branch
+  `codex/lpfs-c01-live-safety-release` repairs direct UTC parsing, fail-closed
+  broker reads, v2 atomic state with a downgrade tripwire, proof-backed
+  reconcile-only migration, recovery hold, and immutable evidence
+  normalization. The normalizer explicitly classifies every historical
+  `*_utc` leaf, corrects the archived expiration paths, rebuilds both `T` and
+  space-separated embedded event signal keys, and marks packets unsafe for
+  strategy analysis when any timestamp path remains unresolved. It is not a
+  strategy change. Use normalized evidence for production-derived strategy
+  conclusions after the release is reviewed and deployed.
+- C-01 local verification passed after reviewer follow-up on 2026-06-01 ICT:
+  the focused executor/reporting set passed `164` tests, the full LPFS suite
+  passed `392`, strict core coverage passed at `6396` statements and `2190` branches with
+  `100.00%`, generated `docs/live_ops.html` was stable on regeneration, and
+  `git diff --check` passed. A local rehearsal streamed all `275578` archived
+  snapshot rows through the normalizer with `0` unresolved warnings. No
+  deployment was performed. Production remains intentionally paused until a
+  separate operator-approved deployment step.
 - 2026-05-23 live-reporting incident: treat remote reads of production LPFS
   journals/state as production-adjacent, not harmless reporting. The unsafe
   pattern is opening live JSONL/state files without `FileShare.ReadWrite`,
@@ -72,7 +102,7 @@ file, and the JSONL journal before making operational decisions.
   remain flexible offline tooling for operator-supplied local evidence. Do not
   pass active VPS runtime journal paths. Weekly calculations remain separate
   and unchanged.
-- 2026-05-31 watchdog hardening contract: each live Task Scheduler task must use
+- Historical 2026-05-31 watchdog hardening contract: each live Task Scheduler task must use
   `MultipleInstances=IgnoreNew`; the PowerShell watchdog stops on child exit
   code `2`; and the Python state-adjacent lock remains the final pre-MT5
   duplicate-runner boundary. A VPS pull alone does not activate a changed
@@ -1125,10 +1155,11 @@ exist. The runner now fails closed if the old configured state exists but the
 new runtime-root state is missing, unless `--allow-empty-runtime-state` is
 passed intentionally after broker-state verification.
 
-`save_live_state()` normally uses atomic temp-file replace. On Windows/OneDrive,
-the state file can be a reparse-point placeholder and deny `os.replace()`.
-The save path now retries and falls back to direct state-file writing on
-`PermissionError` so the live runner does not crash during state persistence.
+Historical note: `save_live_state()` previously retried atomic replacement and
+fell back to direct overwrite after `PermissionError`. C-01 removes that
+fallback from production state writes. Schema-v2 production persistence
+requires atomic replacement; failure activates `KILL_SWITCH`, journals the
+failure where possible, and stops with a terminal watchdog code.
 
 ## Last Verified Live-Test Snapshot
 
@@ -1182,13 +1213,14 @@ Skipped in that fresh cycle:
 - Signal idempotency key:
   `lpfs:{SYMBOL}:{TIMEFRAME}:{SIGNAL_INDEX}:{SIDE}:{CANDIDATE_ID}:{FS_SIGNAL_TIME}`.
 - A new signal candle creates a new key.
-- Manual deletion of a pending MT5 order does not re-arm the signal. If local
-  state still tracks the order, the next reconciliation should emit a
-  cancelled/missing lifecycle alert and remove it from pending tracking.
+- Manual deletion of a pending MT5 order does not re-arm the signal. C-01
+  removes stale local pending tracking only when validated MT5 broker history
+  proves a terminal outcome. The C-01 release has no operator-evidence
+  fallback. Ambiguous cleanup stops with local state unchanged.
 - MT5 broker state is the source of truth for orders, positions, and deals.
 - Local live state is persisted immediately after broker-affecting safety
-  mutations. It uses atomic replace when Windows allows it, with a OneDrive-safe
-  fallback for replace-denied state files.
+  mutations. C-01 schema-v2 production writes require atomic replacement with
+  no direct-overwrite fallback.
 - Before live `order_send`, the runner checks for an exact matching strategy
   pending order or matching open position and adopts it instead of sending a
   duplicate.

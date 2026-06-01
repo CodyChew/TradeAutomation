@@ -1,5 +1,17 @@
 # LPFS IC Markets VPS Runbook
 
+## C-01 Containment Override
+
+Read `lpfs_c01_live_safety_release.md` before using this runbook. As of
+2026-06-01 ICT, both LPFS VPS lanes remain powered on but intentionally paused:
+kill switches active, scheduled tasks disabled, runner process count `0`, and
+zero LPFS broker pending orders. FTMO has `3` active positions and IC has `2`;
+leave them untouched and supervised broker-side.
+
+Do not clear either kill switch, enable tasks, run watchdogs, deploy, execute
+reconcile-only mode, or run a canary until a separate operator-approved
+deployment step. Keep `live_send.market_recovery_mode="disabled"`.
+
 This runbook is for bringing up a second LP + Force Strike production runner
 for IC Markets Raw Spread while leaving the existing FTMO VPS runner untouched.
 

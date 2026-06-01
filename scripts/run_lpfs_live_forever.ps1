@@ -81,7 +81,7 @@ while ($true) {
 
     # Lock contention is terminal: a competing watchdog must not launch blocked
     # children indefinitely while another runner owns the state-adjacent lock.
-    if ($ExitCode -eq 0 -or $ExitCode -eq 2 -or $ExitCode -eq 130 -or $ExitCode -eq 3 -or $ExitCode -eq 4) {
+    if ($ExitCode -eq 0 -or $ExitCode -eq 2 -or $ExitCode -eq 130 -or $ExitCode -eq 3 -or $ExitCode -eq 4 -or $ExitCode -eq 5 -or $ExitCode -eq 6) {
         exit $ExitCode
     }
     if (Test-Path -LiteralPath $KillSwitchPath) {

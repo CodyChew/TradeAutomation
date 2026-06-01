@@ -153,9 +153,16 @@ Write-Host "state_path=$StatePath"
 if ($null -eq $State) {
     Write-Host "state=missing"
 } else {
-    $Processed = @($State.processed_signal_keys).Count
-    $Pending = @($State.pending_orders).Count
-    $Positions = @($State.active_positions).Count
+    $StatePayload = $State
+    if (($State.PSObject.Properties.Name -contains "state_schema_version") -and $State.state_schema_version -eq 2) {
+        $StatePayload = $State.state
+        Write-Host "state_schema_version=2"
+    } else {
+        Write-Host "state_schema_version=1"
+    }
+    $Processed = @($StatePayload.processed_signal_keys).Count
+    $Pending = @($StatePayload.pending_orders).Count
+    $Positions = @($StatePayload.active_positions).Count
     Write-Host "processed_signal_keys=$Processed"
     Write-Host "pending_orders=$Pending"
     Write-Host "active_positions=$Positions"

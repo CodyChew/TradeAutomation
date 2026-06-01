@@ -1,5 +1,19 @@
 # LPFS Amazon Lightsail VPS Runbook
 
+## C-01 Containment Override
+
+Read `lpfs_c01_live_safety_release.md` before using this runbook. As of
+2026-06-01 ICT, both VPS machines remain powered on but intentionally paused:
+both kill switches exist, `LPFS_Live` and `LPFS_IC_Live` are disabled, runner
+process count is `0`, and strict read-only MT5 exports confirm zero LPFS broker
+pending orders. FTMO has `3` active positions and IC has `2`; leave them
+untouched and supervised broker-side.
+
+Do not follow any start, clear-kill-switch, or watchdog-enable command below
+until the C-01 release is reviewed and a separate operator-approved deployment
+step authorizes it. During this release,
+`live_send.market_recovery_mode="disabled"` is mandatory.
+
 Last updated: 2026-05-23 after the LPFS weekly-report incident, runner
 recovery, diagnostic-logging upgrade, and journal-read safety update.
 
@@ -617,7 +631,10 @@ the broker source of truth for orders and positions.
 
 Market-recovery operator note:
 
-- default live config is `live_send.market_recovery_mode="better_than_entry_only"`;
+- C-01 safety hold: the only accepted live config is
+  `live_send.market_recovery_mode="disabled"`;
+- the remaining bullets describe historical recovery behavior for later
+  C-02/C-04 review. They are not authorization to enable recovery;
 - if a pending entry was touched before placement, the runner may send a
   `MARKET RECOVERY` market order instead of a late pending order;
 - long recovery requires current ask at or below the original entry; short
@@ -644,8 +661,7 @@ Market-recovery operator note:
 - historical processed skips remain processed after deployment. Do not edit
   `lpfs_live_state.json` to rearm them unless there is a separate live
   operator plan;
-- rollback is local config only: set `live_send.market_recovery_mode` to
-  `"disabled"` and restart the runner intentionally.
+- recovery re-enablement requires a separate reviewed release.
 
 Deployment note: market recovery retry and the broker filling-mode fallback
 were verified locally on 2026-05-05 with focused live executor tests, full LPFS

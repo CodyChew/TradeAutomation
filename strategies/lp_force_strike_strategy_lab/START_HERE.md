@@ -1,10 +1,6 @@
 # LPFS Start Here
 
-Last updated: 2026-05-31 ICT after the IC live scale-down, Saturday weekly
-evidence checkpoint, first-month monthly evidence review, reporting incident
-recovery, diagnostic-logging upgrade, logging-only production deploy,
-journal-read safety documentation, watchdog lock-contention hardening rollout,
-and offline diagnostic-report iteration policy.
+Last updated: 2026-06-01 ICT during the contained C-01 live-safety repair.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -13,6 +9,21 @@ operational decisions.
 
 ## Current Status
 
+- Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
+  C-01 is the current priority: historical MT5 epochs were shifted through
+  `Europe/Helsinki`. Both VPS lanes are intentionally paused with kill switches
+  active, scheduled tasks disabled, runners stopped, zero LPFS broker pending
+  orders, FTMO `3` active positions, and IC `2` active positions. Leave active
+  positions untouched. No deploy, runner resume, reconcile-only execution, or
+  live canary is approved yet.
+- The local C-01 branch adds direct UTC parsing, code-enforced
+  `market_recovery_mode="disabled"`, fail-closed broker reads, atomic v2 state
+  with a legacy-loader tripwire, proof-backed isolated reconciliation, and
+  immutable evidence normalization. The normalizer classifies every historical
+  `*_utc` leaf and refuses strategy-analysis safety when any timestamp path is
+  unresolved. It does not change LPFS heuristics.
+- For C-01 only, deploy and review `FTMO` first, then `IC`. Older `IC`-first
+  instructions apply to the historical watchdog rollout, not this release.
 - Strategy baseline: V13 mechanics + V15 risk buckets + V22 LP/FS separation.
 - FTMO live/default bucket: H4/H8 `0.20%`, H12/D1 `0.30%`, W1 `0.75%`.
 - ICMarketsSC-MT5-2 analysis bucket: H4/H8 `0.25%`, H12/D1 `0.30%`,

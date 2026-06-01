@@ -1,8 +1,6 @@
 # LPFS Strategy Iteration Context
 
-Last updated: 2026-05-31 ICT after the IC live scale-down, Saturday weekly
-evidence checkpoint, first-month monthly evidence review, and policy-ledger
-update.
+Last updated: 2026-06-01 ICT during the contained C-01 timestamp repair.
 
 This is the durable handoff for the current LPFS diagnostic reporting and
 strategy-iteration work. A new Codex chat should be able to read this file,
@@ -12,7 +10,10 @@ without needing prior conversation history.
 ## Current Objective
 
 Make LPFS strategy iteration evidence-based without changing live trading
-behavior. The immediate objective is to run offline first-month cause
+behavior. The immediate prerequisite is the C-01 live-safety release documented
+in `docs/lpfs_c01_live_safety_release.md`: historical production MT5 epochs
+were shifted through `Europe/Helsinki`, so production-derived analysis must use
+immutable normalized evidence. After that repair, run offline first-month cause
 attribution from enriched live trade diagnostics, compare FTMO and IC together,
 and produce defensible future strategy-change candidates only after enough
 evidence exists.
@@ -23,6 +24,10 @@ timeframe selection, spread gates, recovery behavior, or broker execution.
 
 H8 was discussed as an example. H8 is not a selected change candidate unless
 future diagnostics prove a persistent cross-lane issue.
+
+Both VPS lanes are currently intentionally contained with kill switches active,
+scheduled tasks disabled, runners stopped, and zero LPFS broker pending orders.
+Leave FTMO `3` and IC `2` active positions untouched and supervised broker-side.
 
 ## Current Project State
 

@@ -54,7 +54,7 @@
     "require_lp_pivot_before_fs_mother": true,
     "max_entry_wait_bars": 6,
     "max_spread_risk_fraction": 0.1,
-    "market_recovery_mode": "better_than_entry_only",
+    "market_recovery_mode": "disabled",
     "market_recovery_deviation_points": 0,
     "history_lookback_days": 30
   }

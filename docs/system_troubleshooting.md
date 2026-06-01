@@ -7,6 +7,19 @@ This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
 live trading state.
 
+## C-01 Containment
+
+Read `lpfs_c01_live_safety_release.md` first. As of 2026-06-01 ICT, both LPFS
+lanes are intentionally paused with kill switches active, scheduled tasks
+disabled, and runner process count `0`. Keep both VPS machines powered on.
+Do not clear kill switches, start watchdogs, enable tasks, deploy, run
+reconcile-only mode, or run a live canary unless a separate operator-approved
+deployment step authorizes it.
+
+For broker status, `None` from MT5 `orders_get`, `positions_get`,
+`history_orders_get`, or `history_deals_get` is `ERROR/UNKNOWN`, never zero.
+Use strict read-only evidence exports before drawing conclusions.
+
 ## First Boundary Check
 
 Identify the target before running commands.

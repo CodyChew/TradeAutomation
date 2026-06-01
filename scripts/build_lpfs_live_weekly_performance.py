@@ -612,6 +612,8 @@ def setup_wait_counts(
 
 
 def live_state_counts(payload: dict[str, Any]) -> dict[str, int]:
+    if int(payload.get("state_schema_version", 1) or 1) == 2:
+        payload = dict(payload.get("state", {}) or {})
     return {
         "pending_orders": len(payload.get("pending_orders") or []),
         "active_positions": len(payload.get("active_positions") or []),

@@ -249,7 +249,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
                 "Monitor lpfs_live_heartbeat.json and the latest timestamped log when using the Phase 2 wrapper.",
                 "Use MT5 orders_get / positions_get as the source of truth for open exposure.",
                 "Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled.",
-                "Treat spread waits and broker market-closed placement blocks as retryable until entry touch or bar-count expiry makes the setup invalid; after a touch, default-on market recovery can still enter only at a better executable price.",
+                "Treat spread waits and broker market-closed placement blocks as retryable until entry touch or bar-count expiry makes the setup invalid. C-01 holds market recovery disabled.",
             ],
         ),
         (
@@ -282,7 +282,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         (
             "Signal",
             "Build a pending or recovery order",
-            "A fresh LPFS signal becomes a BUY LIMIT or SELL LIMIT at the 50% signal-candle pullback. If that entry was touched before placement, the default live path may recover with a market order only when the current executable price is same-or-better than the original entry.",
+            "A fresh LPFS signal becomes a BUY LIMIT or SELL LIMIT at the 50% signal-candle pullback. C-01 holds missed-entry market recovery disabled pending separate review.",
         ),
         (
             "Guard",
@@ -325,7 +325,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         [
             "Missed entry, better quote",
             "Before final skip",
-            "Default-on market recovery may send a market order if current ask for a long is at or below original entry, or current bid for a short is at or above original entry, spread is within 10%, and the stop/target path after first entry touch is still clean.",
+            "Historical market recovery could send a market order under strict better-than-entry gates. C-01 holds this path disabled pending separate C-02/C-04 review.",
         ],
         [
             "Missed entry, worse quote",
@@ -368,7 +368,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         ["1", "Closed-candle scan", "Signals are based on completed candles, not the forming candle."],
         ["2", "LP/FS separation", "The selected LP pivot must be before the Force Strike mother; LP==mother and LP-inside-FS candidates are not emitted under the current baseline."],
         ["3", "Duplicate key check", "Same symbol, timeframe, direction, LP setup, and signal close time is processed once."],
-        ["4", "Missed-entry recovery", "If price already touched the planned entry after the signal, default-on recovery may send a market order only at a better executable price."],
+        ["4", "Missed-entry recovery", "C-01 holds recovery disabled. A missed touched entry is skipped and retained as evidence for later review."],
         ["5", "Actual-bar expiry", "Strategy expiry is after 6 actual MT5 bars from the signal candle; weekend gaps pause the count."],
         ["6", "Spread gate", "Current spread must be no more than 10% of entry-to-stop risk distance."],
         ["7", "Risk sizing", "MT5 order_calc_profit sizes the order, floors to volume_step, caps by broker/local max, and rejects below volume_min."],
@@ -622,6 +622,11 @@ Get-CimInstance Win32_Process |
 
     file_cards = [
         (
+            "C-01 live-safety release",
+            "docs/lpfs_c01_live_safety_release.md",
+            "Current containment state, direct-UTC repair, v2 downgrade barrier, reconcile-only contract, and forward-fix rollback.",
+        ),
+        (
             "Start here",
             "strategies/lp_force_strike_strategy_lab/START_HERE.md",
             "Canonical first-read path for future AI agents, environment boundaries, source-of-truth map, and resume prompts.",
@@ -750,6 +755,7 @@ Get-CimInstance Win32_Process |
     <section id="proof" class="ops-hero" aria-labelledby="proof-title">
       <div class="eyebrow">Static Verification Guide</div>
       <h2 id="proof-title">What Proves The Runner Is Correct</h2>
+      <p class="callout warning"><strong>C-01 containment active:</strong> both production lanes are paused with kill switches active, scheduled tasks disabled, and runners stopped. MT5 epochs must be parsed directly as UTC. Recovery is held at <code>market_recovery_mode=disabled</code>. Do not resume, deploy, reconcile, or run a canary without a separately approved operator step.</p>
       <p class="callout warning"><strong>Real orders can be sent.</strong> Correctness is proven from MT5 broker state, local state, and journal rows. Telegram is useful for operator awareness, but Telegram is reporting only and does not prove broker state.</p>
       <div class="ops-grid">
         {_fact_grid(proof_facts)}
@@ -774,7 +780,7 @@ Get-CimInstance Win32_Process |
       <h2 id="spread-policy-title">Spread Policy</h2>
       <p class="callout"><strong>Current behavior:</strong> a setup blocked because spread is too wide stays retryable. The runner records one WAITING alert, does not mark the signal processed, and can place the pending order on a future cycle if spread improves while the setup is still valid.</p>
       <p class="callout"><strong>Zero-spread quotes:</strong> raw-spread feeds can report <code>bid == ask</code>. That is valid zero spread, so the runner allows it through spread gating, <code>order_check</code>, and the final pre-send quote refresh. Only inverted quotes, where bid is greater than ask, are local <code>invalid_market</code> skips.</p>
-      <p class="callout"><strong>Market recovery:</strong> if spread was too wide first and the entry later touches before a pending order exists, the default live path tries a better-than-entry market recovery. It sends only if the current executable price is same-or-better than the original pending entry and spread is still no more than 10% of actual fill-to-stop risk. Worse-than-entry quotes are WAITING, not permanently skipped, while the actual 6-bar window remains open.</p>
+      <p class="callout warning"><strong>Recovery hold:</strong> C-01 requires <code>market_recovery_mode=disabled</code>. The historical better-than-entry recovery path remains documented for later C-02/C-04 review but is not authorized during this release.</p>
       <p class="callout"><strong>Broker session:</strong> if MT5 returns <code>Market closed</code> before any order exists, the runner records WAITING, removes the processed signal key, and retries while the setup remains valid. True broker rejections and manual deletion of already placed orders remain final unless deliberately re-armed.</p>
       <p class="callout"><strong>Broker fill mode:</strong> market recovery uses <code>TRADE_ACTION_DEAL</code> and now chooses broker-supported market filling modes from symbol metadata. If MT5 rejects <code>order_check</code> with invalid or unsupported filling mode, the runner tries the next market filling mode and sends using the exact request that passed <code>order_check</code>.</p>
       <p class="callout warning"><strong>Weekly-open observation:</strong> first live VPS market-open monitoring showed multiple WAITING cards where spread was far above the 10% risk-distance limit, followed by missed-entry recovery checks. Market recovery reduces this forward/backtest drift when a later live quote becomes same-or-better than the backtested entry and the stop/target path after first entry touch remains clean.</p>
@@ -785,7 +791,7 @@ Get-CimInstance Win32_Process |
             ("Before placement", "Retryable WAITING", "If spread is above 10% of risk distance, no order is placed yet and the same signal can be checked again."),
             ("Zero spread", "Allowed", "If bid equals ask, spread is zero and the order can proceed to broker validation. If bid is greater than ask, the quote is inverted and skipped as invalid_market."),
             ("Broker closed", "Retryable WAITING", "If MT5 returns Market closed before placement, the signal key is not processed and the next cycles can retry."),
-            ("After missed touch", "Default recovery", "If the pending entry was touched before placement, market recovery is attempted at a same-or-better executable price before final skip."),
+            ("After missed touch", "Recovery disabled", "C-01 holds market recovery disabled. Review skipped missed touches as evidence for a later recovery-specific release."),
             ("Recovery price", "Same-or-better", "Long recovery requires ask <= original entry. Short recovery requires bid >= original entry. Worse prices stay retryable WAITING until expiry or path invalidation."),
             ("Pending fill truth", "Ask/Bid, not chart-only", "A buy limit fills on Ask at or below entry. A sell limit fills on Bid at or above entry. Bid-based candle lows can make a buy look touched before MT5 can execute it."),
             ("Recovery path", "From first touch", "Stop/target movement after first entry touch blocks late recovery; pre-touch target movement does not by itself skip the setup."),
@@ -878,7 +884,7 @@ Get-CimInstance Win32_Process |
             ("Runtime root", "C:\\TradeAutomationRuntime", "State, journal, heartbeat, kill switch, and logs live outside OneDrive."),
             ("Scheduled task", "LPFS_Live", "At-logon task that starts the production wrapper with 100000000 cycles and a 30-second sleep after each completed scan."),
             ("Startup alert", "LPFS_FTMO_Startup_Alert", "At-startup SYSTEM task sends a Telegram boot/restart card and journals vps_startup_alert without importing MT5 or sending orders."),
-            ("Recovery rollback", "market_recovery_mode=disabled", "Set this local live_send flag only if operator evidence shows recovery should be paused."),
+            ("Recovery hold", "market_recovery_mode=disabled", "C-01 requires this value. Re-enable recovery only in a separately reviewed release."),
             ("Safe paused state", "KILL_SWITCH exists", "Task can be installed and ready while live cycles are blocked."),
             ("Broker truth", "MT5 orders/positions", "Use MT5 as the source of truth for open exposure; Telegram is an alert channel."),
             ("Codex packet", "Get-LpfsLiveStatus", "Paste status, MT5 screenshots, and Telegram alert context when asking for inspection."),
@@ -900,7 +906,7 @@ Get-CimInstance Win32_Process |
             ("Runtime files", "lpfs_ic_live_*", "State, journal, heartbeat, and logs use IC-specific names under C:\\TradeAutomationRuntimeIC."),
             ("MT5 identity", "ICMarketsSC-MT5-2", "Fail closed if the VPS MT5 terminal is not logged into the expected IC account/server."),
             ("Broker identity", "magic 231500 / LPFSIC", "Separate magic and broker comment prefix prevent FTMO and IC state from being confused."),
-            ("Current production", "LPFS_IC_Live running", "The IC VPS has its own at-logon task, runtime root, heartbeat, logs, state, journal, Telegram channel, and MT5 account."),
+            ("Current containment", "LPFS_IC_Live disabled", "C-01 containment keeps the IC task disabled, KILL_SWITCH active, and runner stopped until a reviewed deployment step."),
             ("Startup alert", "LPFS_IC_Startup_Alert", "At-startup SYSTEM task sends IC Telegram boot/restart cards into the IC channel and journals into lpfs_ic_live_journal.jsonl."),
             ("Latest IC live smoke", "1 pending order placed", "The first IC VPS live-send cycle completed before continuous task startup; broker/runtime reconciliation is captured by the dual VPS status report."),
             ("Sizing policy", "ledger scale 1.0", "See configs/live_policy_ledger.csv. The active IC live policy keeps the 0.25/0.30/0.75 bucket shape, uses risk_bucket_scale=1.0, max_risk_pct_per_trade=0.75, and keeps the historical scale-2 epoch traceable."),
@@ -911,6 +917,7 @@ Get-CimInstance Win32_Process |
 
     <section id="commands" aria-labelledby="commands-title">
       <h2 id="commands-title">Operator Commands</h2>
+      <p class="callout warning"><strong>C-01 hold:</strong> start, resume, clear-kill-switch, deploy, reconcile-only, and canary commands require a separate operator-approved deployment step. Keep both current lanes paused.</p>
       <p>Run these from the repository root after confirming <code>config.local.json</code> is intentionally set for the target account.</p>
       <div class="command-list">
         {command_html}
@@ -925,7 +932,7 @@ Get-CimInstance Win32_Process |
             ("Watch", "Telegram is reporting only", "MT5 broker orders, positions, order history, and deal history are the source of truth. Telegram cards are operator alerts, not broker-state proof."),
             ("Watch", "Runtime sync uses runtime commit", "Docs/reporting commits can be ahead of the VPS. Treat runtime sync as healthy when the latest runtime commit is contained in the VPS checkout, even if local HEAD is newer."),
             ("Watch", "Retryable waits are not final rejects", "Spread waits, AutoTrading-disabled waits, market-recovery waits, and broker market-closed waits should stay retryable while the setup remains valid."),
-            ("Watch", "True rejects stay final", "Manual deletion and true broker rejects remain final unless an explicit operator re-arm plan approves state surgery."),
+            ("Watch", "True rejects stay final", "Manual deletion and true broker rejects remain final. C-01 reconcile-only cleanup requires validated MT5 broker history; operator-evidence fallback is disabled. Do not perform state surgery."),
             ("Watch", "SSH/report fetch failures must be visible", "Weekly reporting must mark lane fetch failures as incomplete instead of treating missing journal/state data as a clean result."),
             ("Protection", "Compact summaries require local snapshots", "Collect a bounded shared-read journal snapshot, capture a fresh dual-VPS health packet, then run the manifest-backed compact summary locally. Direct active-journal summary reads are rejected."),
             ("Watch", "Gate attribution still scans the source", "Gate attribution uses FileShare.ReadWrite and bounds returned rows by default, but it still streams the full remote source before returning its tail. A byte-bounded optimization is deferred."),
@@ -936,7 +943,7 @@ Get-CimInstance Win32_Process |
             ("Phase 2", "Production wrapper", "The wrapper adds a launcher, kill switch, watchdog, logs, heartbeat, runtime-root override, Task Scheduler rehearsal path, and Lightsail runbook."),
             ("Protection", "Kill switch", "KILL_SWITCH stops new live cycles before MT5 initialization, before each live cycle, and during sleeps. It does not close positions or delete pending orders by itself."),
             ("Limit", "No spread auto-cancel", "Spread is a send gate. Once an order is pending, spread widening does not cancel it and does not have a dedicated Telegram alert yet."),
-            ("Limit", "Forward/backtest drift", "Live recovery narrows missed-entry drift but still skips on expiry, path invalidation after first touch, broker rejection, or disabled recovery."),
+            ("Limit", "Forward/backtest drift", "C-01 recovery hold can increase missed-entry skips. Preserve those rows as evidence for later recovery review."),
             ("Limit", "Manual deletion is respected", "Deleting a pending order manually does not automatically re-arm that same signal because the signal key stays processed."),
             ("Limit", "Close reason depends on broker history", "TP/SL classification uses MT5 deal/order history. Ambiguous broker comments may fall back to a less specific close alert."),
         ])}

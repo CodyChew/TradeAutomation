@@ -915,6 +915,17 @@ class NotificationTests(unittest.TestCase):
         self.assertIn("Reason: Broker did not confirm pending-order cancellation", cancel_failed)
         self.assertIn("Action: Order kept in local state for next reconciliation", cancel_failed)
 
+        missing = format_notification_message(
+            NotificationEvent(
+                kind="pending_cancelled",
+                mode="LIVE",
+                title="Missing",
+                status="missing",
+                fields={"order_ticket": 9001},
+            )
+        )
+        self.assertIn("Reason: Pending order disappeared from MT5", missing)
+
         expiry_cancel_failed = format_notification_message(
             NotificationEvent(
                 kind="pending_expired",

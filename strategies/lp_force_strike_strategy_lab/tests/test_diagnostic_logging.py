@@ -47,7 +47,7 @@ class DiagnosticLoggingTests(unittest.TestCase):
             signal_key="lpfs:EURUSD:H4:10:long:signal_zone_0p5_pullback__fs_structure__1r:2026-01-01T00:00:00Z",
         )
 
-        self.assertEqual(diagnostics["schema_version"], 1)
+        self.assertEqual(diagnostics["schema_version"], 2)
         self.assertEqual(diagnostics["setup"]["setup_id"], "EURUSD_H4_long")
         self.assertEqual(diagnostics["setup"]["entry_zone"], 0.5)
         self.assertAlmostEqual(diagnostics["setup"]["risk_atr"], 0.5)
@@ -61,7 +61,7 @@ class DiagnosticLoggingTests(unittest.TestCase):
             execution={"execution_path": "pending_limit", "stage": "order_sent"},
         )
         fields = fields_with_diagnostics({"order_ticket": 9001}, enriched)
-        self.assertEqual(fields["diagnostic_schema_version"], 1)
+        self.assertEqual(fields["diagnostic_schema_version"], 2)
         self.assertEqual(fields["diagnostics"]["market"]["spread_points"], 2.0)
         flat = flatten_diagnostics(fields["diagnostics"])
         self.assertEqual(flat["diagnostic_execution_execution_path"], "pending_limit")
@@ -81,12 +81,12 @@ class DiagnosticLoggingTests(unittest.TestCase):
                 metadata={"entry_zone": "bad", "lp_break_index": "bad"},
             )
         )
-        self.assertEqual(bare["schema_version"], 1)
+        self.assertEqual(bare["schema_version"], 2)
         self.assertNotIn("strategy", bare)
         self.assertNotIn("risk_distance", bare["setup"])
         self.assertEqual(diagnostic_module.diagnostics_from_fields(None), {})
         self.assertEqual(diagnostic_module.diagnostics_from_fields({"diagnostics": "bad"}), {})
-        self.assertEqual(diagnostic_module.enrich_diagnostics({}, market=None, spread_gate=None)["schema_version"], 1)
+        self.assertEqual(diagnostic_module.enrich_diagnostics({}, market=None, spread_gate=None)["schema_version"], 2)
 
         @dataclass(frozen=True)
         class Nested:

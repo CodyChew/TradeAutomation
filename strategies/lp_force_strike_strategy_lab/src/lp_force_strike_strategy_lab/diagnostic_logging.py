@@ -8,7 +8,8 @@ from typing import Any, Mapping
 from backtest_engine_lab import TradeSetup
 
 
-DIAGNOSTIC_SCHEMA_VERSION = 1
+DIAGNOSTIC_SCHEMA_VERSION = 2
+TIMESTAMP_SEMANTICS_VERSION = "mt5_epoch_utc_v2"
 
 
 def build_setup_diagnostics(
@@ -29,6 +30,7 @@ def build_setup_diagnostics(
     return _clean_dict(
         {
             "schema_version": DIAGNOSTIC_SCHEMA_VERSION,
+            "timestamp_semantics_version": TIMESTAMP_SEMANTICS_VERSION,
             "setup": _clean_dict(
                 {
                     "setup_id": getattr(setup, "setup_id", None),
@@ -96,8 +98,12 @@ def enrich_diagnostics(
 
     payload = _deep_dict(diagnostics)
     if not payload:
-        payload = {"schema_version": DIAGNOSTIC_SCHEMA_VERSION}
+        payload = {
+            "schema_version": DIAGNOSTIC_SCHEMA_VERSION,
+            "timestamp_semantics_version": TIMESTAMP_SEMANTICS_VERSION,
+        }
     payload["schema_version"] = payload.get("schema_version") or DIAGNOSTIC_SCHEMA_VERSION
+    payload["timestamp_semantics_version"] = payload.get("timestamp_semantics_version") or TIMESTAMP_SEMANTICS_VERSION
     market_payload = _market_diagnostics(market)
     if market_payload:
         payload["market"] = _clean_dict({**_deep_dict(payload.get("market")), **market_payload})
@@ -172,6 +178,10 @@ def _market_diagnostics(market: Any | None) -> dict[str, Any]:
             "ask": _optional_float(getattr(market, "ask", None)),
             "spread_points": _optional_float(getattr(market, "spread_points", None)),
             "market_time_utc": _optional_text(time_value),
+            "raw_mt5_time": _optional_int(getattr(market, "raw_mt5_time", None)),
+            "raw_mt5_time_msc": _optional_int(getattr(market, "raw_mt5_time_msc", None)),
+            "timestamp_semantics_version": getattr(market, "timestamp_semantics_version", None),
+            "timestamp_provenance": getattr(market, "timestamp_provenance", None),
         }
     )
 

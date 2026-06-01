@@ -1,10 +1,41 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-31 ICT after the IC live scale-down, Saturday weekly
-evidence checkpoint, first-month monthly evidence review, weekly-dashboard
-FTMO fetch-timeout caveat, diagnostic report generation from safe lifecycle
-snapshots, policy-ledger update, and watchdog lock-contention hardening
-rollout.
+Last updated: 2026-06-01 ICT during the contained C-01 live-safety repair.
+
+## Current C-01 Priority
+
+Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
+Both VPS lanes are intentionally paused: kill switches active, scheduled tasks
+disabled, runner process count `0`, machines powered on, and zero LPFS broker
+pending orders. FTMO has `3` active positions and IC has `2`; leave them
+untouched and supervised broker-side.
+
+The local branch `codex/lpfs-c01-live-safety-release` repairs direct MT5 UTC
+epoch handling, enforces recovery disabled, fails closed on unavailable broker
+truth, introduces atomic v2 state with a downgrade barrier, adds isolated
+proof-backed reconciliation, and preserves immutable normalization evidence.
+It does not change strategy heuristics. No deploy, v2 state write,
+reconcile-only execution, canary, task enablement, or watchdog resumption is
+approved yet.
+
+The immutable normalizer explicitly classifies every historical `*_utc` leaf.
+It corrects archived expiration paths including `expiration_utc`,
+`broker_backstop_expiration_utc`, `old_expiration_utc`, and
+`new_broker_backstop_expiration_utc`; preserves known system timestamps;
+rebuilds embedded event signal keys with either `T` or space-separated
+timestamps; and sets `safe_for_strategy_analysis=false` whenever any timestamp
+path remains unresolved.
+
+For the C-01 release only, deploy and review `FTMO` first, then `IC`.
+Historical `IC`-first instructions describe the prior watchdog rollout.
+
+Local verification passed after reviewer follow-up on 2026-06-01 ICT: focused
+tests `164`, full LPFS tests `392`, strict core coverage `6396` statements plus
+`2190` branches at
+`100.00%`, generated live-ops regeneration stable, and `git diff --check`
+clean. A local rehearsal streamed all `275578` archived snapshot rows through
+the normalizer with `0` unresolved warnings. This is local release verification
+only; production remains paused.
 
 ## Purpose
 
@@ -1393,8 +1424,9 @@ Historical timing-telemetry note:
   sizing, spread gates, expiry, live state schema, or TradingView visuals.
 
 Current local run scope is the full V15 universe: 28 major/cross pairs across
-`H4/H8/H12/D1/W1`, or 140 checks per cycle. The current FTMO-style terminal
-uses `Europe/Helsinki` broker-time normalization.
+`H4/H8/H12/D1/W1`, or 140 checks per cycle. Historical code reinterpreted MT5
+epochs through `Europe/Helsinki`; C-01 corrects those epochs to direct UTC and
+uses Helsinki only for legacy evidence normalization.
 
 Latest corrected full-universe dry-run cycle found four current
 order-check-passing intents: `AUDJPY D1 short`, `EURNZD H8 short`,
@@ -1453,13 +1485,15 @@ written.
   order/deal linkage; same symbol/magic/volume alone is not considered enough.
 - Manual or unknown close reasons are reported as `TRADE CLOSED` with MT5 PnL/R,
   not mislabeled as stop losses.
-- Late-start missed-entry recovery is active by default: if MT5 bars after the
+- Historical note: late-start missed-entry recovery was active by default
+  before the C-01 safety hold. If MT5 bars after the
   signal candle already touched the planned pullback entry before the live order
   could be placed, the runner attempts better-than-entry market recovery before
   skipping. Recovery sends `TRADE_ACTION_DEAL`, keeps the original structure
   stop, recalculates TP to 1R from actual fill, sizes from actual fill-to-stop
   risk, and requires spread <= 10% plus a clean original stop/target path.
-  Rollback is `live_send.market_recovery_mode="disabled"`.
+  C-01 now requires `live_send.market_recovery_mode="disabled"` until a
+  separately reviewed recovery release.
 - Market-recovery implementation verification on 2026-05-04:
   focused live/notification tests passed (`38` tests), full LPFS discovery
   passed (`186` tests), and `scripts/run_core_coverage.py` passed at

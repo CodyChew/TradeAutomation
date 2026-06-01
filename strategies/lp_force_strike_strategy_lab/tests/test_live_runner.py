@@ -129,7 +129,7 @@ class LiveRunnerNotificationTests(unittest.TestCase):
         return result, int(count_path.read_text(encoding="utf-8").strip())
 
     def test_watchdog_terminal_child_codes_stop_without_retrying(self) -> None:
-        for exit_code in (0, 2, 3, 4, 130):
+        for exit_code in (0, 2, 3, 4, 5, 6, 130):
             with self.subTest(exit_code=exit_code), tempfile.TemporaryDirectory() as tmpdir:
                 result, invocations = self._run_watchdog_stub(tmpdir, exit_code, max_restarts=1)
                 self.assertEqual(result.returncode, exit_code)
@@ -137,8 +137,8 @@ class LiveRunnerNotificationTests(unittest.TestCase):
 
     def test_watchdog_unexpected_child_code_restarts_until_limit(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            result, invocations = self._run_watchdog_stub(tmpdir, 5, max_restarts=1)
-            self.assertEqual(result.returncode, 5)
+            result, invocations = self._run_watchdog_stub(tmpdir, 7, max_restarts=1)
+            self.assertEqual(result.returncode, 7)
             self.assertEqual(invocations, 2)
 
     def test_dual_vps_status_reports_live_task_overlap_policy(self) -> None:
