@@ -88,6 +88,16 @@ file, and the JSONL journal before making operational decisions.
   run reconcile-only mode, run a canary, write v2 runtime state, or modify
   broker exposure. Stop at final diff review until a separate deployment plan
   is explicitly approved.
+- C-01 status-observability follow-up: commit
+  `418428d656f3755590c6422a75dcb1a0891fc18b` was pushed to draft PR `#5`.
+  `Get-LpfsDualVpsStatus.ps1` now reports `ERROR/UNKNOWN` when MT5
+  `account_info()` or `terminal_info()` is unavailable, matching the existing
+  fail-closed order and position reads. Local verification passed: PowerShell
+  parse check, targeted C-01 tests `37`, full LPFS suite `392`, strict core
+  coverage `6396` statements plus `2190` branches at `100.00%`, and
+  `git diff --check`. Deployment remains blocked pending final diff review.
+  After approval, Stage 0 must capture fresh read-only MT5 evidence for both
+  lanes before any VPS pull.
 - 2026-05-23 live-reporting incident: treat remote reads of production LPFS
   journals/state as production-adjacent, not harmless reporting. The unsafe
   pattern is opening live JSONL/state files without `FileShare.ReadWrite`,
