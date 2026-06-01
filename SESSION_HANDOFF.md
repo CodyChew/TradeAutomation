@@ -80,6 +80,14 @@ file, and the JSONL journal before making operational decisions.
   snapshot rows through the normalizer with `0` unresolved warnings. No
   deployment was performed. Production remains intentionally paused until a
   separate operator-approved deployment step.
+- C-01 publication for final diff review: release commit
+  `d9fdded3a5e66c7e72ab0719862cdc1e629a9a52` was pushed on branch
+  `codex/lpfs-c01-live-safety-release` and draft PR
+  `https://github.com/CodyChew/TradeAutomation/pull/5` is open. Publication
+  did not pull either VPS, clear kill switches, enable tasks, start watchdogs,
+  run reconcile-only mode, run a canary, write v2 runtime state, or modify
+  broker exposure. Stop at final diff review until a separate deployment plan
+  is explicitly approved.
 - 2026-05-23 live-reporting incident: treat remote reads of production LPFS
   journals/state as production-adjacent, not harmless reporting. The unsafe
   pattern is opening live JSONL/state files without `FileShare.ReadWrite`,
