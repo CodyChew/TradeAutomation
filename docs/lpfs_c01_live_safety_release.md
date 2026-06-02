@@ -1,6 +1,6 @@
 # LPFS C-01 Live-Safety Release
 
-Last updated: 2026-06-02 ICT after the contained FTMO Stage 1 retry on
+Last updated: 2026-06-02 ICT after the contained IC Stage 3 pass on
 `codex/lpfs-c01-live-safety-release`.
 
 ## Current Objective
@@ -121,6 +121,55 @@ f8155e042fb183070440f22516c05de8075203964217252edea19f05100e2341
 All `41` declared payload hashes and byte counts revalidated after archive.
 Keep the packet ignored and do not commit runtime config, journals, state, or
 broker exports.
+
+## IC Stage 3 Point-In-Time Pass
+
+The approved IC-only contained Stage 3 run completed on 2026-06-02 ICT from
+exact reviewed SHA:
+
+```text
+b02a3cb92a05e771782c7a9ca4e4339c9452969a
+```
+
+IC passed fresh pre-pull Stage 0 read-only checks, `102` VPS-focused tests,
+bounded pre/post status, strict pre/post MT5 exports, and exactly one
+`--reconcile-only` invocation. The post-reconcile state has schema v2,
+minimum reader v2, the legacy-loader tripwire, one deterministic
+`clean_noop_migration` receipt, a deterministic completion row, a CLI
+completion row, and a reconciliation heartbeat.
+
+Receipt operation ID:
+
+```text
+016bd67907de7987ad84ba6186ab60e2fd44f22ac3ae3cf7cc5cd94eb68619a2
+```
+
+Broker exposure remained unchanged: pending orders `0`, the same `2` active
+positions, and unchanged historical order/deal counts (`232` / `129`). IC
+remains contained with `KILL_SWITCH` active, `LPFS_IC_Live` disabled, runner
+count `0`, watchdog count `0`, recovery disabled, and `26.24 GiB` free disk.
+FTMO was not accessed.
+
+The authoritative packet is archived outside the disposable worktree:
+
+```text
+C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_152110\ic_stage3
+```
+
+Its `evidence_manifest.json` SHA-256 is:
+
+```text
+033a67a66a5064015d38c5c1a69d084d21cc4130e1539040a854421ab8fb81ed
+```
+
+All `92` declared payload hashes and byte counts revalidated after archive.
+Keep the packet ignored and do not commit runtime config, journals, state, or
+broker exports.
+
+Skip the IC Stage 4 canary by default. Stop before Stage 5. Any resumption
+requires a separately reviewed Stage 5 pre-resumption plan and fresh
+read-only dual-lane status plus strict MT5 evidence before either watchdog is
+restarted.
 
 ## Approved Scope
 
@@ -316,8 +365,12 @@ Once both lanes are safely migrated and normalized evidence exists:
 - FTMO Stage 1 reconciliation passed point-in-time. Do not rerun FTMO
   reconciliation.
 - The default decision is to skip the multi-order FTMO canary.
-- IC-only contained Stage 3 remains blocked until separate explicit operator
-  approval. Do not touch IC before that approval.
+- IC-only contained Stage 3 passed point-in-time. Do not rerun IC
+  reconciliation.
+- Skip the IC Stage 4 canary by default. Stop before Stage 5.
+- Stage 5 watchdog resumption requires a separately reviewed plan, explicit
+  operator approval, and fresh read-only dual-lane evidence before either
+  watchdog is restarted.
 - Decide whether the operator accepts a canary that may place and fill multiple
   real orders. If not, defer canary until a separately reviewed one-order cap
   exists.
@@ -327,9 +380,15 @@ Once both lanes are safely migrated and normalized evidence exists:
   exports cannot be expected to reproduce that snapshot hash exactly. Compare
   stable inventory fields for adjacent-export checks and review a narrower
   hash projection separately.
-- Future IC packet capture must suppress PowerShell CLIXML progress noise,
-  capture stdout/stderr separately, and preserve explicit remote process exit
-  codes.
+- Packet-capture backlog: suppress PowerShell progress noise, capture
+  stdout/stderr separately, preserve explicit remote process exit-code
+  sidecars, and classify expected CLIXML host-information serialization
+  separately from fail-closed `ERROR/UNKNOWN`, exception, or native-command
+  error text.
+- Packet-capture backlog: avoid oversized `-EncodedCommand` and BOM-sensitive
+  stdin for larger inspections. Use a hashed ASCII read-only audit script
+  inside the ignored evidence directory, execute it with `-File`, and require
+  non-empty validated output.
 - `PLAN.md` does not exist in this repository. The external working copy at
   `C:\Users\Cody\Downloads\PLAN.md` was updated to match this release and its
   apostrophe encoding was made ASCII-safe.
@@ -369,9 +428,11 @@ Results:
 - manual scope audit: no strategy heuristic, entry/exit, timeframe-selection,
   risk-bucket, sizing-limit, or broker-send expansion.
 
-The later docs-only IC consistency follow-up adds dashboard assertions that
-require the last-approved IC Stage 0 snapshot label and reject unqualified
-current-containment wording. It does not change runtime code or VPS state.
+The historical docs-only IC consistency follow-up added dashboard assertions
+that required the then-current last-approved IC Stage 0 snapshot label and
+rejected unqualified current-containment wording. The contained IC Stage 3
+pass above supersedes that handoff boundary. It did not change runtime code or
+VPS state.
 
 The contained FTMO-only Stage 1 retry completed and is recorded above. IC was
 not accessed. Production remains intentionally paused pending separate

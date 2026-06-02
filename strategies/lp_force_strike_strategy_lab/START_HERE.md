@@ -1,6 +1,6 @@
 # LPFS Start Here
 
-Last updated: 2026-06-02 ICT after the contained C-01 FTMO Stage 1 retry.
+Last updated: 2026-06-02 ICT after the contained C-01 IC Stage 3 pass.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -13,9 +13,9 @@ operational decisions.
   C-01 is the current priority: historical MT5 epochs were shifted through
   `Europe/Helsinki`. FTMO is intentionally paused with kill switch active,
   scheduled task disabled, runner count `0`, broker pending orders `0`, and
-  `3` active positions. IC was not accessed during the retry; last-approved IC
-  Stage 0 evidence recorded kill switch active, task disabled, runner count
-  `0`, broker pending orders `0`, and `2` active positions. Leave active
+  `3` active positions. IC Stage 3 also passed point-in-time: kill switch
+  active, task disabled, runner and watchdog counts `0`, broker pending orders
+  `0`, the same `2` active positions, and schema-v2 state. Leave active
   positions untouched.
 - FTMO-only Stage 1 passed point-in-time after exact reviewed SHA
   `3dd1895ca5300d448e4d100095b294e78679a6b9` was pulled. One contained
@@ -24,9 +24,13 @@ operational decisions.
   row, and reconciliation heartbeat. Broker pending orders stayed `0`; the
   same `3` FTMO positions remained. The archived packet and SHA-256 are in
   `../../SESSION_HANDOFF.md`. FTMO remains contained. IC was not accessed.
-- Default next decision: skip the multi-order FTMO canary. Do not touch IC,
-  rerun FTMO reconciliation, clear kill switches, enable tasks, restart
-  watchdogs, or run a canary until a separate operator-approved step.
+- IC-only Stage 3 passed at exact reviewed SHA
+  `b02a3cb92a05e771782c7a9ca4e4339c9452969a`. Its archived packet and
+  SHA-256 are in `../../SESSION_HANDOFF.md`. Skip the multi-order FTMO and IC
+  canaries by default. Stop before Stage 5. Do not rerun reconciliation, clear
+  kill switches, enable tasks, restart watchdogs, or run a canary until a
+  separate operator-approved Stage 5 pre-resumption plan refreshes read-only
+  evidence for both lanes.
 - The local C-01 branch adds direct UTC parsing, code-enforced
   `market_recovery_mode="disabled"`, fail-closed broker reads, atomic v2 state
   with a legacy-loader tripwire, proof-backed isolated reconciliation, and
@@ -49,9 +53,10 @@ operational decisions.
   cycle completed, and continuous task `LPFS_IC_Live` installed/running with
   its own runtime state, journal, heartbeat, logs, Telegram channel, magic
   `231500`, and broker comment prefix `LPFSIC`. Do not treat this as current IC
-  truth. The last-approved IC Stage 0 snapshot is the current handoff boundary:
-  kill switch active, task disabled, runners `0`, pending orders `0`, and `2`
-  active positions. Refresh IC only inside an approved IC-only Stage 3 step.
+  truth. The contained IC Stage 3 point-in-time pass is the current handoff
+  boundary: kill switch active, task disabled, runners and watchdogs `0`,
+  pending orders `0`, and the same `2` active positions. Refresh both lanes
+  before any approved Stage 5 resumption step.
 - Watchdog hardening deploy: documentation PR `#1` squash-merged as `9dcfafc`
   and watchdog PR `#2` squash-merged as `3657323`. Both VPSes pulled
   `3657323` with deliberate kill-switch-first restarts on 2026-05-31 ICT, IC

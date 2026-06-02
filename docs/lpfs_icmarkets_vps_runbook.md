@@ -3,23 +3,59 @@
 ## C-01 Containment Override
 
 Read `lpfs_c01_live_safety_release.md` before using this runbook. As of
-2026-06-02 ICT, FTMO remains powered on and intentionally paused: kill switch
-active, scheduled task disabled, runner count `0`, broker pending orders `0`,
-and `3` active positions. FTMO Stage 1 reconciliation passed point-in-time. IC
-was not accessed during that retry; its last approved Stage 0 evidence recorded
-its machine powered on, kill switch active, scheduled task disabled, runner
-count `0`, broker pending orders `0`, and `2` active positions. Leave all
-positions untouched and supervised broker-side.
+2026-06-02 ICT, FTMO Stage 1 and IC Stage 3 both passed point-in-time and
+remain intentionally contained. FTMO has kill switch active, scheduled task
+disabled, runner count `0`, broker pending orders `0`, and `3` active
+positions. IC has kill switch active, scheduled task disabled, runner count
+`0`, watchdog count `0`, broker pending orders `0`, and the same `2` active
+positions. Leave all positions untouched and supervised broker-side.
 
-The default next decision is to skip the multi-order FTMO canary. Do not touch
-IC, clear either kill switch, enable tasks, run watchdogs, deploy, execute
-reconcile-only mode, or run a canary until a separate operator-approved
-IC-only Stage 3 step. Keep `live_send.market_recovery_mode="disabled"`.
+The default next decision is to skip both multi-order canaries. Stop before
+Stage 5. Do not clear either kill switch, enable tasks, run watchdogs, rerun
+reconcile-only mode, or modify broker exposure until a separate Stage 5
+pre-resumption plan is reviewed and approved. Keep
+`live_send.market_recovery_mode="disabled"`.
 
-For any future IC packet capture, set
+For any future packet capture, set
 `$ProgressPreference="SilentlyContinue"` in remote PowerShell, redirect
 stdout/stderr to separate packet files, and preserve the explicit remote
-process exit code. Do not treat CLIXML progress records as broker evidence.
+process exit-code sidecar. Do not treat CLIXML progress or host-information
+records as broker evidence; classify them separately and fail closed on
+`ERROR/UNKNOWN`, exceptions, or native-command errors. For larger read-only
+inspection scripts, avoid oversized `-EncodedCommand` and BOM-sensitive stdin:
+publish a hashed ASCII script inside the ignored evidence directory, execute
+it with `-File`, and require non-empty validated output.
+
+## C-01 IC Stage 3 Point-In-Time Pass
+
+IC pulled exact reviewed SHA
+`b02a3cb92a05e771782c7a9ca4e4339c9452969a`, passed fresh pre-pull Stage 0
+checks, `102` VPS-focused tests, bounded pre/post status, strict pre/post MT5
+exports, and exactly one `--reconcile-only` invocation. State is schema v2
+with one deterministic `clean_noop_migration` receipt. Receipt operation ID:
+`016bd67907de7987ad84ba6186ab60e2fd44f22ac3ae3cf7cc5cd94eb68619a2`.
+
+Broker exposure stayed unchanged: pending orders `0`, the same `2` active
+positions, and unchanged historical order/deal counts (`232` / `129`). Final
+containment: `KILL_SWITCH` active, `LPFS_IC_Live` disabled, runner count `0`,
+watchdog count `0`, recovery disabled, and `26.24 GiB` free disk. FTMO was
+not accessed.
+
+Authoritative archive:
+
+```text
+C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_152110\ic_stage3
+```
+
+Archive `evidence_manifest.json` SHA-256:
+
+```text
+033a67a66a5064015d38c5c1a69d084d21cc4130e1539040a854421ab8fb81ed
+```
+
+All `92` payload hashes and byte counts revalidated. Keep the packet ignored.
+Skip Stage 4 by default. Stop before Stage 5 and require fresh read-only
+dual-lane evidence before either watchdog is restarted.
 
 This runbook is for bringing up a second LP + Force Strike production runner
 for IC Markets Raw Spread while leaving the existing FTMO VPS runner untouched.
@@ -50,10 +86,10 @@ runtime root, state, journal, heartbeat, kill switch, and scheduled task.
 ## Historical Verified IC VPS State
 
 The entries in this section are historical promotion and maintenance evidence.
-They are not current IC truth. The current handoff boundary is the
-last-approved IC Stage 0 snapshot: kill switch active, task disabled, runners
-`0`, pending orders `0`, and `2` active positions. Refresh IC only inside an
-approved IC-only Stage 3 step.
+They are not current IC truth. The current handoff boundary is the contained
+IC Stage 3 point-in-time pass above: kill switch active, task disabled,
+runners `0`, watchdogs `0`, pending orders `0`, and the same `2` active
+positions. Refresh both lanes before any approved Stage 5 resumption step.
 
 Last verified on 2026-05-23 after the LPFS weekly-report incident, runner
 recovery, diagnostic-logging upgrade, and journal-read safety update.
@@ -447,10 +483,11 @@ git status --short --branch
 
 Historical promoted-state note: the one-cycle live-send smoke completed and
 `LPFS_IC_Live` was installed/running. Do not treat this as current IC truth.
-The last-approved IC Stage 0 snapshot records kill switch active, task
-disabled, runners `0`, pending orders `0`, and `2` active positions. Refresh
-IC only inside an approved IC-only Stage 3 step. Future agents should still
-repeat the same reconciliation after any approved config change or restart.
+The contained IC Stage 3 point-in-time pass records kill switch active, task
+disabled, runners `0`, watchdogs `0`, pending orders `0`, and the same `2`
+active positions. Refresh both lanes before any approved Stage 5 resumption
+step. Future agents should still repeat the same reconciliation after any
+approved config change or restart.
 
 ## Watchdog And Scheduled Task
 
@@ -478,10 +515,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\TradeAutomation\scri
 If the task is already running: do not start a new instance. Configure Task
 Scheduler with `MultipleInstances=IgnoreNew`.
 
-`LPFS_IC_Live` is installed but its current state must be refreshed inside an
-approved IC-only Stage 3 step. Do not replace it or start a second manual
-runner while the scheduled task is active. Use `Get-LpfsDualVpsStatus.ps1`,
-the gate-attribution report, or the IC status command above before maintenance.
+`LPFS_IC_Live` is installed but remains disabled under containment. Refresh
+both lanes through approved read-only Stage 5 pre-resumption evidence before
+either watchdog restart. Do not replace it or start a second manual runner
+while the scheduled task is active. Use `Get-LpfsDualVpsStatus.ps1`, the
+gate-attribution report, or the IC status command above before maintenance.
 
 Startup alert task for `LPFS_IC_Startup_Alert`:
 

@@ -248,8 +248,8 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Market recovery", html)
         self.assertIn("MARKET RECOVERY", html)
         self.assertIn("C-01 containment active", html)
-        self.assertIn("last-approved Stage 0 snapshot", html)
-        self.assertIn("Refresh IC truth only inside an approved IC-only Stage 3 step", html)
+        self.assertIn("Contained Stage 3 snapshot", html)
+        self.assertIn("Refresh both lanes with read-only status and strict MT5 evidence before either watchdog restart", html)
         self.assertNotIn("both production lanes are paused with kill switches active", html)
         self.assertNotIn("<span>Current containment</span>", html)
         self.assertIn("Recovery hold", html)
@@ -328,7 +328,7 @@ class DashboardPagesTests(unittest.TestCase):
         handoff = (WORKSPACE_ROOT / "SESSION_HANDOFF.md").read_text(encoding="utf-8")
 
         self.assertIn("Historical IC promotion state", handoff)
-        self.assertIn("use the last-approved IC Stage 0 snapshot boundary above", handoff)
+        self.assertIn("use the contained IC Stage 3 point-in-time boundary above", handoff)
         self.assertNotIn("IC Markets production is now a separate live VPS lane", handoff)
         self.assertNotIn("`LPFS_IC_Live` is installed\n  and running", handoff)
 

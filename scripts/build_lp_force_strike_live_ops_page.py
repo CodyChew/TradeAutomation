@@ -755,7 +755,7 @@ Get-CimInstance Win32_Process |
     <section id="proof" class="ops-hero" aria-labelledby="proof-title">
       <div class="eyebrow">Static Verification Guide</div>
       <h2 id="proof-title">What Proves The Runner Is Correct</h2>
-      <p class="callout warning"><strong>C-01 containment active:</strong> FTMO Stage 1 passed point-in-time and remains paused with kill switch active, scheduled task disabled, and runners stopped. IC was not accessed during the retry; its last-approved Stage 0 snapshot recorded kill switch active, task disabled, runners stopped, pending orders 0, and active positions 2. Refresh IC truth only inside an approved IC-only Stage 3 step. MT5 epochs must be parsed directly as UTC. Recovery is held at <code>market_recovery_mode=disabled</code>.</p>
+      <p class="callout warning"><strong>C-01 containment active:</strong> FTMO Stage 1 and IC Stage 3 passed point-in-time and remain paused with kill switches active, scheduled tasks disabled, runners stopped, pending orders 0, and unchanged active-position inventories. Skip the IC Stage 4 canary by default. Stop before Stage 5. Refresh both lanes with read-only status and strict MT5 evidence before either watchdog restart. MT5 epochs must be parsed directly as UTC. Recovery is held at <code>market_recovery_mode=disabled</code>.</p>
       <p class="callout warning"><strong>Real orders can be sent.</strong> Correctness is proven from MT5 broker state, local state, and journal rows. Telegram is useful for operator awareness, but Telegram is reporting only and does not prove broker state.</p>
       <div class="ops-grid">
         {_fact_grid(proof_facts)}
@@ -906,7 +906,7 @@ Get-CimInstance Win32_Process |
             ("Runtime files", "lpfs_ic_live_*", "State, journal, heartbeat, and logs use IC-specific names under C:\\TradeAutomationRuntimeIC."),
             ("MT5 identity", "ICMarketsSC-MT5-2", "Fail closed if the VPS MT5 terminal is not logged into the expected IC account/server."),
             ("Broker identity", "magic 231500 / LPFSIC", "Separate magic and broker comment prefix prevent FTMO and IC state from being confused."),
-            ("Last-approved Stage 0 snapshot", "LPFS_IC_Live disabled", "IC was not accessed during the FTMO retry. The last-approved IC Stage 0 snapshot recorded task disabled, KILL_SWITCH active, runners stopped, pending orders 0, and active positions 2. Refresh IC truth only inside an approved IC-only Stage 3 step."),
+            ("Contained Stage 3 snapshot", "LPFS_IC_Live disabled", "The contained IC Stage 3 point-in-time pass recorded task disabled, KILL_SWITCH active, runners stopped, watchdogs stopped, pending orders 0, and the same 2 active positions. Refresh both lanes with read-only status and strict MT5 evidence before either watchdog restart."),
             ("Startup alert", "LPFS_IC_Startup_Alert", "At-startup SYSTEM task sends IC Telegram boot/restart cards into the IC channel and journals into lpfs_ic_live_journal.jsonl."),
             ("Latest IC live smoke", "1 pending order placed", "The first IC VPS live-send cycle completed before continuous task startup; broker/runtime reconciliation is captured by the dual VPS status report."),
             ("Sizing policy", "ledger scale 1.0", "See configs/live_policy_ledger.csv. The active IC live policy keeps the 0.25/0.30/0.75 bucket shape, uses risk_bucket_scale=1.0, max_risk_pct_per_trade=0.75, and keeps the historical scale-2 epoch traceable."),
