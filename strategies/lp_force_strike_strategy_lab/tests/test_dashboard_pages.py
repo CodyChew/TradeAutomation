@@ -250,6 +250,7 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("C-01 containment active", html)
         self.assertIn("Contained Stage 3 snapshot", html)
         self.assertIn("Refresh both lanes with read-only status and strict MT5 evidence before either watchdog restart", html)
+        self.assertNotIn("IC was not accessed", html)
         self.assertNotIn("both production lanes are paused with kill switches active", html)
         self.assertNotIn("<span>Current containment</span>", html)
         self.assertIn("Recovery hold", html)

@@ -8,13 +8,15 @@ live trading state.
 
 ## C-01 Containment
 
-Read `lpfs_c01_live_safety_release.md` first. FTMO is intentionally paused with
-kill switch active, scheduled task disabled, and runner process count `0`. IC
-was not accessed during the retry; last-approved IC Stage 0 evidence recorded
-kill switch active, task disabled, and runner process count `0`. Keep both VPS
-machines powered on. Do not clear kill switches, start watchdogs, enable tasks, deploy, run
+Read `lpfs_c01_live_safety_release.md` first. FTMO Stage 1 and IC Stage 3 both
+passed point-in-time and remain intentionally paused with kill switches active,
+scheduled tasks disabled, runner and watchdog process counts `0`, broker
+pending orders `0`, and unchanged active-position inventories. Keep both VPS
+machines powered on. Skip the IC Stage 4 canary by default. Stop before Stage
+5. Do not clear kill switches, start watchdogs, enable tasks, deploy, run
 reconcile-only mode, or run a live canary unless a separate operator-approved
-deployment step authorizes it.
+deployment step authorizes it. Before either watchdog restart, refresh
+read-only dual-lane bounded status and strict MT5 evidence.
 
 FTMO-only Stage 1 retry passed point-in-time from exact SHA
 `3dd1895ca5300d448e4d100095b294e78679a6b9`. FTMO state is schema v2 with
