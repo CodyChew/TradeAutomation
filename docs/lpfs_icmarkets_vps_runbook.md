@@ -47,19 +47,25 @@ runtime root, state, journal, heartbeat, kill switch, and scheduled task.
 | Heartbeat | `lpfs_live_heartbeat.json` | `lpfs_ic_live_heartbeat.json` |
 | Logs | `lpfs_live_*.log` | `lpfs_ic_live_*.log` |
 
-## Current Verified IC VPS State
+## Historical Verified IC VPS State
+
+The entries in this section are historical promotion and maintenance evidence.
+They are not current IC truth. The current handoff boundary is the
+last-approved IC Stage 0 snapshot: kill switch active, task disabled, runners
+`0`, pending orders `0`, and `2` active positions. Refresh IC only inside an
+approved IC-only Stage 3 step.
 
 Last verified on 2026-05-23 after the LPFS weekly-report incident, runner
 recovery, diagnostic-logging upgrade, and journal-read safety update.
 
-Latest local dual-VPS packet before the IC scale-down plan:
+Historical local dual-VPS packet before the IC scale-down plan:
 `reports/live_ops/lpfs_dual_vps_status_20260530_224231.md`. It showed IC
 `LPFS_IC_Live` running, kill switch clear, heartbeat fresh, MT5 connected and
 trade allowed, `live_send.risk_bucket_scale=2`,
 `max_risk_pct_per_trade=1.5`, and `max_open_risk_pct=12`. Treat that packet as
 a historical snapshot; capture a fresh pre-change packet before maintenance.
 
-Latest local dual-VPS packet after the IC scale-down maintenance:
+Historical local dual-VPS packet after the IC scale-down maintenance:
 `reports/live_ops/lpfs_dual_vps_status_20260531_001603.md`. It showed FTMO
 unchanged and running at scale `0.05`, and IC running at
 `live_send.risk_bucket_scale=1`, `max_risk_pct_per_trade=0.75`, and
@@ -94,7 +100,8 @@ and trade allowed, and broker/state counts reconciled.
 - Symbol check: all `28` configured FX symbols selected, none missing.
 - Candle check: `140` probes across H4/H8/H12/D1/W1 returned `20` rows each
   in the quick availability probe.
-- IC runtime: `C:\TradeAutomationRuntimeIC` exists with the kill switch clear.
+- Historical promotion state: IC runtime `C:\TradeAutomationRuntimeIC`
+  existed with the kill switch clear.
 - Telegram: IC VPS Telegram-only smoke delivered to the separate IC channel.
 - IC dry-run/order-check: one VPS dry-run cycle processed `140` frames, found
   `3` current setups, created `3` pending intents, and all `3` MT5
@@ -105,7 +112,7 @@ and trade allowed, and broker/state counts reconciled.
   `config.lpfs_icmarkets_raw_spread.local.json`; it placed `1` tracked pending
   order, left `0` active positions, and wrote `lpfs_ic_live_state.json` plus
   `lpfs_ic_live_journal.jsonl`.
-- Continuous live state: `LPFS_IC_Live` is installed and running through
+- Historical promotion state: `LPFS_IC_Live` was installed and running through
   `scripts\run_lpfs_live_forever.ps1` with `Cycles 100000000`,
   `SleepSeconds 30`, runtime root `C:\TradeAutomationRuntimeIC`, and log prefix
   `lpfs_ic_live`.
@@ -438,9 +445,12 @@ git status --short --branch
 6. After the smoke test, reconcile MT5 orders/positions against the IC state
    and journal before any continuous runner is installed.
 
-Current promoted state: the one-cycle live-send smoke completed and
-`LPFS_IC_Live` is installed/running. Future agents should still repeat the same
-reconciliation after any config change or restart.
+Historical promoted-state note: the one-cycle live-send smoke completed and
+`LPFS_IC_Live` was installed/running. Do not treat this as current IC truth.
+The last-approved IC Stage 0 snapshot records kill switch active, task
+disabled, runners `0`, pending orders `0`, and `2` active positions. Refresh
+IC only inside an approved IC-only Stage 3 step. Future agents should still
+repeat the same reconciliation after any approved config change or restart.
 
 ## Watchdog And Scheduled Task
 
@@ -468,8 +478,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\TradeAutomation\scri
 If the task is already running: do not start a new instance. Configure Task
 Scheduler with `MultipleInstances=IgnoreNew`.
 
-`LPFS_IC_Live` is now installed. Do not replace it or start a second manual
-runner while the scheduled task is running. Use `Get-LpfsDualVpsStatus.ps1`,
+`LPFS_IC_Live` is installed but its current state must be refreshed inside an
+approved IC-only Stage 3 step. Do not replace it or start a second manual
+runner while the scheduled task is active. Use `Get-LpfsDualVpsStatus.ps1`,
 the gate-attribution report, or the IC status command above before maintenance.
 
 Startup alert task for `LPFS_IC_Startup_Alert`:

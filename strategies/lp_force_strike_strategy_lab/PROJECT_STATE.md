@@ -551,8 +551,12 @@ Dedicated IC VPS live lane:
   not resized by the policy change.
 - One IC VPS live-send smoke cycle completed with `1` tracked pending order and
   `0` active positions.
-- Continuous task `LPFS_IC_Live` is installed/running through the watchdog
-  wrapper. Do not run a manual IC live process while it is active.
+- Historical promoted-state note: continuous task `LPFS_IC_Live` was
+  installed/running through the watchdog wrapper. Do not treat this as current
+  IC truth. The last-approved IC Stage 0 snapshot records kill switch active,
+  task disabled, runners `0`, pending orders `0`, and `2` active positions.
+  Refresh IC only inside an approved IC-only Stage 3 step, and never start a
+  manual IC live process while its scheduled task is active.
 - FTMO uses startup alert task `LPFS_FTMO_Startup_Alert`; IC uses
   `LPFS_IC_Startup_Alert`. These at-startup SYSTEM tasks send `VPS STARTED`
   Telegram cards and journal `vps_startup_alert` rows after Windows boot,

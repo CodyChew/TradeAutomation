@@ -43,12 +43,15 @@ operational decisions.
   signals; one local smoke live-send placed `AUDCHF H8` ticket `4419969921`,
   the user manually canceled it, and broker/local smoke state returned to `0`
   pending orders and `0` positions.
-- IC VPS live status: dedicated host `EC2AMAZ-DT73P0T` is reachable through
-  `lpfs-ic-vps`, MT5 is logged into `ICMarketsSC-MT5-2`, all `28` symbols are
-  available, the IC runtime kill switch is clear, one VPS live-send smoke cycle
-  completed, and continuous task `LPFS_IC_Live` is installed/running with its
-  own runtime state, journal, heartbeat, logs, Telegram channel, magic
-  `231500`, and broker comment prefix `LPFSIC`.
+- Historical IC VPS promoted-state note: dedicated host `EC2AMAZ-DT73P0T` is
+  reachable through `lpfs-ic-vps`; historical promotion evidence recorded MT5
+  on `ICMarketsSC-MT5-2`, all `28` symbols available, one VPS live-send smoke
+  cycle completed, and continuous task `LPFS_IC_Live` installed/running with
+  its own runtime state, journal, heartbeat, logs, Telegram channel, magic
+  `231500`, and broker comment prefix `LPFSIC`. Do not treat this as current IC
+  truth. The last-approved IC Stage 0 snapshot is the current handoff boundary:
+  kill switch active, task disabled, runners `0`, pending orders `0`, and `2`
+  active positions. Refresh IC only inside an approved IC-only Stage 3 step.
 - Watchdog hardening deploy: documentation PR `#1` squash-merged as `9dcfafc`
   and watchdog PR `#2` squash-merged as `3657323`. Both VPSes pulled
   `3657323` with deliberate kill-switch-first restarts on 2026-05-31 ICT, IC

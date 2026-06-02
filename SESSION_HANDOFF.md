@@ -175,6 +175,12 @@ file, and the JSONL journal before making operational decisions.
   exports may not reproduce the snapshot hash exactly. Compare stable broker
   inventory fields for adjacent-export validation and review a narrower hash
   projection separately. Do not broaden the C-01 release for this backlog.
+- IC documentation boundary: IC was not accessed during the FTMO Stage 1
+  retry. Historical IC promotion evidence must not be read as current state.
+  The last-approved IC Stage 0 snapshot is the current handoff boundary:
+  kill switch active, task disabled, runners `0`, pending orders `0`, and `2`
+  active positions. Refresh IC only inside an explicitly approved IC-only
+  Stage 3 step.
 - 2026-05-23 live-reporting incident: treat remote reads of production LPFS
   journals/state as production-adjacent, not harmless reporting. The unsafe
   pattern is opening live JSONL/state files without `FileShare.ReadWrite`,
@@ -1030,17 +1036,21 @@ ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; gi
   the trading loop is healthy; verify `LPFS_Live` / `LPFS_IC_Live` heartbeat,
   latest journal rows, and MT5 broker state after the alert.
 
-## IC Markets VPS Live Status
+## Historical IC Markets VPS Promotion Status
 
 The dedicated IC VPS was provisioned, smoke-tested, and promoted on
-2026-05-06:
+2026-05-06. This section is historical promotion evidence, not current IC
+truth. The current handoff boundary is the last-approved IC Stage 0 snapshot:
+kill switch active, task disabled, runners `0`, pending orders `0`, and `2`
+active positions. Refresh IC only inside an explicitly approved IC-only Stage
+3 step.
 
 - SSH alias `lpfs-ic-vps` works from the local PC.
 - Repo checkout `C:\TradeAutomation` is clean on `main...origin/main`.
 - Python venv exists at `C:\TradeAutomation\venv`.
 - Focused IC-lane test suite passed: `91 passed`.
-- Runtime root `C:\TradeAutomationRuntimeIC` exists and the kill switch is
-  clear.
+- Historical promotion state: runtime root `C:\TradeAutomationRuntimeIC`
+  existed and the kill switch was clear.
 - Telegram-only smoke from the IC VPS delivered to the separate IC channel.
 - MT5 is logged into the expected IC account/server:
   `ICMarketsSC-MT5-2`, company `Raw Trading Ltd`, currency `USD`; expected
@@ -1057,7 +1067,8 @@ The dedicated IC VPS was provisioned, smoke-tested, and promoted on
 - One IC VPS live-send smoke cycle completed from the VPS after the config was
   promoted to `LIVE_SEND`; it placed `1` tracked pending order and left
   `0` active positions.
-- Continuous task `LPFS_IC_Live` is installed and running through
+- Historical promotion state: continuous task `LPFS_IC_Live` was installed
+  and running through
   `scripts\run_lpfs_live_forever.ps1` with runtime root
   `C:\TradeAutomationRuntimeIC`, files `lpfs_ic_live_*`, and log prefix
   `lpfs_ic_live`.
@@ -1069,8 +1080,9 @@ The dedicated IC VPS was provisioned, smoke-tested, and promoted on
   `reports/live_ops/lpfs_gate_attribution_*.md` reports. Use it before changing
   spread or market-recovery rules.
 
-Do not run a second IC live process manually while `LPFS_IC_Live` is active.
-Pause with the IC kill switch and verify `processes=0` before IC maintenance.
+For any future IC operation, refresh task state first. Do not run a second IC
+live process manually while `LPFS_IC_Live` is active. Pause with the IC kill
+switch and verify `processes=0` before IC maintenance.
 
 ## 2026-05-06 Live Gate Attribution Snapshot
 

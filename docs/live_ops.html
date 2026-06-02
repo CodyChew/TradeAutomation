@@ -488,7 +488,7 @@
     <section id="proof" class="ops-hero" aria-labelledby="proof-title">
       <div class="eyebrow">Static Verification Guide</div>
       <h2 id="proof-title">What Proves The Runner Is Correct</h2>
-      <p class="callout warning"><strong>C-01 containment active:</strong> both production lanes are paused with kill switches active, scheduled tasks disabled, and runners stopped. MT5 epochs must be parsed directly as UTC. Recovery is held at <code>market_recovery_mode=disabled</code>. Do not resume, deploy, reconcile, or run a canary without a separately approved operator step.</p>
+      <p class="callout warning"><strong>C-01 containment active:</strong> FTMO Stage 1 passed point-in-time and remains paused with kill switch active, scheduled task disabled, and runners stopped. IC was not accessed during the retry; its last-approved Stage 0 snapshot recorded kill switch active, task disabled, runners stopped, pending orders 0, and active positions 2. Refresh IC truth only inside an approved IC-only Stage 3 step. MT5 epochs must be parsed directly as UTC. Recovery is held at <code>market_recovery_mode=disabled</code>.</p>
       <p class="callout warning"><strong>Real orders can be sent.</strong> Correctness is proven from MT5 broker state, local state, and journal rows. Telegram is useful for operator awareness, but Telegram is reporting only and does not prove broker state.</p>
       <div class="ops-grid">
 
@@ -1181,9 +1181,9 @@ Get-CimInstance Win32_Process |
 
 
         <article class="ops-fact">
-          <span>Current containment</span>
+          <span>Last-approved Stage 0 snapshot</span>
           <strong>LPFS_IC_Live disabled</strong>
-          <p>C-01 containment keeps the IC task disabled, KILL_SWITCH active, and runner stopped until a reviewed deployment step.</p>
+          <p>IC was not accessed during the FTMO retry. The last-approved IC Stage 0 snapshot recorded task disabled, KILL_SWITCH active, runners stopped, pending orders 0, and active positions 2. Refresh IC truth only inside an approved IC-only Stage 3 step.</p>
         </article>
 
 

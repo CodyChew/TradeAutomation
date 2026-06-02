@@ -357,16 +357,21 @@ git diff --check
 
 Results:
 
-- focused C-01/executor/reporting set: `164` tests passed;
-- full LPFS suite: `392` tests passed;
-- strict core coverage: `6396` statements and `2190` branches at `100.00%`;
-- `docs/live_ops.html` regeneration produced the same SHA-256:
-  `9E43C278F60219BCE480E29BE53EF689D2E160A9429B4D08D81EBD4F86B3A57C`;
+- contained forward-fix targeted LPFS set: `140` tests passed;
+- full LPFS suite: `394` tests passed with `2` intentional skips;
+- strict core coverage: `6401` statements and `2192` branches at `100.00%`;
+- docs-only IC consistency dashboard checks: `28` tests passed;
+- `docs/live_ops.html` regeneration produced SHA-256:
+  `14AD7C0833D747FDE9932E36177CEE693177A9E78A3E8FD52A784C6133FAC3DC`;
 - local archived-row normalization rehearsal: `275578` snapshot rows,
   `461270` deterministic changes, and `0` unresolved warnings;
 - `git diff --check`: passed;
 - manual scope audit: no strategy heuristic, entry/exit, timeframe-selection,
   risk-bucket, sizing-limit, or broker-send expansion.
+
+The later docs-only IC consistency follow-up adds dashboard assertions that
+require the last-approved IC Stage 0 snapshot label and reject unqualified
+current-containment wording. It does not change runtime code or VPS state.
 
 The contained FTMO-only Stage 1 retry completed and is recorded above. IC was
 not accessed. Production remains intentionally paused pending separate
