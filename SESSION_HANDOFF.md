@@ -129,6 +129,17 @@ file, and the JSONL journal before making operational decisions.
   reconciliation, clear kill switches, enable tasks, restart watchdogs, run a
   canary, or touch broker exposure until the forward-fix PR diff is reviewed
   and a separate operator approval is issued.
+- C-01 contained FTMO forward-fix review commit:
+  `862cf833903af55b0d94c6ba0cebb76ab9877b59`. It makes heartbeat cycle
+  counters optional for status rendering and atomically persists one
+  deterministic `clean_noop_migration` receipt when validated clean
+  reconciliation starts from schema-v1 state with no stale pending records.
+  Replay remains idempotent and backfills missing completion rows. Local
+  verification passed: targeted LPFS tests `140`, full LPFS suite `394` with
+  `2` skips, strict core coverage `6401` statements plus `2192` branches at
+  `100.00%`, PowerShell parse checks, generated `docs/live_ops.html`
+  byte-stability, and `git diff --check`. This is review-only publication;
+  operational containment remains unchanged.
 - 2026-05-23 live-reporting incident: treat remote reads of production LPFS
   journals/state as production-adjacent, not harmless reporting. The unsafe
   pattern is opening live JSONL/state files without `FileShare.ReadWrite`,
