@@ -1,6 +1,6 @@
 # TradeAutomation System Troubleshooting Map
 
-Last updated: 2026-06-02 during the contained LPFS C-01 FTMO forward fix.
+Last updated: 2026-06-02 after the contained LPFS C-01 FTMO Stage 1 retry.
 
 This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
@@ -8,17 +8,22 @@ live trading state.
 
 ## C-01 Containment
 
-Read `lpfs_c01_live_safety_release.md` first. As of 2026-06-01 ICT, both LPFS
-lanes are intentionally paused with kill switches active, scheduled tasks
-disabled, and runner process count `0`. Keep both VPS machines powered on.
-Do not clear kill switches, start watchdogs, enable tasks, deploy, run
+Read `lpfs_c01_live_safety_release.md` first. FTMO is intentionally paused with
+kill switch active, scheduled task disabled, and runner process count `0`. IC
+was not accessed during the retry; last-approved IC Stage 0 evidence recorded
+kill switch active, task disabled, and runner process count `0`. Keep both VPS
+machines powered on. Do not clear kill switches, start watchdogs, enable tasks, deploy, run
 reconcile-only mode, or run a live canary unless a separate operator-approved
 deployment step authorizes it.
 
-FTMO-only Stage 1 stopped before IC on 2026-06-02 ICT. FTMO remains contained;
-IC was not touched after the stop condition. The failed FTMO packet is
-`reports/live_ops/lpfs_c01_deploy/20260602_003007/ftmo`. The forward fix must
-be reviewed before either VPS is pulled or reconciliation runs again.
+FTMO-only Stage 1 retry passed point-in-time from exact SHA
+`3dd1895ca5300d448e4d100095b294e78679a6b9`. FTMO state is schema v2 with
+one deterministic `clean_noop_migration` receipt. FTMO remains contained; IC
+was not touched. The authoritative archived packet is
+`C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_160716\ftmo_stage1_retry`
+with manifest SHA-256
+`f8155e042fb183070440f22516c05de8075203964217252edea19f05100e2341`.
+Do not rerun FTMO reconciliation or touch IC without separate approval.
 
 `Get-LpfsLiveStatus.ps1` must render normal-cycle, reconciliation-only, and
 error heartbeats. Reconciliation and error heartbeats may omit
@@ -28,6 +33,12 @@ not as evidence that the heartbeat is malformed.
 For broker status, `None` from MT5 `orders_get`, `positions_get`,
 `history_orders_get`, or `history_deals_get` is `ERROR/UNKNOWN`, never zero.
 Use strict read-only evidence exports before drawing conclusions.
+
+For future IC deployment packets, set
+`$ProgressPreference="SilentlyContinue"` in remote PowerShell, redirect
+stdout/stderr to separate packet files, and record the explicit remote process
+exit code. PowerShell CLIXML progress records are transport noise, not broker
+evidence.
 
 ## First Boundary Check
 

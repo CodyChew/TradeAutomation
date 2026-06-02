@@ -917,7 +917,7 @@ Get-CimInstance Win32_Process |
 
     <section id="commands" aria-labelledby="commands-title">
       <h2 id="commands-title">Operator Commands</h2>
-      <p class="callout warning"><strong>C-01 forward-fix hold:</strong> FTMO-only Stage 1 stopped before IC. Keep both lanes paused. Do not pull either VPS, rerun reconcile-only, clear kill switches, enable tasks, restart watchdogs, or run a canary until the heartbeat-rendering and clean no-op v2 migration forward fix is reviewed and separately approved.</p>
+      <p class="callout warning"><strong>C-01 contained review hold:</strong> FTMO-only Stage 1 retry passed point-in-time at reviewed SHA <code>3dd1895ca5300d448e4d100095b294e78679a6b9</code> and remains paused. IC was not accessed. Default to skipping the multi-order FTMO canary. Do not rerun FTMO reconciliation, touch IC, clear kill switches, enable tasks, restart watchdogs, or run a canary until a separately approved operator step.</p>
       <p>Run these from the repository root after confirming <code>config.local.json</code> is intentionally set for the target account.</p>
       <div class="command-list">
         {command_html}
@@ -936,6 +936,8 @@ Get-CimInstance Win32_Process |
             ("Watch", "SSH/report fetch failures must be visible", "Weekly reporting must mark lane fetch failures as incomplete instead of treating missing journal/state data as a clean result."),
             ("Protection", "Compact summaries require local snapshots", "Collect a bounded shared-read journal snapshot, capture a fresh dual-VPS health packet, then run the manifest-backed compact summary locally. Direct active-journal summary reads are rejected."),
             ("Watch", "Gate attribution still scans the source", "Gate attribution uses FileShare.ReadWrite and bounds returned rows by default, but it still streams the full remote source before returning its tail. A byte-bounded optimization is deferred."),
+            ("Watch", "Receipt snapshot hash includes moving fields", "C-01 reconciliation receipt stable_hash currently includes full live position rows, including moving price_current and profit. Validate the receipt chain internally and compare stable inventory fields across adjacent exports. Review a narrower hash projection separately."),
+            ("Protection", "IC packet output hygiene", "For future IC packet capture, suppress PowerShell CLIXML progress noise, capture stdout and stderr separately, and preserve explicit remote exit codes. Transport progress records are not broker evidence."),
             ("Watch", "EA v1 remains tester-only", "The native MQL5 EA scaffold is Strategy Tester-only. Do not attach it to FTMO or IC live charts during v1."),
             ("Limit", "Not a daemon", "The runner only keeps checking when started with multiple cycles or wrapped by an external scheduler/process manager."),
             ("Alert", "Boot alert is not MT5 recovery", "The startup alert can tell you Windows rebooted before login; MT5 and the at-logon runner still require the interactive session unless a separate auto-logon/service design is approved."),

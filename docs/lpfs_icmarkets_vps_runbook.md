@@ -3,14 +3,23 @@
 ## C-01 Containment Override
 
 Read `lpfs_c01_live_safety_release.md` before using this runbook. As of
-2026-06-01 ICT, both LPFS VPS lanes remain powered on but intentionally paused:
-kill switches active, scheduled tasks disabled, runner process count `0`, and
-zero LPFS broker pending orders. FTMO has `3` active positions and IC has `2`;
-leave them untouched and supervised broker-side.
+2026-06-02 ICT, FTMO remains powered on and intentionally paused: kill switch
+active, scheduled task disabled, runner count `0`, broker pending orders `0`,
+and `3` active positions. FTMO Stage 1 reconciliation passed point-in-time. IC
+was not accessed during that retry; its last approved Stage 0 evidence recorded
+its machine powered on, kill switch active, scheduled task disabled, runner
+count `0`, broker pending orders `0`, and `2` active positions. Leave all
+positions untouched and supervised broker-side.
 
-Do not clear either kill switch, enable tasks, run watchdogs, deploy, execute
+The default next decision is to skip the multi-order FTMO canary. Do not touch
+IC, clear either kill switch, enable tasks, run watchdogs, deploy, execute
 reconcile-only mode, or run a canary until a separate operator-approved
-deployment step. Keep `live_send.market_recovery_mode="disabled"`.
+IC-only Stage 3 step. Keep `live_send.market_recovery_mode="disabled"`.
+
+For any future IC packet capture, set
+`$ProgressPreference="SilentlyContinue"` in remote PowerShell, redirect
+stdout/stderr to separate packet files, and preserve the explicit remote
+process exit code. Do not treat CLIXML progress records as broker evidence.
 
 This runbook is for bringing up a second LP + Force Strike production runner
 for IC Markets Raw Spread while leaving the existing FTMO VPS runner untouched.

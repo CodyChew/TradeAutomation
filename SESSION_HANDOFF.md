@@ -1,6 +1,6 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-02 ICT during the contained LPFS C-01 FTMO forward fix.
+Last updated: 2026-06-02 ICT after the contained LPFS C-01 FTMO Stage 1 retry.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -48,16 +48,20 @@ file, and the JSONL journal before making operational decisions.
 
 ## AI Agent Continuity Rules
 
-- 2026-06-01 C-01 containment is the current operational priority. Read
+- 2026-06-02 C-01 containment is the current operational priority. Read
   `docs/lpfs_c01_live_safety_release.md` before any LPFS operation. Both VPS
-  machines remain powered on, both kill switches are active, `LPFS_Live` and
-  `LPFS_IC_Live` are disabled, and runner process count is `0` on both lanes.
-  Strict read-only MT5 exports confirmed zero LPFS broker pending orders,
-  FTMO `3` active positions, and IC `2` active positions. Active positions are
-  untouched and supervised broker-side. Do not clear kill switches, enable
-  tasks, start watchdogs, deploy, run reconcile-only mode, run a canary, edit
-  runtime state/journals, or modify broker exposure without a separate
-  operator-approved deployment step.
+  FTMO Stage 1 reconciliation passed point-in-time at exact SHA
+  `3dd1895ca5300d448e4d100095b294e78679a6b9`: broker pending orders remain
+  `0`, the same `3` active positions remain supervised broker-side, and FTMO
+  state is schema v2 with `KILL_SWITCH` active, `LPFS_Live` disabled, and
+  runner count `0`. IC was not accessed during the retry; its last approved
+  point-in-time Stage 0 evidence recorded its machine powered on, kill switch
+  active, `LPFS_IC_Live` disabled, runner count `0`, broker pending orders `0`,
+  and `2` active positions. Refresh IC truth only inside a separately approved
+  IC-only Stage 3 step. Do not clear kill switches, enable tasks, start
+  watchdogs, rerun reconciliation, run a canary, edit runtime state/journals,
+  or modify broker exposure without a separate operator-approved deployment
+  step.
 - C-01 deployment order is `FTMO` first, then `IC`. Earlier `IC`-first
   instructions below are historical watchdog-rollout guidance and do not apply
   to the C-01 release.
@@ -140,6 +144,37 @@ file, and the JSONL journal before making operational decisions.
   `100.00%`, PowerShell parse checks, generated `docs/live_ops.html`
   byte-stability, and `git diff --check`. This is review-only publication;
   operational containment remains unchanged.
+- C-01 FTMO-only contained Stage 1 retry passed point-in-time on 2026-06-02
+  ICT and stopped for review. FTMO pulled exact reviewed SHA
+  `3dd1895ca5300d448e4d100095b294e78679a6b9`, passed `102` VPS-focused
+  tests, passed bounded pre/post status and strict pre/post MT5 exports, and
+  ran `--reconcile-only` exactly once. FTMO state is schema v2 with minimum
+  reader v2, the legacy-loader tripwire, one deterministic
+  `clean_noop_migration` receipt, completion row, CLI completion row, and
+  reconciliation heartbeat. Receipt operation ID:
+  `fa7afa51991ee1b1ca90cf5821f6a6a07bd131416798f396f50a62393360de42`.
+  Broker exposure remained unchanged: pending orders `0`, the same `3`
+  positions, and unchanged order/deal history ticket inventories. FTMO
+  remains contained with `KILL_SWITCH` active, `LPFS_Live` disabled, runner
+  count `0`, and recovery disabled. IC was not accessed.
+- The authoritative FTMO Stage 1 retry packet was archived outside the
+  disposable worktree at
+  `C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_160716\ftmo_stage1_retry`.
+  Its `evidence_manifest.json` SHA-256 is
+  `f8155e042fb183070440f22516c05de8075203964217252edea19f05100e2341`;
+  all `41` declared payload hashes and byte counts revalidated after archive.
+  Keep this ignored evidence packet out of git.
+- Default next decision: skip the multi-order FTMO live canary. IC-only
+  contained Stage 3 remains blocked until explicit operator approval. Before
+  any future IC packet capture, suppress PowerShell progress noise with
+  `$ProgressPreference="SilentlyContinue"`, capture stdout and stderr
+  separately, and preserve the explicit remote process exit code.
+- Observability backlog: reconciliation receipt `stable_hash()` currently
+  includes full live position rows, including moving `price_current` and
+  `profit`. The receipt chain is internally valid, but adjacent read-only
+  exports may not reproduce the snapshot hash exactly. Compare stable broker
+  inventory fields for adjacent-export validation and review a narrower hash
+  projection separately. Do not broaden the C-01 release for this backlog.
 - 2026-05-23 live-reporting incident: treat remote reads of production LPFS
   journals/state as production-adjacent, not harmless reporting. The unsafe
   pattern is opening live JSONL/state files without `FileShare.ReadWrite`,

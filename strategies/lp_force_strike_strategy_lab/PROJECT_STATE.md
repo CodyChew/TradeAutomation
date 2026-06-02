@@ -1,22 +1,24 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-06-02 ICT during the contained C-01 FTMO forward fix.
+Last updated: 2026-06-02 ICT after the contained C-01 FTMO Stage 1 retry.
 
 ## Current C-01 Priority
 
 Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
-Both VPS lanes are intentionally paused: kill switches active, scheduled tasks
-disabled, runner process count `0`, machines powered on, and zero LPFS broker
-pending orders. FTMO has `3` active positions and IC has `2`; leave them
-untouched and supervised broker-side.
+FTMO is intentionally paused: kill switch active, scheduled task disabled,
+runner process count `0`, machine powered on, zero LPFS broker pending orders,
+and `3` active positions. IC was not accessed during the FTMO retry; its
+last-approved Stage 0 evidence recorded kill switch active, task disabled,
+runner process count `0`, zero pending orders, and `2` active positions. Leave
+all positions untouched and supervised broker-side.
 
 The local branch `codex/lpfs-c01-live-safety-release` repairs direct MT5 UTC
 epoch handling, enforces recovery disabled, fails closed on unavailable broker
 truth, introduces atomic v2 state with a downgrade barrier, adds isolated
 proof-backed reconciliation, and preserves immutable normalization evidence.
-It does not change strategy heuristics. No deploy, v2 state write,
-reconcile-only execution, canary, task enablement, or watchdog resumption is
-approved yet.
+It does not change strategy heuristics. FTMO Stage 1 reconciliation is complete
+point-in-time. No FTMO reconciliation rerun, IC access, canary, task enablement,
+or watchdog resumption is approved yet.
 
 The immutable normalizer explicitly classifies every historical `*_utc` leaf.
 It corrects archived expiration paths including `expiration_utc`,
@@ -29,15 +31,37 @@ path remains unresolved.
 For the C-01 release only, deploy and review `FTMO` first, then `IC`.
 Historical `IC`-first instructions describe the prior watchdog rollout.
 
-FTMO-only Stage 1 stopped before IC on 2026-06-02 ICT. FTMO pulled reviewed
+Historical note: FTMO-only Stage 1 stopped before IC on 2026-06-02 ICT. FTMO pulled reviewed
 commit `79a3b21548653c4729eda07dc5f6da066d8018be`, passed `100` VPS-focused
 tests and strict broker comparisons, and remains contained with unchanged
 broker exposure. IC was not touched after the stop condition. The stop packet
 is `reports/live_ops/lpfs_c01_deploy/20260602_003007/ftmo`. The narrow
 forward fix makes status heartbeat counters optional and atomically migrates a
 validated clean no-pending reconciliation to v2 state with one deterministic
-receipt. Do not pull either VPS or rerun reconciliation before review and
-separate approval.
+receipt. The contained retry below superseded this stop gate.
+
+The contained FTMO retry then passed from exact SHA
+`3dd1895ca5300d448e4d100095b294e78679a6b9`: `102` VPS-focused tests,
+bounded pre/post status, strict pre/post MT5 exports, and exactly one
+`--reconcile-only` invocation passed. FTMO state is schema v2 with one
+deterministic `clean_noop_migration` receipt and operation ID
+`fa7afa51991ee1b1ca90cf5821f6a6a07bd131416798f396f50a62393360de42`.
+Broker pending orders stayed `0`; the same `3` active FTMO positions remained.
+FTMO remains contained and IC was not accessed. The authoritative ignored
+packet is archived outside the disposable worktree at
+`C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_160716\ftmo_stage1_retry`;
+manifest SHA-256:
+`f8155e042fb183070440f22516c05de8075203964217252edea19f05100e2341`.
+Default next decision: skip the multi-order canary and require separate
+operator approval before IC-only contained Stage 3.
+
+Observability backlog: reconciliation receipt `stable_hash()` includes full
+live position rows, including moving `price_current` and `profit`. The receipt
+chain is internally valid, but adjacent exports may not reproduce that hash
+exactly. Compare stable inventory fields for adjacent-export validation and
+review a narrower hash projection separately. For future IC packet capture,
+suppress PowerShell CLIXML progress noise, capture stdout/stderr separately,
+and preserve explicit remote process exit codes.
 
 Local verification passed after reviewer follow-up on 2026-06-01 ICT: focused
 tests `164`, full LPFS tests `392`, strict core coverage `6396` statements plus

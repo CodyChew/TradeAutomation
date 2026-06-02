@@ -1,6 +1,6 @@
 # LPFS C-01 Live-Safety Release
 
-Last updated: 2026-06-01 ICT during implementation on
+Last updated: 2026-06-02 ICT after the contained FTMO Stage 1 retry on
 `codex/lpfs-c01-live-safety-release`.
 
 ## Current Objective
@@ -13,9 +13,10 @@ settings, timeframe mix, or strategy heuristics.
 
 This is a live-safety release, not a strategy-improvement release.
 
-## Contained Production State
+## Initial Contained Production State
 
-Both VPS lanes were intentionally contained before implementation work:
+Both VPS lanes were intentionally contained before implementation work. This
+table is the approved Stage 0 baseline, not a fresh post-retry IC read:
 
 | Lane | Task | Kill switch | Runner processes | LPFS broker pending | Active positions |
 |---|---|---|---:|---:|---:|
@@ -40,7 +41,7 @@ The evidence paths are ignored local artifacts. Runtime ignored configs were
 updated in place to `live_send.market_recovery_mode="disabled"` while both
 lanes were paused. Timestamped config backups were preserved on each VPS.
 
-## FTMO Stage 1 Stop And Forward-Fix Gate
+## Historical FTMO Stage 1 Stop And Forward-Fix Gate
 
 An approved sequential deployment attempted FTMO-only Stage 1 on 2026-06-02
 ICT and stopped before IC. FTMO pulled reviewed commit
@@ -76,9 +77,50 @@ and commits one deterministic `clean_noop_migration` receipt through the same
 atomic v2 path as pending cleanup. Replay remains idempotent and backfills
 missing deterministic lifecycle rows without applying migration twice.
 
-Do not pull either VPS, rerun reconciliation, clear kill switches, enable
-tasks, restart watchdogs, run a canary, or mutate broker state until the
-forward-fix diff is reviewed and separately approved.
+This historical stop gate was superseded by the reviewed contained retry
+below. It remains recorded because it explains the forward fix.
+
+## FTMO Stage 1 Retry Point-In-Time Pass
+
+The approved FTMO-only contained retry completed on 2026-06-02 ICT from exact
+reviewed SHA:
+
+```text
+3dd1895ca5300d448e4d100095b294e78679a6b9
+```
+
+FTMO passed `102` VPS-focused tests, bounded pre/post status, strict pre/post
+MT5 exports, and exactly one `--reconcile-only` invocation. The post-reconcile
+state has schema v2, minimum reader v2, the legacy-loader tripwire, one
+deterministic `clean_noop_migration` receipt, a deterministic completion row,
+a CLI completion row, and a reconciliation heartbeat.
+
+Receipt operation ID:
+
+```text
+fa7afa51991ee1b1ca90cf5821f6a6a07bd131416798f396f50a62393360de42
+```
+
+Broker exposure remained unchanged: pending orders `0`, the same `3` active
+positions, and identical historical order/deal ticket inventories. FTMO
+remains contained with `KILL_SWITCH` active, `LPFS_Live` disabled, runner
+count `0`, and recovery disabled. IC was not accessed.
+
+The authoritative ignored packet was archived outside the disposable worktree:
+
+```text
+C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_160716\ftmo_stage1_retry
+```
+
+Its `evidence_manifest.json` SHA-256 is:
+
+```text
+f8155e042fb183070440f22516c05de8075203964217252edea19f05100e2341
+```
+
+All `41` declared payload hashes and byte counts revalidated after archive.
+Keep the packet ignored and do not commit runtime config, journals, state, or
+broker exports.
 
 ## Approved Scope
 
@@ -271,13 +313,23 @@ Once both lanes are safely migrated and normalized evidence exists:
 
 ## Current Blockers And Open Questions
 
-- The FTMO-only Stage 1 attempt is stopped pending review of the narrow
-  heartbeat-rendering and clean no-op migration forward fix.
-- Do not pull either VPS or rerun reconciliation until that forward-fix diff is
-  reviewed and separately approved.
+- FTMO Stage 1 reconciliation passed point-in-time. Do not rerun FTMO
+  reconciliation.
+- The default decision is to skip the multi-order FTMO canary.
+- IC-only contained Stage 3 remains blocked until separate explicit operator
+  approval. Do not touch IC before that approval.
 - Decide whether the operator accepts a canary that may place and fill multiple
   real orders. If not, defer canary until a separately reviewed one-order cap
   exists.
+- Observability backlog: reconciliation snapshot `stable_hash()` currently
+  includes full live position rows, including moving `price_current` and
+  `profit`. The receipt chain is internally valid, but adjacent read-only
+  exports cannot be expected to reproduce that snapshot hash exactly. Compare
+  stable inventory fields for adjacent-export checks and review a narrower
+  hash projection separately.
+- Future IC packet capture must suppress PowerShell CLIXML progress noise,
+  capture stdout/stderr separately, and preserve explicit remote process exit
+  codes.
 - `PLAN.md` does not exist in this repository. The external working copy at
   `C:\Users\Cody\Downloads\PLAN.md` was updated to match this release and its
   apostrophe encoding was made ASCII-safe.
@@ -316,6 +368,6 @@ Results:
 - manual scope audit: no strategy heuristic, entry/exit, timeframe-selection,
   risk-bucket, sizing-limit, or broker-send expansion.
 
-No deployment was performed. The final reviewed handoff must still record the
-commit hash and any separately approved deployment result. Until then,
-production remains intentionally paused.
+The contained FTMO-only Stage 1 retry completed and is recorded above. IC was
+not accessed. Production remains intentionally paused pending separate
+operator approval for any next step.
