@@ -1,7 +1,6 @@
 # TradeAutomation System Troubleshooting Map
 
-Last updated: 2026-05-23 after the LPFS weekly-report incident, runner
-recovery, and diagnostic-logging upgrade.
+Last updated: 2026-06-02 during the contained LPFS C-01 FTMO forward fix.
 
 This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
@@ -15,6 +14,16 @@ disabled, and runner process count `0`. Keep both VPS machines powered on.
 Do not clear kill switches, start watchdogs, enable tasks, deploy, run
 reconcile-only mode, or run a live canary unless a separate operator-approved
 deployment step authorizes it.
+
+FTMO-only Stage 1 stopped before IC on 2026-06-02 ICT. FTMO remains contained;
+IC was not touched after the stop condition. The failed FTMO packet is
+`reports/live_ops/lpfs_c01_deploy/20260602_003007/ftmo`. The forward fix must
+be reviewed before either VPS is pulled or reconciliation runs again.
+
+`Get-LpfsLiveStatus.ps1` must render normal-cycle, reconciliation-only, and
+error heartbeats. Reconciliation and error heartbeats may omit
+`completed_cycles` and `requested_cycles`; treat those counters as optional,
+not as evidence that the heartbeat is malformed.
 
 For broker status, `None` from MT5 `orders_get`, `positions_get`,
 `history_orders_get`, or `history_deals_get` is `ERROR/UNKNOWN`, never zero.

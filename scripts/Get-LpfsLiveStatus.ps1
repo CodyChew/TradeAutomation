@@ -137,11 +137,21 @@ Write-Host "heartbeat_path=$HeartbeatPath"
 if ($null -eq $Heartbeat) {
     Write-Host "heartbeat=missing"
 } else {
-    Write-Host "heartbeat_status=$($Heartbeat.status)"
-    Write-Host "heartbeat_updated_at_utc=$($Heartbeat.updated_at_utc)"
-    Write-Host "heartbeat_pid=$($Heartbeat.pid)"
-    Write-Host "heartbeat_completed_cycles=$($Heartbeat.completed_cycles)"
-    Write-Host "heartbeat_requested_cycles=$($Heartbeat.requested_cycles)"
+    foreach ($Field in @(
+        "status",
+        "updated_at_utc",
+        "pid",
+        "completed_cycles",
+        "requested_cycles",
+        "reconciliation_operation_id",
+        "journal_rows_backfilled",
+        "detail"
+    )) {
+        $Value = Get-JsonField -Object $Heartbeat -Name $Field
+        if (-not [string]::IsNullOrWhiteSpace($Value)) {
+            Write-Host "heartbeat_$Field=$Value"
+        }
+    }
     if ($Heartbeat.PSObject.Properties.Name -contains "last_cycle") {
         Write-Host "last_cycle=$($Heartbeat.last_cycle | ConvertTo-Json -Compress)"
     }

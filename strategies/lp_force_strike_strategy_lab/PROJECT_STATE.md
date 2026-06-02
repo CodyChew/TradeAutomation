@@ -1,6 +1,6 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-06-01 ICT during the contained C-01 live-safety repair.
+Last updated: 2026-06-02 ICT during the contained C-01 FTMO forward fix.
 
 ## Current C-01 Priority
 
@@ -28,6 +28,16 @@ path remains unresolved.
 
 For the C-01 release only, deploy and review `FTMO` first, then `IC`.
 Historical `IC`-first instructions describe the prior watchdog rollout.
+
+FTMO-only Stage 1 stopped before IC on 2026-06-02 ICT. FTMO pulled reviewed
+commit `79a3b21548653c4729eda07dc5f6da066d8018be`, passed `100` VPS-focused
+tests and strict broker comparisons, and remains contained with unchanged
+broker exposure. IC was not touched after the stop condition. The stop packet
+is `reports/live_ops/lpfs_c01_deploy/20260602_003007/ftmo`. The narrow
+forward fix makes status heartbeat counters optional and atomically migrates a
+validated clean no-pending reconciliation to v2 state with one deterministic
+receipt. Do not pull either VPS or rerun reconciliation before review and
+separate approval.
 
 Local verification passed after reviewer follow-up on 2026-06-01 ICT: focused
 tests `164`, full LPFS tests `392`, strict core coverage `6396` statements plus

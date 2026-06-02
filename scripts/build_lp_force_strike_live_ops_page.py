@@ -917,7 +917,7 @@ Get-CimInstance Win32_Process |
 
     <section id="commands" aria-labelledby="commands-title">
       <h2 id="commands-title">Operator Commands</h2>
-      <p class="callout warning"><strong>C-01 hold:</strong> start, resume, clear-kill-switch, deploy, reconcile-only, and canary commands require a separate operator-approved deployment step. Keep both current lanes paused.</p>
+      <p class="callout warning"><strong>C-01 forward-fix hold:</strong> FTMO-only Stage 1 stopped before IC. Keep both lanes paused. Do not pull either VPS, rerun reconcile-only, clear kill switches, enable tasks, restart watchdogs, or run a canary until the heartbeat-rendering and clean no-op v2 migration forward fix is reviewed and separately approved.</p>
       <p>Run these from the repository root after confirming <code>config.local.json</code> is intentionally set for the target account.</p>
       <div class="command-list">
         {command_html}

@@ -1,6 +1,6 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-02 ICT after LPFS C-01 Stage 0 read-only evidence review.
+Last updated: 2026-06-02 ICT during the contained LPFS C-01 FTMO forward fix.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -110,6 +110,25 @@ file, and the JSONL journal before making operational decisions.
   task enablement, watchdog restart, or broker mutation occurred. The next
   gate is explicit operator approval for FTMO-only Stage 1. Do not touch IC or
   pull either VPS before that approval.
+- C-01 FTMO-only Stage 1 attempted on 2026-06-02 ICT and stopped before IC.
+  FTMO pulled reviewed commit
+  `79a3b21548653c4729eda07dc5f6da066d8018be`, passed `100` VPS-focused
+  tests, passed strict broker reads before and after `--reconcile-only`, and
+  preserved broker exposure unchanged: pending orders `0`, active positions
+  `3`. FTMO remains contained with `KILL_SWITCH` active, `LPFS_Live`
+  disabled, runner process count `0`, and recovery disabled. IC was not
+  accessed after the FTMO stop condition and must remain untouched. The
+  authoritative ignored local FTMO stop packet is
+  `reports/live_ops/lpfs_c01_deploy/20260602_003007/ftmo`; its
+  `evidence_manifest.json` SHA-256 is
+  `87192736fe10ed2179f1d74b7089b9d20adf4ba29d4ecfecddf82a6230d51c09`.
+  Two forward-fix gaps were confirmed: `Get-LpfsLiveStatus.ps1` could not
+  render the reconciliation heartbeat when normal-cycle counters were absent,
+  and clean reconciliation with no stale local pending records left schema-v1
+  state without a deterministic receipt. Do not pull either VPS, rerun
+  reconciliation, clear kill switches, enable tasks, restart watchdogs, run a
+  canary, or touch broker exposure until the forward-fix PR diff is reviewed
+  and a separate operator approval is issued.
 - 2026-05-23 live-reporting incident: treat remote reads of production LPFS
   journals/state as production-adjacent, not harmless reporting. The unsafe
   pattern is opening live JSONL/state files without `FileShare.ReadWrite`,

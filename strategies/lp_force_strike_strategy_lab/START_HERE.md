@@ -1,6 +1,6 @@
 # LPFS Start Here
 
-Last updated: 2026-06-01 ICT during the contained C-01 live-safety repair.
+Last updated: 2026-06-02 ICT during the contained C-01 FTMO forward fix.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -16,6 +16,13 @@ operational decisions.
   orders, FTMO `3` active positions, and IC `2` active positions. Leave active
   positions untouched. No deploy, runner resume, reconcile-only execution, or
   live canary is approved yet.
+- FTMO-only Stage 1 stopped before IC after reviewed commit
+  `79a3b21548653c4729eda07dc5f6da066d8018be` was pulled and a contained
+  `--reconcile-only` run exposed two narrow gaps: status rendering assumed
+  normal-cycle heartbeat counters, and clean no-pending reconciliation did not
+  persist schema-v2 state with a deterministic receipt. FTMO remains contained;
+  IC was not touched. Read the FTMO stop packet path and forward-fix gate in
+  `../../SESSION_HANDOFF.md`. Do not touch either VPS until separate approval.
 - The local C-01 branch adds direct UTC parsing, code-enforced
   `market_recovery_mode="disabled"`, fail-closed broker reads, atomic v2 state
   with a legacy-loader tripwire, proof-backed isolated reconciliation, and

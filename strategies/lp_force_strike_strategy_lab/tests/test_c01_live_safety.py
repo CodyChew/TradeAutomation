@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 from collections import namedtuple
 from pathlib import Path
+import shutil
 from types import SimpleNamespace
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -457,6 +459,47 @@ class C01LiveSafetyTests(unittest.TestCase):
             self.assertIn("reconciliation_only_complete", journal.read_text(encoding="utf-8"))
             self.assertNotIn("order_send", mt5.calls)
 
+    def test_reconcile_only_clean_v1_state_migrates_once_and_backfills_completion_row(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mt5 = SnapshotMT5()
+            mt5.positions = [SimpleNamespace(ticket=7001, magic=131500)]
+            mt5.order_check = mock.Mock(side_effect=AssertionError("order_check must not run"))
+            mt5.order_send = mock.Mock(side_effect=AssertionError("order_send must not run"))
+            config = _config(tmpdir)
+            state = LiveExecutorState(active_positions=(_active(),))
+            with mock.patch.object(live_module, "cancel_pending_order") as cancel_pending:
+                result = reconcile_only_live_state(mt5, config=config, state=state)
+            self.assertTrue(result.operation_id)
+            self.assertEqual(result.classifications, ())
+            self.assertEqual(result.journal_rows_backfilled, 1)
+            cancel_pending.assert_not_called()
+            mt5.order_check.assert_not_called()
+            mt5.order_send.assert_not_called()
+
+            envelope = json.loads(Path(config.state_path).read_text(encoding="utf-8"))
+            self.assertEqual(envelope["state_schema_version"], 2)
+            self.assertEqual(envelope["minimum_reader_schema_version"], 2)
+            self.assertIsNone(envelope["processed_signal_keys"])
+            saved = load_live_state(config.state_path)
+            self.assertEqual(tuple(saved.reconciliation_receipts), (result.operation_id,))
+            receipt = saved.reconciliation_receipts[result.operation_id]
+            self.assertEqual(receipt["reconciliation_kind"], "clean_noop_migration")
+            journal = Path(config.journal_path)
+            rows = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual([row["event"] for row in rows], ["reconciliation_only_complete"])
+            self.assertEqual(rows[0]["reconciliation_operation_id"], result.operation_id)
+            self.assertEqual(rows[0]["reconciliation_kind"], "clean_noop_migration")
+
+            first_state = Path(config.state_path).read_bytes()
+            journal.unlink()
+            replay = reconcile_only_live_state(mt5, config=config, state=saved)
+            self.assertEqual(replay.operation_id, result.operation_id)
+            self.assertEqual(replay.journal_rows_backfilled, 1)
+            self.assertEqual(Path(config.state_path).read_bytes(), first_state)
+            replay_rows = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(len(replay_rows), 1)
+            self.assertEqual(replay_rows[0]["reconciliation_operation_id"], result.operation_id)
+
     def test_reconcile_only_preserves_state_when_outcome_is_unresolved(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             mt5 = SnapshotMT5()
@@ -829,6 +872,73 @@ class C01LiveSafetyTests(unittest.TestCase):
         self.assertIn("orders_get=ERROR/UNKNOWN", script)
         self.assertIn("positions_get=ERROR/UNKNOWN", script)
         self.assertNotIn("orders = mt5.orders_get() or ()", script)
+
+    def test_status_tool_renders_reconciliation_and_error_heartbeats_without_cycle_counters(self) -> None:
+        powershell = shutil.which("powershell.exe")
+        if powershell is None:
+            self.skipTest("Windows PowerShell is required for status rendering coverage.")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runtime_root = Path(tmpdir) / "runtime"
+            live_dir = runtime_root / "data" / "live"
+            live_dir.mkdir(parents=True)
+            (live_dir / "lpfs_live_state.json").write_text(
+                json.dumps(
+                    {
+                        "processed_signal_keys": [],
+                        "pending_orders": [],
+                        "active_positions": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (live_dir / "lpfs_live_journal.jsonl").write_text('{"event":"seed"}\n', encoding="utf-8")
+            heartbeat = live_dir / "lpfs_live_heartbeat.json"
+            for payload, expected in (
+                (
+                    {
+                        "status": "reconciliation_only_complete",
+                        "updated_at_utc": "2026-06-01T17:36:40+00:00",
+                        "pid": 3304,
+                        "reconciliation_operation_id": "op-id",
+                        "journal_rows_backfilled": 1,
+                    },
+                    ("heartbeat_status=reconciliation_only_complete", "heartbeat_reconciliation_operation_id=op-id"),
+                ),
+                (
+                    {
+                        "status": "error",
+                        "updated_at_utc": "2026-06-01T17:37:40+00:00",
+                        "pid": 3305,
+                        "detail": "broker snapshot unavailable",
+                    },
+                    ("heartbeat_status=error", "heartbeat_detail=broker snapshot unavailable"),
+                ),
+            ):
+                with self.subTest(status=payload["status"]):
+                    heartbeat.write_text(json.dumps(payload), encoding="utf-8")
+                    result = subprocess.run(
+                        [
+                            powershell,
+                            "-NoProfile",
+                            "-ExecutionPolicy",
+                            "Bypass",
+                            "-File",
+                            str(WORKSPACE_ROOT / "scripts" / "Get-LpfsLiveStatus.ps1"),
+                            "-RuntimeRoot",
+                            str(runtime_root),
+                            "-JournalLines",
+                            "1",
+                            "-LogLines",
+                            "1",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    for line in expected:
+                        self.assertIn(line, result.stdout)
+                    self.assertNotIn("heartbeat_completed_cycles=", result.stdout)
 
     def test_weekly_reader_understands_v1_and_v2_state(self) -> None:
         flat = {"pending_orders": [1], "active_positions": [1, 2], "processed_signal_keys": [1, 2, 3]}

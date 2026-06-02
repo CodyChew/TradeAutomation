@@ -422,7 +422,11 @@ state write or v2 send, rollback is forward-fix only.
 
 Use `--reconcile-only` only during an approved contained deployment. It
 requires `KILL_SWITCH`, reads broker truth before saving, refuses unresolved
-stale pending records, and cannot scan setups or send/cancel orders.
+stale pending records, and cannot scan setups or send/cancel orders. A
+validated clean reconciliation with no stale local pending records atomically
+migrates v1 state to v2 once and records a deterministic no-op receipt. A
+retry replays or backfills missing receipt journal rows without applying the
+migration twice.
 
 Do not clear live-send state casually. Clearing it intentionally re-arms
 already processed latest-candle signals and can place the same pending orders

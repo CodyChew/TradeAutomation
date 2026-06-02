@@ -40,6 +40,46 @@ The evidence paths are ignored local artifacts. Runtime ignored configs were
 updated in place to `live_send.market_recovery_mode="disabled"` while both
 lanes were paused. Timestamped config backups were preserved on each VPS.
 
+## FTMO Stage 1 Stop And Forward-Fix Gate
+
+An approved sequential deployment attempted FTMO-only Stage 1 on 2026-06-02
+ICT and stopped before IC. FTMO pulled reviewed commit
+`79a3b21548653c4729eda07dc5f6da066d8018be`, passed `100` VPS-focused tests,
+passed strict read-only broker exports before and after `--reconcile-only`,
+and preserved broker exposure unchanged: pending orders `0`, active positions
+`3`, and no broker history delta. FTMO remains contained with `KILL_SWITCH`
+active, `LPFS_Live` disabled, runner process count `0`, and recovery disabled.
+IC was not touched after the stop condition.
+
+Authoritative ignored local FTMO stop packet:
+
+```text
+reports/live_ops/lpfs_c01_deploy/20260602_003007/ftmo
+```
+
+Its `evidence_manifest.json` SHA-256 is:
+
+```text
+87192736fe10ed2179f1d74b7089b9d20adf4ba29d4ecfecddf82a6230d51c09
+```
+
+The stop exposed two forward-fix gaps:
+
+- `Get-LpfsLiveStatus.ps1` assumed normal-cycle heartbeat counters and failed
+  under strict mode when the reconciliation heartbeat omitted them.
+- clean reconciliation with no stale local pending records returned before
+  atomic v2 persistence, so schema-v1 state remained in place without a
+  deterministic receipt or completion-row replay anchor.
+
+The forward fix makes heartbeat rendering tolerant of absent optional counters
+and commits one deterministic `clean_noop_migration` receipt through the same
+atomic v2 path as pending cleanup. Replay remains idempotent and backfills
+missing deterministic lifecycle rows without applying migration twice.
+
+Do not pull either VPS, rerun reconciliation, clear kill switches, enable
+tasks, restart watchdogs, run a canary, or mutate broker state until the
+forward-fix diff is reviewed and separately approved.
+
 ## Approved Scope
 
 Allowed changes:
@@ -231,9 +271,10 @@ Once both lanes are safely migrated and normalized evidence exists:
 
 ## Current Blockers And Open Questions
 
-- No reviewed deployment commit exists yet.
-- No VPS pull, v2 state write, reconcile-only execution, or canary is approved
-  yet.
+- The FTMO-only Stage 1 attempt is stopped pending review of the narrow
+  heartbeat-rendering and clean no-op migration forward fix.
+- Do not pull either VPS or rerun reconciliation until that forward-fix diff is
+  reviewed and separately approved.
 - Decide whether the operator accepts a canary that may place and fill multiple
   real orders. If not, defer canary until a separately reviewed one-order cap
   exists.

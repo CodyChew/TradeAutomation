@@ -466,10 +466,19 @@ def reconcile_only_live_state(
             f"Reconciliation-only active-position mismatch: local={local_positions} broker={broker_positions}."
         )
     if not state.pending_orders:
-        return ReconciliationOnlyResult(
-            state=state,
-            operation_id=sorted(state.reconciliation_receipts)[-1] if state.reconciliation_receipts else "",
+        if state.reconciliation_receipts:
+            return ReconciliationOnlyResult(
+                state=state,
+                operation_id=sorted(state.reconciliation_receipts)[-1],
+                classifications=(),
+                journal_rows_backfilled=backfilled,
+            )
+        return _commit_reconciliation_receipt(
+            config,
+            state,
+            snapshot=snapshot,
             classifications=(),
+            broker_positions=broker_positions,
             journal_rows_backfilled=backfilled,
         )
 
@@ -487,14 +496,38 @@ def reconcile_only_live_state(
         tickets = [item["order_ticket"] for item in unresolved]
         raise RuntimeError(f"Reconciliation-only unresolved local pending records: {tickets}.")
 
+    return _commit_reconciliation_receipt(
+        config,
+        state,
+        snapshot=snapshot,
+        classifications=classifications,
+        broker_positions=broker_positions,
+        journal_rows_backfilled=backfilled,
+    )
+
+
+def _commit_reconciliation_receipt(
+    config: LiveSendExecutorConfig,
+    state: LiveExecutorState,
+    *,
+    snapshot: ValidatedBrokerSnapshot,
+    classifications: Sequence[dict[str, Any]],
+    broker_positions: Sequence[int],
+    journal_rows_backfilled: int,
+) -> ReconciliationOnlyResult:
+    """Atomically persist one validated reconciliation receipt and its lifecycle rows."""
+
+    reconciliation_kind = "pending_cleanup" if classifications else "clean_noop_migration"
     operation_id = _reconciliation_operation_id(
         state,
         snapshot=snapshot,
         classifications=classifications,
+        reconciliation_kind=reconciliation_kind,
     )
     canonical_state = _canonicalize_live_state_signal_keys(state, config)
     receipt = {
         "operation_id": operation_id,
+        "reconciliation_kind": reconciliation_kind,
         "state_schema_version": LIVE_STATE_SCHEMA_VERSION,
         "input_state_sha256": _stable_payload_hash(state.to_dict()),
         "snapshot_sha256": snapshot.stable_hash(),
@@ -508,12 +541,12 @@ def reconcile_only_live_state(
     receipts[operation_id] = receipt
     next_state = replace(canonical_state, pending_orders=(), reconciliation_receipts=receipts)
     _save_live_state(config, next_state)
-    backfilled += _append_missing_reconciliation_rows(config, receipt)
+    journal_rows_backfilled += _append_missing_reconciliation_rows(config, receipt)
     return ReconciliationOnlyResult(
         state=next_state,
         operation_id=operation_id,
         classifications=classifications,
-        journal_rows_backfilled=backfilled,
+        journal_rows_backfilled=journal_rows_backfilled,
     )
 
 
@@ -584,12 +617,14 @@ def _reconciliation_operation_id(
     *,
     snapshot: ValidatedBrokerSnapshot,
     classifications: Sequence[dict[str, Any]],
+    reconciliation_kind: str,
 ) -> str:
     payload = {
         "account_login": snapshot.account_login,
         "account_server": snapshot.account_server,
         "input_state": state.to_dict(),
         "snapshot_sha256": snapshot.stable_hash(),
+        "reconciliation_kind": reconciliation_kind,
         "classifications": sorted(classifications, key=lambda item: int(item["order_ticket"])),
         "active_position_ids": sorted(_position_id(item) for item in snapshot.positions),
         "target_state_schema": LIVE_STATE_SCHEMA_VERSION,
@@ -613,6 +648,7 @@ def _append_missing_reconciliation_rows(config: LiveSendExecutorConfig, receipt:
         {
             "event": "reconciliation_only_complete",
             "reconciliation_operation_id": operation_id,
+            "reconciliation_kind": receipt.get("reconciliation_kind"),
             "active_position_ids": receipt.get("active_position_ids", ()),
             "state_schema_version": receipt.get("state_schema_version"),
         }

@@ -340,6 +340,10 @@ It adds:
 - reconciliation through MT5 open orders, open positions, historical orders,
   and deal history. Pending-to-position matching requires broker comment or
   historical order/deal linkage, not volume alone;
+- contained `--reconcile-only` runs atomically migrate validated clean v1
+  state to v2 with a deterministic no-op receipt even when no stale local
+  pending record exists. Retry runs preserve idempotency and backfill missing
+  receipt journal rows without reapplying the migration;
 - truthful close classification: TP and SL stay specific, while manual or
   ambiguous exits are reported as `TRADE CLOSED` with MT5 PnL/R;
 - best-effort runner start/stop process notifications so the operator can see
