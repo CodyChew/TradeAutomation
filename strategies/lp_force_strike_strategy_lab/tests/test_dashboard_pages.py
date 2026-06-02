@@ -324,6 +324,14 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("href=\"v15.html\"", html)
         self.assertNotIn("<script", lower_html)
 
+    def test_session_handoff_does_not_present_historical_ic_runner_as_current(self) -> None:
+        handoff = (WORKSPACE_ROOT / "SESSION_HANDOFF.md").read_text(encoding="utf-8")
+
+        self.assertIn("Historical IC promotion state", handoff)
+        self.assertIn("use the last-approved IC Stage 0 snapshot boundary above", handoff)
+        self.assertNotIn("IC Markets production is now a separate live VPS lane", handoff)
+        self.assertNotIn("`LPFS_IC_Live` is installed\n  and running", handoff)
+
     def test_entry_wait_pages_show_rejected_conclusion(self) -> None:
         expected = "Do not replace the fixed 6-bar pullback wait"
 

@@ -1006,13 +1006,16 @@ ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; gi
 ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; git pull --ff-only origin main"
 ```
 
-- IC Markets production is now a separate live VPS lane, not a change to the
-  existing FTMO VPS: alias `lpfs-ic-vps`, host
+- Historical IC promotion state: IC Markets production was provisioned as a
+  separate live VPS lane, not a change to the existing FTMO VPS: alias
+  `lpfs-ic-vps`, host
   `EC2AMAZ-DT73P0T`, Tailscale IP `100.98.12.113`, runtime root
   `C:\TradeAutomationRuntimeIC`, ignored config
   `config.lpfs_icmarkets_raw_spread.local.json`, magic `231500`, broker comment
-  prefix `LPFSIC`, and separate Telegram channel. `LPFS_IC_Live` is installed
-  and running. IC live sizing policy epochs are tracked in
+  prefix `LPFSIC`, and separate Telegram channel. Historical promotion
+  evidence recorded `LPFS_IC_Live` installed and running. Do not treat this as
+  current IC truth; use the last-approved IC Stage 0 snapshot boundary above.
+  IC live sizing policy epochs are tracked in
   `configs/live_policy_ledger.csv`; the active future-order policy is
   `risk_bucket_scale=1.0`, `max_risk_pct_per_trade=0.75`, and
   `max_open_risk_pct=6.0`, while the historical scale-2 epoch remains
