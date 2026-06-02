@@ -1,6 +1,6 @@
 # TradeAutomation System Troubleshooting Map
 
-Last updated: 2026-06-02 after the contained LPFS C-01 FTMO Stage 1 retry.
+Last updated: 2026-06-02 after the contained LPFS C-01 IC Stage 3 pass.
 
 This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
@@ -25,7 +25,8 @@ was not touched. The authoritative archived packet is
 `C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_160716\ftmo_stage1_retry`
 with manifest SHA-256
 `f8155e042fb183070440f22516c05de8075203964217252edea19f05100e2341`.
-Do not rerun FTMO reconciliation or touch IC without separate approval.
+Do not rerun either lane reconciliation or perform any resumption action
+without separate approval.
 
 `Get-LpfsLiveStatus.ps1` must render normal-cycle, reconciliation-only, and
 error heartbeats. Reconciliation and error heartbeats may omit
@@ -36,7 +37,7 @@ For broker status, `None` from MT5 `orders_get`, `positions_get`,
 `history_orders_get`, or `history_deals_get` is `ERROR/UNKNOWN`, never zero.
 Use strict read-only evidence exports before drawing conclusions.
 
-For future IC deployment packets, set
+For future Stage 5 pre-resumption packets, set
 `$ProgressPreference="SilentlyContinue"` in remote PowerShell, redirect
 stdout/stderr to separate packet files, and record the explicit remote process
 exit code. PowerShell CLIXML progress records are transport noise, not broker
