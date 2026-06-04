@@ -1,7 +1,7 @@
 # LPFS C-01 Live-Safety Release
 
-Last updated: 2026-06-02 ICT after the contained IC Stage 3 pass on
-`codex/lpfs-c01-live-safety-release`.
+Last updated: 2026-06-04 ICT after the accepted FTMO Stage 5 Gate 3 `STOPPED`
+result and offline structured-verifier follow-up.
 
 ## Current Objective
 
@@ -170,6 +170,50 @@ Skip the IC Stage 4 canary by default. Stop before Stage 5. Any resumption
 requires a separately reviewed Stage 5 pre-resumption plan and fresh
 read-only dual-lane status plus strict MT5 evidence before either watchdog is
 restarted.
+
+## FTMO Stage 5 Gate 3 Accepted Stop
+
+The approved FTMO-only watchdog-resumption attempt stopped on 2026-06-04 ICT
+before enabling or starting `LPFS_Live`.
+
+Authoritative ignored packet:
+
+```text
+C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_gate3_20260604_100840
+```
+
+Its `manifest.json` SHA-256 is:
+
+```text
+85df11692de17e3d35b986dafee1ce729a15b822b8ce0f3c3ccea367eb27318e
+```
+
+Final evidence proves FTMO remains contained: `KILL_SWITCH` active,
+`LPFS_Live` disabled, runner/watchdog process count `0`, broker pending orders
+`0`, strict MT5 reads successful, correct account/server identity, and the
+same three active positions with unchanged symbol, magic, comment, volume,
+SL, and TP.
+
+Fallback containment refreshed the FTMO `KILL_SWITCH` content and invoked
+`Disable-ScheduledTask` while `LPFS_Live` was already disabled. No task
+enable/start, kill-switch clear, IC access, reconciliation, canary, pull, or
+broker mutation occurred.
+
+The malformed ad hoc verification probe did not preserve its exact command,
+stdout, stderr, and exit code in the authoritative packet. Its root cause
+therefore cannot be independently verified from durable evidence. The
+replacement offline verifier is `scripts/verify_lpfs_structured_command.py`.
+It requires all four command artifacts, verifies packet hashes, accepts
+exactly one structured JSON marker, and writes an atomic PASS/STOPPED receipt.
+
+Do not retry Gate 3. Read `lpfs_stage5_gate3_retry_plan.md`. The previous Gate
+1 evidence is stale; after the verifier change is reviewed, collect a fresh
+dual-lane Gate 1 read-only packet and stop for review before requesting
+another FTMO Gate 3 approval.
+
+Offline verifier validation passed: `8` focused verifier tests, full LPFS
+suite `403` with `2` intentional skips, and strict core coverage at `6401`
+statements plus `2192` branches with `100.00%`.
 
 ## Approved Scope
 

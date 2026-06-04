@@ -1,6 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-02 ICT after the contained LPFS C-01 IC Stage 3 pass.
+Last updated: 2026-06-04 ICT after the accepted LPFS C-01 FTMO Stage 5 Gate 3
+`STOPPED` result and offline structured-verifier follow-up.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -9,7 +10,8 @@ file, and the JSONL journal before making operational decisions.
 ## Read First
 
 1. `SESSION_HANDOFF.md` for this latest operational snapshot.
-2. `docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
+2. `docs/lpfs_c01_live_safety_release.md` before any LPFS operation, then
+   `docs/lpfs_stage5_gate3_retry_plan.md` before any Stage 5 work.
 3. `PROJECT_STATE.md` for workspace context.
 4. `docs/system_troubleshooting.md` before troubleshooting live runners, MT5,
    datasets, dashboards, or generated reports.
@@ -48,6 +50,38 @@ file, and the JSONL journal before making operational decisions.
 
 ## AI Agent Continuity Rules
 
+- 2026-06-04 FTMO Stage 5 Gate 3 is accepted as `STOPPED`; do not retry it.
+  Authoritative ignored packet:
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_gate3_20260604_100840`.
+  Its `manifest.json` SHA-256 is
+  `85df11692de17e3d35b986dafee1ce729a15b822b8ce0f3c3ccea367eb27318e`.
+  The final packet proves FTMO `KILL_SWITCH` active, `LPFS_Live` disabled,
+  runner/watchdog process count `0`, pending orders `0`, correct strict MT5
+  identity/reads, and the same three positions with unchanged symbol, magic,
+  comment, volume, SL, and TP. Fallback containment refreshed the FTMO
+  `KILL_SWITCH` content and invoked `Disable-ScheduledTask` while the task was
+  already disabled. No task enable/start, kill-switch clear, IC access,
+  reconciliation, canary, pull, or broker mutation occurred.
+- The malformed ad hoc verification probe was not preserved in the
+  authoritative Gate 3 packet. Its exact command, stdout, stderr, and exit
+  code cannot be independently verified; do not guess or reconstruct them as
+  evidence. Use `scripts/verify_lpfs_structured_command.py`, which fails
+  closed unless command/stdout/stderr/exit-code artifacts and exactly one
+  structured JSON marker are present. The review-only retry plan is
+  `docs/lpfs_stage5_gate3_retry_plan.md`.
+- Previous Gate 1 packet
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\20260604_095237` passed and was
+  independently reviewed, but is now stale. After the offline verifier change
+  is reviewed, the next operational action is a separately approved fresh
+  dual-lane Gate 1 read-only collection followed by another stop for review.
+  Do not request or execute FTMO Gate 3 before that gate passes.
+- Offline structured-verifier follow-up passed: verifier unit tests `8`, full
+  LPFS suite `403` with `2` intentional skips, strict core coverage `6401`
+  statements plus `2192` branches at `100.00%`, and `git diff --check`.
+  Archived Gate 1 structured bundles verified `PASS`; the preserved Gate 3
+  precheck/pre-strict/final-strict bundles and expected packet `STOPPED`
+  result verified; the fallback bundle correctly verified `STOPPED` because
+  `fallback_containment.command.txt` is missing.
 - 2026-06-02 C-01 containment is the current operational priority. Read
   `docs/lpfs_c01_live_safety_release.md` before any LPFS operation. FTMO
   Stage 1 reconciliation passed point-in-time at exact SHA

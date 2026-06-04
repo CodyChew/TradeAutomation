@@ -1,6 +1,7 @@
 # TradeAutomation System Troubleshooting Map
 
-Last updated: 2026-06-02 after the contained LPFS C-01 IC Stage 3 pass.
+Last updated: 2026-06-04 after the accepted LPFS C-01 FTMO Stage 5 Gate 3
+`STOPPED` result.
 
 This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
@@ -17,6 +18,16 @@ machines powered on. Skip the IC Stage 4 canary by default. Stop before Stage
 reconcile-only mode, or run a live canary unless a separate operator-approved
 deployment step authorizes it. Before either watchdog restart, refresh
 read-only dual-lane bounded status and strict MT5 evidence.
+
+FTMO Stage 5 Gate 3 is accepted as `STOPPED`; do not retry it. Read
+`lpfs_stage5_gate3_retry_plan.md`. The authoritative ignored packet is
+`C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_gate3_20260604_100840`,
+manifest SHA-256
+`85df11692de17e3d35b986dafee1ce729a15b822b8ce0f3c3ccea367eb27318e`.
+Fallback containment refreshed the FTMO `KILL_SWITCH` content and invoked
+`Disable-ScheduledTask` while the task was already disabled. No enable/start,
+kill-switch clear, IC access, reconciliation, canary, pull, or broker mutation
+occurred.
 
 FTMO-only Stage 1 retry passed point-in-time from exact SHA
 `3dd1895ca5300d448e4d100095b294e78679a6b9`. FTMO state is schema v2 with
@@ -42,6 +53,12 @@ For future Stage 5 pre-resumption packets, set
 stdout/stderr to separate packet files, and record the explicit remote process
 exit code. PowerShell CLIXML progress records are transport noise, not broker
 evidence.
+
+Do not use ad hoc verification commands before a Stage 5 mutation. Capture
+`<step>.command.txt`, `<step>.stdout.txt`, `<step>.stderr.txt`, and
+`<step>.exit_code.txt`, then run
+`scripts/verify_lpfs_structured_command.py`. It fails closed on missing,
+malformed, nonzero, nonempty-stderr, or ambiguous-output bundles.
 
 ## First Boundary Check
 

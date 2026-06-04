@@ -1,10 +1,24 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-06-02 ICT after the contained C-01 IC Stage 3 pass.
+Last updated: 2026-06-04 ICT after the accepted C-01 FTMO Stage 5 Gate 3
+`STOPPED` result.
 
 ## Current C-01 Priority
 
 Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
+Read `../../docs/lpfs_stage5_gate3_retry_plan.md` before any Stage 5 work.
+FTMO Stage 5 Gate 3 is accepted as `STOPPED` and must not be retried. Its
+authoritative ignored packet is
+`C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_gate3_20260604_100840`;
+manifest SHA-256:
+`85df11692de17e3d35b986dafee1ce729a15b822b8ce0f3c3ccea367eb27318e`.
+Fallback containment refreshed the FTMO kill-switch content and invoked
+`Disable-ScheduledTask` while the task was already disabled. No enable/start,
+kill-switch clear, IC access, reconciliation, canary, pull, or broker mutation
+occurred. The prior Gate 1 packet is stale. Require reviewed offline tooling,
+a fresh dual-lane Gate 1 read-only packet, and a separate approval before any
+future FTMO Gate 3 attempt.
+
 FTMO is intentionally paused: kill switch active, scheduled task disabled,
 runner process count `0`, machine powered on, zero LPFS broker pending orders,
 and `3` active positions. IC Stage 3 passed point-in-time and is also

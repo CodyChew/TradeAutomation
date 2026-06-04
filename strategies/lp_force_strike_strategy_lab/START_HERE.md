@@ -1,6 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-06-02 ICT after the contained C-01 IC Stage 3 pass.
+Last updated: 2026-06-04 ICT after the accepted C-01 FTMO Stage 5 Gate 3
+`STOPPED` result.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -9,6 +10,18 @@ operational decisions.
 
 ## Current Status
 
+- FTMO Stage 5 Gate 3 is accepted as `STOPPED`; do not retry it. Read
+  `../../docs/lpfs_stage5_gate3_retry_plan.md`. The authoritative ignored
+  packet is
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_gate3_20260604_100840`
+  with manifest SHA-256
+  `85df11692de17e3d35b986dafee1ce729a15b822b8ce0f3c3ccea367eb27318e`.
+  FTMO remains contained with kill switch active, task disabled, processes
+  `0`, pending orders `0`, and the same three positions. Fallback containment
+  refreshed the kill-switch content and invoked task disablement while the
+  task was already disabled. The previous Gate 1 packet is stale. No future
+  operation is approved until the offline structured verifier is reviewed
+  and a fresh dual-lane Gate 1 read-only packet stops for review.
 - Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
   C-01 is the current priority: historical MT5 epochs were shifted through
   `Europe/Helsinki`. FTMO is intentionally paused with kill switch active,
