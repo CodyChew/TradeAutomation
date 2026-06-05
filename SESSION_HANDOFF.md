@@ -71,17 +71,28 @@ file, and the JSONL journal before making operational decisions.
   `docs/lpfs_stage5_gate3_retry_plan.md`.
 - Previous Gate 1 packet
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\20260604_095237` passed and was
-  independently reviewed, but is now stale. After the offline verifier change
-  is reviewed, the next operational action is a separately approved fresh
-  dual-lane Gate 1 read-only collection followed by another stop for review.
-  Do not request or execute FTMO Gate 3 before that gate passes.
-- Offline structured-verifier follow-up passed: verifier unit tests `8`, full
-  LPFS suite `403` with `2` intentional skips, strict core coverage `6401`
-  statements plus `2192` branches at `100.00%`, and `git diff --check`.
-  Archived Gate 1 structured bundles verified `PASS`; the preserved Gate 3
-  precheck/pre-strict/final-strict bundles and expected packet `STOPPED`
-  result verified; the fallback bundle correctly verified `STOPPED` because
-  `fallback_containment.command.txt` is missing.
+  independently reviewed, but is now stale. Fresh Gate 1 remains blocked
+  until the offline complete six-step Gate 1 v2 producer, command-hash
+  fail-before-SSH barrier, pre-execution contract, tests, and documentation
+  pass review. After that review, the next operational action still requires
+  separate approval for a fresh dual-lane Gate 1 read-only collection followed
+  by another stop for review. Do not request or execute FTMO Gate 3 before
+  that gate passes.
+- Offline structured-verifier hardening is review-only. It adds
+  `scripts/build_lpfs_stage5_gate1_v2_pre_execution.py`, complete contract
+  `stage5_gate1_v2_complete_read_only_v1`, and an expected-command SHA-256
+  barrier in `scripts/collect_lpfs_bounded_status_bundle.py`. The producer
+  covers FTMO/IC compact containment, bounded status, and strict MT5 without
+  executing them. Compact containment emits clean tracked-worktree status and
+  exact critical runtime-file hashes. Any bounded-command alias, runtime-root,
+  filename, log-filter, or line-limit drift writes structured `STOPPED` with
+  `execution_attempted=false`; SSH is not invoked. The independently verified
+  pre-hardening full-suite baseline is `430` tests total (`428` passed, `2`
+  intentional skips), correcting the prior wording that treated `428` as the
+  full-suite count. Current offline verification passed: focused module `40`
+  tests, full LPFS suite `435` tests total (`433` passed, `2` skipped) with
+  `228` subtests, and strict core coverage `6401` statements plus `2192`
+  branches at `100.00%`.
 - 2026-06-02 C-01 containment is the current operational priority. Read
   `docs/lpfs_c01_live_safety_release.md` before any LPFS operation. FTMO
   Stage 1 reconciliation passed point-in-time at exact SHA

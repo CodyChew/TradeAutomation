@@ -20,8 +20,11 @@ operational decisions.
   `0`, pending orders `0`, and the same three positions. Fallback containment
   refreshed the kill-switch content and invoked task disablement while the
   task was already disabled. The previous Gate 1 packet is stale. No future
-  operation is approved until the offline structured verifier is reviewed
-  and a fresh dual-lane Gate 1 read-only packet stops for review.
+  operation is approved. Fresh Gate 1 remains blocked until the offline
+  complete six-step v2 producer, expected-command hash barrier, pre-execution
+  contract, tests, and documentation are reviewed. After that review, fresh
+  dual-lane Gate 1 read-only collection still requires separate approval and
+  must stop for review.
 - Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
   C-01 is the current priority: historical MT5 epochs were shifted through
   `Europe/Helsinki`. FTMO is intentionally paused with kill switch active,

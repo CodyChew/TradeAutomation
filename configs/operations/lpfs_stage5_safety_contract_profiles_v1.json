@@ -1,0 +1,404 @@
+{
+  "schema_version": 1,
+  "profiles": {
+    "stage5_ftmo_gate3_stopped_v1": {
+      "expected_packet_result": "STOPPED",
+      "gate": "stage5_ftmo_gate3",
+      "profile_version": 1,
+      "required_steps": [
+        "precheck",
+        "pre_strict_mt5",
+        "final_strict_mt5"
+      ],
+      "steps": {
+        "final_strict_mt5": {
+          "contract_version": 1,
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 510276550,
+            "account_matches_config": true,
+            "account_server": "FTMO-Server",
+            "counts.orders": 0,
+            "counts.positions": 3,
+            "history_deals_get": "OK",
+            "history_orders_get": "OK",
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFS W1 S 299",
+                "identifier": 259140457,
+                "magic": 131500,
+                "sl": 117.514,
+                "symbol": "CADJPY",
+                "ticket": 259140457,
+                "tp": 112.708,
+                "volume": 0.02
+              },
+              {
+                "comment": "LPFS D1 L 299",
+                "identifier": 261720587,
+                "magic": 131500,
+                "sl": 1.04639,
+                "symbol": "GBPCHF",
+                "ticket": 261720587,
+                "tp": 1.06441,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFS W1 L 299",
+                "identifier": 262778049,
+                "magic": 131500,
+                "sl": 1.85393,
+                "symbol": "GBPAUD",
+                "ticket": 262778049,
+                "tp": 1.8975499999999998,
+                "volume": 0.02
+              }
+            ],
+            "terminal_connected": true,
+            "terminal_info": "OK",
+            "terminal_trade_allowed": true
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "history_deals_get",
+            "history_orders_get",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_connected",
+            "terminal_info",
+            "terminal_trade_allowed"
+          ]
+        },
+        "pre_strict_mt5": {
+          "contract_version": 1,
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 510276550,
+            "account_matches_config": true,
+            "account_server": "FTMO-Server",
+            "counts.orders": 0,
+            "counts.positions": 3,
+            "history_deals_get": "OK",
+            "history_orders_get": "OK",
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFS W1 S 299",
+                "identifier": 259140457,
+                "magic": 131500,
+                "sl": 117.514,
+                "symbol": "CADJPY",
+                "ticket": 259140457,
+                "tp": 112.708,
+                "volume": 0.02
+              },
+              {
+                "comment": "LPFS D1 L 299",
+                "identifier": 261720587,
+                "magic": 131500,
+                "sl": 1.04639,
+                "symbol": "GBPCHF",
+                "ticket": 261720587,
+                "tp": 1.06441,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFS W1 L 299",
+                "identifier": 262778049,
+                "magic": 131500,
+                "sl": 1.85393,
+                "symbol": "GBPAUD",
+                "ticket": 262778049,
+                "tp": 1.8975499999999998,
+                "volume": 0.02
+              }
+            ],
+            "terminal_connected": true,
+            "terminal_info": "OK",
+            "terminal_trade_allowed": true
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "history_deals_get",
+            "history_orders_get",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_connected",
+            "terminal_info",
+            "terminal_trade_allowed"
+          ]
+        },
+        "precheck": {
+          "contract_version": 1,
+          "expectations": {
+            "kill_switch_active": true,
+            "market_recovery_mode": "disabled",
+            "matching_processes": [],
+            "repo_head": "3dd1895ca5300d448e4d100095b294e78679a6b9",
+            "runner_process_count": 0,
+            "state_active_positions": 3,
+            "state_pending_orders": 0,
+            "state_schema_version": 2,
+            "task_actions": [
+              {
+                "arguments": "-NoProfile -ExecutionPolicy Bypass -File \"C:\\TradeAutomation\\scripts\\run_lpfs_live_forever.ps1\" -RepoRoot \"C:\\TradeAutomation\" -ConfigPath \"C:\\TradeAutomation\\config.local.json\" -RuntimeRoot \"C:\\TradeAutomationRuntime\" -Cycles 100000000 -SleepSeconds 30",
+                "execute": "powershell.exe",
+                "working_directory": "C:\\TradeAutomation"
+              }
+            ],
+            "task_count": 1,
+            "task_enabled": false,
+            "task_multiple_instances": "IgnoreNew",
+            "task_principal": {
+              "logon_type": "Interactive",
+              "run_level": "Highest",
+              "user_id": "Administrator"
+            },
+            "task_state": "Disabled",
+            "watchdog_process_count": 0
+          },
+          "marker": "LPFS_GATE3_PRECHECK_JSON=",
+          "required_expectation_fields": [
+            "kill_switch_active",
+            "market_recovery_mode",
+            "matching_processes",
+            "repo_head",
+            "runner_process_count",
+            "state_active_positions",
+            "state_pending_orders",
+            "state_schema_version",
+            "task_actions",
+            "task_count",
+            "task_enabled",
+            "task_multiple_instances",
+            "task_principal",
+            "task_state",
+            "watchdog_process_count"
+          ]
+        }
+      }
+    },
+    "stage5_gate1_dual_lane_contained_v1": {
+      "expected_packet_result": "PASS",
+      "gate": "stage5_gate1",
+      "profile_version": 1,
+      "required_steps": [
+        "FTMO/compact_containment",
+        "FTMO/strict_mt5_probe",
+        "IC/compact_containment",
+        "IC/strict_mt5_probe"
+      ],
+      "steps": {
+        "FTMO/compact_containment": {
+          "contract_version": 1,
+          "expectations": {
+            "kill_switch_active": true,
+            "market_recovery_mode": "disabled",
+            "repo_head": "3dd1895ca5300d448e4d100095b294e78679a6b9",
+            "runner_process_count": 0,
+            "state_active_positions": 3,
+            "state_pending_orders": 0,
+            "state_schema_version": 2,
+            "task_state": "Disabled",
+            "watchdog_process_count": 0
+          },
+          "marker": "LPFS_GATE1_CONTAINMENT_JSON=",
+          "required_expectation_fields": [
+            "kill_switch_active",
+            "market_recovery_mode",
+            "repo_head",
+            "runner_process_count",
+            "state_active_positions",
+            "state_pending_orders",
+            "state_schema_version",
+            "task_state",
+            "watchdog_process_count"
+          ]
+        },
+        "FTMO/strict_mt5_probe": {
+          "contract_version": 1,
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 510276550,
+            "account_matches_config": true,
+            "account_server": "FTMO-Server",
+            "counts.orders": 0,
+            "counts.positions": 3,
+            "history_deals_get": "OK",
+            "history_orders_get": "OK",
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFS W1 S 299",
+                "identifier": 259140457,
+                "magic": 131500,
+                "sl": 117.514,
+                "symbol": "CADJPY",
+                "ticket": 259140457,
+                "tp": 112.708,
+                "volume": 0.02
+              },
+              {
+                "comment": "LPFS D1 L 299",
+                "identifier": 261720587,
+                "magic": 131500,
+                "sl": 1.04639,
+                "symbol": "GBPCHF",
+                "ticket": 261720587,
+                "tp": 1.06441,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFS W1 L 299",
+                "identifier": 262778049,
+                "magic": 131500,
+                "sl": 1.85393,
+                "symbol": "GBPAUD",
+                "ticket": 262778049,
+                "tp": 1.8975499999999998,
+                "volume": 0.02
+              }
+            ],
+            "terminal_connected": true,
+            "terminal_info": "OK",
+            "terminal_trade_allowed": true
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "history_deals_get",
+            "history_orders_get",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_connected",
+            "terminal_info",
+            "terminal_trade_allowed"
+          ]
+        },
+        "IC/compact_containment": {
+          "contract_version": 1,
+          "expectations": {
+            "kill_switch_active": true,
+            "market_recovery_mode": "disabled",
+            "repo_head": "b02a3cb92a05e771782c7a9ca4e4339c9452969a",
+            "runner_process_count": 0,
+            "state_active_positions": 2,
+            "state_pending_orders": 0,
+            "state_schema_version": 2,
+            "task_state": "Disabled",
+            "watchdog_process_count": 0
+          },
+          "marker": "LPFS_GATE1_CONTAINMENT_JSON=",
+          "required_expectation_fields": [
+            "kill_switch_active",
+            "market_recovery_mode",
+            "repo_head",
+            "runner_process_count",
+            "state_active_positions",
+            "state_pending_orders",
+            "state_schema_version",
+            "task_state",
+            "watchdog_process_count"
+          ]
+        },
+        "IC/strict_mt5_probe": {
+          "contract_version": 1,
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 16000463,
+            "account_matches_config": true,
+            "account_server": "ICMarketsSC-MT5-2",
+            "counts.orders": 0,
+            "counts.positions": 2,
+            "history_deals_get": "OK",
+            "history_orders_get": "OK",
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFSIC W1 S 299",
+                "identifier": 4423126597,
+                "magic": 231500,
+                "sl": 117.517,
+                "symbol": "CADJPY",
+                "ticket": 4423126597,
+                "tp": 112.713,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFSIC W1 L 299",
+                "identifier": 4431268523,
+                "magic": 231500,
+                "sl": 1.85397,
+                "symbol": "GBPAUD",
+                "ticket": 4431268523,
+                "tp": 1.8975499999999998,
+                "volume": 0.01
+              }
+            ],
+            "terminal_connected": true,
+            "terminal_info": "OK",
+            "terminal_trade_allowed": true
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "history_deals_get",
+            "history_orders_get",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_connected",
+            "terminal_info",
+            "terminal_trade_allowed"
+          ]
+        }
+      }
+    }
+  }
+}

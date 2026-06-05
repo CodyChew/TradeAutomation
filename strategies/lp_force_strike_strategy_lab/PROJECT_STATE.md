@@ -17,7 +17,12 @@ Fallback containment refreshed the FTMO kill-switch content and invoked
 kill-switch clear, IC access, reconciliation, canary, pull, or broker mutation
 occurred. The prior Gate 1 packet is stale. Require reviewed offline tooling,
 a fresh dual-lane Gate 1 read-only packet, and a separate approval before any
-future FTMO Gate 3 attempt.
+future FTMO Gate 3 attempt. Fresh Gate 1 remains blocked until the complete
+six-step Gate 1 v2 producer, expected-command hash barrier, pre-execution
+contract, tests, and documentation pass review. The producer covers FTMO/IC
+compact containment, bounded status, and strict MT5 without executing them;
+compact containment emits tracked-worktree cleanliness and exact critical
+runtime-file hashes.
 
 FTMO is intentionally paused: kill switch active, scheduled task disabled,
 runner process count `0`, machine powered on, zero LPFS broker pending orders,
