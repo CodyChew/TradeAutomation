@@ -144,6 +144,91 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             command_path.unlink(missing_ok=True)
         return command_sha, implementation_sha
 
+    def _compact_bundle(
+        self,
+        root: Path,
+        *,
+        step: str = "compact_containment",
+        stderr: str = "",
+        exit_code: int = 0,
+        timed_out: bool = False,
+        duplicate_marker: bool = False,
+        include: tuple[str, ...] = (
+            "command",
+            "stdout",
+            "stderr",
+            "exit_code",
+            "timeout",
+            "compact_script",
+            "execution",
+        ),
+    ) -> tuple[str, str]:
+        compact_script = b"Write-Output 'LPFS_GATE1_CONTAINMENT_JSON={\"ok\":true,\"nested\":{\"count\":0}}'\n"
+        compact_sha = hashlib.sha256(compact_script).hexdigest()
+        command = bounded_status_collector.render_command(
+            bounded_status_collector.build_remote_compact_containment_command(
+                ssh_alias="lpfs-vps",
+                expected_compact_script_sha256=compact_sha,
+            )
+        )
+        command_path = root / f"{step}.command.txt"
+        command_path.write_text(command, encoding="utf-8")
+        command_sha = verifier._sha256(command_path)
+        stdout = (
+            f"LPFS_COMPACT_CONTAINMENT_SCRIPT_SHA256_VERIFIED={compact_sha}\n"
+            + (
+                f"LPFS_COMPACT_CONTAINMENT_SCRIPT_SHA256_VERIFIED={compact_sha}\n"
+                if duplicate_marker
+                else ""
+            )
+            + 'LPFS_GATE1_CONTAINMENT_JSON={"ok":true,"nested":{"count":0}}\n'
+        )
+        execution = {
+            "bundle_kind": verifier.COMPACT_CONTAINMENT_BUNDLE_KIND,
+            "command_hash_matches_expected": True,
+            "command_length": len(command),
+            "command_length_within_safe_threshold": True,
+            "command_sha256": command_sha,
+            "compact_script_hash_matches_expected": True,
+            "compact_script_sha256": compact_sha,
+            "compact_script_source": verifier.COMPACT_CONTAINMENT_SOURCE,
+            "execution_attempted": True,
+            "exit_code": exit_code,
+            "expected_command_sha256": command_sha,
+            "expected_compact_script_sha256": compact_sha,
+            "remote_compact_script_sha256_verified": True,
+            "schema_version": verifier.COMPACT_CONTAINMENT_EXECUTION_SCHEMA_VERSION,
+            "stderr_empty": not bool(stderr),
+            "stdout_nonempty": True,
+            "timed_out": timed_out,
+            "timeout_seconds": 30,
+        }
+        values: dict[str, str | bytes] = {
+            "command": command,
+            "stdout": stdout,
+            "stderr": stderr,
+            "exit_code": f"{exit_code}\n",
+            "timeout": f"{str(timed_out).lower()}\n",
+            "compact_script": compact_script,
+            "execution": json.dumps(execution),
+        }
+        for label in include:
+            path = root / (
+                f"{step}.remote.ps1"
+                if label == "compact_script"
+                else f"{step}.execution.json"
+                if label == "execution"
+                else f"{step}.{label}.txt"
+            )
+            payload = values[label]
+            if isinstance(payload, bytes):
+                path.write_bytes(payload)
+            else:
+                path.write_text(payload, encoding="utf-8")
+        if "command" not in include:
+            command_path.unlink(missing_ok=True)
+        return command_sha, compact_sha
+
     def _write_manifest_from_files(self, root: Path, *, result: str = "PASS", excluded: tuple[str, ...] = ()) -> None:
         files = []
         for path in sorted(root.iterdir()):
@@ -267,6 +352,25 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             declared_artifacts=manifest["declared_artifacts"],
         )
 
+    def _verify_compact_bundle(
+        self,
+        root: Path,
+        command_sha: str,
+        compact_sha: str,
+    ) -> dict[str, object]:
+        self._manifest(root)
+        manifest = verifier.verify_manifest(root)
+        return verifier.verify_compact_containment_bundle(
+            root,
+            "compact_containment",
+            "LPFS_GATE1_CONTAINMENT_JSON=",
+            expectations={"ok": True, "nested.count": 0},
+            required_expectation_fields=["ok", "nested.count"],
+            expected_command_sha256=command_sha,
+            expected_compact_script_sha256=compact_sha,
+            declared_artifacts=manifest["declared_artifacts"],
+        )
+
     def test_structured_bundle_passes_and_preserves_receipts(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -366,6 +470,83 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             result = self._verify_bounded_bundle(root, command_sha, implementation_sha)
             self.assertEqual(result["status"], "STOPPED")
             self.assertIn("unverified VPS-resident", " ".join(result["failures"]))
+
+    def test_compact_containment_bundle_passes_with_stdin_script_transport(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            command_sha, compact_sha = self._compact_bundle(root)
+            result = self._verify_compact_bundle(root, command_sha, compact_sha)
+            self.assertEqual(result["status"], "PASS")
+            self.assertEqual(result["execution"]["compact_script_sha256"], compact_sha)
+            command = (root / "compact_containment.command.txt").read_text(encoding="utf-8")
+            script = (root / "compact_containment.remote.ps1").read_text(encoding="utf-8")
+            self.assertLess(len(command), verifier.COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH)
+            self.assertNotIn(script.strip(), command)
+
+    def test_compact_containment_bundle_fails_closed_on_incomplete_artifacts(self) -> None:
+        cases = (
+            ("missing command", ("stdout", "stderr", "exit_code", "timeout", "compact_script", "execution")),
+            ("missing stdout", ("command", "stderr", "exit_code", "timeout", "compact_script", "execution")),
+            ("missing script", ("command", "stdout", "stderr", "exit_code", "timeout", "execution")),
+            ("missing execution", ("command", "stdout", "stderr", "exit_code", "timeout", "compact_script")),
+        )
+        for label, include in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                command_sha, compact_sha = self._compact_bundle(root, include=include)
+                result = self._verify_compact_bundle(root, command_sha, compact_sha)
+                self.assertEqual(result["status"], "STOPPED")
+                self.assertIn("missing", " ".join(result["failures"]))
+
+    def test_compact_containment_bundle_rejects_tampered_artifacts(self) -> None:
+        mutations = {
+            "command": lambda root: (root / "compact_containment.command.txt").write_text(
+                "ssh wrong powershell -EncodedCommand REVIEWED\n",
+                encoding="utf-8",
+            ),
+            "script": lambda root: (root / "compact_containment.remote.ps1").write_text(
+                "Write-Output 'tampered'\n",
+                encoding="utf-8",
+            ),
+            "stdout": lambda root: (root / "compact_containment.stdout.txt").write_text(
+                'LPFS_COMPACT_CONTAINMENT_SCRIPT_SHA256_VERIFIED=0000\nLPFS_GATE1_CONTAINMENT_JSON={"ok":true,"nested":{"count":0}}\n',
+                encoding="utf-8",
+            ),
+            "stderr": lambda root: (root / "compact_containment.stderr.txt").write_text(
+                "NativeCommandError\n",
+                encoding="utf-8",
+            ),
+            "exit_code": lambda root: (root / "compact_containment.exit_code.txt").write_text(
+                "9\n",
+                encoding="utf-8",
+            ),
+            "timeout": lambda root: (root / "compact_containment.timeout.txt").write_text(
+                "true\n",
+                encoding="utf-8",
+            ),
+            "execution": lambda root: (root / "compact_containment.execution.json").write_text(
+                "{}",
+                encoding="utf-8",
+            ),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                command_sha, compact_sha = self._compact_bundle(root)
+                self._manifest(root)
+                mutate(root)
+                manifest = verifier.verify_manifest(root)
+                result = verifier.verify_compact_containment_bundle(
+                    root,
+                    "compact_containment",
+                    "LPFS_GATE1_CONTAINMENT_JSON=",
+                    expectations={"ok": True, "nested.count": 0},
+                    required_expectation_fields=["ok", "nested.count"],
+                    expected_command_sha256=command_sha,
+                    expected_compact_script_sha256=compact_sha,
+                    declared_artifacts=manifest["declared_artifacts"],
+                )
+                self.assertEqual(result["status"], "STOPPED")
 
     def test_unsafe_payload_stops(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -761,6 +942,13 @@ class Stage5BoundedStatusCollectorTests(unittest.TestCase):
         command = bounded_status_collector.build_remote_status_command(**args)
         return hashlib.sha256(bounded_status_collector.render_command(command).encode("utf-8")).hexdigest()
 
+    def _expected_compact_command_sha(self, *, ssh_alias: str, compact_sha: str) -> str:
+        command = bounded_status_collector.build_remote_compact_containment_command(
+            ssh_alias=ssh_alias,
+            expected_compact_script_sha256=compact_sha,
+        )
+        return hashlib.sha256(bounded_status_collector.render_command(command).encode("utf-8")).hexdigest()
+
     def test_remote_command_executes_embedded_hash_approved_status_implementation(self) -> None:
         implementation = b"Write-Output 'LPFS live status'\n"
         args = self._collector_args(implementation)
@@ -852,6 +1040,179 @@ class Stage5BoundedStatusCollectorTests(unittest.TestCase):
                 )
                 self.assertFalse(receipt["execution_attempted"])
 
+    def test_compact_containment_command_uses_stdin_and_stays_below_safe_length(self) -> None:
+        script = b"Write-Output 'LPFS_GATE1_CONTAINMENT_JSON={}'\n"
+        compact_sha = hashlib.sha256(script).hexdigest()
+        command = bounded_status_collector.build_remote_compact_containment_command(
+            ssh_alias="lpfs-vps",
+            expected_compact_script_sha256=compact_sha,
+        )
+        rendered = bounded_status_collector.render_command(command)
+        bootstrap = base64.b64decode(command[-1]).decode("utf-16le")
+        self.assertLess(len(rendered), bounded_status_collector.COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH)
+        self.assertIn("[Console]::In.ReadToEnd()", bootstrap)
+        self.assertIn(compact_sha, bootstrap)
+        self.assertNotIn(script.decode("utf-8").strip(), rendered)
+        self.assertNotIn(base64.b64encode(script).decode("ascii"), rendered)
+        self.assertNotIn("Set-Content", bootstrap)
+
+    def test_compact_containment_collector_preserves_success_bundle(self) -> None:
+        script = b"Write-Output 'LPFS_GATE1_CONTAINMENT_JSON={}'\n"
+        compact_sha = hashlib.sha256(script).hexdigest()
+        stdout = (
+            f"LPFS_COMPACT_CONTAINMENT_SCRIPT_SHA256_VERIFIED={compact_sha}\n"
+            "LPFS_GATE1_CONTAINMENT_JSON={}\n"
+        )
+        completed = subprocess.CompletedProcess(args=[], returncode=0, stdout=stdout, stderr="")
+        expected_command_sha = self._expected_compact_command_sha(ssh_alias="lpfs-vps", compact_sha=compact_sha)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            compact_script = root / "compact.ps1"
+            compact_script.write_bytes(script)
+            output = root / "bundle"
+            with mock.patch.object(bounded_status_collector.subprocess, "run", return_value=completed):
+                result = bounded_status_collector.collect_compact_containment_bundle(
+                    output_root=output,
+                    step_name="FTMO/compact_containment",
+                    ssh_alias="lpfs-vps",
+                    compact_script_path=compact_script,
+                    expected_compact_script_sha256=compact_sha,
+                    expected_command_sha256=expected_command_sha,
+                    timeout_seconds=30,
+                )
+            self.assertEqual(result["status"], "PASS")
+            execution = json.loads(
+                (output / "FTMO" / "compact_containment.execution.json").read_text(encoding="utf-8")
+            )
+            self.assertTrue(execution["execution_attempted"])
+            self.assertTrue(execution["remote_compact_script_sha256_verified"])
+            command = (output / "FTMO" / "compact_containment.command.txt").read_text(encoding="utf-8")
+            self.assertLess(len(command), bounded_status_collector.COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH)
+            self.assertNotIn(script.decode("utf-8").strip(), command)
+
+    def test_compact_containment_hash_mismatch_stops_before_ssh_execution(self) -> None:
+        script = b"Write-Output 'LPFS_GATE1_CONTAINMENT_JSON={}'\n"
+        compact_sha = hashlib.sha256(script).hexdigest()
+        wrong_compact_sha = "0" * 64
+        baseline_command_sha = self._expected_compact_command_sha(ssh_alias="lpfs-vps", compact_sha=compact_sha)
+        wrong_script_command_sha = self._expected_compact_command_sha(
+            ssh_alias="lpfs-vps",
+            compact_sha=wrong_compact_sha,
+        )
+        cases = {
+            "wrong command hash": {
+                "expected_compact_script_sha256": compact_sha,
+                "expected_command_sha256": "1" * 64,
+            },
+            "wrong script hash": {
+                "expected_compact_script_sha256": wrong_compact_sha,
+                "expected_command_sha256": wrong_script_command_sha,
+            },
+            "wrong ssh alias": {
+                "ssh_alias": "wrong-vps",
+                "expected_compact_script_sha256": compact_sha,
+                "expected_command_sha256": baseline_command_sha,
+            },
+        }
+        for label, overrides in cases.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                compact_script = root / "compact.ps1"
+                compact_script.write_bytes(script)
+                kwargs = {
+                    "output_root": root / "bundle",
+                    "step_name": "FTMO/compact_containment",
+                    "ssh_alias": "lpfs-vps",
+                    "compact_script_path": compact_script,
+                    "expected_compact_script_sha256": compact_sha,
+                    "expected_command_sha256": baseline_command_sha,
+                    "timeout_seconds": 30,
+                }
+                kwargs.update(overrides)
+                with mock.patch.object(bounded_status_collector.subprocess, "run") as run:
+                    result = bounded_status_collector.collect_compact_containment_bundle(**kwargs)
+                run.assert_not_called()
+                self.assertEqual(result["status"], "STOPPED")
+                self.assertIn("SSH was not invoked", result["reason"])
+                execution = json.loads(
+                    (root / "bundle" / "FTMO" / "compact_containment.execution.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+                self.assertFalse(execution["execution_attempted"])
+
+    def test_compact_containment_cli_dispatches_to_reviewed_collector_path(self) -> None:
+        script = b"Write-Output 'LPFS_GATE1_CONTAINMENT_JSON={}'\n"
+        compact_sha = hashlib.sha256(script).hexdigest()
+        expected_command_sha = self._expected_compact_command_sha(ssh_alias="lpfs-vps", compact_sha=compact_sha)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            compact_script = root / "compact.ps1"
+            compact_script.write_bytes(script)
+            output_root = root / "bundle"
+            with mock.patch.object(
+                bounded_status_collector,
+                "collect_compact_containment_bundle",
+                return_value={"status": "PASS", "schema_version": 1},
+            ) as collect, contextlib.redirect_stdout(io.StringIO()):
+                exit_code = bounded_status_collector.main(
+                    [
+                        "--mode",
+                        "compact-containment",
+                        "--output-root",
+                        str(output_root),
+                        "--step-name",
+                        "FTMO/compact_containment",
+                        "--ssh-alias",
+                        "lpfs-vps",
+                        "--compact-script",
+                        str(compact_script),
+                        "--expected-compact-script-sha256",
+                        compact_sha,
+                        "--expected-command-sha256",
+                        expected_command_sha,
+                        "--timeout-seconds",
+                        "30",
+                        "--acknowledgement",
+                        bounded_status_collector.READ_ONLY_ACKNOWLEDGEMENT,
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            collect.assert_called_once_with(
+                output_root=str(output_root),
+                step_name="FTMO/compact_containment",
+                ssh_alias="lpfs-vps",
+                compact_script_path=str(compact_script),
+                expected_compact_script_sha256=compact_sha,
+                expected_command_sha256=expected_command_sha,
+                timeout_seconds=30,
+            )
+
+    def test_compact_containment_cli_requires_compact_script_hash_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            with mock.patch.object(bounded_status_collector.subprocess, "run") as run:
+                with self.assertRaisesRegex(SystemExit, "compact-containment mode requires"):
+                    bounded_status_collector.main(
+                        [
+                            "--mode",
+                            "compact-containment",
+                            "--output-root",
+                            str(root / "bundle"),
+                            "--step-name",
+                            "FTMO/compact_containment",
+                            "--ssh-alias",
+                            "lpfs-vps",
+                            "--expected-command-sha256",
+                            "0" * 64,
+                            "--timeout-seconds",
+                            "30",
+                            "--acknowledgement",
+                            bounded_status_collector.READ_ONLY_ACKNOWLEDGEMENT,
+                        ]
+                    )
+            run.assert_not_called()
+
 
 class Stage5Gate1V2ProducerTests(unittest.TestCase):
     def test_complete_six_step_bundle_is_local_only_and_contract_verified(self) -> None:
@@ -935,9 +1296,21 @@ class Stage5Gate1V2ProducerTests(unittest.TestCase):
                         command = (root / lane / f"{step}.command.txt").read_text(encoding="utf-8")
                         self.assertIn(alias, command)
                     compact_script = (root / lane / "compact_containment.remote.ps1").read_text(encoding="utf-8")
-                    self.assertIn(
+                    compact_command_path = root / lane / "compact_containment.command.txt"
+                    compact_command = compact_command_path.read_text(encoding="utf-8")
+                    self.assertLess(len(compact_command), verifier.COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH)
+                    self.assertNotIn(compact_script.strip(), compact_command)
+                    self.assertNotIn(
                         base64.b64encode(compact_script.encode("utf-16le")).decode("ascii"),
-                        (root / lane / "compact_containment.command.txt").read_text(encoding="utf-8"),
+                        compact_command,
+                    )
+                    self.assertEqual(
+                        verifier._sha256(compact_command_path),
+                        profile["steps"][f"{lane}/compact_containment"]["expected_command_sha256"],
+                    )
+                    self.assertEqual(
+                        hashlib.sha256(compact_script.encode("utf-8")).hexdigest(),
+                        profile["steps"][f"{lane}/compact_containment"]["expected_compact_script_sha256"],
                     )
                     bounded = root / lane / "bounded_status.command.txt"
                     self.assertEqual(

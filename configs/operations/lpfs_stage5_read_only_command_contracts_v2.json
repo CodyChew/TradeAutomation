@@ -7,8 +7,8 @@
           "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
         },
         "scripts/collect_lpfs_bounded_status_bundle.py": {
-          "bytes": 14141,
-          "sha256": "0d6f1be193d51b4dfdeb12f16d4963f6d1b5e131cc01cfc7db9b5974d0163919"
+          "bytes": 23728,
+          "sha256": "2ebd01055396fc1670b084694ebe3e08a32ee1a4cb29b245bee99f31e83c42bb"
         }
       },
       "contract_version": 1,
@@ -25,8 +25,8 @@
           "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
         },
         "scripts/collect_lpfs_bounded_status_bundle.py": {
-          "bytes": 14141,
-          "sha256": "0d6f1be193d51b4dfdeb12f16d4963f6d1b5e131cc01cfc7db9b5974d0163919"
+          "bytes": 23728,
+          "sha256": "2ebd01055396fc1670b084694ebe3e08a32ee1a4cb29b245bee99f31e83c42bb"
         }
       },
       "contract_version": 1,
@@ -43,8 +43,8 @@
           "sha256": "f9eb4a3aef457c529a7a0356643084268c859d8035e3181b7c62507b900d46ff"
         },
         "FTMO/compact_containment.command.txt": {
-          "bytes": 8418,
-          "sha256": "396c8c05ce9fdc307775e8fd4510b0433b69bf9657aab3fe2e48ed482464ce33"
+          "bytes": 2266,
+          "sha256": "a9c1797379437323ce38f245e4e32b7caf99bd75d3025795dceff2af316e1031"
         },
         "FTMO/compact_containment.remote.ps1": {
           "bytes": 3107,
@@ -63,8 +63,8 @@
           "sha256": "826121376eba41da090baeb334fd61b056813eca0552488ff2ed07b3e7d27961"
         },
         "IC/compact_containment.command.txt": {
-          "bytes": 8509,
-          "sha256": "1572ecb560d747c34ad68eaf149556e8df42eb7653ba21e3bec14b25dc21e3bc"
+          "bytes": 2269,
+          "sha256": "4d276d8e9a5756d87a61669a19bba24d8251d4fdb3f4fbd362a3f654958b3b34"
         },
         "IC/compact_containment.remote.ps1": {
           "bytes": 3141,
@@ -83,12 +83,12 @@
           "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
         },
         "scripts/build_lpfs_stage5_gate1_v2_pre_execution.py": {
-          "bytes": 17996,
-          "sha256": "1aeb47069d629653a483552d647e8c39ea9491f17cf81c0ccd0596fa01c89303"
+          "bytes": 19117,
+          "sha256": "3939c914a4fd2b11b925f2ddb3a76e824ebfeea2f281d214c5dae710b49eb55f"
         },
         "scripts/collect_lpfs_bounded_status_bundle.py": {
-          "bytes": 14141,
-          "sha256": "0d6f1be193d51b4dfdeb12f16d4963f6d1b5e131cc01cfc7db9b5974d0163919"
+          "bytes": 23728,
+          "sha256": "2ebd01055396fc1670b084694ebe3e08a32ee1a4cb29b245bee99f31e83c42bb"
         }
       },
       "contract_version": 1,
@@ -116,8 +116,8 @@
           "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
         },
         "scripts/collect_lpfs_bounded_status_bundle.py": {
-          "bytes": 14141,
-          "sha256": "0d6f1be193d51b4dfdeb12f16d4963f6d1b5e131cc01cfc7db9b5974d0163919"
+          "bytes": 23728,
+          "sha256": "2ebd01055396fc1670b084694ebe3e08a32ee1a4cb29b245bee99f31e83c42bb"
         }
       },
       "contract_version": 1,

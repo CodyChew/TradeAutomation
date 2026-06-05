@@ -429,10 +429,12 @@ Once both lanes are safely migrated and normalized evidence exists:
   sidecars, and classify expected CLIXML host-information serialization
   separately from fail-closed `ERROR/UNKNOWN`, exception, or native-command
   error text.
-- Packet-capture backlog: avoid oversized `-EncodedCommand` and BOM-sensitive
-  stdin for larger inspections. Use a hashed ASCII read-only audit script
-  inside the ignored evidence directory, execute it with `-File`, and require
-  non-empty validated output.
+- Packet-capture status: Gate 1 v2 compact-containment no longer embeds the
+  full script in `-EncodedCommand`; it uses a short hash-bound bootstrap and
+  sends the reviewed local script over SSH stdin. The bounded-status collector
+  exposes this route through explicit CLI mode `--mode compact-containment`.
+  Fresh Gate 1 remains blocked until this offline transport fix is reviewed
+  and separately approved for read-only collection.
 - `PLAN.md` does not exist in this repository. The external working copy at
   `C:\Users\Cody\Downloads\PLAN.md` was updated to match this release and its
   apostrophe encoding was made ASCII-safe.

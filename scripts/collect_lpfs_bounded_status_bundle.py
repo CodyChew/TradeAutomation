@@ -15,11 +15,15 @@ import tempfile
 from typing import Any, Sequence
 
 
-BUNDLE_KIND = "hash_approved_bounded_status_v1"
+BOUNDED_STATUS_BUNDLE_KIND = "hash_approved_bounded_status_v1"
+COMPACT_CONTAINMENT_BUNDLE_KIND = "hash_approved_compact_containment_v1"
 EXECUTION_SCHEMA_VERSION = 1
 READ_ONLY_ACKNOWLEDGEMENT = "I_ACCEPT_HASH_APPROVED_READ_ONLY_STATUS_COLLECTION"
 SAFE_STEP_RE = re.compile(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*")
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
+EMBEDDED_SCRIPT_SOURCE = "embedded_hash_approved_scriptblock"
+STDIN_SCRIPT_SOURCE = "stdin_hash_approved_scriptblock"
+COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH = 4000
 
 
 def _sha256_bytes(payload: bytes) -> str:
@@ -77,7 +81,7 @@ def build_remote_status_command(
     journal_lines: int,
     log_lines: int,
 ) -> list[str]:
-    """Build a read-only SSH command that executes reviewed script bytes in memory."""
+    """Build a read-only SSH command that executes reviewed status bytes in memory."""
     expected = expected_status_sha256.lower()
     if not SHA256_RE.fullmatch(expected):
         raise ValueError("expected status SHA-256 must be 64 lowercase hexadecimal characters")
@@ -115,6 +119,53 @@ $ImplementationText = [Text.Encoding]::UTF8.GetString($ImplementationBytes)
 $StatusBlock = [ScriptBlock]::Create($ImplementationText)
 $StatusParams = {params}
 & $StatusBlock @StatusParams
+"""
+    return [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        ssh_alias,
+        "powershell",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-EncodedCommand",
+        _encode_powershell(bootstrap),
+    ]
+
+
+def build_remote_compact_containment_command(
+    *,
+    ssh_alias: str,
+    expected_compact_script_sha256: str,
+) -> list[str]:
+    """Build a short read-only SSH command that executes reviewed script bytes from stdin."""
+    expected = expected_compact_script_sha256.lower()
+    if not SHA256_RE.fullmatch(expected):
+        raise ValueError("expected compact script SHA-256 must be 64 lowercase hexadecimal characters")
+    if not ssh_alias or any(character.isspace() for character in ssh_alias):
+        raise ValueError("SSH alias must be a nonempty token without whitespace")
+
+    bootstrap = f"""$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+$EncodedScript = [Console]::In.ReadToEnd()
+$ScriptBytes = [Convert]::FromBase64String($EncodedScript)
+$Hasher = [Security.Cryptography.SHA256]::Create()
+try {{
+    $ActualHash = ([BitConverter]::ToString($Hasher.ComputeHash($ScriptBytes))).Replace('-', '').ToLowerInvariant()
+}} finally {{
+    $Hasher.Dispose()
+}}
+if ($ActualHash -ne '{expected}') {{
+    throw "LPFS compact containment script hash mismatch: $ActualHash"
+}}
+Write-Output 'LPFS_COMPACT_CONTAINMENT_SCRIPT_SHA256_VERIFIED={expected}'
+$ScriptText = [Text.Encoding]::UTF8.GetString($ScriptBytes)
+$ScriptBlock = [ScriptBlock]::Create($ScriptText)
+& $ScriptBlock
 """
     return [
         "ssh",
@@ -240,7 +291,7 @@ def collect_status_bundle(
 
     if command_sha256 != expected_command:
         execution = {
-            "bundle_kind": BUNDLE_KIND,
+            "bundle_kind": BOUNDED_STATUS_BUNDLE_KIND,
             "command_hash_matches_expected": False,
             "command_sha256": command_sha256,
             "execution_attempted": False,
@@ -249,7 +300,7 @@ def collect_status_bundle(
             "remote_status_implementation_sha256_verified": False,
             "schema_version": EXECUTION_SCHEMA_VERSION,
             "status_implementation_sha256": _sha256_bytes(implementation),
-            "status_implementation_source": "embedded_hash_approved_scriptblock",
+            "status_implementation_source": EMBEDDED_SCRIPT_SOURCE,
             "stderr_empty": True,
             "stdout_nonempty": False,
             "timed_out": False,
@@ -294,7 +345,7 @@ def collect_status_bundle(
         exit_code = 124
 
     execution = {
-        "bundle_kind": BUNDLE_KIND,
+        "bundle_kind": BOUNDED_STATUS_BUNDLE_KIND,
         "command_hash_matches_expected": True,
         "command_sha256": command_sha256,
         "execution_attempted": True,
@@ -303,7 +354,7 @@ def collect_status_bundle(
         "remote_status_implementation_sha256_verified": verification_marker in stdout.splitlines(),
         "schema_version": EXECUTION_SCHEMA_VERSION,
         "status_implementation_sha256": _sha256_bytes(implementation),
-        "status_implementation_source": "embedded_hash_approved_scriptblock",
+        "status_implementation_source": EMBEDDED_SCRIPT_SOURCE,
         "stderr_empty": not bool(stderr.strip()),
         "stdout_nonempty": bool(stdout.strip()),
         "timed_out": timed_out,
@@ -339,46 +390,229 @@ def collect_status_bundle(
     }
 
 
+def collect_compact_containment_bundle(
+    *,
+    output_root: str | Path,
+    step_name: str,
+    ssh_alias: str,
+    compact_script_path: str | Path,
+    expected_compact_script_sha256: str,
+    expected_command_sha256: str,
+    timeout_seconds: int,
+) -> dict[str, Any]:
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive")
+    expected_command = expected_command_sha256.lower()
+    expected_script = expected_compact_script_sha256.lower()
+    if not SHA256_RE.fullmatch(expected_command):
+        raise ValueError("expected command SHA-256 must be 64 lowercase hexadecimal characters")
+    if not SHA256_RE.fullmatch(expected_script):
+        raise ValueError("expected compact script SHA-256 must be 64 lowercase hexadecimal characters")
+
+    script_path = Path(compact_script_path)
+    script_bytes = script_path.read_bytes()
+    actual_script_sha256 = _sha256_bytes(script_bytes)
+    command = build_remote_compact_containment_command(
+        ssh_alias=ssh_alias,
+        expected_compact_script_sha256=expected_script,
+    )
+    command_text = render_command(command)
+    command_sha256 = _sha256_text(command_text)
+    command_length = len(command_text)
+    verification_marker = f"LPFS_COMPACT_CONTAINMENT_SCRIPT_SHA256_VERIFIED={expected_script}"
+    base = _safe_step_base(Path(output_root), step_name)
+    paths = {
+        "command": base.with_name(base.name + ".command.txt"),
+        "stdout": base.with_name(base.name + ".stdout.txt"),
+        "stderr": base.with_name(base.name + ".stderr.txt"),
+        "exit_code": base.with_name(base.name + ".exit_code.txt"),
+        "timeout": base.with_name(base.name + ".timeout.txt"),
+        "compact_script": base.with_name(base.name + ".remote.ps1"),
+        "execution": base.with_name(base.name + ".execution.json"),
+    }
+
+    preflight_failures: list[str] = []
+    if command_sha256 != expected_command:
+        preflight_failures.append("generated SSH command SHA-256 does not match the reviewed expected command")
+    if actual_script_sha256 != expected_script:
+        preflight_failures.append("compact script SHA-256 does not match the reviewed expected script")
+    if command_length >= COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH:
+        preflight_failures.append(
+            f"generated SSH command length {command_length} exceeds safe threshold "
+            f"{COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH}"
+        )
+
+    def execution_payload(*, attempted: bool, exit_code: int | None, timed_out: bool, stdout: str, stderr: str) -> dict[str, Any]:
+        return {
+            "bundle_kind": COMPACT_CONTAINMENT_BUNDLE_KIND,
+            "command_hash_matches_expected": command_sha256 == expected_command,
+            "command_length": command_length,
+            "command_length_within_safe_threshold": command_length < COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH,
+            "command_sha256": command_sha256,
+            "compact_script_hash_matches_expected": actual_script_sha256 == expected_script,
+            "compact_script_sha256": actual_script_sha256,
+            "compact_script_source": STDIN_SCRIPT_SOURCE,
+            "execution_attempted": attempted,
+            "exit_code": exit_code,
+            "expected_command_sha256": expected_command,
+            "expected_compact_script_sha256": expected_script,
+            "remote_compact_script_sha256_verified": verification_marker in stdout.splitlines(),
+            "schema_version": EXECUTION_SCHEMA_VERSION,
+            "stderr_empty": not bool(stderr.strip()),
+            "stdout_nonempty": bool(stdout.strip()),
+            "timed_out": timed_out,
+            "timeout_seconds": timeout_seconds,
+        }
+
+    if preflight_failures:
+        execution = execution_payload(attempted=False, exit_code=None, timed_out=False, stdout="", stderr="")
+        _atomic_write_text(paths["command"], command_text)
+        _atomic_write_text(paths["stdout"], "")
+        _atomic_write_text(paths["stderr"], "")
+        _atomic_write_text(paths["exit_code"], "NOT_EXECUTED\n")
+        _atomic_write_text(paths["timeout"], "false\n")
+        _atomic_write_bytes(paths["compact_script"], script_bytes)
+        _atomic_write_json(paths["execution"], execution)
+        return {
+            "schema_version": 1,
+            "status": "STOPPED",
+            "reason": "; ".join(preflight_failures) + "; SSH was not invoked",
+            "step": step_name,
+            "execution": execution,
+            "artifacts": {key: str(value) for key, value in paths.items()},
+        }
+
+    timed_out = False
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            check=False,
+            input=base64.b64encode(script_bytes).decode("ascii"),
+            text=True,
+            timeout=timeout_seconds,
+        )
+        stdout = completed.stdout
+        stderr = completed.stderr
+        exit_code = completed.returncode
+    except subprocess.TimeoutExpired as exc:
+        timed_out = True
+        stdout = _timeout_text(exc.stdout)
+        stderr = _timeout_text(exc.stderr)
+        exit_code = 124
+
+    execution = execution_payload(
+        attempted=True,
+        exit_code=exit_code,
+        timed_out=timed_out,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    _atomic_write_text(paths["command"], command_text)
+    _atomic_write_text(paths["stdout"], stdout)
+    _atomic_write_text(paths["stderr"], stderr)
+    _atomic_write_text(paths["exit_code"], f"{exit_code}\n")
+    _atomic_write_text(paths["timeout"], f"{str(timed_out).lower()}\n")
+    _atomic_write_bytes(paths["compact_script"], script_bytes)
+    _atomic_write_json(paths["execution"], execution)
+
+    passed = (
+        not timed_out
+        and exit_code == 0
+        and bool(stdout.strip())
+        and not bool(stderr.strip())
+        and execution["remote_compact_script_sha256_verified"]
+    )
+    return {
+        "schema_version": 1,
+        "status": "PASS" if passed else "STOPPED",
+        "reason": (
+            "compact containment command completed with the embedded reviewed script"
+            if passed
+            else "compact containment command failed one or more mandatory safety checks"
+        ),
+        "step": step_name,
+        "execution": execution,
+        "artifacts": {key: str(value) for key, value in paths.items()},
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--mode", choices=("bounded-status", "compact-containment"), default="bounded-status")
     parser.add_argument("--output-root", required=True)
     parser.add_argument("--step-name", required=True)
     parser.add_argument("--ssh-alias", required=True)
-    parser.add_argument("--status-script", required=True)
-    parser.add_argument("--expected-status-sha256", required=True)
+    parser.add_argument("--status-script")
+    parser.add_argument("--expected-status-sha256")
+    parser.add_argument("--compact-script")
+    parser.add_argument("--expected-compact-script-sha256")
     parser.add_argument("--expected-command-sha256", required=True)
-    parser.add_argument("--runtime-root", required=True)
-    parser.add_argument("--state-file-name", required=True)
-    parser.add_argument("--journal-file-name", required=True)
-    parser.add_argument("--heartbeat-file-name", required=True)
-    parser.add_argument("--log-filter", required=True)
-    parser.add_argument("--journal-lines", type=int, required=True)
-    parser.add_argument("--log-lines", type=int, required=True)
+    parser.add_argument("--runtime-root")
+    parser.add_argument("--state-file-name")
+    parser.add_argument("--journal-file-name")
+    parser.add_argument("--heartbeat-file-name")
+    parser.add_argument("--log-filter")
+    parser.add_argument("--journal-lines", type=int)
+    parser.add_argument("--log-lines", type=int)
     parser.add_argument("--timeout-seconds", type=int, required=True)
     parser.add_argument("--acknowledgement", required=True)
     return parser
+
+
+def _require_args(args: argparse.Namespace, names: Sequence[str]) -> None:
+    missing = [f"--{name.replace('_', '-')}" for name in names if getattr(args, name) is None]
+    if missing:
+        raise SystemExit(f"{args.mode} mode requires: {', '.join(missing)}")
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.acknowledgement != READ_ONLY_ACKNOWLEDGEMENT:
         raise SystemExit("exact read-only collection acknowledgement is required")
-    result = collect_status_bundle(
-        output_root=args.output_root,
-        step_name=args.step_name,
-        ssh_alias=args.ssh_alias,
-        status_script_path=args.status_script,
-        expected_status_sha256=args.expected_status_sha256,
-        expected_command_sha256=args.expected_command_sha256,
-        runtime_root=args.runtime_root,
-        state_file_name=args.state_file_name,
-        journal_file_name=args.journal_file_name,
-        heartbeat_file_name=args.heartbeat_file_name,
-        log_filter=args.log_filter,
-        journal_lines=args.journal_lines,
-        log_lines=args.log_lines,
-        timeout_seconds=args.timeout_seconds,
-    )
+    if args.mode == "bounded-status":
+        _require_args(
+            args,
+            [
+                "status_script",
+                "expected_status_sha256",
+                "runtime_root",
+                "state_file_name",
+                "journal_file_name",
+                "heartbeat_file_name",
+                "log_filter",
+                "journal_lines",
+                "log_lines",
+            ],
+        )
+        result = collect_status_bundle(
+            output_root=args.output_root,
+            step_name=args.step_name,
+            ssh_alias=args.ssh_alias,
+            status_script_path=args.status_script,
+            expected_status_sha256=args.expected_status_sha256,
+            expected_command_sha256=args.expected_command_sha256,
+            runtime_root=args.runtime_root,
+            state_file_name=args.state_file_name,
+            journal_file_name=args.journal_file_name,
+            heartbeat_file_name=args.heartbeat_file_name,
+            log_filter=args.log_filter,
+            journal_lines=args.journal_lines,
+            log_lines=args.log_lines,
+            timeout_seconds=args.timeout_seconds,
+        )
+    else:
+        _require_args(args, ["compact_script", "expected_compact_script_sha256"])
+        result = collect_compact_containment_bundle(
+            output_root=args.output_root,
+            step_name=args.step_name,
+            ssh_alias=args.ssh_alias,
+            compact_script_path=args.compact_script,
+            expected_compact_script_sha256=args.expected_compact_script_sha256,
+            expected_command_sha256=args.expected_command_sha256,
+            timeout_seconds=args.timeout_seconds,
+        )
     print(json.dumps(result, indent=2, sort_keys=True, allow_nan=False))
     return 0 if result["status"] == "PASS" else 2
 

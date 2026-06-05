@@ -13,7 +13,12 @@ import shutil
 import tempfile
 from typing import Any
 
-from collect_lpfs_bounded_status_bundle import build_remote_status_command, render_command
+from collect_lpfs_bounded_status_bundle import (
+    COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH,
+    build_remote_compact_containment_command,
+    build_remote_status_command,
+    render_command,
+)
 
 
 PROFILE_ID = "stage5_gate1_dual_lane_contained_v2"
@@ -330,22 +335,32 @@ def _build_into(root: Path, profile_path: Path, status_script_path: Path) -> dic
         if not isinstance(critical_hashes, dict) or not critical_hashes:
             raise ValueError(f"{lane_name} compact containment lacks critical runtime hashes")
         compact_script = _compact_containment_script(lane, critical_hashes)
-        compact_command = _ssh_command(
-            lane["ssh_alias"],
-            [
-                "powershell",
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-EncodedCommand",
-                _encode_powershell(compact_script),
-            ],
+        compact_script_sha256 = _sha256_bytes(compact_script.encode("utf-8"))
+        if compact_script_sha256 != compact_step.get("expected_compact_script_sha256"):
+            raise ValueError(
+                f"{lane_name} compact containment script hash differs from reviewed profile: "
+                f"expected={compact_step.get('expected_compact_script_sha256')} actual={compact_script_sha256}"
+            )
+        compact_command = build_remote_compact_containment_command(
+            ssh_alias=lane["ssh_alias"],
+            expected_compact_script_sha256=compact_script_sha256,
         )
+        compact_command_text = render_command(compact_command)
+        compact_command_sha256 = _sha256_bytes(compact_command_text.encode("utf-8"))
+        if compact_command_sha256 != compact_step.get("expected_command_sha256"):
+            raise ValueError(
+                f"{lane_name} compact containment command hash differs from reviewed profile: "
+                f"expected={compact_step.get('expected_command_sha256')} actual={compact_command_sha256}"
+            )
+        if len(compact_command_text) >= COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH:
+            raise ValueError(
+                f"{lane_name} compact containment command length {len(compact_command_text)} exceeds "
+                f"safe threshold {COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH}"
+            )
         compact_script_path = lane_root / "compact_containment.remote.ps1"
         compact_command_path = lane_root / "compact_containment.command.txt"
         _write_text(compact_script_path, compact_script)
-        _write_text(compact_command_path, render_command(compact_command))
+        _write_text(compact_command_path, compact_command_text)
         artifacts.extend((compact_script_path, compact_command_path))
 
         bounded_step = profile["steps"][f"{lane_name}/bounded_status"]

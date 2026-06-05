@@ -337,7 +337,10 @@
           ]
         },
         "FTMO/compact_containment": {
-          "contract_version": 1,
+          "bundle_kind": "hash_approved_compact_containment_v1",
+          "contract_version": 3,
+          "expected_command_sha256": "a9c1797379437323ce38f245e4e32b7caf99bd75d3025795dceff2af316e1031",
+          "expected_compact_script_sha256": "be3865bb91c99ce3deac3796c42b7aa22bae331e81efd52b625a858b5ab418ae",
           "expectations": {
             "critical_runtime_file_hashes": {
               "scripts/run_lp_force_strike_live_executor.py": "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
@@ -457,7 +460,10 @@
           ]
         },
         "IC/compact_containment": {
-          "contract_version": 1,
+          "bundle_kind": "hash_approved_compact_containment_v1",
+          "contract_version": 3,
+          "expected_command_sha256": "4d276d8e9a5756d87a61669a19bba24d8251d4fdb3f4fbd362a3f654958b3b34",
+          "expected_compact_script_sha256": "ac0b29019836804fceee9924ad1e67336faf4d6bce30bf0e972f0b1ba9cd516e",
           "expectations": {
             "critical_runtime_file_hashes": {
               "scripts/run_lp_force_strike_live_executor.py": "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",

@@ -22,12 +22,18 @@ SAFETY_PROFILE_SCHEMA_VERSION = 1
 SUPPORTED_SAFETY_PROFILE_VERSIONS = {1, 2}
 STRUCTURED_STEP_CONTRACT_VERSION = 1
 BOUNDED_STATUS_STEP_CONTRACT_VERSION = 2
+COMPACT_CONTAINMENT_STEP_CONTRACT_VERSION = 3
 BOUNDED_STATUS_BUNDLE_KIND = "hash_approved_bounded_status_v1"
+COMPACT_CONTAINMENT_BUNDLE_KIND = "hash_approved_compact_containment_v1"
 BOUNDED_STATUS_EXECUTION_SCHEMA_VERSION = 1
+COMPACT_CONTAINMENT_EXECUTION_SCHEMA_VERSION = 1
 BOUNDED_STATUS_SOURCE = "embedded_hash_approved_scriptblock"
+COMPACT_CONTAINMENT_SOURCE = "stdin_hash_approved_scriptblock"
+COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH = 4000
 PINNED_SAFETY_PROFILE_DOCUMENT_SHA256S = {
     "1666fe6bbfe73c4d85746c8bb49d413a0e2011b0979d9ca49308709ff3f2e1a5",
     "61ba3084457e6466cfdd484d568a5c6f2c2f3f44c2103dde204a1e10b0a71f43",
+    "532a80cdf727e424fafb09365ecb3c6fe3fa677ab877f27634f7a14f60df849f",
 }
 
 
@@ -661,6 +667,284 @@ def verify_bounded_status_bundle(
     }
 
 
+def verify_compact_containment_bundle(
+    packet_root: str | Path,
+    step_name: str,
+    marker: str,
+    *,
+    expectations: Mapping[str, Any] | None,
+    required_expectation_fields: Iterable[str] | None,
+    expected_command_sha256: str,
+    expected_compact_script_sha256: str,
+    declared_artifacts: Mapping[str, Mapping[str, Any]] | None,
+) -> dict[str, Any]:
+    root = Path(packet_root)
+    failures: list[str] = []
+    receipts: dict[str, Any] = {}
+    texts: dict[str, str] = {}
+    execution: dict[str, Any] | None = None
+    expectation_results: list[dict[str, Any]] = []
+
+    try:
+        base = _safe_step_path(root, step_name)
+    except ValueError as exc:
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "status": "STOPPED",
+            "reason": str(exc),
+            "step": step_name,
+            "bundle_kind": COMPACT_CONTAINMENT_BUNDLE_KIND,
+            "marker": marker,
+            "failures": [str(exc)],
+            "artifacts": receipts,
+            "expectations": expectation_results,
+            "structured_payload": None,
+            "execution": None,
+        }
+
+    paths = {
+        "command": base.with_name(base.name + ".command.txt"),
+        "stdout": base.with_name(base.name + ".stdout.txt"),
+        "stderr": base.with_name(base.name + ".stderr.txt"),
+        "exit_code": base.with_name(base.name + ".exit_code.txt"),
+        "timeout": base.with_name(base.name + ".timeout.txt"),
+        "compact_script": base.with_name(base.name + ".remote.ps1"),
+        "execution": base.with_name(base.name + ".execution.json"),
+    }
+    expected_hashes = {
+        "command": expected_command_sha256,
+        "compact_script": expected_compact_script_sha256,
+    }
+    for label, expected_hash in expected_hashes.items():
+        if not isinstance(expected_hash, str) or not SHA256_RE.fullmatch(expected_hash):
+            failures.append(f"expected {label} SHA-256 must be valid lowercase hexadecimal")
+
+    marker_valid = isinstance(marker, str) and bool(marker)
+    if not marker_valid:
+        failures.append("structured marker must be a nonempty string")
+    if not expectations:
+        failures.append("step must declare at least one explicit safety expectation")
+    required_fields = list(required_expectation_fields or [])
+    if not required_fields:
+        failures.append("step must declare mandatory required expectation fields")
+    elif len(set(required_fields)) != len(required_fields):
+        failures.append("step mandatory required expectation fields contain duplicates")
+    elif not expectations or set(required_fields) != set(expectations):
+        missing = sorted(set(required_fields) - set(expectations or {}))
+        undeclared = sorted(set(expectations or {}) - set(required_fields))
+        failures.append(f"step expectation set mismatch: missing={missing!r} undeclared={undeclared!r}")
+    if declared_artifacts is None:
+        failures.append("manifest declarations are required for compact-containment verification")
+
+    for label, path in paths.items():
+        try:
+            relative = _relative_artifact_path(root, path)
+        except (ValueError, OSError) as exc:
+            failures.append(f"invalid {label} artifact path: {exc}")
+            continue
+        declaration = declared_artifacts.get(relative) if declared_artifacts is not None else None
+        if declaration is None:
+            failures.append(f"undeclared {label} artifact: {relative}")
+        if not path.is_file():
+            failures.append(f"missing {label} artifact: {relative}")
+            continue
+        try:
+            receipt = _artifact_receipt(path)
+            receipts[label] = receipt
+            if declaration is not None and (
+                receipt["bytes"] != declaration.get("bytes")
+                or receipt["sha256"] != declaration.get("sha256")
+            ):
+                failures.append(f"{label} artifact no longer matches manifest declaration: {relative}")
+            try:
+                texts[label] = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                texts[label] = path.read_text(encoding="utf-8-sig")
+        except Exception as exc:
+            failures.append(f"unreadable {label} artifact: {type(exc).__name__}: {exc}")
+
+    for label, expected_hash in expected_hashes.items():
+        receipt = receipts.get(label)
+        if receipt is not None and receipt.get("sha256") != expected_hash:
+            failures.append(
+                f"{label} artifact SHA-256 mismatch: expected={expected_hash!r} actual={receipt.get('sha256')!r}"
+            )
+
+    command_text = texts.get("command", "")
+    compact_script_text = texts.get("compact_script", "")
+    stdout_text = texts.get("stdout", "")
+    stderr_text = texts.get("stderr", "")
+    if not command_text.strip():
+        failures.append("command artifact is empty")
+    else:
+        if len(command_text) >= COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH:
+            failures.append(
+                f"compact-containment command length {len(command_text)} exceeds safe threshold "
+                f"{COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH}"
+            )
+        if "Get-LpfsLiveStatus.ps1" in command_text:
+            failures.append("compact-containment command must not execute an unverified VPS-resident status script")
+        if compact_script_text.strip() and compact_script_text.strip() in command_text:
+            failures.append("compact-containment command must not inline the full compact script")
+    if not compact_script_text.strip():
+        failures.append("compact script artifact is empty")
+    if not stdout_text.strip():
+        failures.append("compact-containment stdout artifact is empty")
+    verification_marker = f"LPFS_COMPACT_CONTAINMENT_SCRIPT_SHA256_VERIFIED={expected_compact_script_sha256}"
+    verification_marker_count = sum(
+        1 for line in stdout_text.splitlines() if line.strip() == verification_marker
+    )
+    if verification_marker_count != 1:
+        failures.append(
+            "compact-containment stdout must contain exactly one script verification marker; "
+            f"found {verification_marker_count}"
+        )
+    if stderr_text.strip():
+        failures.append("stderr artifact is not empty")
+
+    exit_code: int | None = None
+    if "exit_code" in texts:
+        try:
+            exit_code = int(texts["exit_code"].strip())
+        except ValueError:
+            failures.append(f"exit code is not an integer: {texts['exit_code'].strip()!r}")
+        if exit_code is not None and exit_code != 0:
+            failures.append(f"exit code is nonzero: {exit_code}")
+    timeout_value = texts.get("timeout", "").strip().lower()
+    if timeout_value not in {"true", "false"}:
+        failures.append(f"timeout artifact must be exactly true or false: {timeout_value!r}")
+    elif timeout_value != "false":
+        failures.append("compact-containment command timed out")
+
+    nonempty_stdout = [line.strip() for line in stdout_text.splitlines() if line.strip()]
+    marker_lines = [line for line in nonempty_stdout if marker_valid and line.startswith(marker)]
+    if stdout_text and len(nonempty_stdout) != 2:
+        failures.append(f"stdout must contain exactly two nonempty compact-containment lines; found {len(nonempty_stdout)}")
+    if len(marker_lines) != 1:
+        failures.append(f"stdout must contain exactly one {marker!r} line; found {len(marker_lines)}")
+
+    payload: dict[str, Any] | None = None
+    if len(marker_lines) == 1:
+        try:
+            decoded = _strict_json_loads(marker_lines[0][len(marker) :])
+            if not isinstance(decoded, dict):
+                failures.append("structured marker payload must be a JSON object")
+            else:
+                payload = decoded
+        except Exception as exc:
+            failures.append(f"structured marker payload is invalid JSON: {type(exc).__name__}: {exc}")
+
+    if "execution" in texts:
+        try:
+            decoded_execution = _strict_json_loads(texts["execution"])
+            if not isinstance(decoded_execution, dict):
+                failures.append("compact-containment execution artifact must contain a JSON object")
+            else:
+                execution = decoded_execution
+                _require_exact_keys(
+                    execution,
+                    {
+                        "bundle_kind",
+                        "command_hash_matches_expected",
+                        "command_length",
+                        "command_length_within_safe_threshold",
+                        "command_sha256",
+                        "compact_script_hash_matches_expected",
+                        "compact_script_sha256",
+                        "compact_script_source",
+                        "execution_attempted",
+                        "exit_code",
+                        "expected_command_sha256",
+                        "expected_compact_script_sha256",
+                        "remote_compact_script_sha256_verified",
+                        "schema_version",
+                        "stderr_empty",
+                        "stdout_nonempty",
+                        "timed_out",
+                        "timeout_seconds",
+                    },
+                    "compact-containment execution artifact",
+                )
+        except Exception as exc:
+            failures.append(f"compact-containment execution artifact is invalid JSON: {type(exc).__name__}: {exc}")
+
+    expected_execution = {
+        "bundle_kind": COMPACT_CONTAINMENT_BUNDLE_KIND,
+        "command_hash_matches_expected": True,
+        "command_length": len(command_text),
+        "command_length_within_safe_threshold": True,
+        "command_sha256": expected_command_sha256,
+        "compact_script_hash_matches_expected": True,
+        "compact_script_sha256": expected_compact_script_sha256,
+        "compact_script_source": COMPACT_CONTAINMENT_SOURCE,
+        "execution_attempted": True,
+        "exit_code": 0,
+        "expected_command_sha256": expected_command_sha256,
+        "expected_compact_script_sha256": expected_compact_script_sha256,
+        "remote_compact_script_sha256_verified": True,
+        "schema_version": COMPACT_CONTAINMENT_EXECUTION_SCHEMA_VERSION,
+        "stderr_empty": True,
+        "stdout_nonempty": True,
+        "timed_out": False,
+    }
+    if execution is not None:
+        for field, expected in expected_execution.items():
+            actual = execution.get(field)
+            if type(actual) is not type(expected) or actual != expected:
+                failures.append(
+                    f"compact-containment execution mismatch for {field!r}: "
+                    f"expected={expected!r} actual={actual!r}"
+                )
+        timeout_seconds = execution.get("timeout_seconds")
+        if isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, int) or timeout_seconds <= 0:
+            failures.append("compact-containment execution timeout_seconds must be a positive integer")
+
+    if expectations:
+        for field, expected in expectations.items():
+            field_valid = isinstance(field, str) and SAFE_FIELD_RE.fullmatch(field)
+            present, actual = _lookup_field(payload, field) if field_valid and payload is not None else (False, None)
+            matched, comparison = (
+                _values_match(field, actual, expected) if present else (False, "exact_json_type_and_value")
+            )
+            expectation_results.append(
+                {
+                    "field": field,
+                    "expected": expected,
+                    "actual": actual,
+                    "present": present,
+                    "matched": matched,
+                    "comparison": comparison,
+                }
+            )
+            if not field_valid:
+                failures.append(f"invalid safety expectation field: {field!r}")
+            elif not present:
+                failures.append(f"safety expectation field is missing: {field!r}")
+            elif not matched:
+                failures.append(
+                    f"safety expectation mismatch for {field!r}: expected={expected!r} actual={actual!r}"
+                )
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "status": "PASS" if not failures else "STOPPED",
+        "reason": (
+            "manifest-bound compact-containment command, script, execution metadata, and expectations verified"
+            if not failures
+            else "; ".join(failures)
+        ),
+        "step": step_name,
+        "bundle_kind": COMPACT_CONTAINMENT_BUNDLE_KIND,
+        "marker": marker,
+        "required_expectation_fields": required_fields,
+        "failures": failures,
+        "artifacts": receipts,
+        "expectations": expectation_results,
+        "structured_payload": payload,
+        "execution": execution,
+    }
+
+
 def _validate_unique_string_list(value: Any, label: str) -> list[str]:
     if not isinstance(value, list) or not value:
         raise ValueError(f"{label} must be a nonempty list")
@@ -814,6 +1098,61 @@ def load_safety_profile(
                 "expected_status_implementation_sha256": expected_status_sha256,
                 "required_stdout_substrings": required_stdout_substrings,
             }
+        elif contract_version == COMPACT_CONTAINMENT_STEP_CONTRACT_VERSION:
+            _require_exact_keys(
+                step,
+                {
+                    "bundle_kind",
+                    "contract_version",
+                    "expected_command_sha256",
+                    "expected_compact_script_sha256",
+                    "marker",
+                    "required_expectation_fields",
+                    "expectations",
+                },
+                f"safety profile step {step_name!r}",
+            )
+            if step.get("bundle_kind") != COMPACT_CONTAINMENT_BUNDLE_KIND:
+                raise ValueError(
+                    f"unsupported safety profile step {step_name!r} bundle_kind: {step.get('bundle_kind')!r}"
+                )
+            expected_command_sha256 = step.get("expected_command_sha256")
+            expected_script_sha256 = step.get("expected_compact_script_sha256")
+            if not isinstance(expected_command_sha256, str) or not SHA256_RE.fullmatch(expected_command_sha256):
+                raise ValueError(f"safety profile step {step_name!r} expected_command_sha256 must be valid")
+            if not isinstance(expected_script_sha256, str) or not SHA256_RE.fullmatch(expected_script_sha256):
+                raise ValueError(
+                    f"safety profile step {step_name!r} expected_compact_script_sha256 must be valid"
+                )
+            marker = step.get("marker")
+            if not isinstance(marker, str) or not marker:
+                raise ValueError(f"safety profile step {step_name!r} marker must be a nonempty string")
+            required_fields = _validate_unique_string_list(
+                step.get("required_expectation_fields"),
+                f"safety profile step {step_name!r} required_expectation_fields",
+            )
+            if any(not SAFE_FIELD_RE.fullmatch(field) for field in required_fields):
+                raise ValueError(f"safety profile step {step_name!r} contains an invalid expectation field")
+            expectations = step.get("expectations")
+            if not isinstance(expectations, dict) or not expectations:
+                raise ValueError(f"safety profile step {step_name!r} expectations must be a nonempty object")
+            if set(required_fields) != set(expectations):
+                missing = sorted(set(required_fields) - set(expectations))
+                undeclared = sorted(set(expectations) - set(required_fields))
+                raise ValueError(
+                    f"safety profile step {step_name!r} expectation set mismatch: "
+                    f"missing={missing!r} undeclared={undeclared!r}"
+                )
+            validated_steps[step_name] = {
+                "step": step_name,
+                "contract_version": contract_version,
+                "bundle_kind": COMPACT_CONTAINMENT_BUNDLE_KIND,
+                "expected_command_sha256": expected_command_sha256,
+                "expected_compact_script_sha256": expected_script_sha256,
+                "marker": marker,
+                "required_expectation_fields": required_fields,
+                "expectations": expectations,
+            }
         else:
             raise ValueError(
                 f"unsupported safety profile step {step_name!r} contract_version: "
@@ -830,8 +1169,11 @@ def load_safety_profile(
             if step_name not in validated_steps:
                 raise ValueError(f"runtime-integrity step is not required by the profile: {step_name!r}")
             step = validated_steps[step_name]
-            if step["contract_version"] != STRUCTURED_STEP_CONTRACT_VERSION:
-                raise ValueError(f"runtime-integrity step must be a structured step: {step_name!r}")
+            if step["contract_version"] not in {
+                STRUCTURED_STEP_CONTRACT_VERSION,
+                COMPACT_CONTAINMENT_STEP_CONTRACT_VERSION,
+            }:
+                raise ValueError(f"runtime-integrity step must be a structured containment step: {step_name!r}")
             expectations = step["expectations"]
             if "repo_head" not in expectations:
                 raise ValueError(f"runtime-integrity step must require repo_head: {step_name!r}")
@@ -904,6 +1246,17 @@ def _verify_packet_with_profile(
                     expected_command_sha256=spec["expected_command_sha256"],
                     expected_status_implementation_sha256=spec["expected_status_implementation_sha256"],
                     required_stdout_substrings=spec["required_stdout_substrings"],
+                    declared_artifacts=manifest["declared_artifacts"],
+                )
+            elif spec["contract_version"] == COMPACT_CONTAINMENT_STEP_CONTRACT_VERSION:
+                result = verify_compact_containment_bundle(
+                    root,
+                    step_name,
+                    spec["marker"],
+                    expectations=spec["expectations"],
+                    required_expectation_fields=spec["required_expectation_fields"],
+                    expected_command_sha256=spec["expected_command_sha256"],
+                    expected_compact_script_sha256=spec["expected_compact_script_sha256"],
                     declared_artifacts=manifest["declared_artifacts"],
                 )
             else:

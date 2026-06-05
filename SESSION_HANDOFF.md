@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-04 ICT after the accepted LPFS C-01 FTMO Stage 5 Gate 3
-`STOPPED` result and offline structured-verifier follow-up.
+Last updated: 2026-06-05 ICT after the offline LPFS Gate 1 v2
+compact-containment transport fix.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -83,16 +83,26 @@ file, and the JSONL journal before making operational decisions.
   `stage5_gate1_v2_complete_read_only_v1`, and an expected-command SHA-256
   barrier in `scripts/collect_lpfs_bounded_status_bundle.py`. The producer
   covers FTMO/IC compact containment, bounded status, and strict MT5 without
-  executing them. Compact containment emits clean tracked-worktree status and
-  exact critical runtime-file hashes. Any bounded-command alias, runtime-root,
-  filename, log-filter, or line-limit drift writes structured `STOPPED` with
-  `execution_attempted=false`; SSH is not invoked. The independently verified
+  executing them. Compact containment is collected through the explicit
+  reviewed collector CLI path `--mode compact-containment`; tests prove this
+  dispatches to `collect_compact_containment_bundle`. Compact containment
+  emits clean tracked-worktree status and exact critical runtime-file hashes.
+  The compact command is now a short
+  hash-bound bootstrap under the `4000` character safe threshold; it sends the
+  reviewed local compact script over SSH stdin, verifies the script SHA-256
+  remotely, and executes it in memory. Wrong compact command or script hashes
+  write structured `STOPPED` with `execution_attempted=false`; SSH is not
+  invoked. Any bounded-command alias, runtime-root, filename, log-filter, or
+  line-limit drift also writes structured `STOPPED` before SSH. The
+  independently verified
   pre-hardening full-suite baseline is `430` tests total (`428` passed, `2`
   intentional skips), correcting the prior wording that treated `428` as the
-  full-suite count. Current offline verification passed: focused module `40`
-  tests, full LPFS suite `435` tests total (`433` passed, `2` skipped) with
-  `228` subtests, and strict core coverage `6401` statements plus `2192`
-  branches at `100.00%`.
+  full-suite count. Current compact-transport and CLI focused verification
+  passed: focused module `48` tests; full LPFS suite `443` tests total
+  (`441` passed, `2` skipped); strict core coverage `6401` statements plus
+  `2192` branches at `100.00%`; final `git diff --check` passed with only
+  line-ending warnings; scope audit shows only offline tooling, contracts,
+  tests, and documentation changed.
 - 2026-06-02 C-01 containment is the current operational priority. Read
   `docs/lpfs_c01_live_safety_release.md` before any LPFS operation. FTMO
   Stage 1 reconciliation passed point-in-time at exact SHA
@@ -243,12 +253,11 @@ file, and the JSONL journal before making operational decisions.
   currently serializes `Write-Host` information records as CLIXML on stderr;
   preserve and classify that stream separately, and fail closed on
   `ERROR/UNKNOWN`, exceptions, or native-command errors.
-- Packet-capture hardening backlog: avoid oversized `-EncodedCommand` payloads
-  and BOM-sensitive stdin for larger remote inspections. Publish an ASCII
-  read-only audit script inside the ignored evidence directory, execute it
-  with `-File`, preserve its hash and exit code, and require non-empty
-  validated output. Review this tooling separately; do not broaden C-01
-  runtime behavior.
+- Packet-capture hardening status: Gate 1 v2 compact-containment no longer
+  embeds the full script in `-EncodedCommand`; it uses a short hash-bound
+  bootstrap and sends the reviewed local script over SSH stdin. Larger future
+  inspections should use the same reviewed hash-bound transport pattern and
+  must still stop for review before execution.
 - Observability backlog: reconciliation receipt `stable_hash()` currently
   includes full live position rows, including moving `price_current` and
   `profit`. The receipt chain is internally valid, but adjacent read-only

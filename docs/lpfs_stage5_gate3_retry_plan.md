@@ -1,6 +1,7 @@
 # LPFS Stage 5 FTMO Gate 3 Retry Plan
 
-Last updated: 2026-06-04 ICT after the accepted FTMO Gate 3 `STOPPED` result.
+Last updated: 2026-06-05 ICT after the offline Gate 1 v2 compact-containment
+transport fix.
 
 ## Current Gate
 
@@ -19,8 +20,8 @@ reviewed and the operator separately approves read-only collection. No
 restart approval is possible until the complete structured Gate 3
 precheck/postcheck probe commands that satisfy the lane-specific resumption
 profiles are also separately hash-reviewed. The new producer,
-bounded-status collector, contracts, and profiles have not been executed
-against either VPS.
+bounded-status collector, compact-containment stdin transport, contracts, and
+profiles have not been executed against either VPS.
 
 The accepted FTMO Gate 3 stopped packet is:
 
@@ -179,8 +180,16 @@ artifact set for all six mandatory Gate 1 steps without executing any command:
 
 The compact-containment scripts emit tracked-worktree status, a
 `tracked_worktree_clean` result, and exact SHA-256 values for every critical
-runtime file declared by the Gate 1 v2 safety profile. The complete Gate 1 v2
-pre-execution contract ID is:
+runtime file declared by the Gate 1 v2 safety profile. They are no longer
+embedded as a full inline command. The reviewed compact command is a short
+hash-bound bootstrap under the `4000` character safe threshold; it receives
+the reviewed local `compact_containment.remote.ps1` artifact through SSH
+stdin, verifies that script SHA-256 remotely, and executes it in memory. The
+collector exposes this route through explicit CLI mode
+`--mode compact-containment`, and tests prove it dispatches to the reviewed
+`collect_compact_containment_bundle` path. Missing compact script/hash inputs
+stop before SSH. The
+complete Gate 1 v2 pre-execution contract ID is:
 
 - `stage5_gate1_v2_complete_read_only_v1`
 
@@ -216,6 +225,12 @@ in memory. It does not call an unverified VPS-resident
 `C:\TradeAutomation\scripts\Get-LpfsLiveStatus.ps1` and does not write a
 remote status-script file.
 
+The same collector module also provides compact-containment execution for Gate
+1 v2. It requires both the reviewed compact command SHA-256 and the reviewed
+compact script SHA-256 before `subprocess.run`. A wrong command hash, wrong
+script hash, alias drift, or command length at/above the safe threshold writes
+structured `STOPPED` with `execution_attempted=false`; SSH is not invoked.
+
 A pre-execution `PASS` proves only that the staged files match the separately
 reviewed read-only hashes. Its receipt always states
 `authorizes_execution=false`; explicit operator approval is still required.
@@ -245,12 +260,28 @@ Future bounded-status steps additionally require:
 <step>.execution.json
 ```
 
+Future compact-containment steps additionally require:
+
+```text
+<step>.timeout.txt
+<step>.remote.ps1
+<step>.execution.json
+```
+
 The command, exact status implementation, execution metadata, stdout, stderr,
 exit code, and timeout sidecar must all be manifest-bound. The verifier
 requires the profile-pinned command hash and implementation hash, the remote
 hash-verification marker, nonempty status output, empty stderr, exit code `0`,
 and `timeout=false`. It rejects commands that name the VPS-resident
 `Get-LpfsLiveStatus.ps1`.
+
+For compact-containment steps, the compact command, compact script, execution
+metadata, stdout, stderr, exit code, and timeout sidecar must all be
+manifest-bound. The verifier requires the profile-pinned command hash and
+compact script hash, the remote script-hash verification marker, nonempty
+containment output, empty stderr, exit code `0`, `timeout=false`, command
+length below `4000`, and no full compact script body inside the command
+artifact.
 
 Every checked artifact must be declared by `manifest.json` with the same byte
 count and SHA-256. The expected packet result, required steps, and complete
@@ -266,12 +297,20 @@ The verifier fails closed when:
 - stderr is nonempty;
 - the exit code is missing, malformed, or nonzero;
 - a bounded-status timeout sidecar is missing, malformed, or true;
+- a compact-containment timeout sidecar is missing, malformed, or true;
 - bounded-status stdout is missing or empty;
+- compact-containment stdout is missing or empty;
 - the bounded-status command or status implementation differs from the
   profile-pinned SHA-256;
+- the compact-containment command or compact script differs from the
+  profile-pinned SHA-256;
+- the compact-containment command is at/above the safe length threshold or
+  contains the full compact script body;
 - the bounded-status command attempts to execute a VPS-resident status script;
 - bounded-status execution metadata or the remote implementation-hash marker
   is missing or inconsistent;
+- compact-containment execution metadata or the remote script-hash marker is
+  missing or inconsistent;
 - stdout does not contain exactly one nonempty structured marker line;
 - the structured marker is missing, duplicated, ambiguous, or invalid JSON;
 - the mandatory profile is missing, malformed, incomplete, or unversioned;
@@ -321,10 +360,10 @@ to run.
 
 The offline follow-up did not access either VPS or MT5.
 
-- focused structured-verifier, collector, producer, and contract module: `40`
+- focused structured-verifier, collector, producer, contract, and CLI module: `48`
   tests passed;
-- current full LPFS suite: `435` tests total (`433` passed, `2` intentional
-  skips) with `228` subtests;
+- current full LPFS suite: `443` tests total (`441` passed, `2` intentional
+  skips);
 - independently verified pre-hardening full-suite baseline: `430` tests total
   (`428` passed, `2` intentional skips) with `216` subtests; this corrects the
   prior wording that incorrectly called `428` the full-suite count;
@@ -349,16 +388,16 @@ lpfs_stage5_read_only_command_contracts_v1.json
 947105e7a50c46b582f7f0ed336b6a602c38d7a931b9cbc4d1f5d7f4ed72ba10
 
 lpfs_stage5_resumption_safety_contract_profiles_v2.json
-61ba3084457e6466cfdd484d568a5c6f2c2f3f44c2103dde204a1e10b0a71f43
+532a80cdf727e424fafb09365ecb3c6fe3fa677ab877f27634f7a14f60df849f
 
 lpfs_stage5_read_only_command_contracts_v2.json
-1a1bbd812fd36ad8627abba1f9591166b27d64cc3b222794ad5ff356f9cfb435
+f4a602aac651220fb599324edd9c284aaa19071737d7472f4468efc2012cc057
 
 collect_lpfs_bounded_status_bundle.py
-0d6f1be193d51b4dfdeb12f16d4963f6d1b5e131cc01cfc7db9b5974d0163919
+2ebd01055396fc1670b084694ebe3e08a32ee1a4cb29b245bee99f31e83c42bb
 
 build_lpfs_stage5_gate1_v2_pre_execution.py
-1aeb47069d629653a483552d647e8c39ea9491f17cf81c0ccd0596fa01c89303
+3939c914a4fd2b11b925f2ddb3a76e824ebfeea2f281d214c5dae710b49eb55f
 ```
 
 These hashes are review candidates only. They become operationally approved
@@ -381,9 +420,9 @@ This plan is not approved for execution.
 1. Review the offline verifier code, tests, archived-packet results, and this
    plan.
 2. Fresh Gate 1 remains blocked until the complete six-step v2 producer,
-   command-hash barrier, contract, tests, and this documentation pass review.
-   After that review and separate operator approval, generate and verify the
-   exact local command bundle under
+   compact command/script hash barriers, stdin transport, contract, tests, and
+   this documentation pass review. After that review and separate operator
+   approval, generate and verify the exact local command bundle under
    `stage5_gate1_v2_complete_read_only_v1`, collect a fresh dual-lane Gate 1
    packet using `stage5_gate1_dual_lane_contained_v2`, and stop for review.
    The previous Gate 1 packet `20260604_095237` is stale. Gate 1 v1 is
