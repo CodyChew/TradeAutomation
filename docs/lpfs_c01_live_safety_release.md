@@ -1,7 +1,7 @@
 # LPFS C-01 Live-Safety Release
 
-Last updated: 2026-06-04 ICT after the accepted FTMO Stage 5 Gate 3 `STOPPED`
-result and offline structured-verifier follow-up.
+Last updated: 2026-06-05 ICT after the Gate 1 v2 strict-MT5 transport
+`STOPPED` packet and offline transport-hardening follow-up.
 
 ## Current Objective
 
@@ -170,6 +170,45 @@ Skip the IC Stage 4 canary by default. Stop before Stage 5. Any resumption
 requires a separately reviewed Stage 5 pre-resumption plan and fresh
 read-only dual-lane status plus strict MT5 evidence before either watchdog is
 restarted.
+
+## Gate 1 V2 Strict-MT5 Transport Stop
+
+The approved fresh Gate 1 v2 read-only collection stopped on 2026-06-05 ICT.
+
+Authoritative ignored packet:
+
+```text
+C:\TradeAutomationEvidence\lpfs_c01_stage5\gate1_v2_20260605_202849
+```
+
+Its `manifest.json` SHA-256 is:
+
+```text
+fcbf76b75a98bc01f745d7f77a2523b6fc01b97f99b0c24aea118f5fc0bcd36f
+```
+
+The packet is `STOPPED`: compact-containment and bounded-status artifacts were
+not produced, and both strict MT5 probes exited `1`. Preserved stderr shows
+Python received only `import` and raised `SyntaxError`, confirming that the
+reviewed inline `python -c` strict-probe transport broke before MT5 evidence
+was produced. No Gate 3 restart, watchdog start, task enablement,
+kill-switch clear, reconciliation, canary, broker mutation, runtime-state
+edit, or journal write occurred.
+
+Do not retry Gate 1 using the inline strict MT5 transport. The offline
+follow-up replaces strict MT5 execution with a hash-bound stdin transport:
+the reviewed local `strict_mt5_probe.py` artifact is sent over SSH stdin,
+verified remotely by SHA-256, then piped into the lane Python interpreter in
+memory. The post-execution verifier requires manifest-bound command, script,
+stdout, stderr, exit-code, timeout, and execution metadata artifacts plus
+exactly one strict script verification marker and one `LPFS_GATE1_MT5_JSON=`
+payload. Fresh Gate 1 remains blocked until this offline patch is reviewed,
+published, and separately approved for read-only collection.
+
+The default pre-execution verifier allowlist no longer accepts stale
+pre-hardening Gate 1 v2 contract hash
+`f4a602aac651220fb599324edd9c284aaa19071737d7472f4468efc2012cc057`,
+which pinned the old inline strict-MT5 command artifacts.
 
 ## FTMO Stage 5 Gate 3 Accepted Stop
 
@@ -429,12 +468,14 @@ Once both lanes are safely migrated and normalized evidence exists:
   sidecars, and classify expected CLIXML host-information serialization
   separately from fail-closed `ERROR/UNKNOWN`, exception, or native-command
   error text.
-- Packet-capture status: Gate 1 v2 compact-containment no longer embeds the
-  full script in `-EncodedCommand`; it uses a short hash-bound bootstrap and
-  sends the reviewed local script over SSH stdin. The bounded-status collector
-  exposes this route through explicit CLI mode `--mode compact-containment`.
-  Fresh Gate 1 remains blocked until this offline transport fix is reviewed
-  and separately approved for read-only collection.
+- Packet-capture status: Gate 1 v2 compact containment and strict MT5 no
+  longer embed full reviewed scripts inside long inline commands. They use
+  short hash-bound bootstraps, send reviewed local script artifacts over SSH
+  stdin, verify the script SHA-256 remotely, and execute in memory. The
+  bounded-status collector exposes these routes through explicit CLI modes
+  `--mode compact-containment` and `--mode strict-mt5`. Fresh Gate 1 remains
+  blocked until this offline transport fix is reviewed and separately
+  approved for read-only collection.
 - `PLAN.md` does not exist in this repository. The external working copy at
   `C:\Users\Cody\Downloads\PLAN.md` was updated to match this release and its
   apostrophe encoding was made ASCII-safe.

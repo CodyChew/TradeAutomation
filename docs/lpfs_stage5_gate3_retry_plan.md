@@ -191,6 +191,17 @@ collector exposes this route through explicit CLI mode
 stop before SSH. The
 complete Gate 1 v2 pre-execution contract ID is:
 
+The strict MT5 probe must use the same hash-bound stdin transport. The
+reviewed local `strict_mt5_probe.py` artifact is sent over SSH stdin as
+base64, verified remotely by SHA-256, and piped into the lane Python
+interpreter in memory. The strict command must not use inline `python -c`, must
+stay below the `4000` character safe threshold, and must not contain the full
+strict script body or script base64. The collector exposes this route through
+explicit CLI mode `--mode strict-mt5`; wrong command hash, wrong script hash,
+SSH-alias drift, Python-path drift, or command length at/above the threshold
+writes structured `STOPPED` with `execution_attempted=false`; SSH is not
+invoked.
+
 - `stage5_gate1_v2_complete_read_only_v1`
 
 Generate a new local staging directory, then verify it:
@@ -268,6 +279,14 @@ Future compact-containment steps additionally require:
 <step>.execution.json
 ```
 
+Future strict-MT5 steps additionally require:
+
+```text
+<step>.timeout.txt
+<step>.py
+<step>.execution.json
+```
+
 The command, exact status implementation, execution metadata, stdout, stderr,
 exit code, and timeout sidecar must all be manifest-bound. The verifier
 requires the profile-pinned command hash and implementation hash, the remote
@@ -282,6 +301,14 @@ compact script hash, the remote script-hash verification marker, nonempty
 containment output, empty stderr, exit code `0`, `timeout=false`, command
 length below `4000`, and no full compact script body inside the command
 artifact.
+
+For strict-MT5 steps, the strict command, strict Python script, execution
+metadata, stdout, stderr, exit code, and timeout sidecar must all be
+manifest-bound. The verifier requires the profile-pinned command hash and
+strict script hash, the remote script-hash verification marker, exactly one
+`LPFS_GATE1_MT5_JSON=` payload, empty stderr, exit code `0`, `timeout=false`,
+command length below `4000`, and no inline `python -c`, full strict script
+body, or strict script base64 inside the command artifact.
 
 Every checked artifact must be declared by `manifest.json` with the same byte
 count and SHA-256. The expected packet result, required steps, and complete
@@ -298,19 +325,27 @@ The verifier fails closed when:
 - the exit code is missing, malformed, or nonzero;
 - a bounded-status timeout sidecar is missing, malformed, or true;
 - a compact-containment timeout sidecar is missing, malformed, or true;
+- a strict-MT5 timeout sidecar is missing, malformed, or true;
 - bounded-status stdout is missing or empty;
 - compact-containment stdout is missing or empty;
+- strict-MT5 stdout is missing or empty;
 - the bounded-status command or status implementation differs from the
   profile-pinned SHA-256;
 - the compact-containment command or compact script differs from the
   profile-pinned SHA-256;
+- the strict-MT5 command or strict Python script differs from the
+  profile-pinned SHA-256;
 - the compact-containment command is at/above the safe length threshold or
   contains the full compact script body;
+- the strict-MT5 command is at/above the safe length threshold, uses inline
+  `python -c`, or contains the full strict script body or script base64;
 - the bounded-status command attempts to execute a VPS-resident status script;
 - bounded-status execution metadata or the remote implementation-hash marker
   is missing or inconsistent;
 - compact-containment execution metadata or the remote script-hash marker is
   missing or inconsistent;
+- strict-MT5 execution metadata or the remote script-hash marker is missing
+  or inconsistent;
 - stdout does not contain exactly one nonempty structured marker line;
 - the structured marker is missing, duplicated, ambiguous, or invalid JSON;
 - the mandatory profile is missing, malformed, incomplete, or unversioned;
@@ -360,9 +395,9 @@ to run.
 
 The offline follow-up did not access either VPS or MT5.
 
-- focused structured-verifier, collector, producer, contract, and CLI module: `48`
+- focused structured-verifier, collector, producer, contract, and CLI module: `58`
   tests passed;
-- current full LPFS suite: `443` tests total (`441` passed, `2` intentional
+- current full LPFS suite: `454` tests total (`452` passed, `2` intentional
   skips);
 - independently verified pre-hardening full-suite baseline: `430` tests total
   (`428` passed, `2` intentional skips) with `216` subtests; this corrects the
@@ -375,6 +410,9 @@ The offline follow-up did not access either VPS or MT5.
 - Gate 1 reviewed read-only hash-contract rehearsal: `PASS`;
 - complete six-step Gate 1 v2 reviewed read-only hash-contract rehearsal:
   `PASS`, with `authorizes_execution=false`;
+- stale pre-hardening Gate 1 v2 read-only contract hash
+  `f4a602aac651220fb599324edd9c284aaa19071737d7472f4468efc2012cc057`
+  is rejected by the default verifier allowlist;
 - staged Gate 3 reviewed read-only hash-contract rehearsal: `PASS`;
 - all pre-execution rehearsals state `authorizes_execution=false`.
 
@@ -388,16 +426,16 @@ lpfs_stage5_read_only_command_contracts_v1.json
 947105e7a50c46b582f7f0ed336b6a602c38d7a931b9cbc4d1f5d7f4ed72ba10
 
 lpfs_stage5_resumption_safety_contract_profiles_v2.json
-532a80cdf727e424fafb09365ecb3c6fe3fa677ab877f27634f7a14f60df849f
+c7efde9add0924fcd5458840079aebcad05fee2b866e72a9e6e30f66ebddeeaa
 
 lpfs_stage5_read_only_command_contracts_v2.json
-f4a602aac651220fb599324edd9c284aaa19071737d7472f4468efc2012cc057
+25c6fac9f94cb2018a56b34ef132bb1733292462ebcd773342a1a92e5aef4525
 
 collect_lpfs_bounded_status_bundle.py
-2ebd01055396fc1670b084694ebe3e08a32ee1a4cb29b245bee99f31e83c42bb
+b23492da393d25d545d2ba8a27499d220a936200da5ce15c46a0ed57069f9421
 
 build_lpfs_stage5_gate1_v2_pre_execution.py
-3939c914a4fd2b11b925f2ddb3a76e824ebfeea2f281d214c5dae710b49eb55f
+d235a50e37dc4b1c945d3e84b31c7529a7015307c65f5d3c9d1103e62b0f1c53
 ```
 
 These hashes are review candidates only. They become operationally approved

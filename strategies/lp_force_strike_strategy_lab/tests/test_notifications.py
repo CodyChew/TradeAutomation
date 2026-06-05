@@ -1148,6 +1148,29 @@ class NotificationTests(unittest.TestCase):
         self.assertEqual(context, "fallback_context")
         create_default_context.assert_called_once_with()
 
+    def test_telegram_ssl_context_uses_certifi_when_available(self) -> None:
+        real_import = builtins.__import__
+
+        class FakeCertifi:
+            @staticmethod
+            def where() -> str:
+                return "ca-bundle.pem"
+
+        def fake_import(name, *args, **kwargs):
+            if name == "certifi":
+                return FakeCertifi
+            return real_import(name, *args, **kwargs)
+
+        with mock.patch("builtins.__import__", side_effect=fake_import), mock.patch.object(
+            notification_module.ssl,
+            "create_default_context",
+            return_value="certifi_context",
+        ) as create_default_context:
+            context = notification_module._telegram_ssl_context()
+
+        self.assertEqual(context, "certifi_context")
+        create_default_context.assert_called_once_with(cafile="ca-bundle.pem")
+
 
 if __name__ == "__main__":
     unittest.main()

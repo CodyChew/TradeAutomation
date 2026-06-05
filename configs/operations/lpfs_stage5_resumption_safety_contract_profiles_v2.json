@@ -379,7 +379,10 @@
           ]
         },
         "FTMO/strict_mt5_probe": {
-          "contract_version": 1,
+          "bundle_kind": "hash_approved_strict_mt5_v1",
+          "contract_version": 4,
+          "expected_command_sha256": "6c91384a95c005f028e0b36898d3d9a175b7df65afc6bc19e1b5c0b4421d578c",
+          "expected_strict_mt5_script_sha256": "fa072d272820cd8ab41687a4f68a0d0f7d947e84e9432356c0cf5775e45cdbdc",
           "expectations": {
             "account_info": "OK",
             "account_login": 510276550,
@@ -502,7 +505,10 @@
           ]
         },
         "IC/strict_mt5_probe": {
-          "contract_version": 1,
+          "bundle_kind": "hash_approved_strict_mt5_v1",
+          "contract_version": 4,
+          "expected_command_sha256": "2c6985e7b775bfc69d2ca0fa6ceccd2957511a95acaed02c9ab22eef228ce409",
+          "expected_strict_mt5_script_sha256": "77ed24f05e0f14b93d5471e58088f468d00d75e1e2670ac028386284a7b617c7",
           "expectations": {
             "account_info": "OK",
             "account_login": 16000463,

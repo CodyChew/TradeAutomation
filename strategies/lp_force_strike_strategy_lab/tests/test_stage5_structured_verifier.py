@@ -229,6 +229,96 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             command_path.unlink(missing_ok=True)
         return command_sha, compact_sha
 
+    def _strict_mt5_bundle(
+        self,
+        root: Path,
+        *,
+        step: str = "strict_mt5_probe",
+        stderr: str = "",
+        exit_code: int = 0,
+        timed_out: bool = False,
+        duplicate_marker: bool = False,
+        payload: str = (
+            'LPFS_GATE1_MT5_JSON={"account_info":"OK","counts":{"orders":0,"positions":0},'
+            '"strategy_positions":[]}\n'
+        ),
+        include: tuple[str, ...] = (
+            "command",
+            "stdout",
+            "stderr",
+            "exit_code",
+            "timeout",
+            "strict_mt5_script",
+            "execution",
+        ),
+    ) -> tuple[str, str]:
+        strict_script = b"print('LPFS_GATE1_MT5_JSON={\"account_info\":\"OK\",\"counts\":{\"orders\":0,\"positions\":0},\"strategy_positions\":[]}')\n"
+        strict_sha = hashlib.sha256(strict_script).hexdigest()
+        command = bounded_status_collector.render_command(
+            bounded_status_collector.build_remote_strict_mt5_command(
+                ssh_alias="lpfs-vps",
+                python_path=r"C:\TradeAutomation\venv\Scripts\python.exe",
+                expected_strict_mt5_script_sha256=strict_sha,
+            )
+        )
+        command_path = root / f"{step}.command.txt"
+        command_path.write_text(command, encoding="utf-8")
+        command_sha = verifier._sha256(command_path)
+        stdout = (
+            f"LPFS_STRICT_MT5_SCRIPT_SHA256_VERIFIED={strict_sha}\n"
+            + (
+                f"LPFS_STRICT_MT5_SCRIPT_SHA256_VERIFIED={strict_sha}\n"
+                if duplicate_marker
+                else ""
+            )
+            + payload
+        )
+        execution = {
+            "bundle_kind": verifier.STRICT_MT5_BUNDLE_KIND,
+            "command_hash_matches_expected": True,
+            "command_length": len(command),
+            "command_length_within_safe_threshold": True,
+            "command_sha256": command_sha,
+            "execution_attempted": True,
+            "exit_code": exit_code,
+            "expected_command_sha256": command_sha,
+            "expected_strict_mt5_script_sha256": strict_sha,
+            "remote_strict_mt5_script_sha256_verified": True,
+            "schema_version": verifier.STRICT_MT5_EXECUTION_SCHEMA_VERSION,
+            "stderr_empty": not bool(stderr),
+            "stdout_nonempty": True,
+            "strict_mt5_script_hash_matches_expected": True,
+            "strict_mt5_script_sha256": strict_sha,
+            "strict_mt5_script_source": verifier.STRICT_MT5_SOURCE,
+            "timed_out": timed_out,
+            "timeout_seconds": 30,
+        }
+        values: dict[str, str | bytes] = {
+            "command": command,
+            "stdout": stdout,
+            "stderr": stderr,
+            "exit_code": f"{exit_code}\n",
+            "timeout": f"{str(timed_out).lower()}\n",
+            "strict_mt5_script": strict_script,
+            "execution": json.dumps(execution),
+        }
+        for label in include:
+            path = root / (
+                f"{step}.py"
+                if label == "strict_mt5_script"
+                else f"{step}.execution.json"
+                if label == "execution"
+                else f"{step}.{label}.txt"
+            )
+            payload_value = values[label]
+            if isinstance(payload_value, bytes):
+                path.write_bytes(payload_value)
+            else:
+                path.write_text(payload_value, encoding="utf-8")
+        if "command" not in include:
+            command_path.unlink(missing_ok=True)
+        return command_sha, strict_sha
+
     def _write_manifest_from_files(self, root: Path, *, result: str = "PASS", excluded: tuple[str, ...] = ()) -> None:
         files = []
         for path in sorted(root.iterdir()):
@@ -368,6 +458,35 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             required_expectation_fields=["ok", "nested.count"],
             expected_command_sha256=command_sha,
             expected_compact_script_sha256=compact_sha,
+            declared_artifacts=manifest["declared_artifacts"],
+        )
+
+    def _verify_strict_mt5_bundle(
+        self,
+        root: Path,
+        command_sha: str,
+        strict_sha: str,
+    ) -> dict[str, object]:
+        self._manifest(root)
+        manifest = verifier.verify_manifest(root)
+        return verifier.verify_strict_mt5_bundle(
+            root,
+            "strict_mt5_probe",
+            "LPFS_GATE1_MT5_JSON=",
+            expectations={
+                "account_info": "OK",
+                "counts.orders": 0,
+                "counts.positions": 0,
+                "strategy_positions": [],
+            },
+            required_expectation_fields=[
+                "account_info",
+                "counts.orders",
+                "counts.positions",
+                "strategy_positions",
+            ],
+            expected_command_sha256=command_sha,
+            expected_strict_mt5_script_sha256=strict_sha,
             declared_artifacts=manifest["declared_artifacts"],
         )
 
@@ -548,6 +667,109 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
                 )
                 self.assertEqual(result["status"], "STOPPED")
 
+    def test_strict_mt5_bundle_passes_with_stdin_script_transport(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            command_sha, strict_sha = self._strict_mt5_bundle(root)
+            result = self._verify_strict_mt5_bundle(root, command_sha, strict_sha)
+            self.assertEqual(result["status"], "PASS")
+            self.assertEqual(result["execution"]["strict_mt5_script_sha256"], strict_sha)
+            command = (root / "strict_mt5_probe.command.txt").read_text(encoding="utf-8")
+            script = (root / "strict_mt5_probe.py").read_text(encoding="utf-8")
+            self.assertLess(len(command), verifier.STRICT_MT5_COMMAND_SAFE_LENGTH)
+            self.assertNotIn(script.strip(), command)
+            self.assertNotIn(base64.b64encode(script.encode("utf-8")).decode("ascii"), command)
+            self.assertNotIn("import base64;exec", command)
+
+    def test_strict_mt5_bundle_fails_closed_on_incomplete_artifacts(self) -> None:
+        cases = (
+            ("missing command", ("stdout", "stderr", "exit_code", "timeout", "strict_mt5_script", "execution")),
+            ("missing stdout", ("command", "stderr", "exit_code", "timeout", "strict_mt5_script", "execution")),
+            ("missing script", ("command", "stdout", "stderr", "exit_code", "timeout", "execution")),
+            ("missing execution", ("command", "stdout", "stderr", "exit_code", "timeout", "strict_mt5_script")),
+        )
+        for label, include in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                command_sha, strict_sha = self._strict_mt5_bundle(root, include=include)
+                result = self._verify_strict_mt5_bundle(root, command_sha, strict_sha)
+                self.assertEqual(result["status"], "STOPPED")
+                self.assertIn("missing", " ".join(result["failures"]))
+
+    def test_strict_mt5_bundle_rejects_tampered_artifacts(self) -> None:
+        mutations = {
+            "command": lambda root: (root / "strict_mt5_probe.command.txt").write_text(
+                "ssh lane C:\\TradeAutomation\\venv\\Scripts\\python.exe -c \"import base64;exec(b'')\"\n",
+                encoding="utf-8",
+            ),
+            "script": lambda root: (root / "strict_mt5_probe.py").write_text("print('tampered')\n", encoding="utf-8"),
+            "stdout": lambda root: (root / "strict_mt5_probe.stdout.txt").write_text(
+                'LPFS_STRICT_MT5_SCRIPT_SHA256_VERIFIED=0000\nLPFS_GATE1_MT5_JSON={"account_info":"OK","counts":{"orders":0,"positions":0},"strategy_positions":[]}\n',
+                encoding="utf-8",
+            ),
+            "stderr": lambda root: (root / "strict_mt5_probe.stderr.txt").write_text(
+                "SyntaxError: invalid syntax\n",
+                encoding="utf-8",
+            ),
+            "exit_code": lambda root: (root / "strict_mt5_probe.exit_code.txt").write_text("1\n", encoding="utf-8"),
+            "timeout": lambda root: (root / "strict_mt5_probe.timeout.txt").write_text("true\n", encoding="utf-8"),
+            "execution": lambda root: (root / "strict_mt5_probe.execution.json").write_text("{}", encoding="utf-8"),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                command_sha, strict_sha = self._strict_mt5_bundle(root)
+                self._manifest(root)
+                mutate(root)
+                manifest = verifier.verify_manifest(root)
+                result = verifier.verify_strict_mt5_bundle(
+                    root,
+                    "strict_mt5_probe",
+                    "LPFS_GATE1_MT5_JSON=",
+                    expectations={
+                        "account_info": "OK",
+                        "counts.orders": 0,
+                        "counts.positions": 0,
+                        "strategy_positions": [],
+                    },
+                    required_expectation_fields=[
+                        "account_info",
+                        "counts.orders",
+                        "counts.positions",
+                        "strategy_positions",
+                    ],
+                    expected_command_sha256=command_sha,
+                    expected_strict_mt5_script_sha256=strict_sha,
+                    declared_artifacts=manifest["declared_artifacts"],
+                )
+                self.assertEqual(result["status"], "STOPPED")
+
+    def test_strict_mt5_bundle_rejects_duplicate_json_keys_and_inventory_drift(self) -> None:
+        cases = (
+            (
+                "duplicate keys",
+                'LPFS_GATE1_MT5_JSON={"account_info":"OK","account_info":"OK","counts":{"orders":0,"positions":0},"strategy_positions":[]}\n',
+                "invalid JSON",
+            ),
+            (
+                "non-standard JSON",
+                'LPFS_GATE1_MT5_JSON={"account_info":"OK","counts":{"orders":NaN,"positions":0},"strategy_positions":[]}\n',
+                "invalid JSON",
+            ),
+            (
+                "inventory drift",
+                'LPFS_GATE1_MT5_JSON={"account_info":"OK","counts":{"orders":0,"positions":0},"strategy_positions":[{"ticket":1}]}\n',
+                "safety expectation mismatch",
+            ),
+        )
+        for label, payload, pattern in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                command_sha, strict_sha = self._strict_mt5_bundle(root, payload=payload)
+                result = self._verify_strict_mt5_bundle(root, command_sha, strict_sha)
+                self.assertEqual(result["status"], "STOPPED")
+                self.assertIn(pattern, " ".join(result["failures"]))
+
     def test_unsafe_payload_stops(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -621,6 +843,8 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
         )
         self.assertEqual(gate1["steps"]["FTMO/bounded_status"]["contract_version"], 2)
         self.assertEqual(gate1["steps"]["IC/bounded_status"]["contract_version"], 2)
+        self.assertEqual(gate1["steps"]["FTMO/strict_mt5_probe"]["contract_version"], 4)
+        self.assertEqual(gate1["steps"]["IC/strict_mt5_probe"]["contract_version"], 4)
         self.assertTrue(gate1["steps"]["FTMO/compact_containment"]["expectations"]["tracked_worktree_clean"])
         self.assertTrue(gate1["steps"]["IC/compact_containment"]["expectations"]["tracked_worktree_clean"])
         self.assertEqual(
@@ -949,6 +1173,14 @@ class Stage5BoundedStatusCollectorTests(unittest.TestCase):
         )
         return hashlib.sha256(bounded_status_collector.render_command(command).encode("utf-8")).hexdigest()
 
+    def _expected_strict_mt5_command_sha(self, *, ssh_alias: str, python_path: str, strict_sha: str) -> str:
+        command = bounded_status_collector.build_remote_strict_mt5_command(
+            ssh_alias=ssh_alias,
+            python_path=python_path,
+            expected_strict_mt5_script_sha256=strict_sha,
+        )
+        return hashlib.sha256(bounded_status_collector.render_command(command).encode("utf-8")).hexdigest()
+
     def test_remote_command_executes_embedded_hash_approved_status_implementation(self) -> None:
         implementation = b"Write-Output 'LPFS live status'\n"
         args = self._collector_args(implementation)
@@ -1213,6 +1445,206 @@ class Stage5BoundedStatusCollectorTests(unittest.TestCase):
                     )
             run.assert_not_called()
 
+    def test_strict_mt5_command_uses_stdin_and_stays_below_safe_length(self) -> None:
+        script = b"print('LPFS_GATE1_MT5_JSON={}')\n"
+        strict_sha = hashlib.sha256(script).hexdigest()
+        command = bounded_status_collector.build_remote_strict_mt5_command(
+            ssh_alias="lpfs-vps",
+            python_path=r"C:\TradeAutomation\venv\Scripts\python.exe",
+            expected_strict_mt5_script_sha256=strict_sha,
+        )
+        rendered = bounded_status_collector.render_command(command)
+        bootstrap = base64.b64decode(command[-1]).decode("utf-16le")
+        self.assertLess(len(rendered), bounded_status_collector.STRICT_MT5_COMMAND_SAFE_LENGTH)
+        self.assertIn("[Console]::In.ReadToEnd()", bootstrap)
+        self.assertIn(strict_sha, bootstrap)
+        self.assertIn(r"C:\TradeAutomation\venv\Scripts\python.exe", bootstrap)
+        self.assertIn("LPFS_STRICT_MT5_SCRIPT_SHA256_VERIFIED", bootstrap)
+        self.assertNotIn(script.decode("utf-8").strip(), rendered)
+        self.assertNotIn(base64.b64encode(script).decode("ascii"), rendered)
+        self.assertNotIn("import base64;exec", rendered)
+        self.assertNotIn("Set-Content", bootstrap)
+
+    def test_strict_mt5_collector_preserves_success_bundle(self) -> None:
+        script = b"print('LPFS_GATE1_MT5_JSON={}')\n"
+        strict_sha = hashlib.sha256(script).hexdigest()
+        stdout = f"LPFS_STRICT_MT5_SCRIPT_SHA256_VERIFIED={strict_sha}\nLPFS_GATE1_MT5_JSON={{}}\n"
+        completed = subprocess.CompletedProcess(args=[], returncode=0, stdout=stdout, stderr="")
+        python_path = r"C:\TradeAutomation\venv\Scripts\python.exe"
+        expected_command_sha = self._expected_strict_mt5_command_sha(
+            ssh_alias="lpfs-vps",
+            python_path=python_path,
+            strict_sha=strict_sha,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            strict_script = root / "strict_mt5_probe.py"
+            strict_script.write_bytes(script)
+            output = root / "bundle"
+            with mock.patch.object(bounded_status_collector.subprocess, "run", return_value=completed):
+                result = bounded_status_collector.collect_strict_mt5_bundle(
+                    output_root=output,
+                    step_name="FTMO/strict_mt5_probe",
+                    ssh_alias="lpfs-vps",
+                    python_path=python_path,
+                    strict_mt5_script_path=strict_script,
+                    expected_strict_mt5_script_sha256=strict_sha,
+                    expected_command_sha256=expected_command_sha,
+                    timeout_seconds=30,
+                )
+            self.assertEqual(result["status"], "PASS")
+            execution = json.loads(
+                (output / "FTMO" / "strict_mt5_probe.execution.json").read_text(encoding="utf-8")
+            )
+            self.assertTrue(execution["execution_attempted"])
+            self.assertTrue(execution["remote_strict_mt5_script_sha256_verified"])
+            command = (output / "FTMO" / "strict_mt5_probe.command.txt").read_text(encoding="utf-8")
+            self.assertLess(len(command), bounded_status_collector.STRICT_MT5_COMMAND_SAFE_LENGTH)
+            self.assertNotIn(script.decode("utf-8").strip(), command)
+
+    def test_strict_mt5_hash_or_parameter_mismatch_stops_before_ssh_execution(self) -> None:
+        script = b"print('LPFS_GATE1_MT5_JSON={}')\n"
+        strict_sha = hashlib.sha256(script).hexdigest()
+        wrong_strict_sha = "0" * 64
+        python_path = r"C:\TradeAutomation\venv\Scripts\python.exe"
+        baseline_command_sha = self._expected_strict_mt5_command_sha(
+            ssh_alias="lpfs-vps",
+            python_path=python_path,
+            strict_sha=strict_sha,
+        )
+        wrong_script_command_sha = self._expected_strict_mt5_command_sha(
+            ssh_alias="lpfs-vps",
+            python_path=python_path,
+            strict_sha=wrong_strict_sha,
+        )
+        cases = {
+            "wrong command hash": {
+                "expected_strict_mt5_script_sha256": strict_sha,
+                "expected_command_sha256": "1" * 64,
+            },
+            "wrong script hash": {
+                "expected_strict_mt5_script_sha256": wrong_strict_sha,
+                "expected_command_sha256": wrong_script_command_sha,
+            },
+            "wrong ssh alias": {
+                "ssh_alias": "wrong-vps",
+                "expected_strict_mt5_script_sha256": strict_sha,
+                "expected_command_sha256": baseline_command_sha,
+            },
+            "wrong python path": {
+                "python_path": r"C:\WrongPython\python.exe",
+                "expected_strict_mt5_script_sha256": strict_sha,
+                "expected_command_sha256": baseline_command_sha,
+            },
+        }
+        for label, overrides in cases.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                strict_script = root / "strict_mt5_probe.py"
+                strict_script.write_bytes(script)
+                kwargs = {
+                    "output_root": root / "bundle",
+                    "step_name": "FTMO/strict_mt5_probe",
+                    "ssh_alias": "lpfs-vps",
+                    "python_path": python_path,
+                    "strict_mt5_script_path": strict_script,
+                    "expected_strict_mt5_script_sha256": strict_sha,
+                    "expected_command_sha256": baseline_command_sha,
+                    "timeout_seconds": 30,
+                }
+                kwargs.update(overrides)
+                with mock.patch.object(bounded_status_collector.subprocess, "run") as run:
+                    result = bounded_status_collector.collect_strict_mt5_bundle(**kwargs)
+                run.assert_not_called()
+                self.assertEqual(result["status"], "STOPPED")
+                self.assertIn("SSH was not invoked", result["reason"])
+                execution = json.loads(
+                    (root / "bundle" / "FTMO" / "strict_mt5_probe.execution.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+                self.assertFalse(execution["execution_attempted"])
+
+    def test_strict_mt5_cli_dispatches_to_reviewed_collector_path(self) -> None:
+        script = b"print('LPFS_GATE1_MT5_JSON={}')\n"
+        strict_sha = hashlib.sha256(script).hexdigest()
+        python_path = r"C:\TradeAutomation\venv\Scripts\python.exe"
+        expected_command_sha = self._expected_strict_mt5_command_sha(
+            ssh_alias="lpfs-vps",
+            python_path=python_path,
+            strict_sha=strict_sha,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            strict_script = root / "strict_mt5_probe.py"
+            strict_script.write_bytes(script)
+            output_root = root / "bundle"
+            with mock.patch.object(
+                bounded_status_collector,
+                "collect_strict_mt5_bundle",
+                return_value={"status": "PASS", "schema_version": 1},
+            ) as collect, contextlib.redirect_stdout(io.StringIO()):
+                exit_code = bounded_status_collector.main(
+                    [
+                        "--mode",
+                        "strict-mt5",
+                        "--output-root",
+                        str(output_root),
+                        "--step-name",
+                        "FTMO/strict_mt5_probe",
+                        "--ssh-alias",
+                        "lpfs-vps",
+                        "--python-path",
+                        python_path,
+                        "--strict-mt5-script",
+                        str(strict_script),
+                        "--expected-strict-mt5-script-sha256",
+                        strict_sha,
+                        "--expected-command-sha256",
+                        expected_command_sha,
+                        "--timeout-seconds",
+                        "30",
+                        "--acknowledgement",
+                        bounded_status_collector.READ_ONLY_ACKNOWLEDGEMENT,
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            collect.assert_called_once_with(
+                output_root=str(output_root),
+                step_name="FTMO/strict_mt5_probe",
+                ssh_alias="lpfs-vps",
+                python_path=python_path,
+                strict_mt5_script_path=str(strict_script),
+                expected_strict_mt5_script_sha256=strict_sha,
+                expected_command_sha256=expected_command_sha,
+                timeout_seconds=30,
+            )
+
+    def test_strict_mt5_cli_requires_script_hash_and_python_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            with mock.patch.object(bounded_status_collector.subprocess, "run") as run:
+                with self.assertRaisesRegex(SystemExit, "strict-mt5 mode requires"):
+                    bounded_status_collector.main(
+                        [
+                            "--mode",
+                            "strict-mt5",
+                            "--output-root",
+                            str(root / "bundle"),
+                            "--step-name",
+                            "FTMO/strict_mt5_probe",
+                            "--ssh-alias",
+                            "lpfs-vps",
+                            "--expected-command-sha256",
+                            "0" * 64,
+                            "--timeout-seconds",
+                            "30",
+                            "--acknowledgement",
+                            bounded_status_collector.READ_ONLY_ACKNOWLEDGEMENT,
+                        ]
+                    )
+            run.assert_not_called()
+
 
 class Stage5Gate1V2ProducerTests(unittest.TestCase):
     def test_complete_six_step_bundle_is_local_only_and_contract_verified(self) -> None:
@@ -1318,9 +1750,19 @@ class Stage5Gate1V2ProducerTests(unittest.TestCase):
                         profile["steps"][f"{lane}/bounded_status"]["expected_command_sha256"],
                     )
                     strict_script = (root / lane / "strict_mt5_probe.py").read_text(encoding="utf-8")
-                    self.assertIn(
-                        base64.b64encode(strict_script.encode("utf-8")).decode("ascii"),
-                        (root / lane / "strict_mt5_probe.command.txt").read_text(encoding="utf-8"),
+                    strict_command_path = root / lane / "strict_mt5_probe.command.txt"
+                    strict_command = strict_command_path.read_text(encoding="utf-8")
+                    self.assertLess(len(strict_command), verifier.STRICT_MT5_COMMAND_SAFE_LENGTH)
+                    self.assertNotIn(strict_script.strip(), strict_command)
+                    self.assertNotIn(base64.b64encode(strict_script.encode("utf-8")).decode("ascii"), strict_command)
+                    self.assertNotIn("import base64;exec", strict_command)
+                    self.assertEqual(
+                        verifier._sha256(strict_command_path),
+                        profile["steps"][f"{lane}/strict_mt5_probe"]["expected_command_sha256"],
+                    )
+                    self.assertEqual(
+                        hashlib.sha256(strict_script.encode("utf-8")).hexdigest(),
+                        profile["steps"][f"{lane}/strict_mt5_probe"]["expected_strict_mt5_script_sha256"],
                     )
                     for required_read in (
                         "account_info()",
@@ -1461,6 +1903,44 @@ class Stage5PreExecutionContractTests(unittest.TestCase):
             path.write_text(json.dumps(document), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "pinned reviewed candidate"):
                 pre_execution.load_read_only_contract(path, "stage5_gate1_dual_lane_read_only_v1")
+
+    def test_pre_hardening_gate1_v2_inline_strict_contract_hash_is_rejected_by_default(self) -> None:
+        stale_contract_sha = "f4a602aac651220fb599324edd9c284aaa19071737d7472f4468efc2012cc057"
+        self.assertEqual(
+            pre_execution.PINNED_READ_ONLY_CONTRACT_DOCUMENT_SHA256S,
+            {
+                "947105e7a50c46b582f7f0ed336b6a602c38d7a931b9cbc4d1f5d7f4ed72ba10",
+                "25c6fac9f94cb2018a56b34ef132bb1733292462ebcd773342a1a92e5aef4525",
+            },
+        )
+        self.assertNotIn(stale_contract_sha, pre_execution.PINNED_READ_ONLY_CONTRACT_DOCUMENT_SHA256S)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "contract.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "contracts": {
+                            "stage5_gate1_v2_complete_read_only_v1": {
+                                "contract_version": 1,
+                                "gate": "stage5_gate1",
+                                "required_artifacts": ["FTMO/strict_mt5_probe.command.txt"],
+                                "artifacts": {
+                                    "FTMO/strict_mt5_probe.command.txt": {
+                                        "bytes": 5268,
+                                        "sha256": "0aa307a82b0555624a2bbe9e88af2f21d20cc86fad16ca98166bfc774650daef",
+                                    }
+                                },
+                            }
+                        },
+                    },
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch.object(pre_execution, "_sha256", return_value=stale_contract_sha):
+                with self.assertRaisesRegex(ValueError, "pinned reviewed candidate"):
+                    pre_execution.load_read_only_contract(path, "stage5_gate1_v2_complete_read_only_v1")
 
     def test_tracked_pre_execution_contracts_are_versioned_and_complete(self) -> None:
         gate1 = pre_execution.load_read_only_contract(

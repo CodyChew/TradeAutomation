@@ -17,6 +17,7 @@ from typing import Any, Sequence
 
 BOUNDED_STATUS_BUNDLE_KIND = "hash_approved_bounded_status_v1"
 COMPACT_CONTAINMENT_BUNDLE_KIND = "hash_approved_compact_containment_v1"
+STRICT_MT5_BUNDLE_KIND = "hash_approved_strict_mt5_v1"
 EXECUTION_SCHEMA_VERSION = 1
 READ_ONLY_ACKNOWLEDGEMENT = "I_ACCEPT_HASH_APPROVED_READ_ONLY_STATUS_COLLECTION"
 SAFE_STEP_RE = re.compile(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*")
@@ -24,6 +25,7 @@ SHA256_RE = re.compile(r"[0-9a-f]{64}")
 EMBEDDED_SCRIPT_SOURCE = "embedded_hash_approved_scriptblock"
 STDIN_SCRIPT_SOURCE = "stdin_hash_approved_scriptblock"
 COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH = 4000
+STRICT_MT5_COMMAND_SAFE_LENGTH = 4000
 
 
 def _sha256_bytes(payload: bytes) -> str:
@@ -166,6 +168,57 @@ Write-Output 'LPFS_COMPACT_CONTAINMENT_SCRIPT_SHA256_VERIFIED={expected}'
 $ScriptText = [Text.Encoding]::UTF8.GetString($ScriptBytes)
 $ScriptBlock = [ScriptBlock]::Create($ScriptText)
 & $ScriptBlock
+"""
+    return [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        ssh_alias,
+        "powershell",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-EncodedCommand",
+        _encode_powershell(bootstrap),
+    ]
+
+
+def build_remote_strict_mt5_command(
+    *,
+    ssh_alias: str,
+    python_path: str,
+    expected_strict_mt5_script_sha256: str,
+) -> list[str]:
+    """Build a short read-only SSH command that executes reviewed MT5 probe bytes from stdin."""
+    expected = expected_strict_mt5_script_sha256.lower()
+    if not SHA256_RE.fullmatch(expected):
+        raise ValueError("expected strict MT5 script SHA-256 must be 64 lowercase hexadecimal characters")
+    if not ssh_alias or any(character.isspace() for character in ssh_alias):
+        raise ValueError("SSH alias must be a nonempty token without whitespace")
+    if not python_path or any(character in python_path for character in "\r\n"):
+        raise ValueError("Python path must be a nonempty single-line value")
+
+    bootstrap = f"""$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+$PythonPath = {_powershell_quote(python_path)}
+$EncodedScript = [Console]::In.ReadToEnd()
+$ScriptBytes = [Convert]::FromBase64String($EncodedScript)
+$Hasher = [Security.Cryptography.SHA256]::Create()
+try {{
+    $ActualHash = ([BitConverter]::ToString($Hasher.ComputeHash($ScriptBytes))).Replace('-', '').ToLowerInvariant()
+}} finally {{
+    $Hasher.Dispose()
+}}
+if ($ActualHash -ne '{expected}') {{
+    throw "LPFS strict MT5 script hash mismatch: $ActualHash"
+}}
+Write-Output 'LPFS_STRICT_MT5_SCRIPT_SHA256_VERIFIED={expected}'
+$ScriptText = [Text.Encoding]::UTF8.GetString($ScriptBytes)
+$ScriptText | & $PythonPath -
+if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}
 """
     return [
         "ssh",
@@ -538,9 +591,163 @@ def collect_compact_containment_bundle(
     }
 
 
+def collect_strict_mt5_bundle(
+    *,
+    output_root: str | Path,
+    step_name: str,
+    ssh_alias: str,
+    python_path: str,
+    strict_mt5_script_path: str | Path,
+    expected_strict_mt5_script_sha256: str,
+    expected_command_sha256: str,
+    timeout_seconds: int,
+) -> dict[str, Any]:
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive")
+    expected_command = expected_command_sha256.lower()
+    expected_script = expected_strict_mt5_script_sha256.lower()
+    if not SHA256_RE.fullmatch(expected_command):
+        raise ValueError("expected command SHA-256 must be 64 lowercase hexadecimal characters")
+    if not SHA256_RE.fullmatch(expected_script):
+        raise ValueError("expected strict MT5 script SHA-256 must be 64 lowercase hexadecimal characters")
+
+    script_path = Path(strict_mt5_script_path)
+    script_bytes = script_path.read_bytes()
+    actual_script_sha256 = _sha256_bytes(script_bytes)
+    command = build_remote_strict_mt5_command(
+        ssh_alias=ssh_alias,
+        python_path=python_path,
+        expected_strict_mt5_script_sha256=expected_script,
+    )
+    command_text = render_command(command)
+    command_sha256 = _sha256_text(command_text)
+    command_length = len(command_text)
+    verification_marker = f"LPFS_STRICT_MT5_SCRIPT_SHA256_VERIFIED={expected_script}"
+    base = _safe_step_base(Path(output_root), step_name)
+    paths = {
+        "command": base.with_name(base.name + ".command.txt"),
+        "stdout": base.with_name(base.name + ".stdout.txt"),
+        "stderr": base.with_name(base.name + ".stderr.txt"),
+        "exit_code": base.with_name(base.name + ".exit_code.txt"),
+        "timeout": base.with_name(base.name + ".timeout.txt"),
+        "strict_mt5_script": base.with_name(base.name + ".py"),
+        "execution": base.with_name(base.name + ".execution.json"),
+    }
+
+    preflight_failures: list[str] = []
+    if command_sha256 != expected_command:
+        preflight_failures.append("generated SSH command SHA-256 does not match the reviewed expected command")
+    if actual_script_sha256 != expected_script:
+        preflight_failures.append("strict MT5 script SHA-256 does not match the reviewed expected script")
+    if command_length >= STRICT_MT5_COMMAND_SAFE_LENGTH:
+        preflight_failures.append(
+            f"generated SSH command length {command_length} exceeds safe threshold "
+            f"{STRICT_MT5_COMMAND_SAFE_LENGTH}"
+        )
+
+    def execution_payload(*, attempted: bool, exit_code: int | None, timed_out: bool, stdout: str, stderr: str) -> dict[str, Any]:
+        return {
+            "bundle_kind": STRICT_MT5_BUNDLE_KIND,
+            "command_hash_matches_expected": command_sha256 == expected_command,
+            "command_length": command_length,
+            "command_length_within_safe_threshold": command_length < STRICT_MT5_COMMAND_SAFE_LENGTH,
+            "command_sha256": command_sha256,
+            "execution_attempted": attempted,
+            "exit_code": exit_code,
+            "expected_command_sha256": expected_command,
+            "expected_strict_mt5_script_sha256": expected_script,
+            "remote_strict_mt5_script_sha256_verified": verification_marker in stdout.splitlines(),
+            "schema_version": EXECUTION_SCHEMA_VERSION,
+            "stderr_empty": not bool(stderr.strip()),
+            "stdout_nonempty": bool(stdout.strip()),
+            "strict_mt5_script_hash_matches_expected": actual_script_sha256 == expected_script,
+            "strict_mt5_script_sha256": actual_script_sha256,
+            "strict_mt5_script_source": STDIN_SCRIPT_SOURCE,
+            "timed_out": timed_out,
+            "timeout_seconds": timeout_seconds,
+        }
+
+    if preflight_failures:
+        execution = execution_payload(attempted=False, exit_code=None, timed_out=False, stdout="", stderr="")
+        _atomic_write_text(paths["command"], command_text)
+        _atomic_write_text(paths["stdout"], "")
+        _atomic_write_text(paths["stderr"], "")
+        _atomic_write_text(paths["exit_code"], "NOT_EXECUTED\n")
+        _atomic_write_text(paths["timeout"], "false\n")
+        _atomic_write_bytes(paths["strict_mt5_script"], script_bytes)
+        _atomic_write_json(paths["execution"], execution)
+        return {
+            "schema_version": 1,
+            "status": "STOPPED",
+            "reason": "; ".join(preflight_failures) + "; SSH was not invoked",
+            "step": step_name,
+            "execution": execution,
+            "artifacts": {key: str(value) for key, value in paths.items()},
+        }
+
+    timed_out = False
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            check=False,
+            input=base64.b64encode(script_bytes).decode("ascii"),
+            text=True,
+            timeout=timeout_seconds,
+        )
+        stdout = completed.stdout
+        stderr = completed.stderr
+        exit_code = completed.returncode
+    except subprocess.TimeoutExpired as exc:
+        timed_out = True
+        stdout = _timeout_text(exc.stdout)
+        stderr = _timeout_text(exc.stderr)
+        exit_code = 124
+
+    execution = execution_payload(
+        attempted=True,
+        exit_code=exit_code,
+        timed_out=timed_out,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    _atomic_write_text(paths["command"], command_text)
+    _atomic_write_text(paths["stdout"], stdout)
+    _atomic_write_text(paths["stderr"], stderr)
+    _atomic_write_text(paths["exit_code"], f"{exit_code}\n")
+    _atomic_write_text(paths["timeout"], f"{str(timed_out).lower()}\n")
+    _atomic_write_bytes(paths["strict_mt5_script"], script_bytes)
+    _atomic_write_json(paths["execution"], execution)
+
+    passed = (
+        not timed_out
+        and exit_code == 0
+        and bool(stdout.strip())
+        and not bool(stderr.strip())
+        and execution["remote_strict_mt5_script_sha256_verified"]
+    )
+    return {
+        "schema_version": 1,
+        "status": "PASS" if passed else "STOPPED",
+        "reason": (
+            "strict MT5 command completed with the stdin reviewed script"
+            if passed
+            else "strict MT5 command failed one or more mandatory safety checks"
+        ),
+        "step": step_name,
+        "execution": execution,
+        "artifacts": {key: str(value) for key, value in paths.items()},
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", choices=("bounded-status", "compact-containment"), default="bounded-status")
+    parser.add_argument(
+        "--mode",
+        choices=("bounded-status", "compact-containment", "strict-mt5"),
+        default="bounded-status",
+    )
     parser.add_argument("--output-root", required=True)
     parser.add_argument("--step-name", required=True)
     parser.add_argument("--ssh-alias", required=True)
@@ -548,6 +755,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-status-sha256")
     parser.add_argument("--compact-script")
     parser.add_argument("--expected-compact-script-sha256")
+    parser.add_argument("--strict-mt5-script")
+    parser.add_argument("--expected-strict-mt5-script-sha256")
+    parser.add_argument("--python-path")
     parser.add_argument("--expected-command-sha256", required=True)
     parser.add_argument("--runtime-root")
     parser.add_argument("--state-file-name")
@@ -602,7 +812,7 @@ def main(argv: list[str] | None = None) -> int:
             log_lines=args.log_lines,
             timeout_seconds=args.timeout_seconds,
         )
-    else:
+    elif args.mode == "compact-containment":
         _require_args(args, ["compact_script", "expected_compact_script_sha256"])
         result = collect_compact_containment_bundle(
             output_root=args.output_root,
@@ -610,6 +820,18 @@ def main(argv: list[str] | None = None) -> int:
             ssh_alias=args.ssh_alias,
             compact_script_path=args.compact_script,
             expected_compact_script_sha256=args.expected_compact_script_sha256,
+            expected_command_sha256=args.expected_command_sha256,
+            timeout_seconds=args.timeout_seconds,
+        )
+    else:
+        _require_args(args, ["strict_mt5_script", "expected_strict_mt5_script_sha256", "python_path"])
+        result = collect_strict_mt5_bundle(
+            output_root=args.output_root,
+            step_name=args.step_name,
+            ssh_alias=args.ssh_alias,
+            python_path=args.python_path,
+            strict_mt5_script_path=args.strict_mt5_script,
+            expected_strict_mt5_script_sha256=args.expected_strict_mt5_script_sha256,
             expected_command_sha256=args.expected_command_sha256,
             timeout_seconds=args.timeout_seconds,
         )

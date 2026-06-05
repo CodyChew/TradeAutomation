@@ -15,7 +15,9 @@ from typing import Any
 
 from collect_lpfs_bounded_status_bundle import (
     COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH,
+    STRICT_MT5_COMMAND_SAFE_LENGTH,
     build_remote_compact_containment_command,
+    build_remote_strict_mt5_command,
     build_remote_status_command,
     render_command,
 )
@@ -390,20 +392,34 @@ def _build_into(root: Path, profile_path: Path, status_script_path: Path) -> dic
         artifacts.append(bounded_command_path)
 
         strict_script = _strict_mt5_script(lane)
-        strict_command = _ssh_command(
-            lane["ssh_alias"],
-            [
-                lane["python_path"],
-                "-c",
-                "import base64;exec(base64.b64decode("
-                + repr(base64.b64encode(strict_script.encode("utf-8")).decode("ascii"))
-                + "))",
-            ],
+        strict_script_sha256 = _sha256_bytes(strict_script.encode("utf-8"))
+        strict_step = profile["steps"][f"{lane_name}/strict_mt5_probe"]
+        if strict_script_sha256 != strict_step.get("expected_strict_mt5_script_sha256"):
+            raise ValueError(
+                f"{lane_name} strict MT5 script hash differs from reviewed profile: "
+                f"expected={strict_step.get('expected_strict_mt5_script_sha256')} actual={strict_script_sha256}"
+            )
+        strict_command = build_remote_strict_mt5_command(
+            ssh_alias=lane["ssh_alias"],
+            python_path=lane["python_path"],
+            expected_strict_mt5_script_sha256=strict_script_sha256,
         )
+        strict_command_text = render_command(strict_command)
+        strict_command_sha256 = _sha256_bytes(strict_command_text.encode("utf-8"))
+        if strict_command_sha256 != strict_step.get("expected_command_sha256"):
+            raise ValueError(
+                f"{lane_name} strict MT5 command hash differs from reviewed profile: "
+                f"expected={strict_step.get('expected_command_sha256')} actual={strict_command_sha256}"
+            )
+        if len(strict_command_text) >= STRICT_MT5_COMMAND_SAFE_LENGTH:
+            raise ValueError(
+                f"{lane_name} strict MT5 command length {len(strict_command_text)} exceeds "
+                f"safe threshold {STRICT_MT5_COMMAND_SAFE_LENGTH}"
+            )
         strict_script_path = lane_root / "strict_mt5_probe.py"
         strict_command_path = lane_root / "strict_mt5_probe.command.txt"
         _write_text(strict_script_path, strict_script)
-        _write_text(strict_command_path, render_command(strict_command))
+        _write_text(strict_command_path, strict_command_text)
         artifacts.extend((strict_script_path, strict_command_path))
 
     receipts = [_artifact_receipt(path, root) for path in sorted(artifacts)]

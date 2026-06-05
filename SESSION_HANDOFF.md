@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-05 ICT after the offline LPFS Gate 1 v2
-compact-containment transport fix.
+Last updated: 2026-06-05 ICT after the offline LPFS Gate 1 v2 strict-MT5
+transport hardening patch.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -78,6 +78,17 @@ file, and the JSONL journal before making operational decisions.
   separate approval for a fresh dual-lane Gate 1 read-only collection followed
   by another stop for review. Do not request or execute FTMO Gate 3 before
   that gate passes.
+- Gate 1 v2 packet
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\gate1_v2_20260605_202849`
+  is `STOPPED`. Its manifest SHA-256 is
+  `fcbf76b75a98bc01f745d7f77a2523b6fc01b97f99b0c24aea118f5fc0bcd36f`.
+  The reviewed strict MT5 command artifacts were executed as inline
+  `python -c` payloads and both lanes failed before MT5 evidence was produced:
+  stderr shows Python received only `import` and raised `SyntaxError`. Compact
+  containment and bounded-status artifacts were not produced. No Gate 3
+  restart, watchdog start, task enablement, kill-switch clear,
+  reconciliation, canary, broker mutation, runtime-state edit, or journal
+  write occurred. Do not retry Gate 1 using the inline strict MT5 transport.
 - Offline structured-verifier hardening is review-only. It adds
   `scripts/build_lpfs_stage5_gate1_v2_pre_execution.py`, complete contract
   `stage5_gate1_v2_complete_read_only_v1`, and an expected-command SHA-256
@@ -93,13 +104,23 @@ file, and the JSONL journal before making operational decisions.
   remotely, and executes it in memory. Wrong compact command or script hashes
   write structured `STOPPED` with `execution_attempted=false`; SSH is not
   invoked. Any bounded-command alias, runtime-root, filename, log-filter, or
-  line-limit drift also writes structured `STOPPED` before SSH. The
+  line-limit drift also writes structured `STOPPED` before SSH. The strict MT5
+  probe now has the same stdin/hash-bound transport and `--mode strict-mt5`
+  collector path: the reviewed local `strict_mt5_probe.py` is sent over SSH
+  stdin, verified remotely by SHA-256, then piped into Python in memory. The
+  strict-MT5 verifier contract requires manifest-bound command, script,
+  stdout, stderr, exit-code, timeout, and execution metadata artifacts plus
+  exactly one script-verification marker and one `LPFS_GATE1_MT5_JSON=`
+  payload. The default pre-execution verifier allowlist no longer accepts the
+  stale pre-hardening Gate 1 v2 contract hash
+  `f4a602aac651220fb599324edd9c284aaa19071737d7472f4468efc2012cc057`,
+  which pinned the old inline strict-MT5 command. The
   independently verified
   pre-hardening full-suite baseline is `430` tests total (`428` passed, `2`
   intentional skips), correcting the prior wording that treated `428` as the
-  full-suite count. Current compact-transport and CLI focused verification
-  passed: focused module `48` tests; full LPFS suite `443` tests total
-  (`441` passed, `2` skipped); strict core coverage `6401` statements plus
+  full-suite count. Current compact/strict transport and CLI focused verification
+  passed: focused module `58` tests; full LPFS suite `454` tests total
+  (`452` passed, `2` skipped); strict core coverage `6401` statements plus
   `2192` branches at `100.00%`; final `git diff --check` passed with only
   line-ending warnings; scope audit shows only offline tooling, contracts,
   tests, and documentation changed.
