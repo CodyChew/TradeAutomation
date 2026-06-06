@@ -5,6 +5,24 @@ baseline. The pure contract still only creates a validated order intent. The
 live executor translates that intent to MT5 `order_check` and, only when
 explicit live-send config is enabled, `order_send`.
 
+## C-01 Live-Safety Hold
+
+Read `lpfs_c01_live_safety_release.md` before operating the live executor.
+During this release, MT5 Python `time` and `time_msc` values are parsed directly
+as UTC epochs for bars, ticks, positions, and deals. The compatibility wrapper
+named `broker_time_epoch_to_utc` is deprecated and no longer reinterprets
+epochs through a broker timezone.
+
+The live validator currently accepts only:
+
+```text
+live_send.market_recovery_mode="disabled"
+```
+
+Recovery code remains present for historical analysis and later review, but it
+cannot be enabled in production during this release. Re-enable it only through
+a separately reviewed C-02/C-04 release.
+
 Current basis:
 
 - Strategy mechanics: V13 LP3 take-all.
@@ -79,17 +97,17 @@ The MT5 pending request uses `ORDER_TIME_SPECIFIED` with extra padding after
 that boundary: 10 calendar days for H4/H8/H12, 14 days for D1, and 21 days for
 W1. This broker timestamp is not the strategy expiry; it is a fail-safe.
 
-## Default Live Market Recovery
+## Historical Live Market Recovery
 
 The historical baseline assumes the pending pullback order exists after the
 signal candle and can fill during the next six actual bars. Live trading can be
 more conservative when spread is too wide at first check: the runner may wait,
 then later discover the entry traded before the pending order could be placed.
 
-Current live default:
+Historical behavior before the C-01 hold:
 
 - `live_send.market_recovery_mode="better_than_entry_only"`;
-- rollback flag: `live_send.market_recovery_mode="disabled"`;
+- current enforced hold: `live_send.market_recovery_mode="disabled"`;
 - `live_send.market_recovery_deviation_points=0` by default, so market recovery
   does not silently accept worse slippage.
 
@@ -200,12 +218,12 @@ exact matching strategy pending order already exists, or a matching open
 position exists under the same strategy magic/comment, the runner adopts that
 broker item into local state and does not send a duplicate order.
 
-Manual deletion of a pending order in MT5 does not create a new signal. If the
-local live state still tracks the order, the next reconciliation emits a
-cancelled/missing lifecycle alert and removes the pending item from local
-tracking. The original signal key remains processed so the bot does not place a
-duplicate order unless state is intentionally reset or a future re-arm command
-is added.
+Manual deletion of a pending order in MT5 does not create a new signal. C-01
+reconciliation removes a stale local pending item only when broker history or
+validated MT5 broker history proves a terminal outcome. The C-01 release does
+not accept an operator-evidence fallback. Ambiguous or
+unresolved outcomes preserve local state and stop cleanup. The original signal
+key remains processed so the bot does not place a duplicate order.
 
 ## Live Status
 
@@ -213,7 +231,7 @@ The dry-run MT5 adapter builds around this contract and:
 
 - pulls broker symbol/account metadata;
 - pulls recent closed candles;
-- normalizes MT5 broker-time fields to UTC;
+- parses MT5 UTC epoch fields directly as UTC;
 - checks current bid/ask and spread;
 - runs `order_check` against the generated intent;
 - logs whether the order would be accepted or rejected;
@@ -259,9 +277,10 @@ It adds:
   `SELL_LIMIT` fills only when Bid is at or above the entry. Most MT5 candle
   charts show Bid OHLC, so a buy-limit chart low below entry is not proof that
   the order should already be filled;
-- late-start missed-entry recovery: after the signal candle, if the current or
+- historical late-start missed-entry recovery: after the signal candle, if the current or
   later MT5 bars already traded through the planned limit entry, the runner
-  attempts default-on better-than-entry market recovery. If current executable
+  could attempt better-than-entry market recovery before the C-01 recovery
+  hold. If current executable
   price is temporarily worse than the original entry, the runner records a
   WAITING event, does not mark the signal processed, and retries while the
   actual 6-bar window remains open;
@@ -311,9 +330,20 @@ It adds:
 - atomically written, restart-safe local state for processed signals, pending
   orders, active positions, sent notification keys, and last seen close deal.
   Broker-affecting state is persisted immediately after safety mutations;
+- C-01 schema-v2 state includes a legacy-loader tripwire, record-level
+  timestamp semantics, and mandatory atomic production replacement. An atomic
+  write failure activates `KILL_SWITCH` and exits with a terminal watchdog
+  code. Rollback after a v2 write or send is forward-fix only;
+- required `orders_get`, `positions_get`, `history_orders_get`, and
+  `history_deals_get` reads fail closed when MT5 returns `None`; `None` is
+  never interpreted as zero broker exposure;
 - reconciliation through MT5 open orders, open positions, historical orders,
   and deal history. Pending-to-position matching requires broker comment or
   historical order/deal linkage, not volume alone;
+- contained `--reconcile-only` runs atomically migrate validated clean v1
+  state to v2 with a deterministic no-op receipt even when no stale local
+  pending record exists. Retry runs preserve idempotency and backfill missing
+  receipt journal rows without reapplying the migration;
 - truthful close classification: TP and SL stay specific, while manual or
   ambiguous exits are reported as `TRADE CLOSED` with MT5 PnL/R;
 - best-effort runner start/stop process notifications so the operator can see

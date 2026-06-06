@@ -39,6 +39,7 @@ from .notifications import (
     notification_from_execution_decision,
 )
 from .signals import LPForceStrikeSignal, detect_lp_force_strike_signals
+from .timestamp_semantics import mt5_epoch_to_utc
 
 
 TIMEFRAME_TO_MT5_ATTR: dict[str, str] = {
@@ -428,12 +429,10 @@ def sanitize_for_logging(value: Any) -> Any:
 
 
 def broker_time_epoch_to_utc(raw_time: int | float | None, broker_timezone: str, *, unit: str = "s") -> pd.Timestamp | None:
-    """Convert MT5 broker-time epoch fields to canonical UTC timestamps."""
+    """Deprecated compatibility wrapper for direct MT5 UTC epoch parsing."""
 
-    if raw_time in (None, 0):
-        return None
-    timestamp = pd.Timestamp(int(raw_time), unit=unit, tz="UTC")
-    return timestamp.tz_localize(None).tz_localize(broker_timezone).tz_convert("UTC")
+    del broker_timezone
+    return mt5_epoch_to_utc(raw_time, unit=unit)
 
 
 def mt5_timeframe_constant(mt5_module: Any, timeframe: str) -> Any:
@@ -529,11 +528,23 @@ def market_snapshot_from_mt5(mt5_module: Any, symbol: str, *, broker_timezone: s
     ask = float(getattr(tick, "ask", 0.0) or 0.0)
     spread_points = None if point <= 0 else (ask - bid) / point
     raw_time_msc = getattr(tick, "time_msc", None)
+    raw_time = getattr(tick, "time", None)
     if raw_time_msc not in (None, 0):
         time_utc = broker_time_epoch_to_utc(raw_time_msc, broker_timezone, unit="ms")
+        timestamp_provenance = "mt5_time_msc"
     else:
-        time_utc = broker_time_epoch_to_utc(getattr(tick, "time", None), broker_timezone, unit="s")
-    return MT5MarketSnapshot(bid=bid, ask=ask, time_utc=time_utc, spread_points=spread_points)
+        time_utc = broker_time_epoch_to_utc(raw_time, broker_timezone, unit="s")
+        timestamp_provenance = "mt5_time" if time_utc is not None else "unavailable"
+    return MT5MarketSnapshot(
+        bid=bid,
+        ask=ask,
+        time_utc=time_utc,
+        spread_points=spread_points,
+        raw_mt5_time=None if raw_time in (None, 0) else int(raw_time),
+        raw_mt5_time_msc=None if raw_time_msc in (None, 0) else int(raw_time_msc),
+        timestamp_semantics_version="mt5_epoch_utc_v2",
+        timestamp_provenance=timestamp_provenance,
+    )
 
 
 def execution_safety_from_config(config: DryRunExecutorConfig) -> ExecutionSafetyLimits:
@@ -1028,6 +1039,10 @@ def append_market_snapshot(
         ask=market.ask,
         spread_points=market.spread_points,
         market_time_utc=None if market.time_utc is None else str(market.time_utc),
+        raw_mt5_time=market.raw_mt5_time,
+        raw_mt5_time_msc=market.raw_mt5_time_msc,
+        timestamp_semantics_version=market.timestamp_semantics_version,
+        timestamp_provenance=market.timestamp_provenance,
     )
 
 

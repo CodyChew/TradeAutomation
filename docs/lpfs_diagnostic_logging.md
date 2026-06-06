@@ -1,6 +1,6 @@
 # LPFS Diagnostic Logging
 
-Last updated: 2026-05-26.
+Last updated: 2026-06-01 during the C-01 timestamp repair.
 
 This note documents the logging-only diagnostic upgrade for LPFS. It is not a
 strategy change: entries, exits, sizing, timeframe mix, spread gates, market
@@ -9,6 +9,16 @@ decision is approved and deployed.
 
 For the current evidence-gated strategy-iteration handoff, read
 `docs/lpfs_strategy_iteration_context.md` after this file.
+
+For production-derived conclusions, also read
+`docs/lpfs_c01_live_safety_release.md`. Historical MT5-derived timestamps must
+be normalized through the immutable C-01 tool before comparison. The
+diagnostic builder deliberately retains flexible local `--journal` inputs, but
+raw legacy production rows are not trustworthy strategy evidence until their
+timestamp provenance is resolved. The normalizer classifies every historical
+`*_utc` leaf, rebuilds embedded event signal keys with either `T` or
+space-separated timestamps, and sets `safe_for_strategy_analysis=false` if any
+timestamp path remains unresolved.
 
 ## Coverage Audit
 
@@ -23,7 +33,8 @@ For the current evidence-gated strategy-iteration handoff, read
 ## Journal Schema
 
 New logging is additive. Existing journal fields are not renamed or removed.
-High-volume `market_snapshot` rows are unchanged.
+High-volume `market_snapshot` rows retain their existing cadence and now add
+raw MT5 epoch, semantics, and provenance fields needed to audit C-01.
 
 Sparse lifecycle rows can now include:
 
@@ -32,7 +43,11 @@ Sparse lifecycle rows can now include:
 - `notification_event.fields.diagnostic_schema_version` and
   `notification_event.fields.diagnostics` on notification lifecycle rows.
 
-The diagnostic payload is versioned as `schema_version=1` and uses these groups:
+The current diagnostic payload is versioned as `schema_version=2`. Older
+`schema_version=1` rows remain readable. Schema v2 adds
+`timestamp_semantics_version=mt5_epoch_utc_v2` plus raw MT5 epoch and
+provenance fields where sparse broker lifecycle rows provide them. It uses
+these groups:
 
 - `setup`: setup id, symbol, timeframe, side, signal/entry indices, entry,
   stop, target, risk distance, LP/FS geometry, ATR, `risk_atr`, setup age, and
@@ -40,7 +55,8 @@ The diagnostic payload is versioned as `schema_version=1` and uses these groups:
 - `strategy`: pivot strength, max bars from LP break, LP-before-FS setting,
   max entry wait bars, spread-risk limit, recovery mode, and risk/exposure
   limits;
-- `market`: bid, ask, spread points, and quote time when available;
+- `market`: bid, ask, spread points, quote time, raw MT5 epoch values,
+  timestamp semantics, and provenance when available;
 - `spread_gate`: spread price, risk price, spread-risk fraction, limit, and
   pass/fail where available;
 - `execution`: pending-limit versus market-recovery path, stage, broker risk

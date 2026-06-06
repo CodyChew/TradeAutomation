@@ -26,12 +26,15 @@ for src_root in SRC_ROOTS:
 
 from lp_force_strike_strategy_lab import (  # noqa: E402
     append_audit_event,
+    BrokerSnapshotUnavailable,
     deliver_notification_best_effort,
     format_notification_message,
     initialize_mt5_session,
     load_live_send_settings,
     load_live_state,
+    LiveStateAtomicReplaceError,
     NotificationEvent,
+    reconcile_only_live_state,
     run_live_send_cycle,
     save_live_state,
     telegram_notifier_from_settings,
@@ -46,6 +49,9 @@ class RunnerLockActive(RuntimeError):
 
 KILL_SWITCH_EXIT_CODE = 3
 RUNTIME_STATE_MIGRATION_EXIT_CODE = 4
+ATOMIC_STATE_FAILURE_EXIT_CODE = 5
+BROKER_SNAPSHOT_FAILURE_EXIT_CODE = 6
+ONE_CYCLE_CANARY_ACK = "I_ACCEPT_ONE_CYCLE_MAY_PLACE_AND_FILL_MULTIPLE_REAL_ORDERS"
 DEFAULT_RUNTIME_LIVE_DIR = Path("data/live")
 DEFAULT_STATE_NAME = "lpfs_live_state.json"
 DEFAULT_JOURNAL_NAME = "lpfs_live_journal.jsonl"
@@ -277,6 +283,92 @@ def _send_kill_switch_event(
     )
 
 
+def _ensure_kill_switch(path: str | Path, reason: str) -> None:
+    kill_path = Path(path)
+    kill_path.parent.mkdir(parents=True, exist_ok=True)
+    if not kill_path.exists():
+        kill_path.write_text(f"{reason}\n", encoding="utf-8")
+
+
+def _run_reconcile_only(
+    *,
+    settings,
+    config_path: str,
+    kill_switch_path: str | Path,
+    heartbeat_path: str | Path,
+) -> int:
+    """Run the isolated no-send reconciliation branch while containment is active."""
+
+    if not _kill_switch_active(kill_switch_path):
+        print("--reconcile-only requires an active KILL_SWITCH.", file=sys.stderr)
+        return KILL_SWITCH_EXIT_CODE
+    runner_lock = LiveRunnerLock(_runner_lock_path(settings.executor.state_path))
+    try:
+        runner_lock.acquire()
+    except RunnerLockActive as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    mt5 = None
+    try:
+        _write_heartbeat(
+            heartbeat_path,
+            status="reconciling_only",
+            config_path=config_path,
+            state_path=settings.executor.state_path,
+            journal_path=settings.executor.journal_path,
+            kill_switch_path=str(kill_switch_path),
+        )
+        import MetaTrader5 as mt5_module
+
+        mt5 = mt5_module
+        initialize_mt5_session(mt5, settings.local)
+        state = load_live_state(settings.executor.state_path)
+        result = reconcile_only_live_state(
+            mt5,
+            config=settings.executor,
+            state=state,
+        )
+        append_audit_event(
+            settings.executor.journal_path,
+            "reconciliation_only_cli_complete",
+            reconciliation_operation_id=result.operation_id,
+            classifications=result.classifications,
+            journal_rows_backfilled=result.journal_rows_backfilled,
+        )
+        _write_heartbeat(
+            heartbeat_path,
+            status="reconciliation_only_complete",
+            state_saved=True,
+            reconciliation_operation_id=result.operation_id,
+            journal_rows_backfilled=result.journal_rows_backfilled,
+            config_path=config_path,
+            state_path=settings.executor.state_path,
+            journal_path=settings.executor.journal_path,
+            kill_switch_path=str(kill_switch_path),
+            **_mt5_account_fields(mt5),
+        )
+        return 0
+    except LiveStateAtomicReplaceError as exc:
+        _ensure_kill_switch(kill_switch_path, "LPFS automatic stop: atomic reconciliation state replacement failed")
+        _write_heartbeat(heartbeat_path, status="error", detail=str(exc), kill_switch_path=str(kill_switch_path))
+        print(str(exc), file=sys.stderr)
+        return ATOMIC_STATE_FAILURE_EXIT_CODE
+    except BrokerSnapshotUnavailable as exc:
+        _ensure_kill_switch(kill_switch_path, "LPFS automatic stop: broker snapshot unavailable during reconciliation")
+        append_audit_event(settings.executor.journal_path, "broker_snapshot_unavailable", detail=str(exc))
+        _write_heartbeat(heartbeat_path, status="error", detail=str(exc), kill_switch_path=str(kill_switch_path))
+        print(str(exc), file=sys.stderr)
+        return BROKER_SNAPSHOT_FAILURE_EXIT_CODE
+    except Exception as exc:
+        _write_heartbeat(heartbeat_path, status="error", detail=f"{type(exc).__name__}: {exc}")
+        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        if mt5 is not None:
+            mt5.shutdown()
+        runner_lock.release()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="config.local.json", help="Ignored local config JSON path.")
@@ -311,6 +403,21 @@ def main() -> int:
         "--allow-empty-runtime-state",
         action="store_true",
         help="Allow --runtime-root to start with an empty live state even when the config state file exists.",
+    )
+    parser.add_argument(
+        "--reconcile-only",
+        action="store_true",
+        help="With KILL_SWITCH active, reconcile proven stale local pending records without scanning or sending.",
+    )
+    parser.add_argument(
+        "--one-cycle-canary",
+        action="store_true",
+        help="Acknowledge an operator-controlled one-cycle live canary; does not bypass KILL_SWITCH.",
+    )
+    parser.add_argument(
+        "--canary-exposure-ack",
+        default="",
+        help="Exact multi-order exposure acknowledgment required by --one-cycle-canary.",
     )
     args = parser.parse_args()
 
@@ -359,6 +466,21 @@ def main() -> int:
 
     requested_cycles = max(1, int(args.cycles))
     sleep_seconds = float(args.sleep_seconds)
+    if args.one_cycle_canary:
+        if requested_cycles != 1 or args.canary_exposure_ack != ONE_CYCLE_CANARY_ACK:
+            print(
+                "--one-cycle-canary requires --cycles 1 and "
+                f"--canary-exposure-ack {ONE_CYCLE_CANARY_ACK!r}.",
+                file=sys.stderr,
+            )
+            return 2
+    if args.reconcile_only:
+        return _run_reconcile_only(
+            settings=settings,
+            config_path=args.config,
+            kill_switch_path=kill_switch_path,
+            heartbeat_path=heartbeat_path,
+        )
     if _kill_switch_active(kill_switch_path):
         _send_kill_switch_event(
             settings.executor.journal_path,
@@ -411,11 +533,19 @@ def main() -> int:
         account_fields = _mt5_account_fields(mt5)
 
         state = load_live_state(settings.executor.state_path)
+        if args.one_cycle_canary:
+            append_audit_event(
+                settings.executor.journal_path,
+                "one_cycle_canary_acknowledged",
+                acknowledgment=args.canary_exposure_ack,
+                cycles=requested_cycles,
+            )
         started_at = datetime.now(timezone.utc)
         completed_cycles = 0
         return_code = 0
         stop_status = "completed"
         stop_detail = ""
+        terminal_failure = False
         _send_runner_lifecycle_event(
             settings.executor.journal_path,
             notifier,
@@ -501,6 +631,18 @@ def main() -> int:
         except KeyboardInterrupt:
             stop_status = "stopped_by_user"
             return_code = 130
+        except LiveStateAtomicReplaceError as exc:
+            terminal_failure = True
+            stop_status = "error"
+            stop_detail = f"{type(exc).__name__}: {exc}"
+            return_code = ATOMIC_STATE_FAILURE_EXIT_CODE
+        except BrokerSnapshotUnavailable as exc:
+            terminal_failure = True
+            stop_status = "error"
+            stop_detail = f"{type(exc).__name__}: {exc}"
+            return_code = BROKER_SNAPSHOT_FAILURE_EXIT_CODE
+            _ensure_kill_switch(kill_switch_path, "LPFS automatic stop: broker snapshot unavailable")
+            append_audit_event(settings.executor.journal_path, "broker_snapshot_unavailable", detail=stop_detail)
         except Exception as exc:
             stop_status = "error"
             stop_detail = f"{type(exc).__name__}: {exc}"
@@ -508,8 +650,19 @@ def main() -> int:
         finally:
             state_saved = False
             try:
-                save_live_state(settings.executor.state_path, state)
-                state_saved = True
+                if not terminal_failure:
+                    save_live_state(
+                        settings.executor.state_path,
+                        state,
+                        kill_switch_path=kill_switch_path,
+                        journal_path=settings.executor.journal_path,
+                    )
+                    state_saved = True
+            except LiveStateAtomicReplaceError as exc:
+                terminal_failure = True
+                stop_status = "error"
+                stop_detail = f"{type(exc).__name__}: {exc}"
+                return_code = ATOMIC_STATE_FAILURE_EXIT_CODE
             except Exception as exc:
                 if stop_status != "error":
                     stop_status = "error"

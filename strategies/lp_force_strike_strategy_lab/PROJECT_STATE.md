@@ -1,10 +1,112 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-05-31 ICT after the IC live scale-down, Saturday weekly
-evidence checkpoint, first-month monthly evidence review, weekly-dashboard
-FTMO fetch-timeout caveat, diagnostic report generation from safe lifecycle
-snapshots, policy-ledger update, and watchdog lock-contention hardening
-rollout.
+Last updated: 2026-06-04 ICT after the accepted C-01 FTMO Stage 5 Gate 3
+`STOPPED` result.
+
+## Current C-01 Priority
+
+Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
+Read `../../docs/lpfs_stage5_gate3_retry_plan.md` before any Stage 5 work.
+FTMO Stage 5 Gate 3 is accepted as `STOPPED` and must not be retried. Its
+authoritative ignored packet is
+`C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_gate3_20260604_100840`;
+manifest SHA-256:
+`85df11692de17e3d35b986dafee1ce729a15b822b8ce0f3c3ccea367eb27318e`.
+Fallback containment refreshed the FTMO kill-switch content and invoked
+`Disable-ScheduledTask` while the task was already disabled. No enable/start,
+kill-switch clear, IC access, reconciliation, canary, pull, or broker mutation
+occurred. The prior Gate 1 packet is stale. Require reviewed offline tooling,
+a fresh dual-lane Gate 1 read-only packet, and a separate approval before any
+future FTMO Gate 3 attempt. Fresh Gate 1 remains blocked until the complete
+six-step Gate 1 v2 producer, expected-command hash barrier, pre-execution
+contract, tests, and documentation pass review. The producer covers FTMO/IC
+compact containment, bounded status, and strict MT5 without executing them;
+compact containment emits tracked-worktree cleanliness and exact critical
+runtime-file hashes.
+
+FTMO is intentionally paused: kill switch active, scheduled task disabled,
+runner process count `0`, machine powered on, zero LPFS broker pending orders,
+and `3` active positions. IC Stage 3 passed point-in-time and is also
+intentionally paused: kill switch active, scheduled task disabled, runner and
+watchdog process counts `0`, zero pending orders, the same `2` active
+positions, and schema-v2 state. Leave all positions untouched and supervised
+broker-side.
+
+The local branch `codex/lpfs-c01-live-safety-release` repairs direct MT5 UTC
+epoch handling, enforces recovery disabled, fails closed on unavailable broker
+truth, introduces atomic v2 state with a downgrade barrier, adds isolated
+proof-backed reconciliation, and preserves immutable normalization evidence.
+It does not change strategy heuristics. FTMO Stage 1 and IC Stage 3
+reconciliation are complete point-in-time. No reconciliation rerun, canary,
+task enablement, or watchdog resumption is approved yet.
+
+The immutable normalizer explicitly classifies every historical `*_utc` leaf.
+It corrects archived expiration paths including `expiration_utc`,
+`broker_backstop_expiration_utc`, `old_expiration_utc`, and
+`new_broker_backstop_expiration_utc`; preserves known system timestamps;
+rebuilds embedded event signal keys with either `T` or space-separated
+timestamps; and sets `safe_for_strategy_analysis=false` whenever any timestamp
+path remains unresolved.
+
+For the C-01 release only, deploy and review `FTMO` first, then `IC`.
+Historical `IC`-first instructions describe the prior watchdog rollout.
+
+Historical note: FTMO-only Stage 1 stopped before IC on 2026-06-02 ICT. FTMO pulled reviewed
+commit `79a3b21548653c4729eda07dc5f6da066d8018be`, passed `100` VPS-focused
+tests and strict broker comparisons, and remains contained with unchanged
+broker exposure. IC was not touched after the stop condition. The stop packet
+is `reports/live_ops/lpfs_c01_deploy/20260602_003007/ftmo`. The narrow
+forward fix makes status heartbeat counters optional and atomically migrates a
+validated clean no-pending reconciliation to v2 state with one deterministic
+receipt. The contained retry below superseded this stop gate.
+
+The contained FTMO retry then passed from exact SHA
+`3dd1895ca5300d448e4d100095b294e78679a6b9`: `102` VPS-focused tests,
+bounded pre/post status, strict pre/post MT5 exports, and exactly one
+`--reconcile-only` invocation passed. FTMO state is schema v2 with one
+deterministic `clean_noop_migration` receipt and operation ID
+`fa7afa51991ee1b1ca90cf5821f6a6a07bd131416798f396f50a62393360de42`.
+Broker pending orders stayed `0`; the same `3` active FTMO positions remained.
+FTMO remains contained and IC was not accessed. The authoritative ignored
+packet is archived outside the disposable worktree at
+`C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_160716\ftmo_stage1_retry`;
+manifest SHA-256:
+`f8155e042fb183070440f22516c05de8075203964217252edea19f05100e2341`.
+IC-only contained Stage 3 then passed at exact SHA
+`b02a3cb92a05e771782c7a9ca4e4339c9452969a`: fresh pre-pull Stage 0 checks,
+`102` VPS-focused tests, bounded pre/post status, strict pre/post MT5 exports,
+and exactly one `--reconcile-only` invocation passed. IC state is schema v2
+with one deterministic `clean_noop_migration` receipt and operation ID
+`016bd67907de7987ad84ba6186ab60e2fd44f22ac3ae3cf7cc5cd94eb68619a2`.
+Broker pending orders stayed `0`; the same `2` active IC positions remained.
+IC remains contained. FTMO was not accessed. The authoritative ignored packet
+is archived outside the disposable worktree at
+`C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_152110\ic_stage3`;
+manifest SHA-256:
+`033a67a66a5064015d38c5c1a69d084d21cc4130e1539040a854421ab8fb81ed`.
+Default next decision: skip both multi-order canaries, stop before Stage 5,
+and require a separately reviewed pre-resumption plan with fresh read-only
+dual-lane evidence before either watchdog is restarted.
+
+Observability backlog: reconciliation receipt `stable_hash()` includes full
+live position rows, including moving `price_current` and `profit`. The receipt
+chain is internally valid, but adjacent exports may not reproduce that hash
+exactly. Compare stable inventory fields for adjacent-export validation and
+review a narrower hash projection separately. Packet-capture backlog: suppress
+PowerShell progress noise, capture stdout/stderr separately, preserve explicit
+remote process exit-code sidecars, classify expected CLIXML host-information
+serialization separately from failures, and avoid oversized
+`-EncodedCommand` or BOM-sensitive stdin for larger remote inspections. Use a
+hashed ASCII read-only audit script under the ignored evidence directory and
+require non-empty validated output.
+
+Local verification passed after reviewer follow-up on 2026-06-01 ICT: focused
+tests `164`, full LPFS tests `392`, strict core coverage `6396` statements plus
+`2190` branches at
+`100.00%`, generated live-ops regeneration stable, and `git diff --check`
+clean. A local rehearsal streamed all `275578` archived snapshot rows through
+the normalizer with `0` unresolved warnings. This is local release verification
+only; production remains paused.
 
 ## Purpose
 
@@ -486,8 +588,13 @@ Dedicated IC VPS live lane:
   not resized by the policy change.
 - One IC VPS live-send smoke cycle completed with `1` tracked pending order and
   `0` active positions.
-- Continuous task `LPFS_IC_Live` is installed/running through the watchdog
-  wrapper. Do not run a manual IC live process while it is active.
+- Historical promoted-state note: continuous task `LPFS_IC_Live` was
+  installed/running through the watchdog wrapper. Do not treat this as current
+  IC truth. The contained IC Stage 3 point-in-time pass records kill switch
+  active, task disabled, runners `0`, watchdogs `0`, pending orders `0`, and
+  the same `2` active positions. Refresh both lanes before any approved Stage
+  5 resumption step, and never start a manual IC live process while its
+  scheduled task is active.
 - FTMO uses startup alert task `LPFS_FTMO_Startup_Alert`; IC uses
   `LPFS_IC_Startup_Alert`. These at-startup SYSTEM tasks send `VPS STARTED`
   Telegram cards and journal `vps_startup_alert` rows after Windows boot,
@@ -1393,8 +1500,9 @@ Historical timing-telemetry note:
   sizing, spread gates, expiry, live state schema, or TradingView visuals.
 
 Current local run scope is the full V15 universe: 28 major/cross pairs across
-`H4/H8/H12/D1/W1`, or 140 checks per cycle. The current FTMO-style terminal
-uses `Europe/Helsinki` broker-time normalization.
+`H4/H8/H12/D1/W1`, or 140 checks per cycle. Historical code reinterpreted MT5
+epochs through `Europe/Helsinki`; C-01 corrects those epochs to direct UTC and
+uses Helsinki only for legacy evidence normalization.
 
 Latest corrected full-universe dry-run cycle found four current
 order-check-passing intents: `AUDJPY D1 short`, `EURNZD H8 short`,
@@ -1453,13 +1561,15 @@ written.
   order/deal linkage; same symbol/magic/volume alone is not considered enough.
 - Manual or unknown close reasons are reported as `TRADE CLOSED` with MT5 PnL/R,
   not mislabeled as stop losses.
-- Late-start missed-entry recovery is active by default: if MT5 bars after the
+- Historical note: late-start missed-entry recovery was active by default
+  before the C-01 safety hold. If MT5 bars after the
   signal candle already touched the planned pullback entry before the live order
   could be placed, the runner attempts better-than-entry market recovery before
   skipping. Recovery sends `TRADE_ACTION_DEAL`, keeps the original structure
   stop, recalculates TP to 1R from actual fill, sizes from actual fill-to-stop
   risk, and requires spread <= 10% plus a clean original stop/target path.
-  Rollback is `live_send.market_recovery_mode="disabled"`.
+  C-01 now requires `live_send.market_recovery_mode="disabled"` until a
+  separately reviewed recovery release.
 - Market-recovery implementation verification on 2026-05-04:
   focused live/notification tests passed (`38` tests), full LPFS discovery
   passed (`186` tests), and `scripts/run_core_coverage.py` passed at

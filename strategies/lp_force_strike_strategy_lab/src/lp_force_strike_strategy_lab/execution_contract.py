@@ -75,6 +75,10 @@ class MT5MarketSnapshot:
     ask: float
     time_utc: pd.Timestamp | str | None = None
     spread_points: float | None = None
+    raw_mt5_time: int | None = None
+    raw_mt5_time_msc: int | None = None
+    timestamp_semantics_version: str = "mt5_epoch_utc_v2"
+    timestamp_provenance: str = "unavailable"
 
 
 @dataclass(frozen=True)

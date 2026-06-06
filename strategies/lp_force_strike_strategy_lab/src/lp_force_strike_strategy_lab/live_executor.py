@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
+import hashlib
 import json
 import math
 import os
@@ -61,12 +62,33 @@ from .notifications import (
     format_notification_message,
     notification_from_execution_decision,
 )
+from .timestamp_semantics import (
+    DEFAULT_LEGACY_BROKER_TIMEZONE,
+    LEGACY_HELSINKI_RELOCALIZED_V1,
+    MT5_EPOCH_UTC_V2,
+    TimestampSemanticsError,
+    canonical_and_legacy_signal_keys,
+    canonical_signal_key,
+    normalize_recorded_timestamp,
+    parse_signal_key,
+    signal_key_matches_canonical,
+)
 
 
 LIVE_SEND_ACK = "I_UNDERSTAND_THIS_SENDS_REAL_ORDERS"
 LIVE_SEND_MODE = "LIVE_SEND"
 TRADE_RETCODE_CLIENT_DISABLES_AT = 10027
 TRADE_RETCODE_MARKET_CLOSED = 10018
+LIVE_STATE_SCHEMA_VERSION = 2
+MINIMUM_LIVE_STATE_READER_SCHEMA_VERSION = 2
+
+
+class BrokerSnapshotUnavailable(RuntimeError):
+    """Raised when MT5 broker truth cannot be read safely."""
+
+
+class LiveStateAtomicReplaceError(RuntimeError):
+    """Raised when production state cannot be replaced atomically."""
 
 
 @dataclass(frozen=True)
@@ -96,7 +118,7 @@ class LiveSendExecutorConfig:
     require_lp_pivot_before_fs_mother: bool = True
     max_entry_wait_bars: int = 6
     max_spread_risk_fraction: float = 0.10
-    market_recovery_mode: str = "better_than_entry_only"
+    market_recovery_mode: str = "disabled"
     market_recovery_deviation_points: int = 0
     history_lookback_days: int = 30
 
@@ -142,6 +164,9 @@ class LiveTrackedOrder:
     strategy_expiry_mode: str = "bar_count"
     broker_backstop_expiration_time_utc: str | None = None
     diagnostics: dict[str, Any] | None = None
+    timestamp_semantics_version: str = LEGACY_HELSINKI_RELOCALIZED_V1
+    signal_key_timestamp_semantics_version: str = LEGACY_HELSINKI_RELOCALIZED_V1
+    legacy_signal_key: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -155,6 +180,9 @@ class LiveTrackedOrder:
         values.setdefault("strategy_expiry_mode", "bar_count")
         values.setdefault("broker_backstop_expiration_time_utc", None)
         values.setdefault("diagnostics", None)
+        values.setdefault("timestamp_semantics_version", LEGACY_HELSINKI_RELOCALIZED_V1)
+        values.setdefault("signal_key_timestamp_semantics_version", LEGACY_HELSINKI_RELOCALIZED_V1)
+        values.setdefault("legacy_signal_key", None)
         return cls(**values)
 
 
@@ -180,6 +208,12 @@ class LiveTrackedPosition:
     setup_id: str
     price_digits: int | None = None
     diagnostics: dict[str, Any] | None = None
+    timestamp_semantics_version: str = LEGACY_HELSINKI_RELOCALIZED_V1
+    raw_mt5_time: int | None = None
+    raw_mt5_time_msc: int | None = None
+    timestamp_provenance: str = "legacy_state"
+    signal_key_timestamp_semantics_version: str = LEGACY_HELSINKI_RELOCALIZED_V1
+    legacy_signal_key: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -189,6 +223,12 @@ class LiveTrackedPosition:
         values = {key: payload[key] for key in cls.__dataclass_fields__ if key in payload}
         values.setdefault("price_digits", None)
         values.setdefault("diagnostics", None)
+        values.setdefault("timestamp_semantics_version", LEGACY_HELSINKI_RELOCALIZED_V1)
+        values.setdefault("raw_mt5_time", None)
+        values.setdefault("raw_mt5_time_msc", None)
+        values.setdefault("timestamp_provenance", "legacy_state")
+        values.setdefault("signal_key_timestamp_semantics_version", LEGACY_HELSINKI_RELOCALIZED_V1)
+        values.setdefault("legacy_signal_key", None)
         return cls(**values)
 
 
@@ -197,24 +237,44 @@ class LiveExecutorState:
     """Restart-safe live state for idempotency and lifecycle alerts."""
 
     processed_signal_keys: tuple[str, ...] = ()
+    processed_signal_key_semantics: dict[str, str] = field(default_factory=dict)
     order_checked_signal_keys: tuple[str, ...] = ()
+    order_checked_signal_key_semantics: dict[str, str] = field(default_factory=dict)
     pending_orders: tuple[LiveTrackedOrder, ...] = ()
     active_positions: tuple[LiveTrackedPosition, ...] = ()
     notified_event_keys: tuple[str, ...] = ()
     last_seen_close_ticket: int | None = None
     last_seen_close_time_utc: str | None = None
+    last_seen_close_timestamp_semantics_version: str | None = None
     telegram_message_ids: dict[str, int] = field(default_factory=dict)
+    state_writer_timestamp_semantics_version: str = MT5_EPOCH_UTC_V2
+    reconciliation_receipts: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        processed = dict(self.processed_signal_key_semantics)
+        checked = dict(self.order_checked_signal_key_semantics)
+        for key in self.processed_signal_keys:
+            processed.setdefault(key, MT5_EPOCH_UTC_V2)
+        for key in self.order_checked_signal_keys:
+            checked.setdefault(key, MT5_EPOCH_UTC_V2)
+        object.__setattr__(self, "processed_signal_key_semantics", processed)
+        object.__setattr__(self, "order_checked_signal_key_semantics", checked)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "processed_signal_keys": list(self.processed_signal_keys),
+            "processed_signal_key_semantics": dict(self.processed_signal_key_semantics),
             "order_checked_signal_keys": list(self.order_checked_signal_keys),
+            "order_checked_signal_key_semantics": dict(self.order_checked_signal_key_semantics),
             "pending_orders": [order.to_dict() for order in self.pending_orders],
             "active_positions": [position.to_dict() for position in self.active_positions],
             "notified_event_keys": list(self.notified_event_keys),
             "last_seen_close_ticket": self.last_seen_close_ticket,
             "last_seen_close_time_utc": self.last_seen_close_time_utc,
+            "last_seen_close_timestamp_semantics_version": self.last_seen_close_timestamp_semantics_version,
             "telegram_message_ids": dict(self.telegram_message_ids),
+            "state_writer_timestamp_semantics_version": MT5_EPOCH_UTC_V2,
+            "reconciliation_receipts": dict(self.reconciliation_receipts),
         }
 
 
@@ -320,6 +380,10 @@ class LiveCloseEvent:
     close_price: float
     close_profit: float
     close_comment: str
+    timestamp_semantics_version: str = MT5_EPOCH_UTC_V2
+    raw_mt5_time: int | None = None
+    raw_mt5_time_msc: int | None = None
+    timestamp_provenance: str = "mt5_epoch"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -345,6 +409,354 @@ class LiveCycleResult:
     orders_sent: int
     setups_rejected: int
     setups_blocked: int = 0
+
+
+@dataclass(frozen=True)
+class ReconciliationOnlyResult:
+    """Result of an isolated, no-send reconciliation-only transaction."""
+
+    state: LiveExecutorState
+    operation_id: str
+    classifications: tuple[dict[str, Any], ...]
+    journal_rows_backfilled: int
+
+
+@dataclass(frozen=True)
+class ValidatedBrokerSnapshot:
+    """Fail-closed MT5 snapshot collected before local reconciliation writes."""
+
+    account_login: str
+    account_server: str
+    orders: tuple[Any, ...]
+    positions: tuple[Any, ...]
+    history_orders: tuple[Any, ...]
+    history_deals: tuple[Any, ...]
+
+    def stable_hash(self) -> str:
+        payload = {
+            "account_login": self.account_login,
+            "account_server": self.account_server,
+            "orders": _stable_broker_items(self.orders),
+            "positions": _stable_broker_items(self.positions),
+            "history_orders": _stable_broker_items(self.history_orders),
+            "history_deals": _stable_broker_items(self.history_deals),
+        }
+        text = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def reconcile_only_live_state(
+    mt5_module: Any,
+    *,
+    config: LiveSendExecutorConfig,
+    state: LiveExecutorState,
+) -> ReconciliationOnlyResult:
+    """Clean proven stale pending records without scanning setups or writing MT5."""
+
+    snapshot = validated_broker_snapshot(mt5_module, config)
+    _validate_operational_signal_keys(state, journal_path=config.journal_path)
+    backfilled = _backfill_saved_reconciliation_rows(config, state)
+    if snapshot.orders:
+        tickets = sorted(int(getattr(order, "ticket", 0) or 0) for order in snapshot.orders)
+        raise RuntimeError(f"Reconciliation-only requires zero LPFS broker pending orders; found {tickets}.")
+    local_positions = sorted(position.position_id for position in state.active_positions)
+    broker_positions = sorted(_position_id(position) for position in snapshot.positions)
+    if local_positions != broker_positions:
+        raise RuntimeError(
+            f"Reconciliation-only active-position mismatch: local={local_positions} broker={broker_positions}."
+        )
+    if not state.pending_orders:
+        if state.reconciliation_receipts:
+            return ReconciliationOnlyResult(
+                state=state,
+                operation_id=sorted(state.reconciliation_receipts)[-1],
+                classifications=(),
+                journal_rows_backfilled=backfilled,
+            )
+        return _commit_reconciliation_receipt(
+            config,
+            state,
+            snapshot=snapshot,
+            classifications=(),
+            broker_positions=broker_positions,
+            journal_rows_backfilled=backfilled,
+        )
+
+    classifications = tuple(
+        _classify_stale_pending_for_reconciliation(
+            mt5_module,
+            pending,
+            snapshot=snapshot,
+            active_position_ids=set(broker_positions),
+        )
+        for pending in state.pending_orders
+    )
+    unresolved = [item for item in classifications if item["status"] == "unresolved"]
+    if unresolved:
+        tickets = [item["order_ticket"] for item in unresolved]
+        raise RuntimeError(f"Reconciliation-only unresolved local pending records: {tickets}.")
+
+    return _commit_reconciliation_receipt(
+        config,
+        state,
+        snapshot=snapshot,
+        classifications=classifications,
+        broker_positions=broker_positions,
+        journal_rows_backfilled=backfilled,
+    )
+
+
+def _commit_reconciliation_receipt(
+    config: LiveSendExecutorConfig,
+    state: LiveExecutorState,
+    *,
+    snapshot: ValidatedBrokerSnapshot,
+    classifications: Sequence[dict[str, Any]],
+    broker_positions: Sequence[int],
+    journal_rows_backfilled: int,
+) -> ReconciliationOnlyResult:
+    """Atomically persist one validated reconciliation receipt and its lifecycle rows."""
+
+    reconciliation_kind = "pending_cleanup" if classifications else "clean_noop_migration"
+    operation_id = _reconciliation_operation_id(
+        state,
+        snapshot=snapshot,
+        classifications=classifications,
+        reconciliation_kind=reconciliation_kind,
+    )
+    canonical_state = _canonicalize_live_state_signal_keys(state, config)
+    receipt = {
+        "operation_id": operation_id,
+        "reconciliation_kind": reconciliation_kind,
+        "state_schema_version": LIVE_STATE_SCHEMA_VERSION,
+        "input_state_sha256": _stable_payload_hash(state.to_dict()),
+        "snapshot_sha256": snapshot.stable_hash(),
+        "account_login": snapshot.account_login,
+        "account_server": snapshot.account_server,
+        "classifications": list(classifications),
+        "active_position_ids": broker_positions,
+        "active_position_inventory_sha256": _stable_payload_hash(broker_positions),
+    }
+    receipts = dict(canonical_state.reconciliation_receipts)
+    receipts[operation_id] = receipt
+    next_state = replace(canonical_state, pending_orders=(), reconciliation_receipts=receipts)
+    _save_live_state(config, next_state)
+    journal_rows_backfilled += _append_missing_reconciliation_rows(config, receipt)
+    return ReconciliationOnlyResult(
+        state=next_state,
+        operation_id=operation_id,
+        classifications=classifications,
+        journal_rows_backfilled=journal_rows_backfilled,
+    )
+
+
+def _classify_stale_pending_for_reconciliation(
+    mt5_module: Any,
+    pending: LiveTrackedOrder,
+    *,
+    snapshot: ValidatedBrokerSnapshot,
+    active_position_ids: set[int],
+) -> dict[str, Any]:
+    history_order = next(
+        (item for item in snapshot.history_orders if int(getattr(item, "ticket", 0) or 0) == pending.order_ticket),
+        None,
+    )
+    history_deals = [
+        item for item in snapshot.history_deals if int(getattr(item, "order", 0) or 0) == pending.order_ticket
+    ]
+    if history_deals:
+        deal_position_ids = {
+            int(getattr(item, "position_id", 0) or 0)
+            for item in history_deals
+            if int(getattr(item, "position_id", 0) or 0)
+        }
+        if deal_position_ids and deal_position_ids <= active_position_ids:
+            return {"order_ticket": pending.order_ticket, "status": "filled_confirmed", "reason": "mt5_deal_history"}
+        return {"order_ticket": pending.order_ticket, "status": "unresolved", "reason": "history_deals_present"}
+    if history_order is not None and _history_order_manual_cancel_proven(mt5_module, history_order):
+        return {"order_ticket": pending.order_ticket, "status": "manual_broker_cancel_confirmed", "reason": "mt5_history"}
+    if history_order is not None and _history_order_terminal_state(mt5_module, history_order) in {"expired", "rejected"}:
+        return {
+            "order_ticket": pending.order_ticket,
+            "status": f"{_history_order_terminal_state(mt5_module, history_order)}_confirmed",
+            "reason": "mt5_history",
+        }
+    return {"order_ticket": pending.order_ticket, "status": "unresolved", "reason": "missing_manual_cancel_proof"}
+
+
+def _history_order_manual_cancel_proven(mt5_module: Any, order: Any) -> bool:
+    state = getattr(order, "state", None)
+    reason = getattr(order, "reason", None)
+    comment = str(getattr(order, "comment", "") or "").casefold()
+    state_text = str(state or "").casefold()
+    reason_text = str(reason or "").casefold()
+    cancelled = state == getattr(mt5_module, "ORDER_STATE_CANCELED", 2) or state_text in {"2", "canceled", "cancelled"}
+    manual_reasons = {
+        getattr(mt5_module, "ORDER_REASON_CLIENT", object()),
+        getattr(mt5_module, "ORDER_REASON_MOBILE", object()),
+        getattr(mt5_module, "ORDER_REASON_WEB", object()),
+    }
+    manual = reason in manual_reasons or any(
+        token in reason_text or token in comment for token in ("client", "mobile", "web", "manual", "operator")
+    )
+    return cancelled and manual
+
+
+def _history_order_terminal_state(mt5_module: Any, order: Any) -> str | None:
+    state = getattr(order, "state", None)
+    state_text = str(state or "").casefold()
+    if state == getattr(mt5_module, "ORDER_STATE_EXPIRED", 3) or state_text in {"3", "expired"}:
+        return "expired"
+    if state == getattr(mt5_module, "ORDER_STATE_REJECTED", 4) or state_text in {"4", "rejected"}:
+        return "rejected"
+    return None
+
+
+def _reconciliation_operation_id(
+    state: LiveExecutorState,
+    *,
+    snapshot: ValidatedBrokerSnapshot,
+    classifications: Sequence[dict[str, Any]],
+    reconciliation_kind: str,
+) -> str:
+    payload = {
+        "account_login": snapshot.account_login,
+        "account_server": snapshot.account_server,
+        "input_state": state.to_dict(),
+        "snapshot_sha256": snapshot.stable_hash(),
+        "reconciliation_kind": reconciliation_kind,
+        "classifications": sorted(classifications, key=lambda item: int(item["order_ticket"])),
+        "active_position_ids": sorted(_position_id(item) for item in snapshot.positions),
+        "target_state_schema": LIVE_STATE_SCHEMA_VERSION,
+    }
+    text = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _append_missing_reconciliation_rows(config: LiveSendExecutorConfig, receipt: dict[str, Any]) -> int:
+    operation_id = str(receipt["operation_id"])
+    existing = _reconciliation_journal_event_ids(config.journal_path, operation_id)
+    rows = [
+        {
+            "event": str(classification.get("status") or "reconciliation_classified"),
+            "reconciliation_operation_id": operation_id,
+            **classification,
+        }
+        for classification in receipt.get("classifications", ())
+    ]
+    rows.append(
+        {
+            "event": "reconciliation_only_complete",
+            "reconciliation_operation_id": operation_id,
+            "reconciliation_kind": receipt.get("reconciliation_kind"),
+            "active_position_ids": receipt.get("active_position_ids", ()),
+            "state_schema_version": receipt.get("state_schema_version"),
+        }
+    )
+    appended = 0
+    for index, row in enumerate(rows):
+        row_id = f"{operation_id}:{index}"
+        if row_id in existing:
+            continue
+        append_audit_event(config.journal_path, row.pop("event"), reconciliation_row_id=row_id, **row)
+        appended += 1
+    return appended
+
+
+def _backfill_saved_reconciliation_rows(config: LiveSendExecutorConfig, state: LiveExecutorState) -> int:
+    return sum(
+        _append_missing_reconciliation_rows(config, receipt)
+        for _, receipt in sorted(state.reconciliation_receipts.items())
+    )
+
+
+def _reconciliation_journal_event_ids(path: str | Path, operation_id: str) -> set[str]:
+    journal_path = Path(path)
+    if not journal_path.exists():
+        return set()
+    found: set[str] = set()
+    with journal_path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            if operation_id not in line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            row_id = row.get("reconciliation_row_id")
+            if row_id:
+                found.add(str(row_id))
+    return found
+
+
+def _validate_operational_signal_keys(
+    state: LiveExecutorState,
+    *,
+    journal_path: str | Path | None = None,
+) -> None:
+    for raw_key, _ in _state_signal_records(state):
+        try:
+            parse_signal_key(raw_key)
+        except TimestampSemanticsError:
+            if journal_path is not None:
+                append_audit_event(journal_path, "malformed_operational_signal_key", signal_key=raw_key)
+            raise
+
+
+def _canonicalize_live_state_signal_keys(
+    state: LiveExecutorState,
+    config: LiveSendExecutorConfig,
+) -> LiveExecutorState:
+    def canonical(raw_key: str, semantics: str | None) -> str:
+        return canonical_signal_key(
+            raw_key,
+            semantics or LEGACY_HELSINKI_RELOCALIZED_V1,
+            broker_timezone=DEFAULT_LEGACY_BROKER_TIMEZONE,
+        )
+
+    processed = tuple(
+        canonical(key, state.processed_signal_key_semantics.get(key))
+        for key in state.processed_signal_keys
+    )
+    checked = tuple(
+        canonical(key, state.order_checked_signal_key_semantics.get(key))
+        for key in state.order_checked_signal_keys
+    )
+    pending = tuple(
+        replace(
+            item,
+            signal_key=canonical(item.signal_key, item.signal_key_timestamp_semantics_version),
+            signal_key_timestamp_semantics_version=MT5_EPOCH_UTC_V2,
+            legacy_signal_key=(
+                item.signal_key
+                if item.signal_key_timestamp_semantics_version == LEGACY_HELSINKI_RELOCALIZED_V1
+                else item.legacy_signal_key
+            ),
+        )
+        for item in state.pending_orders
+    )
+    active = tuple(
+        replace(
+            item,
+            signal_key=canonical(item.signal_key, item.signal_key_timestamp_semantics_version),
+            signal_key_timestamp_semantics_version=MT5_EPOCH_UTC_V2,
+            legacy_signal_key=(
+                item.signal_key
+                if item.signal_key_timestamp_semantics_version == LEGACY_HELSINKI_RELOCALIZED_V1
+                else item.legacy_signal_key
+            ),
+        )
+        for item in state.active_positions
+    )
+    return replace(
+        state,
+        processed_signal_keys=tuple(dict.fromkeys(processed)),
+        processed_signal_key_semantics={key: MT5_EPOCH_UTC_V2 for key in processed},
+        order_checked_signal_keys=tuple(dict.fromkeys(checked)),
+        order_checked_signal_key_semantics={key: MT5_EPOCH_UTC_V2 for key in checked},
+        pending_orders=pending,
+        active_positions=active,
+    )
 
 
 def load_live_send_settings(path: str | Path = "config.local.json", *, env: dict[str, str] | None = None) -> LiveSendSettings:
@@ -393,7 +805,7 @@ def load_live_send_settings(path: str | Path = "config.local.json", *, env: dict
         ),
         max_entry_wait_bars=int(live_payload.get("max_entry_wait_bars", dry_executor.max_entry_wait_bars)),
         max_spread_risk_fraction=float(live_payload.get("max_spread_risk_fraction", 0.10)),
-        market_recovery_mode=str(live_payload.get("market_recovery_mode", "better_than_entry_only")),
+        market_recovery_mode=str(live_payload.get("market_recovery_mode", "disabled")),
         market_recovery_deviation_points=int(live_payload.get("market_recovery_deviation_points", 0)),
         history_lookback_days=int(live_payload.get("history_lookback_days", 30)),
     )
@@ -417,8 +829,8 @@ def validate_live_send_settings(settings: LiveSendSettings) -> None:
         raise LocalConfigError("live_send.max_open_risk_pct must be positive.")
     if not (0 < config.max_spread_risk_fraction <= 1):
         raise LocalConfigError("live_send.max_spread_risk_fraction must be between 0 and 1.")
-    if config.market_recovery_mode not in {"better_than_entry_only", "disabled"}:
-        raise LocalConfigError("live_send.market_recovery_mode must be 'better_than_entry_only' or 'disabled'.")
+    if config.market_recovery_mode != "disabled":
+        raise LocalConfigError("live_send.market_recovery_mode must be 'disabled' during the recovery safety hold.")
     if config.market_recovery_deviation_points < 0:
         raise LocalConfigError("live_send.market_recovery_deviation_points must be zero or positive.")
 
@@ -429,47 +841,136 @@ def load_live_state(path: str | Path) -> LiveExecutorState:
     state_path = Path(path)
     if not state_path.exists():
         return LiveExecutorState()
-    payload = json.loads(state_path.read_text(encoding="utf-8"))
+    envelope = json.loads(state_path.read_text(encoding="utf-8"))
+    schema_version = envelope.get("state_schema_version")
+    if schema_version is None:
+        payload = envelope
+    elif int(schema_version) == LIVE_STATE_SCHEMA_VERSION:
+        minimum_reader = int(envelope.get("minimum_reader_schema_version", LIVE_STATE_SCHEMA_VERSION))
+        if minimum_reader > LIVE_STATE_SCHEMA_VERSION:
+            raise RuntimeError(
+                f"LPFS live state requires reader schema {minimum_reader}; "
+                f"this binary supports {LIVE_STATE_SCHEMA_VERSION}."
+            )
+        payload = dict(envelope.get("state", {}) or {})
+    else:
+        raise RuntimeError(
+            f"Unsupported LPFS live state schema {schema_version!r}; "
+            f"this binary supports legacy flat state and schema {LIVE_STATE_SCHEMA_VERSION}."
+        )
+    processed_signal_keys = tuple(payload.get("processed_signal_keys", ()))
+    checked_signal_keys = tuple(payload.get("order_checked_signal_keys", ()))
+    default_key_semantics = (
+        LEGACY_HELSINKI_RELOCALIZED_V1 if schema_version is None else MT5_EPOCH_UTC_V2
+    )
     state = LiveExecutorState(
-        processed_signal_keys=tuple(payload.get("processed_signal_keys", ())),
-        order_checked_signal_keys=tuple(payload.get("order_checked_signal_keys", ())),
+        processed_signal_keys=processed_signal_keys,
+        processed_signal_key_semantics={
+            key: str(dict(payload.get("processed_signal_key_semantics", {}) or {}).get(key, default_key_semantics))
+            for key in processed_signal_keys
+        },
+        order_checked_signal_keys=checked_signal_keys,
+        order_checked_signal_key_semantics={
+            key: str(dict(payload.get("order_checked_signal_key_semantics", {}) or {}).get(key, default_key_semantics))
+            for key in checked_signal_keys
+        },
         pending_orders=tuple(LiveTrackedOrder.from_dict(item) for item in payload.get("pending_orders", ())),
         active_positions=tuple(LiveTrackedPosition.from_dict(item) for item in payload.get("active_positions", ())),
         notified_event_keys=tuple(payload.get("notified_event_keys", ())),
         last_seen_close_ticket=payload.get("last_seen_close_ticket"),
         last_seen_close_time_utc=payload.get("last_seen_close_time_utc"),
+        last_seen_close_timestamp_semantics_version=payload.get(
+            "last_seen_close_timestamp_semantics_version",
+            LEGACY_HELSINKI_RELOCALIZED_V1 if payload.get("last_seen_close_time_utc") else None,
+        ),
         telegram_message_ids={
             str(key): int(value)
             for key, value in dict(payload.get("telegram_message_ids", {}) or {}).items()
             if value not in (None, "")
         },
+        state_writer_timestamp_semantics_version=MT5_EPOCH_UTC_V2,
+        reconciliation_receipts=dict(payload.get("reconciliation_receipts", {}) or {}),
     )
     return state
 
 
-def save_live_state(path: str | Path, state: LiveExecutorState) -> None:
+def save_live_state(
+    path: str | Path,
+    state: LiveExecutorState,
+    *,
+    allow_non_atomic_fallback: bool = False,
+    kill_switch_path: str | Path | None = None,
+    journal_path: str | Path | None = None,
+) -> None:
     """Persist restart-continuity state used around broker-affecting operations."""
 
     state_path = Path(path)
     state_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(state.to_dict(), indent=2)
+    payload = json.dumps(
+        {
+            "state_schema_version": LIVE_STATE_SCHEMA_VERSION,
+            "minimum_reader_schema_version": MINIMUM_LIVE_STATE_READER_SCHEMA_VERSION,
+            # Deliberate tripwire: legacy readers call tuple(None) and stop.
+            "processed_signal_keys": None,
+            "state": state.to_dict(),
+        },
+        indent=2,
+    )
     temp_path = state_path.with_name(f".{state_path.name}.{os.getpid()}.tmp")
     temp_path.write_text(payload, encoding="utf-8")
 
+    last_error: OSError | None = None
     for attempt in range(3):
         try:
             os.replace(temp_path, state_path)
             return
-        except PermissionError:
+        except OSError as exc:
+            last_error = exc
             time.sleep(0.05 * (attempt + 1))
 
-    # OneDrive can expose synced files as Windows reparse points and reject
-    # replacing them even when writing their contents is allowed.
-    state_path.write_text(payload, encoding="utf-8")
+    if allow_non_atomic_fallback:
+        state_path.write_text(payload, encoding="utf-8")
+        try:
+            temp_path.unlink()
+        except OSError:
+            pass
+        return
+
+    if kill_switch_path is not None:
+        _activate_kill_switch(kill_switch_path, "LPFS automatic stop: atomic live-state replacement failed")
+    if journal_path is not None:
+        try:
+            append_audit_event(
+                journal_path,
+                "live_state_atomic_replace_failed",
+                state_path=str(state_path),
+                kill_switch_path=None if kill_switch_path is None else str(kill_switch_path),
+                error=f"{type(last_error).__name__}: {last_error}",
+            )
+        except OSError:
+            pass
     try:
         temp_path.unlink()
     except OSError:
         pass
+    raise LiveStateAtomicReplaceError(f"Atomic LPFS live-state replacement failed for {state_path}: {last_error}")
+
+
+def _activate_kill_switch(path: str | Path, reason: str) -> None:
+    kill_switch = Path(path)
+    kill_switch.parent.mkdir(parents=True, exist_ok=True)
+    if kill_switch.exists():
+        return
+    kill_switch.write_text(f"{reason}\n", encoding="utf-8")
+
+
+def _save_live_state(config: LiveSendExecutorConfig, state: LiveExecutorState) -> None:
+    save_live_state(
+        config.state_path,
+        state,
+        kill_switch_path=Path(config.state_path).parent / "KILL_SWITCH",
+        journal_path=config.journal_path,
+    )
 
 
 def live_execution_safety_from_config(config: LiveSendExecutorConfig) -> ExecutionSafetyLimits:
@@ -1414,7 +1915,7 @@ def _process_market_recovery_live_send(
     )
     next_state = replace(checked_state, active_positions=(*checked_state.active_positions, tracked_position))
     # Persist broker-affecting state before best-effort notification delivery.
-    save_live_state(config.state_path, next_state)
+    _save_live_state(config, next_state)
     event = _market_recovery_sent_event(tracked_position, outcome, recovery_check)
     thread_key = f"order:{tracked_position.order_ticket}"
     next_state = _record_event_once(
@@ -1441,7 +1942,17 @@ def process_trade_setup_live_send(
 
     signal_key = signal_key_for_setup(setup)
     setup_diagnostics = build_setup_diagnostics(setup, config=config, signal_key=signal_key)
-    if signal_key in state.processed_signal_keys:
+    try:
+        already_processed = _state_has_equivalent_signal_key(state, signal_key, config=config)
+    except TimestampSemanticsError as exc:
+        append_audit_event(
+            config.journal_path,
+            "malformed_operational_signal_key",
+            signal_key=signal_key,
+            error=str(exc),
+        )
+        return LiveSetupResult(state=state, signal_key=signal_key, status="blocked")
+    if already_processed:
         append_audit_event(
             config.journal_path,
             "signal_already_processed",
@@ -1743,7 +2254,7 @@ def process_trade_setup_live_send(
     )
     next_state = replace(checked_state, pending_orders=(*checked_state.pending_orders, placed))
     # Persist broker-affecting state before best-effort notification delivery.
-    save_live_state(config.state_path, next_state)
+    _save_live_state(config, next_state)
     event = _order_sent_event(placed, outcome, final_spread)
     next_state = _record_event_once(
         config,
@@ -1765,8 +2276,10 @@ def reconcile_live_state(
 ) -> LiveExecutorState:
     """Reconcile local lifecycle state with MT5 orders, positions, and deals."""
 
-    orders = {int(getattr(order, "ticket")): order for order in current_strategy_orders(mt5_module, config)}
-    positions = current_strategy_positions(mt5_module, config)
+    snapshot = validated_broker_snapshot(mt5_module, config)
+    _validate_operational_signal_keys(state, journal_path=config.journal_path)
+    orders = {int(getattr(order, "ticket")): order for order in snapshot.orders}
+    positions = snapshot.positions
     next_state = state
     kept_pending: list[LiveTrackedOrder] = []
     new_active: list[LiveTrackedPosition] = list(state.active_positions)
@@ -1793,7 +2306,7 @@ def reconcile_live_state(
                 kept_pending.append(pending)
             continue
 
-        position = _matching_position_for_order(mt5_module, pending, positions, config)
+        position = _matching_position_for_order(mt5_module, pending, positions, config, snapshot=snapshot)
         if position is not None:
             tracked_position = _tracked_position_from_pending(pending, position, config)
             new_active.append(tracked_position)
@@ -1808,7 +2321,22 @@ def reconcile_live_state(
             )
             continue
 
-        history_order = _history_order_for_ticket(mt5_module, pending, config)
+        classification = _classify_stale_pending_for_reconciliation(
+            mt5_module,
+            pending,
+            snapshot=snapshot,
+            active_position_ids={_position_id(item) for item in positions},
+        )
+        if classification["status"] == "unresolved":
+            kept_pending.append(pending)
+            append_audit_event(
+                config.journal_path,
+                "pending_missing_unresolved",
+                pending=pending.to_dict(),
+                classification=classification,
+            )
+            continue
+        history_order = _history_order_for_ticket(mt5_module, pending, config, snapshot=snapshot)
         event = _pending_missing_event(pending, history_order=history_order)
         next_state = _record_event_once(
             config,
@@ -1826,7 +2354,7 @@ def reconcile_live_state(
         if active.position_id in positions_by_id:
             kept_active.append(active)
             continue
-        close = latest_close_for_position(mt5_module, active, config)
+        close = latest_close_for_position(mt5_module, active, config, snapshot=snapshot)
         if close is None:
             kept_active.append(active)
             append_audit_event(config.journal_path, "active_position_missing_close", position=active.to_dict())
@@ -1844,10 +2372,11 @@ def reconcile_live_state(
             next_state,
             last_seen_close_ticket=close.ticket,
             last_seen_close_time_utc=close.close_time_utc,
+            last_seen_close_timestamp_semantics_version=close.timestamp_semantics_version,
         )
 
     next_state = replace(next_state, active_positions=tuple(kept_active))
-    save_live_state(config.state_path, next_state)
+    _save_live_state(config, next_state)
     return next_state
 
 
@@ -1863,7 +2392,7 @@ def run_live_send_cycle(
 
     # Reconcile MT5 broker truth before scanning completed candles for new sends.
     current_state = reconcile_live_state(mt5_module, config=config, state=state, notifier=notifier)
-    save_live_state(config.state_path, current_state)
+    _save_live_state(config, current_state)
     frames_processed = 0
     orders_sent = 0
     setups_rejected = 0
@@ -1888,11 +2417,11 @@ def run_live_send_cycle(
                     notifier=notifier,
                 )
                 current_state = result.state
-                save_live_state(config.state_path, current_state)
+                _save_live_state(config, current_state)
                 orders_sent += 1 if result.status in {"order_sent", "market_recovery_sent"} else 0
                 setups_rejected += 1 if result.status == "rejected" else 0
                 setups_blocked += 1 if result.status == "blocked" else 0
-    save_live_state(config.state_path, current_state)
+    _save_live_state(config, current_state)
     return LiveCycleResult(
         state=current_state,
         frames_processed=frames_processed,
@@ -1908,7 +2437,9 @@ def current_strategy_orders(mt5_module: Any, config: LiveSendExecutorConfig) -> 
     orders: list[Any] = []
     for symbol in config.symbols:
         result = mt5_module.orders_get(symbol=symbol)
-        orders.extend([] if result is None else list(result))
+        if result is None:
+            raise BrokerSnapshotUnavailable(_broker_read_error(mt5_module, "orders_get", symbol=symbol))
+        orders.extend(list(result))
     return tuple(order for order in orders if int(getattr(order, "magic", 0) or 0) == config.strategy_magic)
 
 
@@ -1918,12 +2449,50 @@ def current_strategy_positions(mt5_module: Any, config: LiveSendExecutorConfig) 
     positions: list[Any] = []
     for symbol in config.symbols:
         result = mt5_module.positions_get(symbol=symbol)
-        positions.extend([] if result is None else list(result))
+        if result is None:
+            raise BrokerSnapshotUnavailable(_broker_read_error(mt5_module, "positions_get", symbol=symbol))
+        positions.extend(list(result))
     return tuple(position for position in positions if int(getattr(position, "magic", 0) or 0) == config.strategy_magic)
 
 
-def latest_close_for_position(mt5_module: Any, active: LiveTrackedPosition, config: LiveSendExecutorConfig) -> LiveCloseEvent | None:
-    deals = _history_deals_for_position(mt5_module, active.position_id, config)
+def validated_broker_snapshot(mt5_module: Any, config: LiveSendExecutorConfig) -> ValidatedBrokerSnapshot:
+    """Collect required MT5 broker truth or fail before local mutation."""
+
+    account = mt5_module.account_info()
+    if account is None:
+        raise BrokerSnapshotUnavailable(_broker_read_error(mt5_module, "account_info"))
+    orders = current_strategy_orders(mt5_module, config)
+    positions = current_strategy_positions(mt5_module, config)
+    end = pd.Timestamp.now(tz="UTC")
+    start = end - pd.Timedelta(days=config.history_lookback_days)
+    history_orders_result = mt5_module.history_orders_get(start.to_pydatetime(), end.to_pydatetime())
+    if history_orders_result is None:
+        raise BrokerSnapshotUnavailable(_broker_read_error(mt5_module, "history_orders_get"))
+    history_deals_result = mt5_module.history_deals_get(start.to_pydatetime(), end.to_pydatetime())
+    if history_deals_result is None:
+        raise BrokerSnapshotUnavailable(_broker_read_error(mt5_module, "history_deals_get"))
+    # Preserve full history: exit-side deals may omit strategy magic but still
+    # prove the lifecycle of a tracked LPFS position or pending order.
+    history_orders = tuple(history_orders_result)
+    history_deals = tuple(history_deals_result)
+    return ValidatedBrokerSnapshot(
+        account_login=str(getattr(account, "login", "") or ""),
+        account_server=str(getattr(account, "server", "") or ""),
+        orders=orders,
+        positions=positions,
+        history_orders=history_orders,
+        history_deals=history_deals,
+    )
+
+
+def latest_close_for_position(
+    mt5_module: Any,
+    active: LiveTrackedPosition,
+    config: LiveSendExecutorConfig,
+    *,
+    snapshot: ValidatedBrokerSnapshot | None = None,
+) -> LiveCloseEvent | None:
+    deals = _history_deals_for_position(mt5_module, active.position_id, config, snapshot=snapshot)
     close_deals = [
         deal
         for deal in deals
@@ -1933,14 +2502,19 @@ def latest_close_for_position(mt5_module: Any, active: LiveTrackedPosition, conf
     if not close_deals:
         return None
     deal = sorted(close_deals, key=lambda item: (int(getattr(item, "time_msc", 0) or 0), int(getattr(item, "ticket", 0) or 0)))[-1]
+    timestamp_fields = _deal_timestamp_fields(deal, config)
     return LiveCloseEvent(
         ticket=int(getattr(deal, "ticket", 0) or 0),
         position_id=active.position_id,
         close_reason=_close_reason(mt5_module, deal),
-        close_time_utc=_deal_time_utc(deal, config),
+        close_time_utc=timestamp_fields["normalized_utc"],
         close_price=float(getattr(deal, "price", 0.0) or 0.0),
         close_profit=float(getattr(deal, "profit", 0.0) or 0.0),
         close_comment=str(getattr(deal, "comment", "") or ""),
+        timestamp_semantics_version=MT5_EPOCH_UTC_V2,
+        raw_mt5_time=timestamp_fields["raw_time"],
+        raw_mt5_time_msc=timestamp_fields["raw_time_msc"],
+        timestamp_provenance=timestamp_fields["provenance"],
     )
 
 
@@ -1954,7 +2528,7 @@ def _record_event_once(
     reply_thread_key: str | None = None,
     store_thread_key: str | None = None,
 ) -> LiveExecutorState:
-    if event_key in state.notified_event_keys:
+    if _notification_event_already_recorded(state, event_key, event):
         return state
     reply_to_message_id = None if reply_thread_key is None else state.telegram_message_ids.get(reply_thread_key)
     delivery = deliver_notification_best_effort(notifier, event, reply_to_message_id=reply_to_message_id)
@@ -1979,7 +2553,7 @@ def _record_event_once(
         notified_event_keys=_append_unique(state.notified_event_keys, event_key),
         telegram_message_ids=telegram_message_ids,
     )
-    save_live_state(config.state_path, next_state)
+    _save_live_state(config, next_state)
     return next_state
 
 
@@ -2014,6 +2588,7 @@ def _tracked_order_from_intent(
 ) -> LiveTrackedOrder:
     broker_backstop = intent.broker_backstop_expiration_time_utc or intent.expiration_time_utc
     signal_time = intent.signal_time_utc
+    _, legacy_signal_key = canonical_and_legacy_signal_keys(intent.signal_key)
     return LiveTrackedOrder(
         signal_key=intent.signal_key,
         order_ticket=order_ticket,
@@ -2038,6 +2613,9 @@ def _tracked_order_from_intent(
         strategy_expiry_mode=intent.strategy_expiry_mode,
         broker_backstop_expiration_time_utc=broker_backstop.isoformat(),
         diagnostics=diagnostics,
+        timestamp_semantics_version=MT5_EPOCH_UTC_V2,
+        signal_key_timestamp_semantics_version=MT5_EPOCH_UTC_V2,
+        legacy_signal_key=legacy_signal_key,
     )
 
 
@@ -2094,6 +2672,7 @@ def _seconds_between(start_utc: Any, end_utc: Any) -> int | None:
 
 
 def _tracked_position_from_pending(pending: LiveTrackedOrder, position: Any, config: LiveSendExecutorConfig) -> LiveTrackedPosition:
+    timestamp_fields = _position_timestamp_fields(position, config)
     return LiveTrackedPosition(
         signal_key=pending.signal_key,
         position_id=_position_id(position),
@@ -2107,12 +2686,22 @@ def _tracked_position_from_pending(pending: LiveTrackedOrder, position: Any, con
         take_profit=float(getattr(position, "tp", pending.take_profit) or pending.take_profit),
         target_risk_pct=pending.target_risk_pct,
         actual_risk_pct=pending.actual_risk_pct,
-        opened_time_utc=_position_time_utc(position, config),
+        opened_time_utc=timestamp_fields["normalized_utc"],
         magic=pending.magic,
         comment=pending.comment,
         setup_id=pending.setup_id,
         price_digits=pending.price_digits,
         diagnostics=pending.diagnostics,
+        timestamp_semantics_version=MT5_EPOCH_UTC_V2,
+        raw_mt5_time=timestamp_fields["raw_time"],
+        raw_mt5_time_msc=timestamp_fields["raw_time_msc"],
+        timestamp_provenance=timestamp_fields["provenance"],
+        signal_key_timestamp_semantics_version=pending.signal_key_timestamp_semantics_version,
+        legacy_signal_key=(
+            pending.signal_key
+            if pending.signal_key_timestamp_semantics_version == LEGACY_HELSINKI_RELOCALIZED_V1
+            else pending.legacy_signal_key
+        ),
     )
 
 
@@ -2125,6 +2714,8 @@ def _tracked_position_from_intent(
     diagnostics: dict[str, Any] | None = None,
 ) -> LiveTrackedPosition:
     position_id = _position_id(position)
+    timestamp_fields = _position_timestamp_fields(position, config)
+    _, legacy_signal_key = canonical_and_legacy_signal_keys(intent.signal_key)
     return LiveTrackedPosition(
         signal_key=intent.signal_key,
         position_id=position_id,
@@ -2138,12 +2729,18 @@ def _tracked_position_from_intent(
         take_profit=float(getattr(position, "tp", intent.take_profit) or intent.take_profit),
         target_risk_pct=intent.target_risk_pct,
         actual_risk_pct=intent.actual_risk_pct,
-        opened_time_utc=_position_time_utc(position, config),
+        opened_time_utc=timestamp_fields["normalized_utc"],
         magic=intent.magic,
         comment=intent.comment,
         setup_id=intent.setup_id,
         price_digits=price_digits,
         diagnostics=diagnostics,
+        timestamp_semantics_version=MT5_EPOCH_UTC_V2,
+        raw_mt5_time=timestamp_fields["raw_time"],
+        raw_mt5_time_msc=timestamp_fields["raw_time_msc"],
+        timestamp_provenance=timestamp_fields["provenance"],
+        signal_key_timestamp_semantics_version=MT5_EPOCH_UTC_V2,
+        legacy_signal_key=legacy_signal_key,
     )
 
 
@@ -2334,9 +2931,10 @@ def _fallback_market_recovery_position(
     authoritative for the position lifecycle.
     """
 
-    ticket = outcome.order_ticket or outcome.deal_ticket or int(pd.Timestamp.now(tz="UTC").timestamp())
+    ticket = outcome.order_ticket or outcome.deal_ticket
+    if ticket is None:
+        raise BrokerSnapshotUnavailable("MT5 market-recovery fill acknowledgment did not include an order or deal ticket.")
     position_type = getattr(mt5_module, "ORDER_TYPE_BUY", 0) if intent.side == "long" else getattr(mt5_module, "ORDER_TYPE_SELL", 1)
-    now_msc = int(pd.Timestamp.now(tz="UTC").timestamp() * 1000)
     return SimpleNamespace(
         identifier=ticket,
         ticket=ticket,
@@ -2348,8 +2946,10 @@ def _fallback_market_recovery_position(
         price_open=intent.entry_price,
         sl=intent.stop_loss,
         tp=intent.take_profit,
-        time_msc=now_msc,
-        time=0,
+        time_msc=None,
+        time=None,
+        inferred_time_utc=pd.Timestamp.now(tz="UTC").isoformat(),
+        timestamp_provenance="inferred_local_send_time",
     )
 
 
@@ -2385,7 +2985,7 @@ def _adopt_existing_broker_item(
             return None
         tracked = _tracked_order_from_intent(intent, ticket, price_digits=symbol_spec.digits, diagnostics=diagnostics)
         next_state = replace(state, pending_orders=(*state.pending_orders, tracked))
-        save_live_state(config.state_path, next_state)
+        _save_live_state(config, next_state)
         event = _order_adopted_event(tracked, source="pending order", broker_item=order)
         next_state = _record_event_once(
             config,
@@ -2413,7 +3013,7 @@ def _adopt_existing_broker_item(
         diagnostics=diagnostics,
     )
     next_state = replace(state, active_positions=(*state.active_positions, tracked_position))
-    save_live_state(config.state_path, next_state)
+    _save_live_state(config, next_state)
     event = _order_adopted_event(tracked_position, source="open position", broker_item=position)
     next_state = _record_event_once(
         config,
@@ -2492,6 +3092,7 @@ def _market_recovery_sent_event(
     outcome: LiveOrderSendOutcome,
     recovery_check: MarketRecoveryCheck,
 ) -> NotificationEvent:
+    opened_utc = _normalized_position_opened_time(active)
     fields = fields_with_diagnostics(
         {
             "position_id": active.position_id,
@@ -2513,7 +3114,12 @@ def _market_recovery_sent_event(
             "first_touch_time_utc": recovery_check.first_touch_time_utc,
             "first_touch_high": recovery_check.first_touch_high,
             "first_touch_low": recovery_check.first_touch_low,
-            "opened_utc": active.opened_time_utc,
+            "opened_utc": opened_utc,
+            "opened_timestamp_semantics_version": MT5_EPOCH_UTC_V2,
+            "opened_source_timestamp_semantics_version": active.timestamp_semantics_version,
+            "opened_timestamp_provenance": active.timestamp_provenance,
+            "opened_raw_mt5_time": active.raw_mt5_time,
+            "opened_raw_mt5_time_msc": active.raw_mt5_time_msc,
             "price_digits": active.price_digits,
             "retcode": outcome.retcode,
             "comment": outcome.comment,
@@ -2576,6 +3182,7 @@ def _order_adopted_event(item: LiveTrackedOrder | LiveTrackedPosition, *, source
 
 
 def _position_opened_event(active: LiveTrackedPosition, position: Any) -> NotificationEvent:
+    opened_utc = _normalized_position_opened_time(active)
     fields = fields_with_diagnostics(
         {
             "position_id": active.position_id,
@@ -2586,7 +3193,12 @@ def _position_opened_event(active: LiveTrackedPosition, position: Any) -> Notifi
             "take_profit": active.take_profit,
             "actual_risk_pct": active.actual_risk_pct,
             "target_risk_pct": active.target_risk_pct,
-            "opened_utc": active.opened_time_utc,
+            "opened_utc": opened_utc,
+            "opened_timestamp_semantics_version": MT5_EPOCH_UTC_V2,
+            "opened_source_timestamp_semantics_version": active.timestamp_semantics_version,
+            "opened_timestamp_provenance": active.timestamp_provenance,
+            "opened_raw_mt5_time": active.raw_mt5_time,
+            "opened_raw_mt5_time_msc": active.raw_mt5_time_msc,
             "price_digits": active.price_digits,
             "broker_comment": str(getattr(position, "comment", "") or ""),
         },
@@ -2594,7 +3206,7 @@ def _position_opened_event(active: LiveTrackedPosition, position: Any) -> Notifi
         execution={
             "stage": "position_opened",
             "execution_path": "pending_limit",
-            "signal_to_fill_seconds": _signal_to_event_seconds(active.signal_key, active.timeframe, active.opened_time_utc),
+            "signal_to_fill_seconds": _signal_to_event_seconds(active.signal_key, active.timeframe, opened_utc),
         },
     )
     return NotificationEvent(
@@ -2612,6 +3224,8 @@ def _position_opened_event(active: LiveTrackedPosition, position: Any) -> Notifi
 
 
 def _close_event(active: LiveTrackedPosition, close: LiveCloseEvent) -> NotificationEvent:
+    opened_utc = _normalized_position_opened_time(active)
+    closed_utc = normalize_recorded_timestamp(close.close_time_utc, close.timestamp_semantics_version).isoformat()
     risk_price = abs(active.entry_price - active.stop_loss)
     r_result = 0.0 if risk_price <= 0 else (close.close_price - active.entry_price) / risk_price
     if active.side == "short":
@@ -2629,7 +3243,7 @@ def _close_event(active: LiveTrackedPosition, close: LiveCloseEvent) -> Notifica
         execution={
             "stage": kind,
             "execution_path": execution_path,
-            "fill_to_close_seconds": _seconds_between(active.opened_time_utc, close.close_time_utc),
+            "fill_to_close_seconds": _seconds_between(opened_utc, closed_utc),
             "close_reason": close.close_reason,
         },
     )
@@ -2644,8 +3258,18 @@ def _close_event(active: LiveTrackedPosition, close: LiveCloseEvent) -> Notifica
             "close_price": close.close_price,
             "close_profit": close.close_profit,
             "r_result": r_result,
-            "opened_utc": active.opened_time_utc,
-            "closed_utc": close.close_time_utc,
+            "opened_utc": opened_utc,
+            "opened_timestamp_semantics_version": MT5_EPOCH_UTC_V2,
+            "opened_source_timestamp_semantics_version": active.timestamp_semantics_version,
+            "opened_timestamp_provenance": active.timestamp_provenance,
+            "opened_raw_mt5_time": active.raw_mt5_time,
+            "opened_raw_mt5_time_msc": active.raw_mt5_time_msc,
+            "closed_utc": closed_utc,
+            "closed_timestamp_semantics_version": MT5_EPOCH_UTC_V2,
+            "closed_source_timestamp_semantics_version": close.timestamp_semantics_version,
+            "closed_timestamp_provenance": close.timestamp_provenance,
+            "closed_raw_mt5_time": close.raw_mt5_time,
+            "closed_raw_mt5_time_msc": close.raw_mt5_time_msc,
             "price_digits": active.price_digits,
             "broker_comment": close.close_comment,
             "close_reason": close.close_reason,
@@ -2668,6 +3292,10 @@ def _close_event(active: LiveTrackedPosition, close: LiveCloseEvent) -> Notifica
         signal_key=active.signal_key,
         fields=fields,
     )
+
+
+def _normalized_position_opened_time(active: LiveTrackedPosition) -> str:
+    return normalize_recorded_timestamp(active.opened_time_utc, active.timestamp_semantics_version).isoformat()
 
 
 def _pending_cancelled_event(
@@ -2813,6 +3441,8 @@ def _matching_position_for_order(
     order: LiveTrackedOrder,
     positions: Sequence[Any],
     config: LiveSendExecutorConfig,
+    *,
+    snapshot: ValidatedBrokerSnapshot | None = None,
 ) -> Any | None:
     candidates = [
         position
@@ -2824,7 +3454,7 @@ def _matching_position_for_order(
         comment = str(getattr(position, "comment", "") or "")
         if order.comment and order.comment in comment:
             return position
-    linked_position_id = _position_id_from_order_history(mt5_module, order, config)
+    linked_position_id = _position_id_from_order_history(mt5_module, order, config, snapshot=snapshot)
     if linked_position_id is None:
         return None
     for position in candidates:
@@ -2833,46 +3463,88 @@ def _matching_position_for_order(
     return None
 
 
-def _position_id_from_order_history(mt5_module: Any, order: LiveTrackedOrder, config: LiveSendExecutorConfig) -> int | None:
-    history_order = _history_order_for_ticket(mt5_module, order, config)
+def _position_id_from_order_history(
+    mt5_module: Any,
+    order: LiveTrackedOrder,
+    config: LiveSendExecutorConfig,
+    *,
+    snapshot: ValidatedBrokerSnapshot | None = None,
+) -> int | None:
+    history_order = _history_order_for_ticket(mt5_module, order, config, snapshot=snapshot)
     if history_order is not None:
         for attr in ("position_id", "position_by_id"):
             value = _optional_int(getattr(history_order, attr, None))
             if value is not None:
                 return value
-    for deal in _history_deals_for_order_ticket(mt5_module, order.order_ticket, config):
+    for deal in _history_deals_for_order_ticket(mt5_module, order.order_ticket, config, snapshot=snapshot):
         value = _optional_int(getattr(deal, "position_id", None))
         if value is not None:
             return value
     return None
 
 
-def _history_deals_for_order_ticket(mt5_module: Any, order_ticket: int, config: LiveSendExecutorConfig) -> tuple[Any, ...]:
+def _history_deals_for_order_ticket(
+    mt5_module: Any,
+    order_ticket: int,
+    config: LiveSendExecutorConfig,
+    *,
+    snapshot: ValidatedBrokerSnapshot | None = None,
+) -> tuple[Any, ...]:
+    if snapshot is not None:
+        return tuple(deal for deal in snapshot.history_deals if int(getattr(deal, "order", 0) or 0) == int(order_ticket))
     end = pd.Timestamp.now(tz="UTC")
     start = end - pd.Timedelta(days=config.history_lookback_days)
     result = mt5_module.history_deals_get(start.to_pydatetime(), end.to_pydatetime())
-    deals = [] if result is None else list(result)
+    if result is None:
+        raise BrokerSnapshotUnavailable(_broker_read_error(mt5_module, "history_deals_get"))
+    deals = list(result)
     return tuple(deal for deal in deals if int(getattr(deal, "order", 0) or 0) == int(order_ticket))
 
 
-def _history_deals_for_position(mt5_module: Any, position_id: int, config: LiveSendExecutorConfig) -> tuple[Any, ...]:
+def _history_deals_for_position(
+    mt5_module: Any,
+    position_id: int,
+    config: LiveSendExecutorConfig,
+    *,
+    snapshot: ValidatedBrokerSnapshot | None = None,
+) -> tuple[Any, ...]:
+    if snapshot is not None:
+        return tuple(
+            deal for deal in snapshot.history_deals if int(getattr(deal, "position_id", 0) or 0) == int(position_id)
+        )
     try:
         direct = mt5_module.history_deals_get(position=position_id)
     except TypeError:
-        direct = None
-    if direct:
+        direct = ...
+    if direct is None:
+        raise BrokerSnapshotUnavailable(_broker_read_error(mt5_module, "history_deals_get", symbol=f"position={position_id}"))
+    if direct is not ...:
         return tuple(direct)
     end = pd.Timestamp.now(tz="UTC")
     start = end - pd.Timedelta(days=config.history_lookback_days)
     fallback = mt5_module.history_deals_get(start.to_pydatetime(), end.to_pydatetime())
-    return tuple() if fallback is None else tuple(fallback)
+    if fallback is None:
+        raise BrokerSnapshotUnavailable(_broker_read_error(mt5_module, "history_deals_get"))
+    return tuple(fallback)
 
 
-def _history_order_for_ticket(mt5_module: Any, order: LiveTrackedOrder, config: LiveSendExecutorConfig) -> Any | None:
-    end = pd.Timestamp.now(tz="UTC")
-    start = end - pd.Timedelta(days=config.history_lookback_days)
-    result = mt5_module.history_orders_get(start.to_pydatetime(), end.to_pydatetime())
-    for item in [] if result is None else list(result):
+def _history_order_for_ticket(
+    mt5_module: Any,
+    order: LiveTrackedOrder,
+    config: LiveSendExecutorConfig,
+    *,
+    snapshot: ValidatedBrokerSnapshot | None = None,
+) -> Any | None:
+    if snapshot is not None:
+        result = snapshot.history_orders
+    else:
+        end = pd.Timestamp.now(tz="UTC")
+        start = end - pd.Timedelta(days=config.history_lookback_days)
+        raw_result = mt5_module.history_orders_get(start.to_pydatetime(), end.to_pydatetime())
+        if raw_result is None:
+            raise BrokerSnapshotUnavailable(_broker_read_error(mt5_module, "history_orders_get"))
+        result = tuple(raw_result)
+    for item in result:
         if int(getattr(item, "ticket", 0) or 0) != order.order_ticket:
             continue
         if int(getattr(item, "magic", 0) or 0) != order.magic:
@@ -2881,6 +3553,33 @@ def _history_order_for_ticket(mt5_module: Any, order: LiveTrackedOrder, config: 
             continue
         return item
     return None
+
+
+def _broker_read_error(mt5_module: Any, operation: str, *, symbol: str = "") -> str:
+    try:
+        last_error = mt5_module.last_error()
+    except Exception:
+        last_error = "unavailable"
+    suffix = f" symbol={symbol}" if symbol else ""
+    return f"MT5 {operation} returned None{suffix}; last_error={last_error!r}."
+
+
+def _broker_item_dict(item: Any) -> dict[str, Any]:
+    if hasattr(item, "_asdict"):
+        return dict(item._asdict())
+    if hasattr(item, "__dict__"):
+        return dict(vars(item))
+    return {"repr": repr(item)}
+
+
+def _stable_broker_items(items: Sequence[Any]) -> list[dict[str, Any]]:
+    rows = [_broker_item_dict(item) for item in items]
+    return sorted(rows, key=lambda row: json.dumps(row, sort_keys=True, separators=(",", ":"), default=str))
+
+
+def _stable_payload_hash(payload: Any) -> str:
+    text = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _deal_is_exit(mt5_module: Any, deal: Any) -> bool:
@@ -2899,11 +3598,7 @@ def _close_reason(mt5_module: Any, deal: Any) -> str:
 
 
 def _deal_time_utc(deal: Any, config: LiveSendExecutorConfig) -> str:
-    raw_msc = getattr(deal, "time_msc", None)
-    timestamp = broker_time_epoch_to_utc(raw_msc, config.broker_timezone, unit="ms") if raw_msc else None
-    if timestamp is None:
-        timestamp = broker_time_epoch_to_utc(getattr(deal, "time", None), config.broker_timezone, unit="s")
-    return (timestamp or pd.Timestamp.now(tz="UTC")).isoformat()
+    return _deal_timestamp_fields(deal, config)["normalized_utc"]
 
 
 def _position_id(position: Any) -> int:
@@ -2911,11 +3606,37 @@ def _position_id(position: Any) -> int:
 
 
 def _position_time_utc(position: Any, config: LiveSendExecutorConfig) -> str:
-    raw_msc = getattr(position, "time_msc", None)
+    return _position_timestamp_fields(position, config)["normalized_utc"]
+
+
+def _deal_timestamp_fields(deal: Any, config: LiveSendExecutorConfig) -> dict[str, Any]:
+    return _broker_timestamp_fields(deal, config, label="deal")
+
+
+def _position_timestamp_fields(position: Any, config: LiveSendExecutorConfig) -> dict[str, Any]:
+    return _broker_timestamp_fields(position, config, label="position")
+
+
+def _broker_timestamp_fields(item: Any, config: LiveSendExecutorConfig, *, label: str) -> dict[str, Any]:
+    raw_msc = _optional_int(getattr(item, "time_msc", None))
+    raw_time = _optional_int(getattr(item, "time", None))
     timestamp = broker_time_epoch_to_utc(raw_msc, config.broker_timezone, unit="ms") if raw_msc else None
+    provenance = "mt5_time_msc"
+    if timestamp is None and raw_time:
+        timestamp = broker_time_epoch_to_utc(raw_time, config.broker_timezone, unit="s")
+        provenance = "mt5_time"
+    if timestamp is None and getattr(item, "timestamp_provenance", "") == "inferred_local_send_time":
+        timestamp = _as_utc_timestamp(getattr(item, "inferred_time_utc", None))
+        provenance = "inferred_local_send_time"
     if timestamp is None:
-        timestamp = broker_time_epoch_to_utc(getattr(position, "time", None), config.broker_timezone, unit="s")
-    return (timestamp or pd.Timestamp.now(tz="UTC")).isoformat()
+        raise BrokerSnapshotUnavailable(f"MT5 {label} timestamp unavailable.")
+    return {
+        "raw_time": raw_time,
+        "raw_time_msc": raw_msc,
+        "normalized_utc": timestamp.isoformat(),
+        "timestamp_semantics_version": MT5_EPOCH_UTC_V2,
+        "provenance": provenance,
+    }
 
 
 def _as_utc_timestamp(value: Any) -> pd.Timestamp:
@@ -2928,8 +3649,9 @@ def _as_utc_timestamp(value: Any) -> pd.Timestamp:
 def _close_is_old(state: LiveExecutorState, close: LiveCloseEvent) -> bool:
     if state.last_seen_close_time_utc is None:
         return False
-    close_time = pd.Timestamp(close.close_time_utc)
-    last_time = pd.Timestamp(state.last_seen_close_time_utc)
+    cursor_semantics = state.last_seen_close_timestamp_semantics_version or LEGACY_HELSINKI_RELOCALIZED_V1
+    last_time = normalize_recorded_timestamp(state.last_seen_close_time_utc, cursor_semantics)
+    close_time = normalize_recorded_timestamp(close.close_time_utc, close.timestamp_semantics_version)
     if close_time > last_time:
         return False
     if close_time == last_time and state.last_seen_close_ticket is not None:
@@ -2943,12 +3665,73 @@ def _exposure_from_state(state: LiveExecutorState, symbol: str) -> ExistingStrat
         open_risk_pct=sum(float(item.actual_risk_pct) for item in open_items),
         same_symbol_positions=sum(1 for item in open_items if item.symbol == str(symbol).upper()),
         total_strategy_positions=len(open_items),
-        existing_signal_keys=tuple(
-            set(state.processed_signal_keys)
-            | {item.signal_key for item in state.pending_orders}
-            | {item.signal_key for item in state.active_positions}
-        ),
+        existing_signal_keys=_expanded_existing_signal_keys(state),
     )
+
+
+def _state_signal_records(state: LiveExecutorState) -> tuple[tuple[str, str | None], ...]:
+    records: list[tuple[str, str | None]] = [
+        (key, state.processed_signal_key_semantics.get(key))
+        for key in state.processed_signal_keys
+    ]
+    records.extend((item.signal_key, item.signal_key_timestamp_semantics_version) for item in state.pending_orders)
+    records.extend((item.signal_key, item.signal_key_timestamp_semantics_version) for item in state.active_positions)
+    return tuple(records)
+
+
+def _state_has_equivalent_signal_key(
+    state: LiveExecutorState,
+    canonical_key: str,
+    *,
+    config: LiveSendExecutorConfig,
+) -> bool:
+    parse_signal_key(canonical_key)
+    return any(
+        signal_key_matches_canonical(
+            recorded_key,
+            canonical_key,
+            recorded_semantics=semantics,
+            broker_timezone=DEFAULT_LEGACY_BROKER_TIMEZONE,
+        )
+        for recorded_key, semantics in _state_signal_records(state)
+    )
+
+
+def _expanded_existing_signal_keys(state: LiveExecutorState) -> tuple[str, ...]:
+    keys: set[str] = set()
+    for raw_key, semantics in _state_signal_records(state):
+        parsed = parse_signal_key(raw_key)
+        if semantics == LEGACY_HELSINKI_RELOCALIZED_V1:
+            canonical_time = normalize_recorded_timestamp(parsed.signal_time_utc, semantics)
+            keys.add(parsed.with_timestamp(canonical_time).to_key())
+            continue
+        if semantics == MT5_EPOCH_UTC_V2:
+            keys.add(parsed.to_key())
+            continue
+        canonical, legacy = canonical_and_legacy_signal_keys(parsed.to_key())
+        keys.update((canonical, legacy))
+    return tuple(sorted(keys))
+
+
+def _notification_event_already_recorded(
+    state: LiveExecutorState,
+    event_key: str,
+    event: NotificationEvent,
+) -> bool:
+    if event_key in state.notified_event_keys:
+        return True
+    signal_key = str(event.signal_key or "")
+    if not signal_key or signal_key not in event_key:
+        return False
+    try:
+        canonical, legacy = canonical_and_legacy_signal_keys(signal_key)
+    except TimestampSemanticsError:
+        return False
+    variants = {
+        event_key.replace(signal_key, canonical, 1),
+        event_key.replace(signal_key, legacy, 1),
+    }
+    return any(candidate in state.notified_event_keys for candidate in variants)
 
 
 def _accepted_done_retcodes(mt5_module: Any) -> set[int]:
@@ -3033,17 +3816,35 @@ def _append_unique(values: Iterable[str], value: str) -> tuple[str, ...]:
 
 
 def _with_processed_key(state: LiveExecutorState, signal_key: str) -> LiveExecutorState:
-    return replace(state, processed_signal_keys=_append_unique(state.processed_signal_keys, signal_key))
+    semantics = dict(state.processed_signal_key_semantics)
+    semantics[signal_key] = MT5_EPOCH_UTC_V2
+    return replace(
+        state,
+        processed_signal_keys=_append_unique(state.processed_signal_keys, signal_key),
+        processed_signal_key_semantics=semantics,
+    )
 
 
 def _without_processed_key(state: LiveExecutorState, signal_key: str) -> LiveExecutorState:
     """Re-arm a signal after an explicitly retryable WAITING outcome."""
 
-    return replace(state, processed_signal_keys=tuple(key for key in state.processed_signal_keys if key != signal_key))
+    semantics = dict(state.processed_signal_key_semantics)
+    semantics.pop(signal_key, None)
+    return replace(
+        state,
+        processed_signal_keys=tuple(key for key in state.processed_signal_keys if key != signal_key),
+        processed_signal_key_semantics=semantics,
+    )
 
 
 def _with_checked_key(state: LiveExecutorState, signal_key: str) -> LiveExecutorState:
-    return replace(state, order_checked_signal_keys=_append_unique(state.order_checked_signal_keys, signal_key))
+    semantics = dict(state.order_checked_signal_key_semantics)
+    semantics[signal_key] = MT5_EPOCH_UTC_V2
+    return replace(
+        state,
+        order_checked_signal_keys=_append_unique(state.order_checked_signal_keys, signal_key),
+        order_checked_signal_key_semantics=semantics,
+    )
 
 
 def _tuple_of_strings(value: Any, default: tuple[str, ...]) -> tuple[str, ...]:

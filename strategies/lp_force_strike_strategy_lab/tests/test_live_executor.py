@@ -107,6 +107,7 @@ def _config(tmpdir: str, **overrides) -> LiveSendExecutorConfig:
         "broker_timezone": "UTC",
         "journal_path": str(Path(tmpdir) / "live.jsonl"),
         "state_path": str(Path(tmpdir) / "state.json"),
+        "market_recovery_mode": "better_than_entry_only",
     }
     values.update(overrides)
     return LiveSendExecutorConfig(**values)
@@ -221,6 +222,12 @@ class FakeMT5:
     DEAL_ENTRY_INOUT = 2
     DEAL_REASON_SL = 4
     DEAL_REASON_TP = 5
+    ORDER_STATE_CANCELED = 2
+    ORDER_STATE_EXPIRED = 3
+    ORDER_STATE_REJECTED = 4
+    ORDER_REASON_CLIENT = 0
+    ORDER_REASON_MOBILE = 1
+    ORDER_REASON_WEB = 2
 
     def __init__(self) -> None:
         self.account = SimpleNamespace(login=123, server="Real", equity=100_000.0, currency="USD")
@@ -390,7 +397,7 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(settings.executor.risk_buckets_pct, {"H4": 0.25, "H8": 0.25})
             self.assertEqual(settings.executor.strategy_magic, 231500)
             self.assertEqual(settings.executor.order_comment_prefix, "LPFSIC")
-            self.assertEqual(settings.executor.market_recovery_mode, "better_than_entry_only")
+            self.assertEqual(settings.executor.market_recovery_mode, "disabled")
             self.assertEqual(settings.executor.market_recovery_deviation_points, 0)
             self.assertFalse(settings.executor.require_lp_pivot_before_fs_mother)
             self.assertFalse(live_module._dry_compatible_config(settings.executor).require_lp_pivot_before_fs_mother)
@@ -405,6 +412,7 @@ class LiveExecutorTests(unittest.TestCase):
                 {"max_open_risk_pct": 0},
                 {"max_spread_risk_fraction": 0},
                 {"max_spread_risk_fraction": 1.5},
+                {"market_recovery_mode": "better_than_entry_only"},
                 {"market_recovery_mode": "always"},
                 {"market_recovery_deviation_points": -1},
             ]
@@ -545,7 +553,7 @@ class LiveExecutorTests(unittest.TestCase):
             save_live_state(path, original)
 
             with mock.patch.object(live_module.os, "replace", side_effect=OSError("disk failure")):
-                with self.assertRaises(OSError):
+                with self.assertRaises(live_module.LiveStateAtomicReplaceError):
                     save_live_state(path, updated)
 
             self.assertEqual(load_live_state(path), original)
@@ -561,7 +569,7 @@ class LiveExecutorTests(unittest.TestCase):
                 mock.patch.object(live_module.os, "replace", side_effect=PermissionError("access denied")),
                 mock.patch.object(live_module.time, "sleep"),
             ):
-                save_live_state(path, updated)
+                save_live_state(path, updated, allow_non_atomic_fallback=True)
 
             self.assertEqual(load_live_state(path), updated)
             self.assertEqual(list(Path(tmpdir).glob(".state.json.*.tmp")), [])
@@ -576,7 +584,7 @@ class LiveExecutorTests(unittest.TestCase):
                 mock.patch.object(live_module.time, "sleep"),
                 mock.patch.object(live_module.Path, "unlink", side_effect=OSError("locked temp")),
             ):
-                save_live_state(path, updated)
+                save_live_state(path, updated, allow_non_atomic_fallback=True)
 
             self.assertEqual(load_live_state(path), updated)
 
@@ -1414,7 +1422,7 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(event_fields["latest_closed_candle_time_utc"], "2026-01-01T04:00:00+00:00")
             self.assertIn("placed_time_utc", event_fields)
             self.assertGreaterEqual(event_fields["placement_lag_seconds"], 0)
-            self.assertEqual(event_fields["diagnostic_schema_version"], 1)
+            self.assertEqual(event_fields["diagnostic_schema_version"], 2)
             diagnostics = event_fields["diagnostics"]
             self.assertEqual(diagnostics["setup"]["setup_id"], "EURUSD_H4_long")
             self.assertAlmostEqual(diagnostics["setup"]["risk_distance"], 0.005)
@@ -2077,7 +2085,16 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertIn("LPFS LIVE | TAKE PROFIT", notifier_client.payloads[-1]["text"])
 
             mt5.deals = []
-            mt5.history_orders = []
+            mt5.history_orders = [
+                SimpleNamespace(
+                    ticket=9002,
+                    magic=131500,
+                    symbol="EURUSD",
+                    state=mt5.ORDER_STATE_CANCELED,
+                    reason=mt5.ORDER_REASON_CLIENT,
+                    comment="manual cancel",
+                )
+            ]
             cancelled = reconcile_live_state(
                 mt5,
                 config=config,
@@ -2185,7 +2202,16 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(not_linked.active_positions, ())
 
             mt5.positions = []
-            mt5.history_orders = [SimpleNamespace(ticket=9002, magic=131500, symbol="EURUSD", comment="cancelled in mt5")]
+            mt5.history_orders = [
+                SimpleNamespace(
+                    ticket=9002,
+                    magic=131500,
+                    symbol="EURUSD",
+                    state=mt5.ORDER_STATE_CANCELED,
+                    reason=mt5.ORDER_REASON_CLIENT,
+                    comment="cancelled in mt5",
+                )
+            ]
             missing = reconcile_live_state(mt5, config=config, state=LiveExecutorState(pending_orders=(_pending(order_ticket=9002),)))
             self.assertEqual(missing.pending_orders, ())
             mt5.history_orders = [
@@ -2194,7 +2220,7 @@ class LiveExecutorTests(unittest.TestCase):
                 SimpleNamespace(ticket=9003, magic=131500, symbol="GBPUSD", comment="wrong symbol"),
             ]
             history_miss = reconcile_live_state(mt5, config=config, state=LiveExecutorState(pending_orders=(_pending(order_ticket=9003),)))
-            self.assertEqual(history_miss.pending_orders, ())
+            self.assertEqual(len(history_miss.pending_orders), 1)
             mt5.history_orders = []
             duplicate_notice = reconcile_live_state(
                 mt5,
@@ -2222,6 +2248,7 @@ class LiveExecutorTests(unittest.TestCase):
             closed = reconcile_live_state(mt5, config=config, state=LiveExecutorState(active_positions=(active,)))
             self.assertEqual(closed.active_positions, ())
             self.assertEqual(closed.last_seen_close_ticket, 3001)
+            mt5.direct_deals_type_error = True
             self.assertEqual(latest_close_for_position(mt5, active, config).to_dict()["ticket"], 3001)
 
             short_active = _active(side="short", entry_price=1.2, stop_loss=1.21, take_profit=1.19)
@@ -2321,8 +2348,10 @@ class LiveExecutorTests(unittest.TestCase):
             mt5 = FakeMT5()
             mt5.orders = None
             mt5.positions = None
-            self.assertEqual(current_strategy_orders(mt5, config), ())
-            self.assertEqual(current_strategy_positions(mt5, config), ())
+            with self.assertRaises(live_module.BrokerSnapshotUnavailable):
+                current_strategy_orders(mt5, config)
+            with self.assertRaises(live_module.BrokerSnapshotUnavailable):
+                current_strategy_positions(mt5, config)
 
             mt5.orders = [SimpleNamespace(ticket=1, magic=131500), SimpleNamespace(ticket=2, magic=999)]
             mt5.positions = [SimpleNamespace(ticket=3, magic=131500), SimpleNamespace(ticket=4, magic=999)]
@@ -2353,8 +2382,10 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertIsNone(latest_close_for_position(mt5, active, config))
 
             mt5.deals = None
-            self.assertIsNone(latest_close_for_position(mt5, active, config))
+            with self.assertRaises(live_module.BrokerSnapshotUnavailable):
+                latest_close_for_position(mt5, active, config)
 
+            mt5.deals = []
             self.assertIsNone(
                 live_module._matching_position_for_order(
                     mt5,

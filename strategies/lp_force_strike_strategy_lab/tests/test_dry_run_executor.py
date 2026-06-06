@@ -545,7 +545,7 @@ class DryRunExecutorTests(unittest.TestCase):
         raw_time = int(pd.Timestamp("2026-04-21 15:14:00+00:00").timestamp())
         self.assertEqual(
             broker_time_epoch_to_utc(raw_time, "Europe/Helsinki"),
-            pd.Timestamp("2026-04-21 12:14:00+00:00"),
+            pd.Timestamp("2026-04-21 15:14:00+00:00"),
         )
         self.assertIsNone(broker_time_epoch_to_utc(None, "UTC"))
         self.assertIsNone(broker_time_epoch_to_utc(0, "UTC"))
@@ -626,6 +626,10 @@ class DryRunExecutorTests(unittest.TestCase):
         market_without_point = market_snapshot_from_mt5(mt5, "EURUSD", broker_timezone="UTC")
         self.assertIsNone(market_without_point.spread_points)
         self.assertEqual(market_without_point.time_utc, pd.Timestamp("2026-01-01 04:00:00+00:00"))
+        mt5.tick = SimpleNamespace(bid=1.0, ask=1.1, time_msc=0, time=0)
+        unavailable_time = market_snapshot_from_mt5(mt5, "EURUSD", broker_timezone="UTC")
+        self.assertIsNone(unavailable_time.time_utc)
+        self.assertEqual(unavailable_time.timestamp_provenance, "unavailable")
         mt5.info = None
         with self.assertRaisesRegex(RuntimeError, "quote unavailable"):
             market_snapshot_from_mt5(mt5, "EURUSD", broker_timezone="UTC")
@@ -900,7 +904,7 @@ class DryRunExecutorTests(unittest.TestCase):
             self.assertIn("LPFS DRY RUN - BROKER CHECK", ready_client.payloads[0]["text"])
             rows = _journal_rows(Path(config.journal_path))
             self.assertEqual(rows[0]["event"], "signal_detected")
-            self.assertEqual(rows[0]["diagnostic_schema_version"], 1)
+            self.assertEqual(rows[0]["diagnostic_schema_version"], 2)
             self.assertEqual(rows[0]["notification_event"]["fields"]["diagnostics"]["setup"]["setup_id"], "EURUSD_H4_long")
             self.assertIn("market_snapshot", [row["event"] for row in rows])
             self.assertIn("order_intent_created", [row["event"] for row in rows])
@@ -1029,6 +1033,10 @@ class DryRunExecutorTests(unittest.TestCase):
             self.assertEqual(row["symbol"], "EURUSD")
             self.assertEqual(row["timeframe"], "H4")
             self.assertIn("spread_points", row)
+            self.assertIn("raw_mt5_time", row)
+            self.assertIn("raw_mt5_time_msc", row)
+            self.assertEqual(row["timestamp_semantics_version"], "mt5_epoch_utc_v2")
+            self.assertEqual(row["timestamp_provenance"], "mt5_time_msc")
 
 
 def _intent_for_request(order_type: str):

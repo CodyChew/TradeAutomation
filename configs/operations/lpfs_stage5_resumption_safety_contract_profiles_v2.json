@@ -1,0 +1,1267 @@
+{
+  "profiles": {
+    "stage5_ftmo_gate3_resumption_v1": {
+      "expected_packet_result": "PASS",
+      "gate": "stage5_ftmo_gate3_resumption",
+      "profile_version": 2,
+      "required_steps": [
+        "precheck",
+        "pre_bounded_status",
+        "pre_strict_mt5",
+        "postcheck",
+        "post_bounded_status",
+        "post_strict_mt5"
+      ],
+      "runtime_integrity_steps": [
+        "precheck",
+        "postcheck"
+      ],
+      "steps": {
+        "post_bounded_status": {
+          "bundle_kind": "hash_approved_bounded_status_v1",
+          "contract_version": 2,
+          "expected_command_sha256": "ba9b9d4e12c15fa0cf07f470eebf7aaf195281070710ba16e054ae1347898ac6",
+          "expected_status_implementation_sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+          "required_stdout_substrings": [
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+            "LPFS live status"
+          ]
+        },
+        "post_strict_mt5": {
+          "contract_version": 1,
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 510276550,
+            "account_matches_config": true,
+            "account_server": "FTMO-Server",
+            "counts.orders": 0,
+            "counts.positions": 3,
+            "history_deals_get": "OK",
+            "history_orders_get": "OK",
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFS W1 S 299",
+                "identifier": 259140457,
+                "magic": 131500,
+                "sl": 117.514,
+                "symbol": "CADJPY",
+                "ticket": 259140457,
+                "tp": 112.708,
+                "volume": 0.02
+              },
+              {
+                "comment": "LPFS D1 L 299",
+                "identifier": 261720587,
+                "magic": 131500,
+                "sl": 1.04639,
+                "symbol": "GBPCHF",
+                "ticket": 261720587,
+                "tp": 1.06441,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFS W1 L 299",
+                "identifier": 262778049,
+                "magic": 131500,
+                "sl": 1.85393,
+                "symbol": "GBPAUD",
+                "ticket": 262778049,
+                "tp": 1.8975499999999998,
+                "volume": 0.02
+              }
+            ],
+            "terminal_connected": true,
+            "terminal_info": "OK",
+            "terminal_trade_allowed": true
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "history_deals_get",
+            "history_orders_get",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_connected",
+            "terminal_info",
+            "terminal_trade_allowed"
+          ]
+        },
+        "postcheck": {
+          "contract_version": 1,
+          "expectations": {
+            "critical_runtime_file_hashes": {
+              "scripts/run_lp_force_strike_live_executor.py": {
+                "normalized_sha256": "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d",
+                "raw_sha256_variants": [
+                  "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
+                  "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d"
+                ]
+              },
+              "scripts/run_lpfs_live_forever.ps1": {
+                "normalized_sha256": "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3",
+                "raw_sha256_variants": [
+                  "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
+                  "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": {
+                "normalized_sha256": "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279",
+                "raw_sha256_variants": [
+                  "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
+                  "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": {
+                "normalized_sha256": "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b",
+                "raw_sha256_variants": [
+                  "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
+                  "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
+                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "raw_sha256_variants": [
+                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
+                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
+                "normalized_sha256": "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f",
+                "raw_sha256_variants": [
+                  "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254",
+                  "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f"
+                ]
+              }
+            },
+            "heartbeat_fresh": true,
+            "heartbeat_status": "running",
+            "journal_lifecycle_fresh": true,
+            "kill_switch_active": false,
+            "logical_runner_path_count": 1,
+            "market_recovery_mode": "disabled",
+            "new_broker_exposure_count": 0,
+            "repo_head": "3dd1895ca5300d448e4d100095b294e78679a6b9",
+            "state_active_positions": 3,
+            "state_pending_orders": 0,
+            "state_schema_version": 2,
+            "task_actions": [
+              {
+                "arguments": "-NoProfile -ExecutionPolicy Bypass -File \"C:\\TradeAutomation\\scripts\\run_lpfs_live_forever.ps1\" -RepoRoot \"C:\\TradeAutomation\" -ConfigPath \"C:\\TradeAutomation\\config.local.json\" -RuntimeRoot \"C:\\TradeAutomationRuntime\" -Cycles 100000000 -SleepSeconds 30",
+                "execute": "powershell.exe",
+                "working_directory": "C:\\TradeAutomation"
+              }
+            ],
+            "task_count": 1,
+            "task_enabled": true,
+            "task_multiple_instances": "IgnoreNew",
+            "task_principal": {
+              "logon_type": "Interactive",
+              "run_level": "Highest",
+              "user_id": "Administrator"
+            },
+            "task_state": "Running",
+            "tracked_worktree_clean": true,
+            "tracked_worktree_status": [],
+            "watchdog_process_count": 1
+          },
+          "marker": "LPFS_GATE3_POSTCHECK_JSON=",
+          "required_expectation_fields": [
+            "repo_head",
+            "critical_runtime_file_hashes",
+            "kill_switch_active",
+            "market_recovery_mode",
+            "logical_runner_path_count",
+            "watchdog_process_count",
+            "heartbeat_fresh",
+            "heartbeat_status",
+            "journal_lifecycle_fresh",
+            "state_schema_version",
+            "state_pending_orders",
+            "state_active_positions",
+            "new_broker_exposure_count",
+            "task_count",
+            "task_enabled",
+            "task_state",
+            "task_multiple_instances",
+            "task_actions",
+            "task_principal",
+            "tracked_worktree_clean",
+            "tracked_worktree_status"
+          ]
+        },
+        "pre_bounded_status": {
+          "bundle_kind": "hash_approved_bounded_status_v1",
+          "contract_version": 2,
+          "expected_command_sha256": "9b3773d5d1d8fb213194bb92aba46e0fa60497ec626af3f959e1466e045b8efd",
+          "expected_status_implementation_sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+          "required_stdout_substrings": [
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+            "LPFS live status"
+          ]
+        },
+        "pre_strict_mt5": {
+          "contract_version": 1,
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 510276550,
+            "account_matches_config": true,
+            "account_server": "FTMO-Server",
+            "counts.orders": 0,
+            "counts.positions": 3,
+            "history_deals_get": "OK",
+            "history_orders_get": "OK",
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFS W1 S 299",
+                "identifier": 259140457,
+                "magic": 131500,
+                "sl": 117.514,
+                "symbol": "CADJPY",
+                "ticket": 259140457,
+                "tp": 112.708,
+                "volume": 0.02
+              },
+              {
+                "comment": "LPFS D1 L 299",
+                "identifier": 261720587,
+                "magic": 131500,
+                "sl": 1.04639,
+                "symbol": "GBPCHF",
+                "ticket": 261720587,
+                "tp": 1.06441,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFS W1 L 299",
+                "identifier": 262778049,
+                "magic": 131500,
+                "sl": 1.85393,
+                "symbol": "GBPAUD",
+                "ticket": 262778049,
+                "tp": 1.8975499999999998,
+                "volume": 0.02
+              }
+            ],
+            "terminal_connected": true,
+            "terminal_info": "OK",
+            "terminal_trade_allowed": true
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "history_deals_get",
+            "history_orders_get",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_connected",
+            "terminal_info",
+            "terminal_trade_allowed"
+          ]
+        },
+        "precheck": {
+          "contract_version": 1,
+          "expectations": {
+            "critical_runtime_file_hashes": {
+              "scripts/run_lp_force_strike_live_executor.py": {
+                "normalized_sha256": "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d",
+                "raw_sha256_variants": [
+                  "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
+                  "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d"
+                ]
+              },
+              "scripts/run_lpfs_live_forever.ps1": {
+                "normalized_sha256": "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3",
+                "raw_sha256_variants": [
+                  "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
+                  "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": {
+                "normalized_sha256": "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279",
+                "raw_sha256_variants": [
+                  "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
+                  "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": {
+                "normalized_sha256": "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b",
+                "raw_sha256_variants": [
+                  "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
+                  "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
+                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "raw_sha256_variants": [
+                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
+                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
+                "normalized_sha256": "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f",
+                "raw_sha256_variants": [
+                  "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254",
+                  "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f"
+                ]
+              }
+            },
+            "kill_switch_active": true,
+            "logical_runner_path_count": 0,
+            "market_recovery_mode": "disabled",
+            "repo_head": "3dd1895ca5300d448e4d100095b294e78679a6b9",
+            "runner_process_count": 0,
+            "state_active_positions": 3,
+            "state_pending_orders": 0,
+            "state_schema_version": 2,
+            "task_actions": [
+              {
+                "arguments": "-NoProfile -ExecutionPolicy Bypass -File \"C:\\TradeAutomation\\scripts\\run_lpfs_live_forever.ps1\" -RepoRoot \"C:\\TradeAutomation\" -ConfigPath \"C:\\TradeAutomation\\config.local.json\" -RuntimeRoot \"C:\\TradeAutomationRuntime\" -Cycles 100000000 -SleepSeconds 30",
+                "execute": "powershell.exe",
+                "working_directory": "C:\\TradeAutomation"
+              }
+            ],
+            "task_count": 1,
+            "task_enabled": false,
+            "task_multiple_instances": "IgnoreNew",
+            "task_principal": {
+              "logon_type": "Interactive",
+              "run_level": "Highest",
+              "user_id": "Administrator"
+            },
+            "task_state": "Disabled",
+            "tracked_worktree_clean": true,
+            "tracked_worktree_status": [],
+            "watchdog_process_count": 0
+          },
+          "marker": "LPFS_GATE3_PRECHECK_JSON=",
+          "required_expectation_fields": [
+            "repo_head",
+            "critical_runtime_file_hashes",
+            "kill_switch_active",
+            "market_recovery_mode",
+            "logical_runner_path_count",
+            "runner_process_count",
+            "watchdog_process_count",
+            "state_schema_version",
+            "state_pending_orders",
+            "state_active_positions",
+            "task_count",
+            "task_enabled",
+            "task_state",
+            "task_multiple_instances",
+            "task_actions",
+            "task_principal",
+            "tracked_worktree_clean",
+            "tracked_worktree_status"
+          ]
+        }
+      }
+    },
+    "stage5_gate1_dual_lane_contained_v2": {
+      "expected_packet_result": "PASS",
+      "gate": "stage5_gate1",
+      "profile_version": 2,
+      "required_steps": [
+        "FTMO/compact_containment",
+        "FTMO/bounded_status",
+        "FTMO/strict_mt5_probe",
+        "IC/compact_containment",
+        "IC/bounded_status",
+        "IC/strict_mt5_probe"
+      ],
+      "runtime_integrity_steps": [
+        "FTMO/compact_containment",
+        "IC/compact_containment"
+      ],
+      "steps": {
+        "FTMO/bounded_status": {
+          "bundle_kind": "hash_approved_bounded_status_v1",
+          "contract_version": 2,
+          "expected_command_sha256": "f9eb4a3aef457c529a7a0356643084268c859d8035e3181b7c62507b900d46ff",
+          "expected_status_implementation_sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+          "required_stdout_substrings": [
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+            "LPFS live status"
+          ]
+        },
+        "FTMO/compact_containment": {
+          "bundle_kind": "hash_approved_compact_containment_v1",
+          "contract_version": 3,
+          "expected_command_sha256": "a9c1797379437323ce38f245e4e32b7caf99bd75d3025795dceff2af316e1031",
+          "expected_compact_script_sha256": "be3865bb91c99ce3deac3796c42b7aa22bae331e81efd52b625a858b5ab418ae",
+          "expectations": {
+            "critical_runtime_file_hashes": {
+              "scripts/run_lp_force_strike_live_executor.py": {
+                "normalized_sha256": "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d",
+                "raw_sha256_variants": [
+                  "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
+                  "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d"
+                ]
+              },
+              "scripts/run_lpfs_live_forever.ps1": {
+                "normalized_sha256": "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3",
+                "raw_sha256_variants": [
+                  "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
+                  "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": {
+                "normalized_sha256": "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279",
+                "raw_sha256_variants": [
+                  "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
+                  "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": {
+                "normalized_sha256": "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b",
+                "raw_sha256_variants": [
+                  "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
+                  "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
+                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "raw_sha256_variants": [
+                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
+                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
+                "normalized_sha256": "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f",
+                "raw_sha256_variants": [
+                  "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254",
+                  "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f"
+                ]
+              }
+            },
+            "kill_switch_active": true,
+            "market_recovery_mode": "disabled",
+            "repo_head": "3dd1895ca5300d448e4d100095b294e78679a6b9",
+            "runner_process_count": 0,
+            "state_active_positions": 3,
+            "state_pending_orders": 0,
+            "state_schema_version": 2,
+            "task_state": "Disabled",
+            "tracked_worktree_clean": true,
+            "tracked_worktree_status": [],
+            "watchdog_process_count": 0
+          },
+          "marker": "LPFS_GATE1_CONTAINMENT_JSON=",
+          "required_expectation_fields": [
+            "kill_switch_active",
+            "market_recovery_mode",
+            "repo_head",
+            "runner_process_count",
+            "state_active_positions",
+            "state_pending_orders",
+            "state_schema_version",
+            "task_state",
+            "watchdog_process_count",
+            "critical_runtime_file_hashes",
+            "tracked_worktree_clean",
+            "tracked_worktree_status"
+          ]
+        },
+        "FTMO/strict_mt5_probe": {
+          "bundle_kind": "hash_approved_strict_mt5_v1",
+          "contract_version": 4,
+          "expected_command_sha256": "6c91384a95c005f028e0b36898d3d9a175b7df65afc6bc19e1b5c0b4421d578c",
+          "expected_strict_mt5_script_sha256": "fa072d272820cd8ab41687a4f68a0d0f7d947e84e9432356c0cf5775e45cdbdc",
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 510276550,
+            "account_matches_config": true,
+            "account_server": "FTMO-Server",
+            "counts.orders": 0,
+            "counts.positions": 3,
+            "history_deals_get": "OK",
+            "history_orders_get": "OK",
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFS W1 S 299",
+                "identifier": 259140457,
+                "magic": 131500,
+                "sl": 117.514,
+                "symbol": "CADJPY",
+                "ticket": 259140457,
+                "tp": 112.708,
+                "volume": 0.02
+              },
+              {
+                "comment": "LPFS D1 L 299",
+                "identifier": 261720587,
+                "magic": 131500,
+                "sl": 1.04639,
+                "symbol": "GBPCHF",
+                "ticket": 261720587,
+                "tp": 1.06441,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFS W1 L 299",
+                "identifier": 262778049,
+                "magic": 131500,
+                "sl": 1.85393,
+                "symbol": "GBPAUD",
+                "ticket": 262778049,
+                "tp": 1.8975499999999998,
+                "volume": 0.02
+              }
+            ],
+            "terminal_connected": true,
+            "terminal_info": "OK",
+            "terminal_trade_allowed": true
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "history_deals_get",
+            "history_orders_get",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_connected",
+            "terminal_info",
+            "terminal_trade_allowed"
+          ]
+        },
+        "IC/bounded_status": {
+          "bundle_kind": "hash_approved_bounded_status_v1",
+          "contract_version": 2,
+          "expected_command_sha256": "826121376eba41da090baeb334fd61b056813eca0552488ff2ed07b3e7d27961",
+          "expected_status_implementation_sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+          "required_stdout_substrings": [
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+            "LPFS live status"
+          ]
+        },
+        "IC/compact_containment": {
+          "bundle_kind": "hash_approved_compact_containment_v1",
+          "contract_version": 3,
+          "expected_command_sha256": "4d276d8e9a5756d87a61669a19bba24d8251d4fdb3f4fbd362a3f654958b3b34",
+          "expected_compact_script_sha256": "ac0b29019836804fceee9924ad1e67336faf4d6bce30bf0e972f0b1ba9cd516e",
+          "expectations": {
+            "critical_runtime_file_hashes": {
+              "scripts/run_lp_force_strike_live_executor.py": {
+                "normalized_sha256": "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d",
+                "raw_sha256_variants": [
+                  "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
+                  "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d"
+                ]
+              },
+              "scripts/run_lpfs_live_forever.ps1": {
+                "normalized_sha256": "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3",
+                "raw_sha256_variants": [
+                  "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
+                  "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": {
+                "normalized_sha256": "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279",
+                "raw_sha256_variants": [
+                  "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
+                  "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": {
+                "normalized_sha256": "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b",
+                "raw_sha256_variants": [
+                  "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
+                  "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
+                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "raw_sha256_variants": [
+                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
+                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
+                "normalized_sha256": "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f",
+                "raw_sha256_variants": [
+                  "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254",
+                  "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f"
+                ]
+              }
+            },
+            "kill_switch_active": true,
+            "market_recovery_mode": "disabled",
+            "repo_head": "b02a3cb92a05e771782c7a9ca4e4339c9452969a",
+            "runner_process_count": 0,
+            "state_active_positions": 2,
+            "state_pending_orders": 0,
+            "state_schema_version": 2,
+            "task_state": "Disabled",
+            "tracked_worktree_clean": true,
+            "tracked_worktree_status": [],
+            "watchdog_process_count": 0
+          },
+          "marker": "LPFS_GATE1_CONTAINMENT_JSON=",
+          "required_expectation_fields": [
+            "kill_switch_active",
+            "market_recovery_mode",
+            "repo_head",
+            "runner_process_count",
+            "state_active_positions",
+            "state_pending_orders",
+            "state_schema_version",
+            "task_state",
+            "watchdog_process_count",
+            "critical_runtime_file_hashes",
+            "tracked_worktree_clean",
+            "tracked_worktree_status"
+          ]
+        },
+        "IC/strict_mt5_probe": {
+          "bundle_kind": "hash_approved_strict_mt5_v1",
+          "contract_version": 4,
+          "expected_command_sha256": "2c6985e7b775bfc69d2ca0fa6ceccd2957511a95acaed02c9ab22eef228ce409",
+          "expected_strict_mt5_script_sha256": "77ed24f05e0f14b93d5471e58088f468d00d75e1e2670ac028386284a7b617c7",
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 16000463,
+            "account_matches_config": true,
+            "account_server": "ICMarketsSC-MT5-2",
+            "counts.orders": 0,
+            "counts.positions": 2,
+            "history_deals_get": "OK",
+            "history_orders_get": "OK",
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFSIC W1 S 299",
+                "identifier": 4423126597,
+                "magic": 231500,
+                "sl": 117.517,
+                "symbol": "CADJPY",
+                "ticket": 4423126597,
+                "tp": 112.713,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFSIC W1 L 299",
+                "identifier": 4431268523,
+                "magic": 231500,
+                "sl": 1.85397,
+                "symbol": "GBPAUD",
+                "ticket": 4431268523,
+                "tp": 1.8975499999999998,
+                "volume": 0.01
+              }
+            ],
+            "terminal_connected": true,
+            "terminal_info": "OK",
+            "terminal_trade_allowed": true
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "history_deals_get",
+            "history_orders_get",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_connected",
+            "terminal_info",
+            "terminal_trade_allowed"
+          ]
+        }
+      }
+    },
+    "stage5_minimum_dual_lane_read_only_v1": {
+      "expected_packet_result": "PASS",
+      "gate": "stage5_minimum_read_only",
+      "profile_version": 1,
+      "required_steps": [
+        "FTMO/compact_containment",
+        "FTMO/strict_mt5_probe",
+        "IC/compact_containment",
+        "IC/strict_mt5_probe"
+      ],
+      "steps": {
+        "FTMO/compact_containment": {
+          "bundle_kind": "hash_approved_compact_containment_v1",
+          "contract_version": 3,
+          "expected_command_sha256": "a9c1797379437323ce38f245e4e32b7caf99bd75d3025795dceff2af316e1031",
+          "expected_compact_script_sha256": "be3865bb91c99ce3deac3796c42b7aa22bae331e81efd52b625a858b5ab418ae",
+          "expectations": {
+            "kill_switch_active": true,
+            "market_recovery_mode": "disabled",
+            "repo_head": "3dd1895ca5300d448e4d100095b294e78679a6b9",
+            "runner_process_count": 0,
+            "task_state": "Disabled",
+            "watchdog_process_count": 0
+          },
+          "marker": "LPFS_GATE1_CONTAINMENT_JSON=",
+          "required_expectation_fields": [
+            "kill_switch_active",
+            "market_recovery_mode",
+            "repo_head",
+            "runner_process_count",
+            "task_state",
+            "watchdog_process_count"
+          ]
+        },
+        "FTMO/strict_mt5_probe": {
+          "bundle_kind": "hash_approved_strict_mt5_v1",
+          "contract_version": 4,
+          "expected_command_sha256": "6c91384a95c005f028e0b36898d3d9a175b7df65afc6bc19e1b5c0b4421d578c",
+          "expected_strict_mt5_script_sha256": "fa072d272820cd8ab41687a4f68a0d0f7d947e84e9432356c0cf5775e45cdbdc",
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 510276550,
+            "account_matches_config": true,
+            "account_server": "FTMO-Server",
+            "counts.orders": 0,
+            "counts.positions": 3,
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFS W1 S 299",
+                "identifier": 259140457,
+                "magic": 131500,
+                "sl": 117.514,
+                "symbol": "CADJPY",
+                "ticket": 259140457,
+                "tp": 112.708,
+                "volume": 0.02
+              },
+              {
+                "comment": "LPFS D1 L 299",
+                "identifier": 261720587,
+                "magic": 131500,
+                "sl": 1.04639,
+                "symbol": "GBPCHF",
+                "ticket": 261720587,
+                "tp": 1.06441,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFS W1 L 299",
+                "identifier": 262778049,
+                "magic": 131500,
+                "sl": 1.85393,
+                "symbol": "GBPAUD",
+                "ticket": 262778049,
+                "tp": 1.8975499999999998,
+                "volume": 0.02
+              }
+            ],
+            "terminal_info": "OK"
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_info"
+          ]
+        },
+        "IC/compact_containment": {
+          "bundle_kind": "hash_approved_compact_containment_v1",
+          "contract_version": 3,
+          "expected_command_sha256": "4d276d8e9a5756d87a61669a19bba24d8251d4fdb3f4fbd362a3f654958b3b34",
+          "expected_compact_script_sha256": "ac0b29019836804fceee9924ad1e67336faf4d6bce30bf0e972f0b1ba9cd516e",
+          "expectations": {
+            "kill_switch_active": true,
+            "market_recovery_mode": "disabled",
+            "repo_head": "b02a3cb92a05e771782c7a9ca4e4339c9452969a",
+            "runner_process_count": 0,
+            "task_state": "Disabled",
+            "watchdog_process_count": 0
+          },
+          "marker": "LPFS_GATE1_CONTAINMENT_JSON=",
+          "required_expectation_fields": [
+            "kill_switch_active",
+            "market_recovery_mode",
+            "repo_head",
+            "runner_process_count",
+            "task_state",
+            "watchdog_process_count"
+          ]
+        },
+        "IC/strict_mt5_probe": {
+          "bundle_kind": "hash_approved_strict_mt5_v1",
+          "contract_version": 4,
+          "expected_command_sha256": "2c6985e7b775bfc69d2ca0fa6ceccd2957511a95acaed02c9ab22eef228ce409",
+          "expected_strict_mt5_script_sha256": "77ed24f05e0f14b93d5471e58088f468d00d75e1e2670ac028386284a7b617c7",
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 16000463,
+            "account_matches_config": true,
+            "account_server": "ICMarketsSC-MT5-2",
+            "counts.orders": 0,
+            "counts.positions": 2,
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFSIC W1 S 299",
+                "identifier": 4423126597,
+                "magic": 231500,
+                "sl": 117.517,
+                "symbol": "CADJPY",
+                "ticket": 4423126597,
+                "tp": 112.713,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFSIC W1 L 299",
+                "identifier": 4431268523,
+                "magic": 231500,
+                "sl": 1.85397,
+                "symbol": "GBPAUD",
+                "ticket": 4431268523,
+                "tp": 1.8975499999999998,
+                "volume": 0.01
+              }
+            ],
+            "terminal_info": "OK"
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_info"
+          ]
+        }
+      }
+    },
+    "stage5_ic_gate3_resumption_v1": {
+      "expected_packet_result": "PASS",
+      "gate": "stage5_ic_gate3_resumption",
+      "profile_version": 2,
+      "required_steps": [
+        "precheck",
+        "pre_bounded_status",
+        "pre_strict_mt5",
+        "postcheck",
+        "post_bounded_status",
+        "post_strict_mt5"
+      ],
+      "runtime_integrity_steps": [
+        "precheck",
+        "postcheck"
+      ],
+      "steps": {
+        "post_bounded_status": {
+          "bundle_kind": "hash_approved_bounded_status_v1",
+          "contract_version": 2,
+          "expected_command_sha256": "ab0e441481f078e32c2295645fcb3aa002b6ce282ba03806945a51c5a042c671",
+          "expected_status_implementation_sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+          "required_stdout_substrings": [
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+            "LPFS live status"
+          ]
+        },
+        "post_strict_mt5": {
+          "contract_version": 1,
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 16000463,
+            "account_matches_config": true,
+            "account_server": "ICMarketsSC-MT5-2",
+            "counts.orders": 0,
+            "counts.positions": 2,
+            "history_deals_get": "OK",
+            "history_orders_get": "OK",
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFSIC W1 S 299",
+                "identifier": 4423126597,
+                "magic": 231500,
+                "sl": 117.517,
+                "symbol": "CADJPY",
+                "ticket": 4423126597,
+                "tp": 112.713,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFSIC W1 L 299",
+                "identifier": 4431268523,
+                "magic": 231500,
+                "sl": 1.85397,
+                "symbol": "GBPAUD",
+                "ticket": 4431268523,
+                "tp": 1.8975499999999998,
+                "volume": 0.01
+              }
+            ],
+            "terminal_connected": true,
+            "terminal_info": "OK",
+            "terminal_trade_allowed": true
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "history_deals_get",
+            "history_orders_get",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_connected",
+            "terminal_info",
+            "terminal_trade_allowed"
+          ]
+        },
+        "postcheck": {
+          "contract_version": 1,
+          "expectations": {
+            "critical_runtime_file_hashes": {
+              "scripts/run_lp_force_strike_live_executor.py": {
+                "normalized_sha256": "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d",
+                "raw_sha256_variants": [
+                  "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
+                  "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d"
+                ]
+              },
+              "scripts/run_lpfs_live_forever.ps1": {
+                "normalized_sha256": "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3",
+                "raw_sha256_variants": [
+                  "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
+                  "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": {
+                "normalized_sha256": "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279",
+                "raw_sha256_variants": [
+                  "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
+                  "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": {
+                "normalized_sha256": "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b",
+                "raw_sha256_variants": [
+                  "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
+                  "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
+                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "raw_sha256_variants": [
+                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
+                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
+                "normalized_sha256": "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f",
+                "raw_sha256_variants": [
+                  "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254",
+                  "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f"
+                ]
+              }
+            },
+            "heartbeat_fresh": true,
+            "heartbeat_status": "running",
+            "journal_lifecycle_fresh": true,
+            "kill_switch_active": false,
+            "logical_runner_path_count": 1,
+            "market_recovery_mode": "disabled",
+            "new_broker_exposure_count": 0,
+            "repo_head": "b02a3cb92a05e771782c7a9ca4e4339c9452969a",
+            "state_active_positions": 2,
+            "state_pending_orders": 0,
+            "state_schema_version": 2,
+            "task_actions": [
+              {
+                "arguments": "-NoProfile -ExecutionPolicy Bypass -File \"C:\\TradeAutomation\\scripts\\run_lpfs_live_forever.ps1\" -RepoRoot \"C:\\TradeAutomation\" -ConfigPath \"C:\\TradeAutomation\\config.lpfs_icmarkets_raw_spread.local.json\" -RuntimeRoot \"C:\\TradeAutomationRuntimeIC\" -StateFileName \"lpfs_ic_live_state.json\" -JournalFileName \"lpfs_ic_live_journal.jsonl\" -HeartbeatFileName \"lpfs_ic_live_heartbeat.json\" -LogPrefix \"lpfs_ic_live\" -Cycles 100000000 -SleepSeconds 30",
+                "execute": "powershell.exe",
+                "working_directory": "C:\\TradeAutomation"
+              }
+            ],
+            "task_count": 1,
+            "task_enabled": true,
+            "task_multiple_instances": "IgnoreNew",
+            "task_principal": {
+              "logon_type": "Interactive",
+              "run_level": "Highest",
+              "user_id": "Administrator"
+            },
+            "task_state": "Running",
+            "tracked_worktree_clean": true,
+            "tracked_worktree_status": [],
+            "watchdog_process_count": 1
+          },
+          "marker": "LPFS_GATE3_POSTCHECK_JSON=",
+          "required_expectation_fields": [
+            "repo_head",
+            "critical_runtime_file_hashes",
+            "kill_switch_active",
+            "market_recovery_mode",
+            "logical_runner_path_count",
+            "watchdog_process_count",
+            "heartbeat_fresh",
+            "heartbeat_status",
+            "journal_lifecycle_fresh",
+            "state_schema_version",
+            "state_pending_orders",
+            "state_active_positions",
+            "new_broker_exposure_count",
+            "task_count",
+            "task_enabled",
+            "task_state",
+            "task_multiple_instances",
+            "task_actions",
+            "task_principal",
+            "tracked_worktree_clean",
+            "tracked_worktree_status"
+          ]
+        },
+        "pre_bounded_status": {
+          "bundle_kind": "hash_approved_bounded_status_v1",
+          "contract_version": 2,
+          "expected_command_sha256": "898e3c12c0aad185a6caa67d0317cfaca61e8762f0b13a50cbbd951688bd2d5e",
+          "expected_status_implementation_sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+          "required_stdout_substrings": [
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+            "LPFS live status"
+          ]
+        },
+        "pre_strict_mt5": {
+          "contract_version": 1,
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 16000463,
+            "account_matches_config": true,
+            "account_server": "ICMarketsSC-MT5-2",
+            "counts.orders": 0,
+            "counts.positions": 2,
+            "history_deals_get": "OK",
+            "history_orders_get": "OK",
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFSIC W1 S 299",
+                "identifier": 4423126597,
+                "magic": 231500,
+                "sl": 117.517,
+                "symbol": "CADJPY",
+                "ticket": 4423126597,
+                "tp": 112.713,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFSIC W1 L 299",
+                "identifier": 4431268523,
+                "magic": 231500,
+                "sl": 1.85397,
+                "symbol": "GBPAUD",
+                "ticket": 4431268523,
+                "tp": 1.8975499999999998,
+                "volume": 0.01
+              }
+            ],
+            "terminal_connected": true,
+            "terminal_info": "OK",
+            "terminal_trade_allowed": true
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "history_deals_get",
+            "history_orders_get",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_connected",
+            "terminal_info",
+            "terminal_trade_allowed"
+          ]
+        },
+        "precheck": {
+          "contract_version": 1,
+          "expectations": {
+            "critical_runtime_file_hashes": {
+              "scripts/run_lp_force_strike_live_executor.py": {
+                "normalized_sha256": "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d",
+                "raw_sha256_variants": [
+                  "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
+                  "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d"
+                ]
+              },
+              "scripts/run_lpfs_live_forever.ps1": {
+                "normalized_sha256": "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3",
+                "raw_sha256_variants": [
+                  "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
+                  "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": {
+                "normalized_sha256": "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279",
+                "raw_sha256_variants": [
+                  "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
+                  "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": {
+                "normalized_sha256": "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b",
+                "raw_sha256_variants": [
+                  "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
+                  "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
+                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "raw_sha256_variants": [
+                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
+                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
+                "normalized_sha256": "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f",
+                "raw_sha256_variants": [
+                  "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254",
+                  "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f"
+                ]
+              }
+            },
+            "kill_switch_active": true,
+            "logical_runner_path_count": 0,
+            "market_recovery_mode": "disabled",
+            "repo_head": "b02a3cb92a05e771782c7a9ca4e4339c9452969a",
+            "runner_process_count": 0,
+            "state_active_positions": 2,
+            "state_pending_orders": 0,
+            "state_schema_version": 2,
+            "task_actions": [
+              {
+                "arguments": "-NoProfile -ExecutionPolicy Bypass -File \"C:\\TradeAutomation\\scripts\\run_lpfs_live_forever.ps1\" -RepoRoot \"C:\\TradeAutomation\" -ConfigPath \"C:\\TradeAutomation\\config.lpfs_icmarkets_raw_spread.local.json\" -RuntimeRoot \"C:\\TradeAutomationRuntimeIC\" -StateFileName \"lpfs_ic_live_state.json\" -JournalFileName \"lpfs_ic_live_journal.jsonl\" -HeartbeatFileName \"lpfs_ic_live_heartbeat.json\" -LogPrefix \"lpfs_ic_live\" -Cycles 100000000 -SleepSeconds 30",
+                "execute": "powershell.exe",
+                "working_directory": "C:\\TradeAutomation"
+              }
+            ],
+            "task_count": 1,
+            "task_enabled": false,
+            "task_multiple_instances": "IgnoreNew",
+            "task_principal": {
+              "logon_type": "Interactive",
+              "run_level": "Highest",
+              "user_id": "Administrator"
+            },
+            "task_state": "Disabled",
+            "tracked_worktree_clean": true,
+            "tracked_worktree_status": [],
+            "watchdog_process_count": 0
+          },
+          "marker": "LPFS_GATE3_PRECHECK_JSON=",
+          "required_expectation_fields": [
+            "repo_head",
+            "critical_runtime_file_hashes",
+            "kill_switch_active",
+            "market_recovery_mode",
+            "logical_runner_path_count",
+            "runner_process_count",
+            "watchdog_process_count",
+            "state_schema_version",
+            "state_pending_orders",
+            "state_active_positions",
+            "task_count",
+            "task_enabled",
+            "task_state",
+            "task_multiple_instances",
+            "task_actions",
+            "task_principal",
+            "tracked_worktree_clean",
+            "tracked_worktree_status"
+          ]
+        }
+      }
+    }
+  },
+  "schema_version": 1
+}

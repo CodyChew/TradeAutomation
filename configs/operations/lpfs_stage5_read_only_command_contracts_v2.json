@@ -1,0 +1,132 @@
+{
+  "contracts": {
+    "stage5_ftmo_gate3_resumption_bounded_status_read_only_v1": {
+      "artifacts": {
+        "scripts/Get-LpfsLiveStatus.ps1": {
+          "bytes": 8125,
+          "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
+        },
+        "scripts/collect_lpfs_bounded_status_bundle.py": {
+          "bytes": 33160,
+          "sha256": "b9147c8501b5bb7b344eaf375d48f4815de77f5179b1b14c16d7ce2892c3855d"
+        }
+      },
+      "contract_version": 1,
+      "gate": "stage5_ftmo_gate3_resumption",
+      "required_artifacts": [
+        "scripts/collect_lpfs_bounded_status_bundle.py",
+        "scripts/Get-LpfsLiveStatus.ps1"
+      ]
+    },
+    "stage5_gate1_bounded_status_read_only_v1": {
+      "artifacts": {
+        "scripts/Get-LpfsLiveStatus.ps1": {
+          "bytes": 8125,
+          "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
+        },
+        "scripts/collect_lpfs_bounded_status_bundle.py": {
+          "bytes": 33160,
+          "sha256": "b9147c8501b5bb7b344eaf375d48f4815de77f5179b1b14c16d7ce2892c3855d"
+        }
+      },
+      "contract_version": 1,
+      "gate": "stage5_gate1",
+      "required_artifacts": [
+        "scripts/collect_lpfs_bounded_status_bundle.py",
+        "scripts/Get-LpfsLiveStatus.ps1"
+      ]
+    },
+    "stage5_gate1_v2_complete_read_only_v1": {
+      "artifacts": {
+        "FTMO/bounded_status.command.txt": {
+          "bytes": 3066,
+          "sha256": "f9eb4a3aef457c529a7a0356643084268c859d8035e3181b7c62507b900d46ff"
+        },
+        "FTMO/compact_containment.command.txt": {
+          "bytes": 2266,
+          "sha256": "a9c1797379437323ce38f245e4e32b7caf99bd75d3025795dceff2af316e1031"
+        },
+        "FTMO/compact_containment.remote.ps1": {
+          "bytes": 3107,
+          "sha256": "be3865bb91c99ce3deac3796c42b7aa22bae331e81efd52b625a858b5ab418ae"
+        },
+        "FTMO/strict_mt5_probe.command.txt": {
+          "bytes": 2410,
+          "sha256": "6c91384a95c005f028e0b36898d3d9a175b7df65afc6bc19e1b5c0b4421d578c"
+        },
+        "FTMO/strict_mt5_probe.py": {
+          "bytes": 3846,
+          "sha256": "fa072d272820cd8ab41687a4f68a0d0f7d947e84e9432356c0cf5775e45cdbdc"
+        },
+        "IC/bounded_status.command.txt": {
+          "bytes": 3109,
+          "sha256": "826121376eba41da090baeb334fd61b056813eca0552488ff2ed07b3e7d27961"
+        },
+        "IC/compact_containment.command.txt": {
+          "bytes": 2269,
+          "sha256": "4d276d8e9a5756d87a61669a19bba24d8251d4fdb3f4fbd362a3f654958b3b34"
+        },
+        "IC/compact_containment.remote.ps1": {
+          "bytes": 3141,
+          "sha256": "ac0b29019836804fceee9924ad1e67336faf4d6bce30bf0e972f0b1ba9cd516e"
+        },
+        "IC/strict_mt5_probe.command.txt": {
+          "bytes": 2413,
+          "sha256": "2c6985e7b775bfc69d2ca0fa6ceccd2957511a95acaed02c9ab22eef228ce409"
+        },
+        "IC/strict_mt5_probe.py": {
+          "bytes": 3874,
+          "sha256": "77ed24f05e0f14b93d5471e58088f468d00d75e1e2670ac028386284a7b617c7"
+        },
+        "scripts/Get-LpfsLiveStatus.ps1": {
+          "bytes": 8125,
+          "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
+        },
+        "scripts/build_lpfs_stage5_gate1_v2_pre_execution.py": {
+          "bytes": 20280,
+          "sha256": "d235a50e37dc4b1c945d3e84b31c7529a7015307c65f5d3c9d1103e62b0f1c53"
+        },
+        "scripts/collect_lpfs_bounded_status_bundle.py": {
+          "bytes": 33160,
+          "sha256": "b9147c8501b5bb7b344eaf375d48f4815de77f5179b1b14c16d7ce2892c3855d"
+        }
+      },
+      "contract_version": 1,
+      "gate": "stage5_gate1",
+      "required_artifacts": [
+        "FTMO/compact_containment.command.txt",
+        "FTMO/compact_containment.remote.ps1",
+        "FTMO/bounded_status.command.txt",
+        "FTMO/strict_mt5_probe.command.txt",
+        "FTMO/strict_mt5_probe.py",
+        "IC/compact_containment.command.txt",
+        "IC/compact_containment.remote.ps1",
+        "IC/bounded_status.command.txt",
+        "IC/strict_mt5_probe.command.txt",
+        "IC/strict_mt5_probe.py",
+        "scripts/build_lpfs_stage5_gate1_v2_pre_execution.py",
+        "scripts/collect_lpfs_bounded_status_bundle.py",
+        "scripts/Get-LpfsLiveStatus.ps1"
+      ]
+    },
+    "stage5_ic_gate3_resumption_bounded_status_read_only_v1": {
+      "artifacts": {
+        "scripts/Get-LpfsLiveStatus.ps1": {
+          "bytes": 8125,
+          "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
+        },
+        "scripts/collect_lpfs_bounded_status_bundle.py": {
+          "bytes": 33160,
+          "sha256": "b9147c8501b5bb7b344eaf375d48f4815de77f5179b1b14c16d7ce2892c3855d"
+        }
+      },
+      "contract_version": 1,
+      "gate": "stage5_ic_gate3_resumption",
+      "required_artifacts": [
+        "scripts/collect_lpfs_bounded_status_bundle.py",
+        "scripts/Get-LpfsLiveStatus.ps1"
+      ]
+    }
+  },
+  "schema_version": 1
+}

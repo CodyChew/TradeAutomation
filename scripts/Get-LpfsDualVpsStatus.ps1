@@ -265,7 +265,11 @@ def mask_login(value):
 live_dir = runtime_root / "data" / "live"
 state_path = live_dir / state_name
 journal_path = live_dir / journal_name
-state = read_json(state_path)
+state_document = read_json(state_path)
+if isinstance(state_document, dict) and state_document.get("state_schema_version") == 2:
+    state = state_document.get("state", {})
+else:
+    state = state_document
 journal_rows = tail_jsonl(journal_path)
 
 open_state_items = []
@@ -313,8 +317,16 @@ try:
     if mt5.initialize():
         account = mt5.account_info()
         terminal = mt5.terminal_info()
-        orders = mt5.orders_get() or ()
-        positions = mt5.positions_get() or ()
+        if account is None:
+            raise RuntimeError("account_info=ERROR/UNKNOWN last_error=" + repr(mt5.last_error()))
+        if terminal is None:
+            raise RuntimeError("terminal_info=ERROR/UNKNOWN last_error=" + repr(mt5.last_error()))
+        orders = mt5.orders_get()
+        if orders is None:
+            raise RuntimeError("orders_get=ERROR/UNKNOWN last_error=" + repr(mt5.last_error()))
+        positions = mt5.positions_get()
+        if positions is None:
+            raise RuntimeError("positions_get=ERROR/UNKNOWN last_error=" + repr(mt5.last_error()))
 
         def keep(item):
             item_magic = int(getattr(item, "magic", 0) or 0)
@@ -370,7 +382,8 @@ snapshot = {
     "name": name,
     "state_path": str(state_path),
     "journal_path": str(journal_path),
-    "state_error": state.get("_error") if isinstance(state, dict) else "state_not_dict",
+    "state_schema_version": state_document.get("state_schema_version", 1) if isinstance(state_document, dict) else None,
+    "state_error": state_document.get("_error") if isinstance(state_document, dict) else "state_not_dict",
     "processed_signal_keys": len(state.get("processed_signal_keys", []) or []) if isinstance(state, dict) else 0,
     "order_checked_signal_keys": len(state.get("order_checked_signal_keys", []) or []) if isinstance(state, dict) else 0,
     "open_state_items": open_state_items,

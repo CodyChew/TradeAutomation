@@ -247,7 +247,13 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("No spread auto-cancel", html)
         self.assertIn("Market recovery", html)
         self.assertIn("MARKET RECOVERY", html)
-        self.assertIn("better executable price", html)
+        self.assertIn("C-01 containment active", html)
+        self.assertIn("Contained Stage 3 snapshot", html)
+        self.assertIn("Refresh both lanes with read-only status and strict MT5 evidence before either watchdog restart", html)
+        self.assertNotIn("IC was not accessed", html)
+        self.assertNotIn("both production lanes are paused with kill switches active", html)
+        self.assertNotIn("<span>Current containment</span>", html)
+        self.assertIn("Recovery hold", html)
         self.assertIn("ask &lt;= original entry", html)
         self.assertIn("bid &gt;= original entry", html)
         self.assertIn("recalculated TP", html)
@@ -303,7 +309,7 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("C:\\TradeAutomationRuntimeIC", html)
         self.assertIn("lpfs_ic_live_heartbeat.json", html)
         self.assertIn("scripts/Get-LpfsDualVpsStatus.ps1", html)
-        self.assertIn("LPFS_IC_Live running", html)
+        self.assertIn("LPFS_IC_Live disabled", html)
         self.assertIn("configs/live_policy_ledger.csv", html)
         self.assertIn("ledger scale 1.0", html)
         self.assertIn("docs/lpfs_icmarkets_vps_runbook.md", html)
@@ -318,6 +324,14 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("href=\"strategy.html\"", html)
         self.assertIn("href=\"v15.html\"", html)
         self.assertNotIn("<script", lower_html)
+
+    def test_session_handoff_does_not_present_historical_ic_runner_as_current(self) -> None:
+        handoff = (WORKSPACE_ROOT / "SESSION_HANDOFF.md").read_text(encoding="utf-8")
+
+        self.assertIn("Historical IC promotion state", handoff)
+        self.assertIn("use the contained IC Stage 3 point-in-time boundary above", handoff)
+        self.assertNotIn("IC Markets production is now a separate live VPS lane", handoff)
+        self.assertNotIn("`LPFS_IC_Live` is installed\n  and running", handoff)
 
     def test_entry_wait_pages_show_rejected_conclusion(self) -> None:
         expected = "Do not replace the fixed 6-bar pullback wait"

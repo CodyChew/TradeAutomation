@@ -1,5 +1,13 @@
 # LPFS Phase 2 Production Hardening
 
+## C-01 Containment Override
+
+Read `lpfs_c01_live_safety_release.md` before using any start or resume command
+in this document. Both lanes are intentionally paused during the C-01 repair.
+Keep kill switches active, scheduled tasks disabled, watchdogs stopped, and
+`live_send.market_recovery_mode="disabled"` until a separately approved
+deployment step.
+
 Last updated: 2026-05-08 after documenting rollover spread / broker-feed
 divergence observations and live gate-attribution guidance.
 
@@ -308,14 +316,15 @@ Phase 2 is ready for VPS migration when these pass locally:
   ```powershell
   .\venv\Scripts\python scripts\summarize_lpfs_live_gate_attribution.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl" --tail-lines 200000 --detail-limit 60 --output reports\live_ops\lpfs_gate_attribution_latest.md
   ```
-- Better-than-entry market recovery is default-on for missed pending touches:
+- Historical better-than-entry market recovery was default-on for missed
+  pending touches before the C-01 hold:
   long ask must be at or below original entry, short bid must be at or above
   original entry, spread must still be <= 10% of actual fill-to-stop risk, and
   the original stop/target path after the first entry touch must remain clean.
   Worse-than-entry quotes wait/retry until same-or-better price, path
   invalidation, or actual-bar expiry.
-- Rollback is explicit and local: set `live_send.market_recovery_mode` to
-  `"disabled"` and restart the runner intentionally.
+- C-01 requires `live_send.market_recovery_mode="disabled"`. Re-enable
+  recovery only in a separately reviewed release.
 - Latest verification on 2026-05-06: focused live attribution/summary tests
   passed, full LPFS discovery passed, and `scripts/run_core_coverage.py`
   passed with `100.00%` line/branch coverage across the scoped core packages.

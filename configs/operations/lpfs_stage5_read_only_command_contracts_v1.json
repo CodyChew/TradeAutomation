@@ -1,0 +1,116 @@
+{
+  "contracts": {
+    "stage5_ftmo_gate3_read_only_v1": {
+      "artifacts": {
+        "final_bounded_status.command.txt": {
+          "bytes": 336,
+          "sha256": "d9536870675e27d2e0cf3e87e683f60dd0f8d7c848a8ce17cbc091d2424f1ff0"
+        },
+        "final_strict_mt5.command.txt": {
+          "bytes": 3546,
+          "sha256": "15858282a95c88fba00c2f914424111c986385b6291b89daaa0f91d0c6947f5e"
+        },
+        "pre_bounded_status.command.txt": {
+          "bytes": 336,
+          "sha256": "36cfb309265fa3e41c8c38927168a0a3b109754460bb62d97176ebd4b66ccb3b"
+        },
+        "pre_strict_mt5.command.txt": {
+          "bytes": 3546,
+          "sha256": "15858282a95c88fba00c2f914424111c986385b6291b89daaa0f91d0c6947f5e"
+        },
+        "pre_strict_mt5_probe.py": {
+          "bytes": 2612,
+          "sha256": "78d81a429aecaa7ad1c3ff4b584d831e9a88562703d1dd5ff92df12876adb4b5"
+        },
+        "precheck.command.txt": {
+          "bytes": 6216,
+          "sha256": "edad78e5625df5df605a462c399578da05bb6b0b616ff0b45d99d0cd09756d8c"
+        },
+        "precheck.remote.ps1": {
+          "bytes": 2300,
+          "sha256": "6c1dee1e9837b18cce07645a3c43b5a347b1f0e203954f5fa9d9c3415a7b5ccb"
+        },
+        "scripts/Get-LpfsLiveStatus.ps1": {
+          "bytes": 8125,
+          "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
+        }
+      },
+      "contract_version": 1,
+      "gate": "stage5_ftmo_gate3",
+      "required_artifacts": [
+        "precheck.command.txt",
+        "precheck.remote.ps1",
+        "pre_bounded_status.command.txt",
+        "pre_strict_mt5.command.txt",
+        "pre_strict_mt5_probe.py",
+        "final_bounded_status.command.txt",
+        "final_strict_mt5.command.txt",
+        "scripts/Get-LpfsLiveStatus.ps1"
+      ]
+    },
+    "stage5_gate1_dual_lane_read_only_v1": {
+      "artifacts": {
+        "FTMO/bounded_status.command.txt": {
+          "bytes": 335,
+          "sha256": "90cb71c2699da428b1590dede888c25501b010ccf8087bf3833948ba5e97b7db"
+        },
+        "FTMO/compact_containment.command.txt": {
+          "bytes": 3868,
+          "sha256": "3224515ccc86b10237b3f1f4de5d3fc6861efac7972f731e7eeadf3e69cdc037"
+        },
+        "FTMO/compact_containment.remote.ps1": {
+          "bytes": 1420,
+          "sha256": "bb8af2af641ab059903f21cd9eb7477d0de7a4bc476b02d3710a59834b4f6b52"
+        },
+        "FTMO/strict_mt5_probe.command.txt": {
+          "bytes": 3546,
+          "sha256": "15858282a95c88fba00c2f914424111c986385b6291b89daaa0f91d0c6947f5e"
+        },
+        "FTMO/strict_mt5_probe.py": {
+          "bytes": 2612,
+          "sha256": "78d81a429aecaa7ad1c3ff4b584d831e9a88562703d1dd5ff92df12876adb4b5"
+        },
+        "IC/bounded_status.command.txt": {
+          "bytes": 349,
+          "sha256": "94ad8073cd3c61e9f4eaa16be29973248eda0c0271edf3bb18bddd09f4ee1bae"
+        },
+        "IC/compact_containment.command.txt": {
+          "bytes": 3960,
+          "sha256": "165a3dc1ea3a49f85d34da37b1d9e870a5234657b2ba2fe73027af66f90174f5"
+        },
+        "IC/compact_containment.remote.ps1": {
+          "bytes": 1454,
+          "sha256": "e77acd4aa5fde0bf9496a36fa7b1148172610769ac7c59203f09929ca3869be5"
+        },
+        "IC/strict_mt5_probe.command.txt": {
+          "bytes": 3586,
+          "sha256": "83ddab73e60ca0dbe91dcc329cb67e295465fcb299a5128abc48df5bdcf41259"
+        },
+        "IC/strict_mt5_probe.py": {
+          "bytes": 2640,
+          "sha256": "dda4d7a1c238af968862c2d3868fe95435c5ced03437530738f8149e58ddfe0f"
+        },
+        "scripts/Get-LpfsLiveStatus.ps1": {
+          "bytes": 8125,
+          "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
+        }
+      },
+      "contract_version": 1,
+      "gate": "stage5_gate1",
+      "required_artifacts": [
+        "FTMO/compact_containment.command.txt",
+        "FTMO/compact_containment.remote.ps1",
+        "FTMO/bounded_status.command.txt",
+        "FTMO/strict_mt5_probe.command.txt",
+        "FTMO/strict_mt5_probe.py",
+        "IC/compact_containment.command.txt",
+        "IC/compact_containment.remote.ps1",
+        "IC/bounded_status.command.txt",
+        "IC/strict_mt5_probe.command.txt",
+        "IC/strict_mt5_probe.py",
+        "scripts/Get-LpfsLiveStatus.ps1"
+      ]
+    }
+  },
+  "schema_version": 1
+}

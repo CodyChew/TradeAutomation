@@ -1,9 +1,46 @@
 # TradeAutomation Project State
 
-Last updated: 2026-05-31 ICT after the IC live scale-down, LPFS Saturday
-weekly evidence checkpoint, first-month monthly evidence review,
-safe lifecycle-snapshot diagnostic report, watchdog lock-contention hardening
-rollout, and handoff refresh.
+Last updated: 2026-06-04 ICT after the accepted LPFS C-01 FTMO Stage 5 Gate 3
+`STOPPED` result.
+
+## Immediate LPFS Safety State
+
+Read `docs/lpfs_c01_live_safety_release.md` before any LPFS operation. Both
+VPS machines remain powered on but intentionally paused: kill switches active,
+`LPFS_Live` and `LPFS_IC_Live` disabled, runner process count `0`, and zero
+LPFS broker pending orders. FTMO has `3` active positions and IC has `2`;
+leave them untouched and supervised broker-side.
+
+No VPS deploy, reconcile-only execution, canary, runner restart, task
+enablement, watchdog resumption, state rewrite, journal rewrite, or broker
+exposure edit is approved yet. The local C-01 branch is a live-safety repair,
+not a strategy change.
+
+FTMO Stage 5 Gate 3 is accepted as `STOPPED` and must not be retried. Read
+`docs/lpfs_stage5_gate3_retry_plan.md`. Authoritative ignored packet:
+`C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_gate3_20260604_100840`;
+manifest SHA-256:
+`85df11692de17e3d35b986dafee1ce729a15b822b8ce0f3c3ccea367eb27318e`.
+Fallback containment refreshed the FTMO kill-switch content and invoked task
+disablement while the task was already disabled. No enable/start,
+kill-switch clear, IC access, reconciliation, canary, pull, or broker mutation
+occurred. The previous Gate 1 evidence is stale. The next operational gate,
+after offline verifier review, is fresh dual-lane Gate 1 read-only evidence
+and another stop for review.
+
+The immutable C-01 normalizer now explicitly classifies every historical
+`*_utc` leaf, rebuilds both `T` and space-separated embedded event signal keys,
+and sets `safe_for_strategy_analysis=false` whenever a timestamp path remains
+unresolved.
+
+For the C-01 release only, the deployment review order is `FTMO` first, then
+`IC`. Historical `IC`-first text describes the 2026-05-31 watchdog rollout.
+
+Local C-01 verification passed after reviewer follow-up on 2026-06-01 ICT:
+focused tests `164`, full LPFS tests `392`, strict core coverage `6396`
+statements plus `2190` branches
+at `100.00%`, generated live-ops regeneration stable, and `git diff --check`
+clean. Production remains intentionally paused pending reviewed deployment.
 
 ## Purpose
 

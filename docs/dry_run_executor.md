@@ -24,6 +24,20 @@ The live-send executor uses the same setup and execution contract, then calls
 MT5 `order_send` only when the explicit live config is enabled. Treat it as
 real-account capable.
 
+## C-01 Safety Hold
+
+Read `lpfs_c01_live_safety_release.md` before operating either LPFS lane.
+During the C-01 repair, both production lanes remain paused with kill switches
+active, tasks disabled, and runners stopped. The live validator accepts only:
+
+```json
+"market_recovery_mode": "disabled"
+```
+
+MT5 Python `time` and `time_msc` values are UTC epochs. They are now parsed
+directly as UTC for bars, ticks, positions, and deals. `broker_timezone`
+remains a compatibility config field, but it must not reinterpret MT5 epochs.
+
 ## Local Config
 
 Copy the example file and keep the copy ignored:
@@ -78,15 +92,16 @@ Optional local fields:
 - `dry_run.max_same_symbol_stack`
 - `dry_run.max_concurrent_strategy_trades`
 
-For the current FTMO-style MT5 terminal, use:
+Historical configs used:
 
 ```json
 "broker_timezone": "Europe/Helsinki"
 ```
 
-This converts the broker's EET/EEST candle and tick times back to canonical
-UTC. If this is set incorrectly, signal timestamps, bar-count expiry checks,
-and broker backstop timestamps will be shifted.
+Do not use this field to reinterpret MT5 Python epochs. C-01 established that
+those epochs are already UTC. The fixed `Europe/Helsinki` zone remains only
+inside legacy-evidence correction for records written under
+`legacy_helsinki_relocalized_v1`.
 
 For low-risk broker testing, use:
 
@@ -397,6 +412,21 @@ positions, notification idempotency keys, and Telegram order-card message IDs.
 Live-send state is written atomically and saved immediately after
 broker-affecting safety mutations. Restarts reconcile MT5 first, then continue
 from the local state.
+
+C-01 production state uses a nested schema-v2 envelope with a deliberate
+legacy-loader tripwire. Atomic replacement is mandatory in production; direct
+overwrite fallback is restricted to explicit non-production calls. If atomic
+replacement fails, the runner preserves or creates `KILL_SWITCH`, journals the
+failure where possible, and stops with a terminal watchdog code. After any v2
+state write or v2 send, rollback is forward-fix only.
+
+Use `--reconcile-only` only during an approved contained deployment. It
+requires `KILL_SWITCH`, reads broker truth before saving, refuses unresolved
+stale pending records, and cannot scan setups or send/cancel orders. A
+validated clean reconciliation with no stale local pending records atomically
+migrates v1 state to v2 once and records a deterministic no-op receipt. A
+retry replays or backfills missing receipt journal rows without applying the
+migration twice.
 
 Do not clear live-send state casually. Clearing it intentionally re-arms
 already processed latest-candle signals and can place the same pending orders
