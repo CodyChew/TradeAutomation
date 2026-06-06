@@ -1,28 +1,30 @@
 # LPFS Stage 5 FTMO Gate 3 Retry Plan
 
-Last updated: 2026-06-06 ICT after the offline Gate 1 v2 evidence-tooling
-hardening patch for packet `gate1_v2_20260606_020556`.
+Last updated: 2026-06-06 ICT for the owner-approved minimum-safety
+resumption path and bounded-status CLIXML consistency fix.
 
 ## Current Gate
 
-Do not retry FTMO Gate 3. Do not access either VPS or MT5 until the offline
-structured-verifier change is reviewed and a fresh dual-lane Gate 1 read-only
-packet is separately approved.
+Current objective: restore LPFS data collection with minimum necessary
+live-safety checks. The old strict six-step Gate 1 V2 path is historical
+context, not the current operational blocker.
 
-The current verifier-hardening diff is local and review-only in the isolated
-worktree. It has not been committed, pushed, pulled to a VPS, or used for a
-Gate 1 retry or Gate 3 operation.
+First publish the narrow offline bounded-status CLIXML collector/verifier
+consistency fix. Then collect fresh dual-lane minimum read-only evidence.
+Before final `main` deployment, FTMO must match approved runtime SHA
+`3dd1895ca5300d448e4d100095b294e78679a6b9` and IC must match approved
+runtime SHA `b02a3cb92a05e771782c7a9ca4e4339c9452969a`. After final `main`
+deployment, each lane must match the final approved `main` SHA before that
+lane can resume.
 
-The future-operation safety profiles and the complete six-step Gate 1 v2
-pre-execution producer/contract are now defined, but they are review
-candidates only. Fresh Gate 1 remains blocked until this offline diff is
-reviewed and the operator separately approves read-only collection. No
-restart approval is possible until the complete structured Gate 3
-precheck/postcheck probe commands that satisfy the lane-specific resumption
-profiles are also separately hash-reviewed. The new producer,
-bounded-status collector, compact-containment stdin transport, contracts, and
-profiles remain review candidates. Fresh Gate 1 remains blocked pending
-review, publication, and separate explicit read-only collection approval.
+Minimum read-only checks are: correct VPS/account identity, expected
+phase-specific runtime SHA, kill switch active, task disabled,
+runner/watchdog counts `0`, recovery disabled, broker pending orders `0`,
+exact approved active positions including SL/TP, and successful MT5
+`account_info`, `terminal_info`, `orders_get`, and `positions_get`.
+
+Do not run reconciliation or canary. Do not manually close, cancel, or modify
+broker orders or positions without separate approval.
 
 The latest Gate 1 v2 packet is:
 
@@ -36,7 +38,7 @@ Its `manifest.json` SHA-256 is:
 d33094989b3f2ef1566f2e2e97c9015ebb5bd18f845a6d1d0f2630131590bcf2
 ```
 
-This packet remains `STOPPED`. The offline hardening patch fixes two
+This historical strict Gate 1 packet remains `STOPPED`. The offline hardening patch fixes two
 evidence-tooling blockers against this archived packet: bounded-status stderr
 now accepts only safe PowerShell CLIXML host/progress/information records, and
 critical runtime hash comparison now accepts only explicit reviewed
@@ -47,8 +49,8 @@ runtime-hash variants. IC compact containment still timed out with exit `124`,
 empty stdout/stderr, and no remote script-hash marker. The local artifacts do
 not prove whether the timeout was SSH stdin handling, remote command waiting
 behavior, timeout length, or transient VPS behavior. Therefore IC compact
-timeout remains a real `STOPPED` condition and requires one fresh Gate 1 retry
-after this offline tooling patch is reviewed and separately approved.
+timeout remained a real strict-profile `STOPPED` condition. The current
+owner-approved path uses the minimum read-only profile instead.
 
 The accepted FTMO Gate 3 stopped packet is:
 
@@ -112,11 +114,16 @@ Future-operation profiles are in:
 configs/operations/lpfs_stage5_resumption_safety_contract_profiles_v2.json
 ```
 
-Review-candidate profile IDs:
+Profile IDs:
 
 - `stage5_gate1_dual_lane_contained_v2`
+- `stage5_minimum_dual_lane_read_only_v1`
 - `stage5_ftmo_gate3_resumption_v1`
 - `stage5_ic_gate3_resumption_v1`
+
+Use `stage5_minimum_dual_lane_read_only_v1` for the owner-approved minimum
+fresh read-only evidence gate. It intentionally omits bounded-status and MT5
+history reads from the pass/fail requirements.
 
 The FTMO and IC resumption profiles are intentionally separate. Approval or a
 `PASS` for one lane does not authorize action on the other lane.
@@ -432,8 +439,8 @@ to run.
 
 The offline follow-up did not access either VPS or MT5.
 
-- focused Stage 5 structured-verifier module: `63` tests passed;
-- current full LPFS suite: `459` tests total (`457` passed, `2` intentional
+- focused Stage 5 structured-verifier module: `65` tests passed;
+- current full LPFS suite: `461` tests total (`459` passed, `2` intentional
   skips);
 - independently verified pre-hardening full-suite baseline: `430` tests total
   (`428` passed, `2` intentional skips) with `216` subtests; this corrects the
@@ -472,7 +479,7 @@ lpfs_stage5_read_only_command_contracts_v2.json
 61f2831aa3a3d2ca82a57e83274389a98a2095be0b3cd8a728a9dbcada441c16
 
 collect_lpfs_bounded_status_bundle.py
-f197ee11d6313c96aceb1cc4a82722a15c8e3d4c4a5d8d31a295046c949f29a2
+b9147c8501b5bb7b344eaf375d48f4815de77f5179b1b14c16d7ce2892c3855d
 
 build_lpfs_stage5_gate1_v2_pre_execution.py
 d235a50e37dc4b1c945d3e84b31c7529a7015307c65f5d3c9d1103e62b0f1c53
@@ -491,50 +498,41 @@ C:\TradeAutomationEvidence\lpfs_c01_stage5\gate1_pre_execution_contract_rehearsa
 C:\TradeAutomationEvidence\lpfs_c01_stage5\gate3_pre_execution_contract_rehearsal_review_only_20260604.json
 ```
 
-## Review-Only Retry Plan
+## Minimum-Safety Resumption Plan
 
-This plan is not approved for execution.
+This is the current owner-approved operational path after the narrow offline
+bounded-status CLIXML fix is published.
 
-1. Review the offline verifier code, tests, archived-packet results, and this
-   plan.
-2. Fresh Gate 1 remains blocked until the line-ending-aware runtime hash
-   verifier, safe CLIXML classifier, explicit IC timeout disposition,
-   contracts, tests, and this documentation pass review. After that review and
-   separate operator approval, generate and verify the exact local command
-   bundle under
-   `stage5_gate1_v2_complete_read_only_v1`, collect a fresh dual-lane Gate 1
-   packet using `stage5_gate1_dual_lane_contained_v2`, and stop for review.
-   The previous Gate 1 packet `20260604_095237` is stale, and
-   `gate1_v2_20260606_020556` remains stopped for IC compact timeout. Gate 1
-   v1 is historical only.
-3. Require separate explicit approval for another FTMO-only Gate 3 attempt.
-4. Before executing any read-only command, stage the exact planned command and
-   script files locally. Run the pre-execution hash-contract verifier and stop
-   unless its reviewed-contract receipt is `PASS`. A `PASS` does not authorize
-   execution; obtain explicit operator approval separately.
-5. After execution, publish every checked artifact in the packet manifest and
-   run the mandatory-profile post-execution verifier. Stop unless its atomic
-   receipt is `PASS` and proves the command bundle, bounded-status timeout and
-   output checks, exact hash-approved status implementation, runtime-integrity
-   evidence, manifest binding, expected packet result, complete safety
-   profile, and exact position inventory.
-6. Reconfirm fresh Gate 1 age is less than 30 minutes and revalidate FTMO
-   containment, strict identity, strict broker reads, pending orders `0`, and
-   the approved three-position inventory.
-7. Do not approve restart execution until the complete structured precheck and
-   postcheck command producers are separately hash-reviewed and can satisfy
-   `stage5_ftmo_gate3_resumption_v1`. Then enable only `LPFS_Live`, verify it
-   is enabled but `Ready` and not running, and capture the required structured
-   command bundle.
-8. Clear only the FTMO kill switch and start only `LPFS_Live`.
-9. Immediately collect bounded FTMO status and strict MT5 evidence. Require
-   one logical watchdog/runner path, fresh running heartbeat and lifecycle
-   rows, recovery disabled, unchanged existing positions, and full evidence
-   for any new exposure.
-10. On any failure or ambiguity, restore the FTMO kill switch, disable
-    `LPFS_Live`, leave broker exposure untouched, preserve evidence, and stop.
-11. Do not access IC during the FTMO-only retry. Do not run reconciliation,
-    run a canary, or pull code.
+1. Collect fresh dual-lane minimum read-only evidence with
+   `stage5_minimum_dual_lane_read_only_v1`. Before final `main` deployment,
+   FTMO must match approved runtime SHA
+   `3dd1895ca5300d448e4d100095b294e78679a6b9` and IC must match approved
+   runtime SHA `b02a3cb92a05e771782c7a9ca4e4339c9452969a`.
+2. Stop if any minimum check fails: wrong VPS/account identity, unexpected
+   runtime SHA for the phase, kill switch not active, task not disabled,
+   runner/watchdog count not `0`, recovery not disabled, broker pending orders
+   nonzero, active positions not exactly matching approved ticket/symbol/magic
+   comment/volume/SL/TP, or MT5 `account_info`, `terminal_info`, `orders_get`,
+   or `positions_get` unavailable.
+3. Merge the reviewed PR to `main` only after review approval and passing
+   fresh minimum read-only evidence. Record the final approved `main` SHA.
+4. Deploy the final approved `main` SHA under containment, one lane at a time.
+   Keep kill switches active, tasks disabled, and runner/watchdog counts `0`.
+   After deploying a lane, rerun that lane's minimum read-only checks and
+   require the lane repo SHA to equal the final approved `main` SHA.
+5. Resume FTMO first: confirm FTMO kill switch active; confirm `LPFS_Live`
+   disabled and runner/watchdog counts `0`; enable only `LPFS_Live`; confirm
+   enabled/ready but not running; clear only the FTMO kill switch; start only
+   `LPFS_Live`; immediately capture status, MT5 inventory, heartbeat, journal
+   tail, process count, pending orders, active positions, and any new exposure.
+6. Resume IC only if FTMO post-start evidence is clean. Run a fresh IC
+   pre-start check, then use the same ordered sequence for `LPFS_IC_Live`.
+7. If any task starts unexpectedly while its kill switch is still active,
+   disable that task, preserve evidence, and do not clear the kill switch.
+8. On any failure or ambiguity, re-contain only the affected lane, leave
+   broker exposure untouched, preserve evidence, and stop.
+9. Do not run reconciliation or canary. Do not manually close, cancel, or
+   modify broker orders or positions without separate approval.
 
 Every operational step must use a reviewed versioned profile and preserve its
 command bundle before the next step. Pre-execution hash approval and

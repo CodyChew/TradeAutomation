@@ -32,6 +32,7 @@ EXECUTABLE_SUFFIXES = {".bat", ".cmd", ".com", ".exe", ".js", ".ps1", ".psm1", "
 PINNED_READ_ONLY_CONTRACT_DOCUMENT_SHA256S = {
     "947105e7a50c46b582f7f0ed336b6a602c38d7a931b9cbc4d1f5d7f4ed72ba10",
     "61f2831aa3a3d2ca82a57e83274389a98a2095be0b3cd8a728a9dbcada441c16",
+    "c6a0ccedf632a79ecee725bb4db55a186ddbe640bba6c4d1603c1d8fff4a52cd",
 }
 
 

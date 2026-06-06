@@ -1003,6 +1003,7 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
     def test_future_gate1_and_separate_gate3_resumption_profiles_are_complete(self) -> None:
         profile_ids = (
             "stage5_gate1_dual_lane_contained_v2",
+            "stage5_minimum_dual_lane_read_only_v1",
             "stage5_ftmo_gate3_resumption_v1",
             "stage5_ic_gate3_resumption_v1",
         )
@@ -1069,6 +1070,29 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
         self.assertEqual(
             gate1["steps"]["IC/bounded_status"]["expected_command_sha256"],
             expected_command_sha("ic", 5, 10),
+        )
+
+        minimum = profiles["stage5_minimum_dual_lane_read_only_v1"]
+        self.assertEqual(minimum["profile_version"], 1)
+        self.assertEqual(
+            list(minimum["steps"]),
+            [
+                "FTMO/compact_containment",
+                "FTMO/strict_mt5_probe",
+                "IC/compact_containment",
+                "IC/strict_mt5_probe",
+            ],
+        )
+        self.assertNotIn("FTMO/bounded_status", minimum["steps"])
+        self.assertNotIn("history_orders_get", minimum["steps"]["FTMO/strict_mt5_probe"]["required_expectation_fields"])
+        self.assertNotIn("history_deals_get", minimum["steps"]["IC/strict_mt5_probe"]["required_expectation_fields"])
+        self.assertEqual(
+            [row["ticket"] for row in minimum["steps"]["FTMO/strict_mt5_probe"]["expectations"]["strategy_positions"]],
+            [259140457, 261720587, 262778049],
+        )
+        self.assertEqual(
+            [row["ticket"] for row in minimum["steps"]["IC/strict_mt5_probe"]["expectations"]["strategy_positions"]],
+            [4423126597, 4431268523],
         )
 
         for lane in ("ftmo", "ic"):
@@ -1403,6 +1427,81 @@ class Stage5BoundedStatusCollectorTests(unittest.TestCase):
             self.assertEqual((output / "FTMO" / "bounded_status.timeout.txt").read_text().strip(), "false")
             command = (output / "FTMO" / "bounded_status.command.txt").read_text()
             self.assertNotIn("Get-LpfsLiveStatus.ps1", command)
+
+    def test_collector_allows_safe_bounded_status_clixml_stderr(self) -> None:
+        implementation = b"Write-Output 'LPFS live status'\n"
+        implementation_sha = hashlib.sha256(implementation).hexdigest()
+        stdout = f"LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED={implementation_sha}\nLPFS live status\n"
+        stderr = (
+            "#< CLIXML\n"
+            '<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04">'
+            '<Obj S="progress" RefId="0"></Obj>'
+            '<Obj S="information" RefId="1"><ToString>LPFS live status</ToString></Obj>'
+            "</Objs>"
+        )
+        completed = subprocess.CompletedProcess(args=[], returncode=0, stdout=stdout, stderr=stderr)
+        command_args = self._collector_args(implementation)
+        expected_command_sha = self._expected_command_sha(command_args)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            status_script = root / "status.ps1"
+            status_script.write_bytes(implementation)
+            with mock.patch.object(bounded_status_collector.subprocess, "run", return_value=completed):
+                result = bounded_status_collector.collect_status_bundle(
+                    output_root=root / "bundle",
+                    step_name="FTMO/bounded_status",
+                    ssh_alias="lpfs-vps",
+                    status_script_path=status_script,
+                    expected_status_sha256=implementation_sha,
+                    expected_command_sha256=expected_command_sha,
+                    runtime_root=r"C:\TradeAutomationRuntime",
+                    state_file_name="state.json",
+                    journal_file_name="journal.jsonl",
+                    heartbeat_file_name="heartbeat.json",
+                    log_filter="*.log",
+                    journal_lines=5,
+                    log_lines=10,
+                    timeout_seconds=30,
+                )
+            self.assertEqual(result["status"], "PASS")
+            self.assertFalse(result["execution"]["stderr_empty"])
+
+    def test_collector_rejects_unsafe_bounded_status_stderr(self) -> None:
+        implementation = b"Write-Output 'LPFS live status'\n"
+        implementation_sha = hashlib.sha256(implementation).hexdigest()
+        stdout = f"LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED={implementation_sha}\nLPFS live status\n"
+        cases = (
+            "NativeCommandError\n",
+            "#< CLIXML\n<Objs><Obj S=\"error\"></Obj></Objs>",
+            "#< CLIXML\n<Objs><Obj S=\"information\"></Obj>",
+        )
+        command_args = self._collector_args(implementation)
+        expected_command_sha = self._expected_command_sha(command_args)
+        for stderr in cases:
+            with self.subTest(stderr=stderr), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                status_script = root / "status.ps1"
+                status_script.write_bytes(implementation)
+                completed = subprocess.CompletedProcess(args=[], returncode=0, stdout=stdout, stderr=stderr)
+                with mock.patch.object(bounded_status_collector.subprocess, "run", return_value=completed):
+                    result = bounded_status_collector.collect_status_bundle(
+                        output_root=root / "bundle",
+                        step_name="FTMO/bounded_status",
+                        ssh_alias="lpfs-vps",
+                        status_script_path=status_script,
+                        expected_status_sha256=implementation_sha,
+                        expected_command_sha256=expected_command_sha,
+                        runtime_root=r"C:\TradeAutomationRuntime",
+                        state_file_name="state.json",
+                        journal_file_name="journal.jsonl",
+                        heartbeat_file_name="heartbeat.json",
+                        log_filter="*.log",
+                        journal_lines=5,
+                        log_lines=10,
+                        timeout_seconds=30,
+                    )
+                self.assertEqual(result["status"], "STOPPED")
+                self.assertFalse(result["execution"]["stderr_empty"])
 
     def test_command_parameter_drift_stops_before_ssh_execution(self) -> None:
         implementation = b"Write-Output 'LPFS live status'\n"
@@ -2086,6 +2185,7 @@ class Stage5PreExecutionContractTests(unittest.TestCase):
             {
                 "947105e7a50c46b582f7f0ed336b6a602c38d7a931b9cbc4d1f5d7f4ed72ba10",
                 "61f2831aa3a3d2ca82a57e83274389a98a2095be0b3cd8a728a9dbcada441c16",
+                "c6a0ccedf632a79ecee725bb4db55a186ddbe640bba6c4d1603c1d8fff4a52cd",
             },
         )
         self.assertNotIn(stale_contract_sha, pre_execution.PINNED_READ_ONLY_CONTRACT_DOCUMENT_SHA256S)

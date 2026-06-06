@@ -718,6 +718,187 @@
         }
       }
     },
+    "stage5_minimum_dual_lane_read_only_v1": {
+      "expected_packet_result": "PASS",
+      "gate": "stage5_minimum_read_only",
+      "profile_version": 1,
+      "required_steps": [
+        "FTMO/compact_containment",
+        "FTMO/strict_mt5_probe",
+        "IC/compact_containment",
+        "IC/strict_mt5_probe"
+      ],
+      "steps": {
+        "FTMO/compact_containment": {
+          "bundle_kind": "hash_approved_compact_containment_v1",
+          "contract_version": 3,
+          "expected_command_sha256": "a9c1797379437323ce38f245e4e32b7caf99bd75d3025795dceff2af316e1031",
+          "expected_compact_script_sha256": "be3865bb91c99ce3deac3796c42b7aa22bae331e81efd52b625a858b5ab418ae",
+          "expectations": {
+            "kill_switch_active": true,
+            "market_recovery_mode": "disabled",
+            "repo_head": "3dd1895ca5300d448e4d100095b294e78679a6b9",
+            "runner_process_count": 0,
+            "task_state": "Disabled",
+            "watchdog_process_count": 0
+          },
+          "marker": "LPFS_GATE1_CONTAINMENT_JSON=",
+          "required_expectation_fields": [
+            "kill_switch_active",
+            "market_recovery_mode",
+            "repo_head",
+            "runner_process_count",
+            "task_state",
+            "watchdog_process_count"
+          ]
+        },
+        "FTMO/strict_mt5_probe": {
+          "bundle_kind": "hash_approved_strict_mt5_v1",
+          "contract_version": 4,
+          "expected_command_sha256": "6c91384a95c005f028e0b36898d3d9a175b7df65afc6bc19e1b5c0b4421d578c",
+          "expected_strict_mt5_script_sha256": "fa072d272820cd8ab41687a4f68a0d0f7d947e84e9432356c0cf5775e45cdbdc",
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 510276550,
+            "account_matches_config": true,
+            "account_server": "FTMO-Server",
+            "counts.orders": 0,
+            "counts.positions": 3,
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFS W1 S 299",
+                "identifier": 259140457,
+                "magic": 131500,
+                "sl": 117.514,
+                "symbol": "CADJPY",
+                "ticket": 259140457,
+                "tp": 112.708,
+                "volume": 0.02
+              },
+              {
+                "comment": "LPFS D1 L 299",
+                "identifier": 261720587,
+                "magic": 131500,
+                "sl": 1.04639,
+                "symbol": "GBPCHF",
+                "ticket": 261720587,
+                "tp": 1.06441,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFS W1 L 299",
+                "identifier": 262778049,
+                "magic": 131500,
+                "sl": 1.85393,
+                "symbol": "GBPAUD",
+                "ticket": 262778049,
+                "tp": 1.8975499999999998,
+                "volume": 0.02
+              }
+            ],
+            "terminal_info": "OK"
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_info"
+          ]
+        },
+        "IC/compact_containment": {
+          "bundle_kind": "hash_approved_compact_containment_v1",
+          "contract_version": 3,
+          "expected_command_sha256": "4d276d8e9a5756d87a61669a19bba24d8251d4fdb3f4fbd362a3f654958b3b34",
+          "expected_compact_script_sha256": "ac0b29019836804fceee9924ad1e67336faf4d6bce30bf0e972f0b1ba9cd516e",
+          "expectations": {
+            "kill_switch_active": true,
+            "market_recovery_mode": "disabled",
+            "repo_head": "b02a3cb92a05e771782c7a9ca4e4339c9452969a",
+            "runner_process_count": 0,
+            "task_state": "Disabled",
+            "watchdog_process_count": 0
+          },
+          "marker": "LPFS_GATE1_CONTAINMENT_JSON=",
+          "required_expectation_fields": [
+            "kill_switch_active",
+            "market_recovery_mode",
+            "repo_head",
+            "runner_process_count",
+            "task_state",
+            "watchdog_process_count"
+          ]
+        },
+        "IC/strict_mt5_probe": {
+          "bundle_kind": "hash_approved_strict_mt5_v1",
+          "contract_version": 4,
+          "expected_command_sha256": "2c6985e7b775bfc69d2ca0fa6ceccd2957511a95acaed02c9ab22eef228ce409",
+          "expected_strict_mt5_script_sha256": "77ed24f05e0f14b93d5471e58088f468d00d75e1e2670ac028386284a7b617c7",
+          "expectations": {
+            "account_info": "OK",
+            "account_login": 16000463,
+            "account_matches_config": true,
+            "account_server": "ICMarketsSC-MT5-2",
+            "counts.orders": 0,
+            "counts.positions": 2,
+            "orders_get": "OK",
+            "positions_get": "OK",
+            "read_only_contract": true,
+            "strategy_orders": [],
+            "strategy_positions": [
+              {
+                "comment": "LPFSIC W1 S 299",
+                "identifier": 4423126597,
+                "magic": 231500,
+                "sl": 117.517,
+                "symbol": "CADJPY",
+                "ticket": 4423126597,
+                "tp": 112.713,
+                "volume": 0.01
+              },
+              {
+                "comment": "LPFSIC W1 L 299",
+                "identifier": 4431268523,
+                "magic": 231500,
+                "sl": 1.85397,
+                "symbol": "GBPAUD",
+                "ticket": 4431268523,
+                "tp": 1.8975499999999998,
+                "volume": 0.01
+              }
+            ],
+            "terminal_info": "OK"
+          },
+          "marker": "LPFS_GATE1_MT5_JSON=",
+          "required_expectation_fields": [
+            "account_info",
+            "account_login",
+            "account_matches_config",
+            "account_server",
+            "counts.orders",
+            "counts.positions",
+            "orders_get",
+            "positions_get",
+            "read_only_contract",
+            "strategy_orders",
+            "strategy_positions",
+            "terminal_info"
+          ]
+        }
+      }
+    },
     "stage5_ic_gate3_resumption_v1": {
       "expected_packet_result": "PASS",
       "gate": "stage5_ic_gate3_resumption",

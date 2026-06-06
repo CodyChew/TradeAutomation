@@ -166,10 +166,11 @@ All `92` declared payload hashes and byte counts revalidated after archive.
 Keep the packet ignored and do not commit runtime config, journals, state, or
 broker exports.
 
-Skip the IC Stage 4 canary by default. Stop before Stage 5. Any resumption
-requires a separately reviewed Stage 5 pre-resumption plan and fresh
-read-only dual-lane status plus strict MT5 evidence before either watchdog is
-restarted.
+Skip the IC Stage 4 canary by default. The owner-approved Stage 5 path is now
+minimum-safety resumption: publish the narrow bounded-status CLIXML
+collector/verifier consistency fix, collect fresh dual-lane minimum read-only
+evidence, deploy the final approved `main` SHA under containment, resume FTMO
+first, and touch IC only after FTMO post-start evidence is clean.
 
 ## Gate 1 V2 Strict-MT5 Transport Stop
 
@@ -202,8 +203,8 @@ verified remotely by SHA-256, then piped into the lane Python interpreter in
 memory. The post-execution verifier requires manifest-bound command, script,
 stdout, stderr, exit-code, timeout, and execution metadata artifacts plus
 exactly one strict script verification marker and one `LPFS_GATE1_MT5_JSON=`
-payload. Fresh Gate 1 remains blocked until this offline patch is reviewed,
-published, and separately approved for read-only collection.
+payload. This packet is historical; the current resumption path uses the
+minimum read-only profile rather than the old strict Gate 1 V2 blocker.
 
 The default pre-execution verifier allowlist no longer accepts stale
 pre-hardening Gate 1 v2 contract hash
@@ -241,9 +242,9 @@ IC compact containment timed out with exit `124`, empty stdout/stderr, and no
 remote script-hash verification marker. Local artifacts do not prove whether
 the timeout came from SSH stdin handling, remote command waiting behavior,
 timeout length, or transient VPS behavior. Do not mask this: IC compact
-timeout remains a hard `STOPPED` condition. Fresh Gate 1 remains blocked
-until this offline patch is reviewed, published, and a separate fresh
-dual-lane Gate 1 v2 read-only collection is explicitly approved.
+timeout remains a hard strict-profile `STOPPED` condition. This packet is
+historical evidence; the current resumption path uses the owner-approved
+minimum read-only profile.
 
 ## FTMO Stage 5 Gate 3 Accepted Stop
 
@@ -287,8 +288,8 @@ verifier/tooling change is reviewed and published, collect a fresh dual-lane
 Gate 1 read-only packet only with separate explicit approval and stop for
 review before requesting another FTMO Gate 3 approval.
 
-Current offline verifier validation passed: `63` focused Stage 5 verifier
-tests; full LPFS suite `459` tests total (`457` passed, `2` skipped); and
+Current offline verifier validation passed: `65` focused Stage 5 verifier
+tests; full LPFS suite `461` tests total (`459` passed, `2` skipped); and
 strict core coverage at `6401` statements plus `2192` branches with `100.00%`.
 
 ## Approved Scope
@@ -488,12 +489,13 @@ Once both lanes are safely migrated and normalized evidence exists:
 - IC-only contained Stage 3 passed point-in-time. Do not rerun IC
   reconciliation.
 - Skip the IC Stage 4 canary by default. Stop before Stage 5.
-- Stage 5 watchdog resumption requires a separately reviewed plan, explicit
-  operator approval, and fresh read-only dual-lane evidence before either
-  watchdog is restarted.
-- Decide whether the operator accepts a canary that may place and fill multiple
-  real orders. If not, defer canary until a separately reviewed one-order cap
-  exists.
+- Stage 5 watchdog resumption follows the owner-approved minimum-safety path:
+  publish the narrow bounded-status CLIXML consistency fix; collect fresh
+  dual-lane minimum read-only evidence; merge/deploy final approved `main`
+  under containment; rerun the lane's minimum checks after deploy; resume
+  FTMO first; touch IC only after FTMO post-start evidence is clean.
+- Skip canaries by default. Do not run reconciliation. Do not manually close,
+  cancel, or modify broker orders or positions without separate approval.
 - Observability backlog: reconciliation snapshot `stable_hash()` currently
   includes full live position rows, including moving `price_current` and
   `profit`. The receipt chain is internally valid, but adjacent read-only
@@ -513,12 +515,8 @@ Once both lanes are safely migrated and normalized evidence exists:
   `--mode compact-containment` and `--mode strict-mt5`. The post-execution
   verifier now classifies safe bounded-status PowerShell CLIXML and compares
   raw observed critical runtime hashes against explicit reviewed
-  line-ending-equivalent variants. Fresh Gate 1 remains blocked until this
-  offline evidence-tooling patch is reviewed and separately approved for
-  read-only collection.
-- `PLAN.md` does not exist in this repository. The external working copy at
-  `C:\Users\Cody\Downloads\PLAN.md` was updated to match this release and its
-  apostrophe encoding was made ASCII-safe.
+  line-ending-equivalent variants. The owner-approved minimum read-only
+  profile is the current resumption evidence gate.
 
 ## Verification Status
 
@@ -544,7 +542,7 @@ git diff --check
 Results:
 
 - contained forward-fix targeted LPFS set: `140` tests passed;
-- full LPFS suite: `394` tests passed with `2` intentional skips;
+- full LPFS suite: `461` tests total (`459` passed, `2` intentional skips);
 - strict core coverage: `6401` statements and `2192` branches at `100.00%`;
 - docs-only IC consistency dashboard checks: `28` tests passed;
 - `docs/live_ops.html` regeneration produced SHA-256:

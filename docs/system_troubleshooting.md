@@ -1,7 +1,7 @@
 # TradeAutomation System Troubleshooting Map
 
-Last updated: 2026-06-04 after the accepted LPFS C-01 FTMO Stage 5 Gate 3
-`STOPPED` result.
+Last updated: 2026-06-06 after the owner-approved LPFS minimum-safety
+resumption path and bounded-status CLIXML consistency fix.
 
 This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
@@ -13,11 +13,12 @@ Read `lpfs_c01_live_safety_release.md` first. FTMO Stage 1 and IC Stage 3 both
 passed point-in-time and remain intentionally paused with kill switches active,
 scheduled tasks disabled, runner and watchdog process counts `0`, broker
 pending orders `0`, and unchanged active-position inventories. Keep both VPS
-machines powered on. Skip the IC Stage 4 canary by default. Stop before Stage
-5. Do not clear kill switches, start watchdogs, enable tasks, deploy, run
-reconcile-only mode, or run a live canary unless a separate operator-approved
-deployment step authorizes it. Before either watchdog restart, refresh
-read-only dual-lane bounded status and strict MT5 evidence.
+machines powered on. Skip canaries by default. Do not clear kill switches,
+start watchdogs, enable tasks, deploy, run reconcile-only mode, or run a live
+canary unless a separate operator-approved deployment step authorizes it. The
+current owner-approved path is minimum-safety resumption: fresh read-only
+evidence first, FTMO resumption first, and IC only after FTMO post-start
+evidence is clean.
 
 FTMO Stage 5 Gate 3 is accepted as `STOPPED`; do not retry it. Read
 `lpfs_stage5_gate3_retry_plan.md`. The authoritative ignored packet is
@@ -48,17 +49,18 @@ For broker status, `None` from MT5 `orders_get`, `positions_get`,
 `history_orders_get`, or `history_deals_get` is `ERROR/UNKNOWN`, never zero.
 Use strict read-only evidence exports before drawing conclusions.
 
-For future Stage 5 pre-resumption packets, set
-`$ProgressPreference="SilentlyContinue"` in remote PowerShell, redirect
-stdout/stderr to separate packet files, and record the explicit remote process
-exit code. PowerShell CLIXML progress records are transport noise, not broker
-evidence.
+For future Stage 5 pre-resumption packets, redirect stdout/stderr to separate
+packet files and record the explicit remote process exit code. Safe
+PowerShell CLIXML host/progress/information records on bounded-status stderr
+are transport noise, not broker evidence. Malformed CLIXML, error records,
+exception text, native-command errors, timeouts, nonzero exits, missing
+stdout, or missing hash markers remain fail-closed.
 
 Do not use ad hoc verification commands before a Stage 5 mutation. Capture
 `<step>.command.txt`, `<step>.stdout.txt`, `<step>.stderr.txt`, and
 `<step>.exit_code.txt`, then run
 `scripts/verify_lpfs_structured_command.py`. It fails closed on missing,
-malformed, nonzero, nonempty-stderr, or ambiguous-output bundles.
+malformed, nonzero, unsafe-stderr, or ambiguous-output bundles.
 
 ## First Boundary Check
 

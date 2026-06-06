@@ -14,6 +14,11 @@ import subprocess
 import tempfile
 from typing import Any, Sequence
 
+try:
+    from verify_lpfs_structured_command import _classify_powershell_stderr
+except ImportError:  # pragma: no cover - import path used by test loaders
+    from scripts.verify_lpfs_structured_command import _classify_powershell_stderr
+
 
 BOUNDED_STATUS_BUNDLE_KIND = "hash_approved_bounded_status_v1"
 COMPACT_CONTAINMENT_BUNDLE_KIND = "hash_approved_compact_containment_v1"
@@ -422,11 +427,12 @@ def collect_status_bundle(
     _atomic_write_bytes(paths["status_implementation"], implementation)
     _atomic_write_json(paths["execution"], execution)
 
+    stderr_classification = _classify_powershell_stderr(stderr)
     passed = (
         not timed_out
         and exit_code == 0
         and bool(stdout.strip())
-        and not bool(stderr.strip())
+        and bool(stderr_classification["safe"])
         and execution["remote_status_implementation_sha256_verified"]
     )
     return {

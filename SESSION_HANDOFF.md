@@ -1,8 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-06 ICT after the offline LPFS Gate 1 v2
-evidence-tooling hardening patch for the `gate1_v2_20260606_020556`
-stopped packet.
+Last updated: 2026-06-06 ICT for the owner-approved LPFS
+minimum-safety resumption path and bounded-status CLIXML consistency fix.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -51,6 +50,34 @@ file, and the JSONL journal before making operational decisions.
 
 ## AI Agent Continuity Rules
 
+- Current owner-approved objective: restore LPFS data collection with minimum
+  necessary live-safety checks. The old strict Gate 1 V2 path is historical
+  context, not the current operational blocker.
+- Offline publication scope is narrow: fix bounded-status collector/verifier
+  consistency for safe PowerShell CLIXML host/progress/information stderr,
+  update the minimum read-only profile and necessary docs/tests, verify, and
+  publish to `origin/codex/lpfs-c01-live-safety-release`. Do not add broad
+  evidence-framework features.
+- After publication, collect fresh dual-lane minimum read-only evidence.
+  Before final `main` deployment, FTMO must match approved runtime SHA
+  `3dd1895ca5300d448e4d100095b294e78679a6b9` and IC must match approved
+  runtime SHA `b02a3cb92a05e771782c7a9ca4e4339c9452969a`. After final `main`
+  deployment, each lane must match the final approved `main` SHA before that
+  lane can resume.
+- Minimum read-only checks are: correct VPS/account identity, expected
+  phase-specific runtime SHA, kill switch active, task disabled,
+  runner/watchdog counts `0`, recovery disabled, broker pending orders `0`,
+  exact approved active positions including SL/TP, and successful MT5
+  `account_info`, `terminal_info`, `orders_get`, and `positions_get`.
+- Resumption is sequential. Resume FTMO first, capture post-start evidence,
+  and touch IC only if FTMO post-start evidence is clean. For each lane:
+  confirm kill switch active; confirm task disabled and runner/watchdog counts
+  `0`; enable task; confirm enabled/ready but not running; clear only that
+  lane's kill switch; start only that lane's scheduled task; immediately
+  capture status, MT5 inventory, heartbeat, journal tail, process count,
+  pending orders, active positions, and any new exposure.
+- Skip canaries. Do not run reconciliation. Do not manually close, cancel, or
+  modify broker orders or positions without separate approval.
 - 2026-06-04 FTMO Stage 5 Gate 3 is accepted as `STOPPED`; do not retry it.
   Authoritative ignored packet:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_gate3_20260604_100840`.
@@ -70,16 +97,10 @@ file, and the JSONL journal before making operational decisions.
   closed unless command/stdout/stderr/exit-code artifacts and exactly one
   structured JSON marker are present. The review-only retry plan is
   `docs/lpfs_stage5_gate3_retry_plan.md`.
-- Previous Gate 1 packet
+- Previous strict Gate 1 packet
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\20260604_095237` passed and was
-  independently reviewed, but is now stale. Fresh Gate 1 remains blocked
-  until the offline complete six-step Gate 1 v2 producer, command-hash
-  fail-before-SSH barrier, pre-execution contract, tests, and documentation
-  pass review. After that review, the next operational action still requires
-  separate approval for a fresh dual-lane Gate 1 read-only collection followed
-  by another stop for review. Do not request or execute FTMO Gate 3 before
-  that gate passes.
-- Gate 1 v2 packet
+  independently reviewed, but is now stale. It is historical evidence only.
+- Strict Gate 1 v2 packet
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\gate1_v2_20260605_202849`
   is `STOPPED`. Its manifest SHA-256 is
   `fcbf76b75a98bc01f745d7f77a2523b6fc01b97f99b0c24aea118f5fc0bcd36f`.
@@ -89,8 +110,8 @@ file, and the JSONL journal before making operational decisions.
   containment and bounded-status artifacts were not produced. No Gate 3
   restart, watchdog start, task enablement, kill-switch clear,
   reconciliation, canary, broker mutation, runtime-state edit, or journal
-  write occurred. Do not retry Gate 1 using the inline strict MT5 transport.
-- Gate 1 v2 packet
+  write occurred. Do not retry that inline strict MT5 transport.
+- Strict Gate 1 v2 packet
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\gate1_v2_20260606_020556`
   is `STOPPED`. Its `manifest.json` SHA-256 is
   `d33094989b3f2ef1566f2e2e97c9015ebb5bd18f845a6d1d0f2630131590bcf2`.
@@ -106,10 +127,9 @@ file, and the JSONL journal before making operational decisions.
   IC compact containment timed out with exit `124`, empty stdout/stderr, and
   no remote script-hash marker. Local artifacts do not prove whether that was
   SSH stdin handling, remote command waiting behavior, timeout length, or
-  transient VPS behavior, so the timeout remains a hard `STOPPED` condition.
-  Do not retry Gate 1 until this offline patch is reviewed, published, and a
-  separate fresh dual-lane Gate 1 v2 read-only collection approval is given.
-- Offline structured-verifier hardening is review-only. It adds
+  transient VPS behavior. This remains useful historical evidence but no
+  longer defines the owner-approved minimum-safety resumption gate.
+- Offline structured-verifier hardening added
   `scripts/build_lpfs_stage5_gate1_v2_pre_execution.py`, complete contract
   `stage5_gate1_v2_complete_read_only_v1`, and an expected-command SHA-256
   barrier in `scripts/collect_lpfs_bounded_status_bundle.py`. The producer
@@ -144,14 +164,14 @@ file, and the JSONL journal before making operational decisions.
   independently verified
   pre-hardening full-suite baseline is `430` tests total (`428` passed, `2`
   intentional skips), correcting the prior wording that treated `428` as the
-  full-suite count. Current review-only focused verification passed `63`
-  Stage 5 verifier tests; the full LPFS suite passed `459` tests total (`457`
-  passed, `2` skipped); strict core coverage passed at `6401` statements plus
-  `2192` branches at `100.00%`; and the complete Gate 1 v2 pre-execution
-  rehearsal passed with `authorizes_execution=false`. `git diff --check`
-  passed with line-ending warnings only, and scope audit shows only offline
-  tooling, contracts/profiles, tests, and documentation changed. Gate 1 remains
-  blocked.
+  full-suite count. Current focused verification passed `65` Stage 5 verifier
+  tests; the full LPFS suite passed `461` tests total (`459` passed, `2`
+  skipped); strict core coverage passed at `6401` statements plus `2192`
+  branches at `100.00%`. `git diff --check` passed with line-ending warnings
+  only, and scope audit showed only offline tooling, contracts/profiles,
+  tests, and documentation changed. No VPS/MT5 access, reconciliation, canary,
+  kill-switch clear, task enable/start, broker mutation, runtime-state edit,
+  or journal write was performed by the offline patch.
 - 2026-06-02 C-01 containment is the current operational priority. Read
   `docs/lpfs_c01_live_safety_release.md` before any LPFS operation. FTMO
   Stage 1 reconciliation passed point-in-time at exact SHA
