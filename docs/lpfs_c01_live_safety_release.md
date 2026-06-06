@@ -1,7 +1,7 @@
 # LPFS C-01 Live-Safety Release
 
-Last updated: 2026-06-05 ICT after the Gate 1 v2 strict-MT5 transport
-`STOPPED` packet and offline transport-hardening follow-up.
+Last updated: 2026-06-06 ICT after the Gate 1 v2 evidence-tooling hardening
+patch for packet `gate1_v2_20260606_020556`.
 
 ## Current Objective
 
@@ -210,6 +210,41 @@ pre-hardening Gate 1 v2 contract hash
 `f4a602aac651220fb599324edd9c284aaa19071737d7472f4468efc2012cc057`,
 which pinned the old inline strict-MT5 command artifacts.
 
+## Gate 1 V2 Evidence-Tooling Stop
+
+The approved fresh Gate 1 v2 read-only collection stopped again on 2026-06-06
+ICT.
+
+Authoritative ignored packet:
+
+```text
+C:\TradeAutomationEvidence\lpfs_c01_stage5\gate1_v2_20260606_020556
+```
+
+Its `manifest.json` SHA-256 is:
+
+```text
+d33094989b3f2ef1566f2e2e97c9015ebb5bd18f845a6d1d0f2630131590bcf2
+```
+
+The packet remains `STOPPED`. The strict MT5 steps are valid `PASS` evidence
+for both lanes. Bounded-status steps produced valid stdout, exit `0`, and
+PowerShell CLIXML host/progress/information records on stderr; the offline
+verifier now preserves and classifies that stderr as safe only when it is
+well-formed CLIXML with no error/exception/native-command records. FTMO
+compact containment now verifies under explicit reviewed line-ending-aware
+critical runtime hash variants; the raw observed `live_executor.py` CRLF hash
+`ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e`
+remains visible in receipts, and arbitrary edited hashes still fail.
+
+IC compact containment timed out with exit `124`, empty stdout/stderr, and no
+remote script-hash verification marker. Local artifacts do not prove whether
+the timeout came from SSH stdin handling, remote command waiting behavior,
+timeout length, or transient VPS behavior. Do not mask this: IC compact
+timeout remains a hard `STOPPED` condition. Fresh Gate 1 remains blocked
+until this offline patch is reviewed, published, and a separate fresh
+dual-lane Gate 1 v2 read-only collection is explicitly approved.
+
 ## FTMO Stage 5 Gate 3 Accepted Stop
 
 The approved FTMO-only watchdog-resumption attempt stopped on 2026-06-04 ICT
@@ -246,13 +281,15 @@ It requires all four command artifacts, verifies packet hashes, accepts
 exactly one structured JSON marker, and writes an atomic PASS/STOPPED receipt.
 
 Do not retry Gate 3. Read `lpfs_stage5_gate3_retry_plan.md`. The previous Gate
-1 evidence is stale; after the verifier change is reviewed, collect a fresh
-dual-lane Gate 1 read-only packet and stop for review before requesting
-another FTMO Gate 3 approval.
+1 evidence is stale, and `gate1_v2_20260606_020556` remains stopped for IC
+compact timeout after the current offline evidence-tooling fixes. After this
+verifier/tooling change is reviewed and published, collect a fresh dual-lane
+Gate 1 read-only packet only with separate explicit approval and stop for
+review before requesting another FTMO Gate 3 approval.
 
-Offline verifier validation passed: `8` focused verifier tests, full LPFS
-suite `403` with `2` intentional skips, and strict core coverage at `6401`
-statements plus `2192` branches with `100.00%`.
+Current offline verifier validation passed: `63` focused Stage 5 verifier
+tests; full LPFS suite `459` tests total (`457` passed, `2` skipped); and
+strict core coverage at `6401` statements plus `2192` branches with `100.00%`.
 
 ## Approved Scope
 
@@ -473,9 +510,12 @@ Once both lanes are safely migrated and normalized evidence exists:
   short hash-bound bootstraps, send reviewed local script artifacts over SSH
   stdin, verify the script SHA-256 remotely, and execute in memory. The
   bounded-status collector exposes these routes through explicit CLI modes
-  `--mode compact-containment` and `--mode strict-mt5`. Fresh Gate 1 remains
-  blocked until this offline transport fix is reviewed and separately
-  approved for read-only collection.
+  `--mode compact-containment` and `--mode strict-mt5`. The post-execution
+  verifier now classifies safe bounded-status PowerShell CLIXML and compares
+  raw observed critical runtime hashes against explicit reviewed
+  line-ending-equivalent variants. Fresh Gate 1 remains blocked until this
+  offline evidence-tooling patch is reviewed and separately approved for
+  read-only collection.
 - `PLAN.md` does not exist in this repository. The external working copy at
   `C:\Users\Cody\Downloads\PLAN.md` was updated to match this release and its
   apostrophe encoding was made ASCII-safe.

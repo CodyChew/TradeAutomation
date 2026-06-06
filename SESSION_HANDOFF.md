@@ -1,7 +1,8 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-05 ICT after the offline LPFS Gate 1 v2 strict-MT5
-transport hardening patch.
+Last updated: 2026-06-06 ICT after the offline LPFS Gate 1 v2
+evidence-tooling hardening patch for the `gate1_v2_20260606_020556`
+stopped packet.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -89,6 +90,25 @@ file, and the JSONL journal before making operational decisions.
   restart, watchdog start, task enablement, kill-switch clear,
   reconciliation, canary, broker mutation, runtime-state edit, or journal
   write occurred. Do not retry Gate 1 using the inline strict MT5 transport.
+- Gate 1 v2 packet
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\gate1_v2_20260606_020556`
+  is `STOPPED`. Its `manifest.json` SHA-256 is
+  `d33094989b3f2ef1566f2e2e97c9015ebb5bd18f845a6d1d0f2630131590bcf2`.
+  The strict MT5 probes are valid `PASS` evidence for both lanes. The bounded
+  status steps produced exit `0`, valid stdout, and safe PowerShell CLIXML
+  host/progress/information records on stderr; the updated verifier preserves
+  the stderr artifact and classification instead of treating safe CLIXML as
+  an error. FTMO compact containment is now accepted under explicit
+  line-ending-aware critical runtime hash variants: the raw observed
+  `live_executor.py` CRLF checkout hash
+  `ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e`
+  remains visible in the receipt, while arbitrary edited hashes still fail.
+  IC compact containment timed out with exit `124`, empty stdout/stderr, and
+  no remote script-hash marker. Local artifacts do not prove whether that was
+  SSH stdin handling, remote command waiting behavior, timeout length, or
+  transient VPS behavior, so the timeout remains a hard `STOPPED` condition.
+  Do not retry Gate 1 until this offline patch is reviewed, published, and a
+  separate fresh dual-lane Gate 1 v2 read-only collection approval is given.
 - Offline structured-verifier hardening is review-only. It adds
   `scripts/build_lpfs_stage5_gate1_v2_pre_execution.py`, complete contract
   `stage5_gate1_v2_complete_read_only_v1`, and an expected-command SHA-256
@@ -97,7 +117,9 @@ file, and the JSONL journal before making operational decisions.
   executing them. Compact containment is collected through the explicit
   reviewed collector CLI path `--mode compact-containment`; tests prove this
   dispatches to `collect_compact_containment_bundle`. Compact containment
-  emits clean tracked-worktree status and exact critical runtime-file hashes.
+  emits clean tracked-worktree status and raw observed critical runtime-file
+  hashes. The verifier compares those hashes against explicit reviewed
+  LF/CRLF-equivalent variant sets instead of accepting arbitrary hash drift.
   The compact command is now a short
   hash-bound bootstrap under the `4000` character safe threshold; it sends the
   reviewed local compact script over SSH stdin, verifies the script SHA-256
@@ -111,19 +133,25 @@ file, and the JSONL journal before making operational decisions.
   strict-MT5 verifier contract requires manifest-bound command, script,
   stdout, stderr, exit-code, timeout, and execution metadata artifacts plus
   exactly one script-verification marker and one `LPFS_GATE1_MT5_JSON=`
-  payload. The default pre-execution verifier allowlist no longer accepts the
+  payload. Bounded-status stderr classification allows only safe PowerShell
+  CLIXML progress/information/host records and fails closed on malformed
+  CLIXML, error records, exception text, native-command errors, nonzero exit,
+  timeout, missing stdout, or missing status hash markers. The default
+  pre-execution verifier allowlist no longer accepts the
   stale pre-hardening Gate 1 v2 contract hash
   `f4a602aac651220fb599324edd9c284aaa19071737d7472f4468efc2012cc057`,
   which pinned the old inline strict-MT5 command. The
   independently verified
   pre-hardening full-suite baseline is `430` tests total (`428` passed, `2`
   intentional skips), correcting the prior wording that treated `428` as the
-  full-suite count. Current compact/strict transport and CLI focused verification
-  passed: focused module `58` tests; full LPFS suite `454` tests total
-  (`452` passed, `2` skipped); strict core coverage `6401` statements plus
-  `2192` branches at `100.00%`; final `git diff --check` passed with only
-  line-ending warnings; scope audit shows only offline tooling, contracts,
-  tests, and documentation changed.
+  full-suite count. Current review-only focused verification passed `63`
+  Stage 5 verifier tests; the full LPFS suite passed `459` tests total (`457`
+  passed, `2` skipped); strict core coverage passed at `6401` statements plus
+  `2192` branches at `100.00%`; and the complete Gate 1 v2 pre-execution
+  rehearsal passed with `authorizes_execution=false`. `git diff --check`
+  passed with line-ending warnings only, and scope audit shows only offline
+  tooling, contracts/profiles, tests, and documentation changed. Gate 1 remains
+  blocked.
 - 2026-06-02 C-01 containment is the current operational priority. Read
   `docs/lpfs_c01_live_safety_release.md` before any LPFS operation. FTMO
   Stage 1 reconciliation passed point-in-time at exact SHA

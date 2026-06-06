@@ -7,8 +7,8 @@
           "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
         },
         "scripts/collect_lpfs_bounded_status_bundle.py": {
-          "bytes": 32851,
-          "sha256": "b23492da393d25d545d2ba8a27499d220a936200da5ce15c46a0ed57069f9421"
+          "bytes": 32846,
+          "sha256": "f197ee11d6313c96aceb1cc4a82722a15c8e3d4c4a5d8d31a295046c949f29a2"
         }
       },
       "contract_version": 1,
@@ -25,8 +25,8 @@
           "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
         },
         "scripts/collect_lpfs_bounded_status_bundle.py": {
-          "bytes": 32851,
-          "sha256": "b23492da393d25d545d2ba8a27499d220a936200da5ce15c46a0ed57069f9421"
+          "bytes": 32846,
+          "sha256": "f197ee11d6313c96aceb1cc4a82722a15c8e3d4c4a5d8d31a295046c949f29a2"
         }
       },
       "contract_version": 1,
@@ -87,8 +87,8 @@
           "sha256": "d235a50e37dc4b1c945d3e84b31c7529a7015307c65f5d3c9d1103e62b0f1c53"
         },
         "scripts/collect_lpfs_bounded_status_bundle.py": {
-          "bytes": 32851,
-          "sha256": "b23492da393d25d545d2ba8a27499d220a936200da5ce15c46a0ed57069f9421"
+          "bytes": 32846,
+          "sha256": "f197ee11d6313c96aceb1cc4a82722a15c8e3d4c4a5d8d31a295046c949f29a2"
         }
       },
       "contract_version": 1,
@@ -116,8 +116,8 @@
           "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
         },
         "scripts/collect_lpfs_bounded_status_bundle.py": {
-          "bytes": 32851,
-          "sha256": "b23492da393d25d545d2ba8a27499d220a936200da5ce15c46a0ed57069f9421"
+          "bytes": 32846,
+          "sha256": "f197ee11d6313c96aceb1cc4a82722a15c8e3d4c4a5d8d31a295046c949f29a2"
         }
       },
       "contract_version": 1,

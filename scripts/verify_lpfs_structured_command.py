@@ -11,6 +11,7 @@ import re
 import sys
 import tempfile
 from typing import Any, Iterable, Mapping
+import xml.etree.ElementTree as ET
 
 
 SCHEMA_VERSION = 2
@@ -35,11 +36,20 @@ COMPACT_CONTAINMENT_SOURCE = "stdin_hash_approved_scriptblock"
 STRICT_MT5_SOURCE = "stdin_hash_approved_scriptblock"
 COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH = 4000
 STRICT_MT5_COMMAND_SAFE_LENGTH = 4000
+SAFE_CLIXML_RECORD_KINDS = {"progress", "information"}
+UNSAFE_CLIXML_TEXT_MARKERS = (
+    "ErrorRecord",
+    "Exception",
+    "NativeCommandError",
+    "CommandNotFoundException",
+    "RuntimeException",
+)
 PINNED_SAFETY_PROFILE_DOCUMENT_SHA256S = {
     "1666fe6bbfe73c4d85746c8bb49d413a0e2011b0979d9ca49308709ff3f2e1a5",
     "61ba3084457e6466cfdd484d568a5c6f2c2f3f44c2103dde204a1e10b0a71f43",
     "532a80cdf727e424fafb09365ecb3c6fe3fa677ab877f27634f7a14f60df849f",
     "c7efde9add0924fcd5458840079aebcad05fee2b866e72a9e6e30f66ebddeeaa",
+    "3e0b385e71f544faafc1029e01bfb740ea6b62e8e179c1032371c43b5c068928",
 }
 
 
@@ -301,6 +311,51 @@ def _lookup_field(payload: Mapping[str, Any], dotted_field: str) -> tuple[bool, 
     return True, current
 
 
+def _critical_hash_expectation_valid(expected: Any) -> bool:
+    if isinstance(expected, str):
+        return bool(SHA256_RE.fullmatch(expected))
+    if not isinstance(expected, Mapping):
+        return False
+    expected_keys = {"normalized_sha256", "raw_sha256_variants"}
+    if set(expected) != expected_keys:
+        return False
+    normalized = expected.get("normalized_sha256")
+    variants = expected.get("raw_sha256_variants")
+    return (
+        isinstance(normalized, str)
+        and bool(SHA256_RE.fullmatch(normalized))
+        and isinstance(variants, list)
+        and bool(variants)
+        and len(set(variants)) == len(variants)
+        and all(isinstance(item, str) and bool(SHA256_RE.fullmatch(item)) for item in variants)
+    )
+
+
+def _critical_runtime_hashes_match(actual: Any, expected: Any) -> tuple[bool, str]:
+    if not isinstance(actual, Mapping) or not isinstance(expected, Mapping):
+        return False, "line_ending_aware_sha256_variants"
+    if set(actual) != set(expected):
+        return False, "line_ending_aware_sha256_variants"
+    for relative, actual_hash in actual.items():
+        if not isinstance(relative, str) or not isinstance(actual_hash, str):
+            return False, "line_ending_aware_sha256_variants"
+        actual_hash = actual_hash.lower()
+        if not SHA256_RE.fullmatch(actual_hash):
+            return False, "line_ending_aware_sha256_variants"
+        expected_value = expected[relative]
+        if isinstance(expected_value, str):
+            if actual_hash != expected_value:
+                return False, "line_ending_aware_sha256_variants"
+            continue
+        if not _critical_hash_expectation_valid(expected_value):
+            return False, "line_ending_aware_sha256_variants"
+        variants = {item.lower() for item in expected_value["raw_sha256_variants"]}
+        variants.add(expected_value["normalized_sha256"].lower())
+        if actual_hash not in variants:
+            return False, "line_ending_aware_sha256_variants"
+    return True, "line_ending_aware_sha256_variants"
+
+
 def _values_match(field: str, actual: Any, expected: Any) -> tuple[bool, str]:
     if field in {"strategy_orders", "strategy_positions"}:
         if not isinstance(actual, list) or not isinstance(expected, list):
@@ -308,7 +363,73 @@ def _values_match(field: str, actual: Any, expected: Any) -> tuple[bool, str]:
         actual_rows = sorted(json.dumps(item, sort_keys=True, allow_nan=False) for item in actual)
         expected_rows = sorted(json.dumps(item, sort_keys=True, allow_nan=False) for item in expected)
         return actual_rows == expected_rows, "exact_inventory_order_independent"
+    if field == "critical_runtime_file_hashes":
+        return _critical_runtime_hashes_match(actual, expected)
     return type(actual) is type(expected) and actual == expected, "exact_json_type_and_value"
+
+
+def _classify_powershell_stderr(stderr_text: str) -> dict[str, Any]:
+    stripped = stderr_text.strip()
+    if not stripped:
+        return {
+            "safe": True,
+            "kind": "empty",
+            "reason": "stderr is empty",
+            "record_kinds": [],
+            "unsafe_markers": [],
+        }
+    if any(marker in stripped for marker in UNSAFE_CLIXML_TEXT_MARKERS):
+        return {
+            "safe": False,
+            "kind": "unsafe_text_marker",
+            "reason": "stderr contains an unsafe PowerShell/native error marker",
+            "record_kinds": [],
+            "unsafe_markers": [marker for marker in UNSAFE_CLIXML_TEXT_MARKERS if marker in stripped],
+        }
+    if not stripped.startswith("#< CLIXML"):
+        return {
+            "safe": False,
+            "kind": "non_clixml_stderr",
+            "reason": "nonempty stderr is not PowerShell CLIXML",
+            "record_kinds": [],
+            "unsafe_markers": [],
+        }
+    xml_text = stripped[len("#< CLIXML") :].strip()
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError as exc:
+        return {
+            "safe": False,
+            "kind": "malformed_clixml",
+            "reason": f"PowerShell CLIXML could not be parsed: {exc}",
+            "record_kinds": [],
+            "unsafe_markers": [],
+        }
+    record_kinds: list[str] = []
+    unsafe_kinds: list[str] = []
+    for child in list(root):
+        kind = child.attrib.get("S", "")
+        if not kind:
+            kind = "missing"
+        record_kinds.append(kind)
+        if kind not in SAFE_CLIXML_RECORD_KINDS:
+            unsafe_kinds.append(kind)
+    if unsafe_kinds:
+        return {
+            "safe": False,
+            "kind": "unsafe_clixml_record_kind",
+            "reason": "PowerShell CLIXML contains non-progress/non-information records",
+            "record_kinds": record_kinds,
+            "unsafe_record_kinds": unsafe_kinds,
+            "unsafe_markers": [],
+        }
+    return {
+        "safe": True,
+        "kind": "safe_powershell_host_progress_clixml",
+        "reason": "PowerShell CLIXML contains only progress/information/host records",
+        "record_kinds": record_kinds,
+        "unsafe_markers": [],
+    }
 
 
 def verify_command_bundle(
@@ -561,6 +682,7 @@ def verify_bounded_status_bundle(
     command_text = texts.get("command", "")
     stdout_text = texts.get("stdout", "")
     stderr_text = texts.get("stderr", "")
+    stderr_classification = _classify_powershell_stderr(stderr_text)
     if not command_text.strip():
         failures.append("command artifact is empty")
     else:
@@ -584,8 +706,8 @@ def verify_bounded_status_bundle(
             "bounded-status stdout must contain exactly one implementation verification marker; "
             f"found {verification_marker_count}"
         )
-    if stderr_text.strip():
-        failures.append("stderr artifact is not empty")
+    if not stderr_classification["safe"]:
+        failures.append(f"bounded-status stderr is unsafe: {stderr_classification['reason']}")
 
     exit_code: int | None = None
     if "exit_code" in texts:
@@ -642,7 +764,6 @@ def verify_bounded_status_bundle(
         "schema_version": BOUNDED_STATUS_EXECUTION_SCHEMA_VERSION,
         "status_implementation_sha256": expected_status_implementation_sha256,
         "status_implementation_source": BOUNDED_STATUS_SOURCE,
-        "stderr_empty": True,
         "stdout_nonempty": True,
         "timed_out": False,
     }
@@ -656,6 +777,13 @@ def verify_bounded_status_bundle(
         timeout_seconds = execution.get("timeout_seconds")
         if isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, int) or timeout_seconds <= 0:
             failures.append("bounded-status execution timeout_seconds must be a positive integer")
+        expected_stderr_empty = not bool(stderr_text.strip())
+        actual_stderr_empty = execution.get("stderr_empty")
+        if type(actual_stderr_empty) is not bool or actual_stderr_empty != expected_stderr_empty:
+            failures.append(
+                "bounded-status execution mismatch for 'stderr_empty': "
+                f"expected={expected_stderr_empty!r} actual={actual_stderr_empty!r}"
+            )
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -670,6 +798,7 @@ def verify_bounded_status_bundle(
         "failures": failures,
         "artifacts": receipts,
         "execution": execution,
+        "stderr_classification": stderr_classification,
     }
 
 
@@ -1532,8 +1661,7 @@ def load_safety_profile(
                 and all(
                     isinstance(relative, str)
                     and relative
-                    and isinstance(file_hash, str)
-                    and SHA256_RE.fullmatch(file_hash)
+                    and _critical_hash_expectation_valid(file_hash)
                     for relative, file_hash in critical_hashes.items()
                 )
             )

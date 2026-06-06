@@ -30,6 +30,8 @@ TRACKED_PRE_EXECUTION_CONTRACT_PATH = (
 TRACKED_RESUMPTION_PRE_EXECUTION_CONTRACT_PATH = (
     WORKSPACE_ROOT / "configs" / "operations" / "lpfs_stage5_read_only_command_contracts_v2.json"
 )
+ARCHIVED_GATE1_V2_PACKET = Path(r"C:\TradeAutomationEvidence\lpfs_c01_stage5\gate1_v2_20260606_020556")
+FTMO_LIVE_EXECUTOR_CRLF_SHA256 = "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
@@ -557,7 +559,7 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
                 },
                 "missing stdout artifact",
             ),
-            ("stderr", {"stderr": "NativeCommandError\n"}, "stderr artifact is not empty"),
+            ("stderr", {"stderr": "NativeCommandError\n"}, "bounded-status stderr is unsafe"),
             (
                 "duplicate verification marker",
                 {"duplicate_marker": True},
@@ -590,6 +592,39 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             self.assertEqual(result["status"], "STOPPED")
             self.assertIn("unverified VPS-resident", " ".join(result["failures"]))
 
+    def test_bounded_status_allows_preserved_safe_clixml_host_progress(self) -> None:
+        if not ARCHIVED_GATE1_V2_PACKET.exists():
+            self.skipTest(f"archived packet not found: {ARCHIVED_GATE1_V2_PACKET}")
+        for lane in ("FTMO", "IC"):
+            with self.subTest(lane=lane), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                stderr = (ARCHIVED_GATE1_V2_PACKET / lane / "bounded_status.stderr.txt").read_text(
+                    encoding="utf-8"
+                )
+                command_sha, implementation_sha = self._bounded_bundle(root, stderr=stderr)
+                result = self._verify_bounded_bundle(root, command_sha, implementation_sha)
+                self.assertEqual(result["status"], "PASS")
+                self.assertEqual(result["stderr_classification"]["kind"], "safe_powershell_host_progress_clixml")
+                self.assertFalse(result["execution"]["stderr_empty"])
+
+    def test_bounded_status_rejects_malformed_or_error_clixml(self) -> None:
+        cases = (
+            ("#< CLIXML\n<Objs><Obj S=\"error\"></Obj></Objs>", "non-progress/non-information"),
+            ("#< CLIXML\n<Objs><Obj S=\"information\"></Obj>", "could not be parsed"),
+            (
+                "#< CLIXML\n"
+                "<Objs><Obj S=\"information\"><ToString>NativeCommandError</ToString></Obj></Objs>",
+                "unsafe",
+            ),
+        )
+        for stderr, expected in cases:
+            with self.subTest(expected=expected), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                command_sha, implementation_sha = self._bounded_bundle(root, stderr=stderr)
+                result = self._verify_bounded_bundle(root, command_sha, implementation_sha)
+                self.assertEqual(result["status"], "STOPPED")
+                self.assertIn(expected, " ".join(result["failures"]))
+
     def test_compact_containment_bundle_passes_with_stdin_script_transport(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -601,6 +636,146 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             script = (root / "compact_containment.remote.ps1").read_text(encoding="utf-8")
             self.assertLess(len(command), verifier.COMPACT_CONTAINMENT_COMMAND_SAFE_LENGTH)
             self.assertNotIn(script.strip(), command)
+
+    def test_compact_runtime_hashes_accept_reviewed_line_ending_variants_only(self) -> None:
+        profile = verifier.load_safety_profile(
+            TRACKED_RESUMPTION_PROFILE_PATH,
+            "stage5_gate1_dual_lane_contained_v2",
+            expected_document_sha256=verifier._sha256(TRACKED_RESUMPTION_PROFILE_PATH),
+        )
+        expectations = profile["steps"]["FTMO/compact_containment"]["expectations"]
+        expected_hashes = expectations["critical_runtime_file_hashes"]
+        actual_hashes = {
+            relative: value["raw_sha256_variants"][0] if isinstance(value, dict) else value
+            for relative, value in expected_hashes.items()
+        }
+        actual_hashes[
+            "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py"
+        ] = FTMO_LIVE_EXECUTOR_CRLF_SHA256
+
+        matched, comparison = verifier._values_match(
+            "critical_runtime_file_hashes",
+            actual_hashes,
+            expected_hashes,
+        )
+        self.assertTrue(matched)
+        self.assertEqual(comparison, "line_ending_aware_sha256_variants")
+
+        edited_hashes = dict(actual_hashes)
+        edited_hashes[
+            "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py"
+        ] = "0" * 64
+        matched, _comparison = verifier._values_match(
+            "critical_runtime_file_hashes",
+            edited_hashes,
+            expected_hashes,
+        )
+        self.assertFalse(matched)
+
+    def test_compact_receipt_preserves_raw_observed_runtime_hashes(self) -> None:
+        profile = verifier.load_safety_profile(
+            TRACKED_RESUMPTION_PROFILE_PATH,
+            "stage5_gate1_dual_lane_contained_v2",
+            expected_document_sha256=verifier._sha256(TRACKED_RESUMPTION_PROFILE_PATH),
+        )
+        expectations = profile["steps"]["FTMO/compact_containment"]["expectations"]
+        expected_hashes = expectations["critical_runtime_file_hashes"]
+        observed_hashes = {
+            relative: value["raw_sha256_variants"][0] if isinstance(value, dict) else value
+            for relative, value in expected_hashes.items()
+        }
+        live_executor_path = (
+            "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py"
+        )
+        observed_hashes[live_executor_path] = FTMO_LIVE_EXECUTOR_CRLF_SHA256
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            command_sha, compact_sha = self._compact_bundle(root)
+            stdout = (
+                f"LPFS_COMPACT_CONTAINMENT_SCRIPT_SHA256_VERIFIED={compact_sha}\n"
+                "LPFS_GATE1_CONTAINMENT_JSON="
+                + json.dumps(
+                    {
+                        "repo_head": "3dd1895ca5300d448e4d100095b294e78679a6b9",
+                        "critical_runtime_file_hashes": observed_hashes,
+                    },
+                    separators=(",", ":"),
+                )
+                + "\n"
+            )
+            (root / "compact_containment.stdout.txt").write_text(stdout, encoding="utf-8")
+            self._manifest(root)
+            manifest = verifier.verify_manifest(root)
+            result = verifier.verify_compact_containment_bundle(
+                root,
+                "compact_containment",
+                "LPFS_GATE1_CONTAINMENT_JSON=",
+                expectations={
+                    "repo_head": "3dd1895ca5300d448e4d100095b294e78679a6b9",
+                    "critical_runtime_file_hashes": expected_hashes,
+                },
+                required_expectation_fields=["repo_head", "critical_runtime_file_hashes"],
+                expected_command_sha256=command_sha,
+                expected_compact_script_sha256=compact_sha,
+                declared_artifacts=manifest["declared_artifacts"],
+            )
+            self.assertEqual(result["status"], "PASS")
+            self.assertEqual(
+                result["structured_payload"]["critical_runtime_file_hashes"][live_executor_path],
+                FTMO_LIVE_EXECUTOR_CRLF_SHA256,
+            )
+            hash_result = next(
+                item for item in result["expectations"] if item["field"] == "critical_runtime_file_hashes"
+            )
+            self.assertEqual(hash_result["actual"][live_executor_path], FTMO_LIVE_EXECUTOR_CRLF_SHA256)
+
+    def test_archived_gate1_v2_packet_only_keeps_ic_compact_timeout_blocker(self) -> None:
+        if not ARCHIVED_GATE1_V2_PACKET.exists():
+            self.skipTest(f"archived packet not found: {ARCHIVED_GATE1_V2_PACKET}")
+        result = verifier.verify_packet(
+            ARCHIVED_GATE1_V2_PACKET,
+            safety_profile_path=TRACKED_RESUMPTION_PROFILE_PATH,
+            profile_id="stage5_gate1_dual_lane_contained_v2",
+            expected_profile_sha256=verifier._sha256(TRACKED_RESUMPTION_PROFILE_PATH),
+        )
+        self.assertEqual(result["status"], "STOPPED")
+        by_step = {step["step"]: step for step in result["steps"]}
+        self.assertEqual(by_step["FTMO/strict_mt5_probe"]["status"], "PASS")
+        self.assertEqual(by_step["IC/strict_mt5_probe"]["status"], "PASS")
+        self.assertEqual(by_step["FTMO/bounded_status"]["status"], "PASS")
+        self.assertEqual(by_step["IC/bounded_status"]["status"], "PASS")
+        self.assertEqual(
+            by_step["FTMO/bounded_status"]["stderr_classification"]["kind"],
+            "safe_powershell_host_progress_clixml",
+        )
+        self.assertEqual(
+            by_step["IC/bounded_status"]["stderr_classification"]["kind"],
+            "safe_powershell_host_progress_clixml",
+        )
+        self.assertEqual(by_step["FTMO/compact_containment"]["status"], "PASS")
+        hash_result = next(
+            item
+            for item in by_step["FTMO/compact_containment"]["expectations"]
+            if item["field"] == "critical_runtime_file_hashes"
+        )
+        self.assertTrue(hash_result["matched"])
+        self.assertEqual(
+            hash_result["actual"][
+                "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py"
+            ],
+            FTMO_LIVE_EXECUTOR_CRLF_SHA256,
+        )
+        self.assertEqual(by_step["IC/compact_containment"]["status"], "STOPPED")
+        self.assertIn("timed out", " ".join(by_step["IC/compact_containment"]["failures"]))
+        nonderived_failures = [
+            failure
+            for failure in result["failures"]
+            if "IC/compact_containment:" not in failure
+            and "manifest result mismatch" not in failure
+            and "validation_summary result mismatch" not in failure
+        ]
+        self.assertEqual(nonderived_failures, [])
 
     def test_compact_containment_bundle_fails_closed_on_incomplete_artifacts(self) -> None:
         cases = (
@@ -1910,7 +2085,7 @@ class Stage5PreExecutionContractTests(unittest.TestCase):
             pre_execution.PINNED_READ_ONLY_CONTRACT_DOCUMENT_SHA256S,
             {
                 "947105e7a50c46b582f7f0ed336b6a602c38d7a931b9cbc4d1f5d7f4ed72ba10",
-                "25c6fac9f94cb2018a56b34ef132bb1733292462ebcd773342a1a92e5aef4525",
+                "61f2831aa3a3d2ca82a57e83274389a98a2095be0b3cd8a728a9dbcada441c16",
             },
         )
         self.assertNotIn(stale_contract_sha, pre_execution.PINNED_READ_ONLY_CONTRACT_DOCUMENT_SHA256S)

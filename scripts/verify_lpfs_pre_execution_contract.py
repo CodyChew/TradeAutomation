@@ -31,7 +31,7 @@ CONTRACT_VERSION = 1
 EXECUTABLE_SUFFIXES = {".bat", ".cmd", ".com", ".exe", ".js", ".ps1", ".psm1", ".py", ".sh", ".vbs"}
 PINNED_READ_ONLY_CONTRACT_DOCUMENT_SHA256S = {
     "947105e7a50c46b582f7f0ed336b6a602c38d7a931b9cbc4d1f5d7f4ed72ba10",
-    "25c6fac9f94cb2018a56b34ef132bb1733292462ebcd773342a1a92e5aef4525",
+    "61f2831aa3a3d2ca82a57e83274389a98a2095be0b3cd8a728a9dbcada441c16",
 }
 
 

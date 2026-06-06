@@ -1,7 +1,7 @@
 # LPFS Stage 5 FTMO Gate 3 Retry Plan
 
-Last updated: 2026-06-05 ICT after the offline Gate 1 v2 compact-containment
-transport fix.
+Last updated: 2026-06-06 ICT after the offline Gate 1 v2 evidence-tooling
+hardening patch for packet `gate1_v2_20260606_020556`.
 
 ## Current Gate
 
@@ -11,7 +11,7 @@ packet is separately approved.
 
 The current verifier-hardening diff is local and review-only in the isolated
 worktree. It has not been committed, pushed, pulled to a VPS, or used for a
-fresh Gate 1 or Gate 3 operation.
+Gate 1 retry or Gate 3 operation.
 
 The future-operation safety profiles and the complete six-step Gate 1 v2
 pre-execution producer/contract are now defined, but they are review
@@ -21,7 +21,34 @@ restart approval is possible until the complete structured Gate 3
 precheck/postcheck probe commands that satisfy the lane-specific resumption
 profiles are also separately hash-reviewed. The new producer,
 bounded-status collector, compact-containment stdin transport, contracts, and
-profiles have not been executed against either VPS.
+profiles remain review candidates. Fresh Gate 1 remains blocked pending
+review, publication, and separate explicit read-only collection approval.
+
+The latest Gate 1 v2 packet is:
+
+```text
+C:\TradeAutomationEvidence\lpfs_c01_stage5\gate1_v2_20260606_020556
+```
+
+Its `manifest.json` SHA-256 is:
+
+```text
+d33094989b3f2ef1566f2e2e97c9015ebb5bd18f845a6d1d0f2630131590bcf2
+```
+
+This packet remains `STOPPED`. The offline hardening patch fixes two
+evidence-tooling blockers against this archived packet: bounded-status stderr
+now accepts only safe PowerShell CLIXML host/progress/information records, and
+critical runtime hash comparison now accepts only explicit reviewed
+line-ending-equivalent SHA-256 variants while preserving raw observed hashes.
+The archived strict MT5 steps pass and the bounded-status steps pass under the
+new classifier. FTMO compact containment also passes under the reviewed
+runtime-hash variants. IC compact containment still timed out with exit `124`,
+empty stdout/stderr, and no remote script-hash marker. The local artifacts do
+not prove whether the timeout was SSH stdin handling, remote command waiting
+behavior, timeout length, or transient VPS behavior. Therefore IC compact
+timeout remains a real `STOPPED` condition and requires one fresh Gate 1 retry
+after this offline tooling patch is reviewed and separately approved.
 
 The accepted FTMO Gate 3 stopped packet is:
 
@@ -290,8 +317,12 @@ Future strict-MT5 steps additionally require:
 The command, exact status implementation, execution metadata, stdout, stderr,
 exit code, and timeout sidecar must all be manifest-bound. The verifier
 requires the profile-pinned command hash and implementation hash, the remote
-hash-verification marker, nonempty status output, empty stderr, exit code `0`,
-and `timeout=false`. It rejects commands that name the VPS-resident
+hash-verification marker, nonempty status output, exit code `0`, and
+`timeout=false`. Nonempty stderr is accepted only when it is well-formed
+PowerShell CLIXML containing only progress, information, or host records. It
+fails closed on malformed CLIXML, error records, exception text,
+native-command errors, nonzero exit, timeout, missing stdout, or missing
+status hash markers. It rejects commands that name the VPS-resident
 `Get-LpfsLiveStatus.ps1`.
 
 For compact-containment steps, the compact command, compact script, execution
@@ -314,14 +345,20 @@ Every checked artifact must be declared by `manifest.json` with the same byte
 count and SHA-256. The expected packet result, required steps, and complete
 expectation sets come only from the mandatory profile. The verifier compares
 expected values against structured payloads using exact JSON types and exact
-arrays/objects.
+arrays/objects, except `critical_runtime_file_hashes`, which is compared
+against explicit reviewed SHA-256 variant sets for line-ending-equivalent
+tracked runtime files. Raw observed runtime hashes remain in the structured
+payload and receipt.
 
 The verifier fails closed when:
 
 - any artifact is missing or unreadable;
 - any checked artifact or `validation_summary.json` is not manifest-declared;
 - the command is empty;
-- stderr is nonempty;
+- bounded-status stderr is nonempty and not classified as safe PowerShell
+  CLIXML host/progress/information records;
+- compact-containment stderr is nonempty;
+- strict-MT5 stderr is nonempty;
 - the exit code is missing, malformed, or nonzero;
 - a bounded-status timeout sidecar is missing, malformed, or true;
 - a compact-containment timeout sidecar is missing, malformed, or true;
@@ -395,9 +432,8 @@ to run.
 
 The offline follow-up did not access either VPS or MT5.
 
-- focused structured-verifier, collector, producer, contract, and CLI module: `58`
-  tests passed;
-- current full LPFS suite: `454` tests total (`452` passed, `2` intentional
+- focused Stage 5 structured-verifier module: `63` tests passed;
+- current full LPFS suite: `459` tests total (`457` passed, `2` intentional
   skips);
 - independently verified pre-hardening full-suite baseline: `430` tests total
   (`428` passed, `2` intentional skips) with `216` subtests; this corrects the
@@ -410,6 +446,10 @@ The offline follow-up did not access either VPS or MT5.
 - Gate 1 reviewed read-only hash-contract rehearsal: `PASS`;
 - complete six-step Gate 1 v2 reviewed read-only hash-contract rehearsal:
   `PASS`, with `authorizes_execution=false`;
+- archived Gate 1 v2 packet `gate1_v2_20260606_020556`: strict MT5 and
+  bounded-status steps now verify `PASS`; FTMO compact-containment verifies
+  `PASS` under reviewed LF/CRLF-equivalent hash variants; IC
+  compact-containment remains `STOPPED` for timeout;
 - stale pre-hardening Gate 1 v2 read-only contract hash
   `f4a602aac651220fb599324edd9c284aaa19071737d7472f4468efc2012cc057`
   is rejected by the default verifier allowlist;
@@ -426,13 +466,13 @@ lpfs_stage5_read_only_command_contracts_v1.json
 947105e7a50c46b582f7f0ed336b6a602c38d7a931b9cbc4d1f5d7f4ed72ba10
 
 lpfs_stage5_resumption_safety_contract_profiles_v2.json
-c7efde9add0924fcd5458840079aebcad05fee2b866e72a9e6e30f66ebddeeaa
+3e0b385e71f544faafc1029e01bfb740ea6b62e8e179c1032371c43b5c068928
 
 lpfs_stage5_read_only_command_contracts_v2.json
-25c6fac9f94cb2018a56b34ef132bb1733292462ebcd773342a1a92e5aef4525
+61f2831aa3a3d2ca82a57e83274389a98a2095be0b3cd8a728a9dbcada441c16
 
 collect_lpfs_bounded_status_bundle.py
-b23492da393d25d545d2ba8a27499d220a936200da5ce15c46a0ed57069f9421
+f197ee11d6313c96aceb1cc4a82722a15c8e3d4c4a5d8d31a295046c949f29a2
 
 build_lpfs_stage5_gate1_v2_pre_execution.py
 d235a50e37dc4b1c945d3e84b31c7529a7015307c65f5d3c9d1103e62b0f1c53
@@ -457,14 +497,16 @@ This plan is not approved for execution.
 
 1. Review the offline verifier code, tests, archived-packet results, and this
    plan.
-2. Fresh Gate 1 remains blocked until the complete six-step v2 producer,
-   compact command/script hash barriers, stdin transport, contract, tests, and
-   this documentation pass review. After that review and separate operator
-   approval, generate and verify the exact local command bundle under
+2. Fresh Gate 1 remains blocked until the line-ending-aware runtime hash
+   verifier, safe CLIXML classifier, explicit IC timeout disposition,
+   contracts, tests, and this documentation pass review. After that review and
+   separate operator approval, generate and verify the exact local command
+   bundle under
    `stage5_gate1_v2_complete_read_only_v1`, collect a fresh dual-lane Gate 1
    packet using `stage5_gate1_dual_lane_contained_v2`, and stop for review.
-   The previous Gate 1 packet `20260604_095237` is stale. Gate 1 v1 is
-   historical only.
+   The previous Gate 1 packet `20260604_095237` is stale, and
+   `gate1_v2_20260606_020556` remains stopped for IC compact timeout. Gate 1
+   v1 is historical only.
 3. Require separate explicit approval for another FTMO-only Gate 3 attempt.
 4. Before executing any read-only command, stage the exact planned command and
    script files locally. Run the pre-execution hash-contract verifier and stop

@@ -102,12 +102,49 @@
           "contract_version": 1,
           "expectations": {
             "critical_runtime_file_hashes": {
-              "scripts/run_lp_force_strike_live_executor.py": "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
-              "scripts/run_lpfs_live_forever.ps1": "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254"
+              "scripts/run_lp_force_strike_live_executor.py": {
+                "normalized_sha256": "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d",
+                "raw_sha256_variants": [
+                  "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
+                  "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d"
+                ]
+              },
+              "scripts/run_lpfs_live_forever.ps1": {
+                "normalized_sha256": "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3",
+                "raw_sha256_variants": [
+                  "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
+                  "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": {
+                "normalized_sha256": "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279",
+                "raw_sha256_variants": [
+                  "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
+                  "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": {
+                "normalized_sha256": "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b",
+                "raw_sha256_variants": [
+                  "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
+                  "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
+                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "raw_sha256_variants": [
+                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
+                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
+                "normalized_sha256": "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f",
+                "raw_sha256_variants": [
+                  "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254",
+                  "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f"
+                ]
+              }
             },
             "heartbeat_fresh": true,
             "heartbeat_status": "running",
@@ -250,12 +287,49 @@
           "contract_version": 1,
           "expectations": {
             "critical_runtime_file_hashes": {
-              "scripts/run_lp_force_strike_live_executor.py": "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
-              "scripts/run_lpfs_live_forever.ps1": "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254"
+              "scripts/run_lp_force_strike_live_executor.py": {
+                "normalized_sha256": "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d",
+                "raw_sha256_variants": [
+                  "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
+                  "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d"
+                ]
+              },
+              "scripts/run_lpfs_live_forever.ps1": {
+                "normalized_sha256": "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3",
+                "raw_sha256_variants": [
+                  "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
+                  "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": {
+                "normalized_sha256": "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279",
+                "raw_sha256_variants": [
+                  "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
+                  "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": {
+                "normalized_sha256": "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b",
+                "raw_sha256_variants": [
+                  "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
+                  "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
+                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "raw_sha256_variants": [
+                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
+                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
+                "normalized_sha256": "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f",
+                "raw_sha256_variants": [
+                  "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254",
+                  "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f"
+                ]
+              }
             },
             "kill_switch_active": true,
             "logical_runner_path_count": 0,
@@ -343,12 +417,49 @@
           "expected_compact_script_sha256": "be3865bb91c99ce3deac3796c42b7aa22bae331e81efd52b625a858b5ab418ae",
           "expectations": {
             "critical_runtime_file_hashes": {
-              "scripts/run_lp_force_strike_live_executor.py": "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
-              "scripts/run_lpfs_live_forever.ps1": "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254"
+              "scripts/run_lp_force_strike_live_executor.py": {
+                "normalized_sha256": "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d",
+                "raw_sha256_variants": [
+                  "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
+                  "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d"
+                ]
+              },
+              "scripts/run_lpfs_live_forever.ps1": {
+                "normalized_sha256": "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3",
+                "raw_sha256_variants": [
+                  "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
+                  "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": {
+                "normalized_sha256": "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279",
+                "raw_sha256_variants": [
+                  "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
+                  "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": {
+                "normalized_sha256": "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b",
+                "raw_sha256_variants": [
+                  "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
+                  "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
+                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "raw_sha256_variants": [
+                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
+                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
+                "normalized_sha256": "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f",
+                "raw_sha256_variants": [
+                  "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254",
+                  "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f"
+                ]
+              }
             },
             "kill_switch_active": true,
             "market_recovery_mode": "disabled",
@@ -469,12 +580,49 @@
           "expected_compact_script_sha256": "ac0b29019836804fceee9924ad1e67336faf4d6bce30bf0e972f0b1ba9cd516e",
           "expectations": {
             "critical_runtime_file_hashes": {
-              "scripts/run_lp_force_strike_live_executor.py": "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
-              "scripts/run_lpfs_live_forever.ps1": "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254"
+              "scripts/run_lp_force_strike_live_executor.py": {
+                "normalized_sha256": "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d",
+                "raw_sha256_variants": [
+                  "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
+                  "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d"
+                ]
+              },
+              "scripts/run_lpfs_live_forever.ps1": {
+                "normalized_sha256": "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3",
+                "raw_sha256_variants": [
+                  "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
+                  "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": {
+                "normalized_sha256": "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279",
+                "raw_sha256_variants": [
+                  "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
+                  "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": {
+                "normalized_sha256": "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b",
+                "raw_sha256_variants": [
+                  "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
+                  "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
+                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "raw_sha256_variants": [
+                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
+                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
+                "normalized_sha256": "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f",
+                "raw_sha256_variants": [
+                  "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254",
+                  "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f"
+                ]
+              }
             },
             "kill_switch_active": true,
             "market_recovery_mode": "disabled",
@@ -662,12 +810,49 @@
           "contract_version": 1,
           "expectations": {
             "critical_runtime_file_hashes": {
-              "scripts/run_lp_force_strike_live_executor.py": "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
-              "scripts/run_lpfs_live_forever.ps1": "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254"
+              "scripts/run_lp_force_strike_live_executor.py": {
+                "normalized_sha256": "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d",
+                "raw_sha256_variants": [
+                  "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
+                  "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d"
+                ]
+              },
+              "scripts/run_lpfs_live_forever.ps1": {
+                "normalized_sha256": "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3",
+                "raw_sha256_variants": [
+                  "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
+                  "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": {
+                "normalized_sha256": "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279",
+                "raw_sha256_variants": [
+                  "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
+                  "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": {
+                "normalized_sha256": "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b",
+                "raw_sha256_variants": [
+                  "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
+                  "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
+                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "raw_sha256_variants": [
+                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
+                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
+                "normalized_sha256": "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f",
+                "raw_sha256_variants": [
+                  "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254",
+                  "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f"
+                ]
+              }
             },
             "heartbeat_fresh": true,
             "heartbeat_status": "running",
@@ -800,12 +985,49 @@
           "contract_version": 1,
           "expectations": {
             "critical_runtime_file_hashes": {
-              "scripts/run_lp_force_strike_live_executor.py": "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
-              "scripts/run_lpfs_live_forever.ps1": "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
-              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254"
+              "scripts/run_lp_force_strike_live_executor.py": {
+                "normalized_sha256": "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d",
+                "raw_sha256_variants": [
+                  "6ed6e75ea0a94e4d62dd8d46eaa013c3fb87655a9fd19755a2b3a5c975cd2e68",
+                  "aacc91a796abc054c2b030c28434e89036db4b48a68fd98b8f94c047a81a009d"
+                ]
+              },
+              "scripts/run_lpfs_live_forever.ps1": {
+                "normalized_sha256": "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3",
+                "raw_sha256_variants": [
+                  "c3bc857815a89cd9da3afd33071c2f956ad1fa6ba1d7cf3f2cacf192598ba882",
+                  "2db81104850e7dcd8c13504cdd465d56d12b0a02edaed6f22b82b5e517bdaed3"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/diagnostic_logging.py": {
+                "normalized_sha256": "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279",
+                "raw_sha256_variants": [
+                  "b98c58fee8ba12d16f64922c86a2e02a41cdc6a0e7d9502cf4e748d04267d54a",
+                  "601128b11f1304d0ec06880edd8291d5215682f9847906ec7e2f8de8b8b46279"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/dry_run_executor.py": {
+                "normalized_sha256": "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b",
+                "raw_sha256_variants": [
+                  "6d0ea309ba95ad25eb532c534a63ea0c0ad6db6a73dfa78e8521504707828c76",
+                  "658fc419986735fb7d3a079ebf344b0a258b12e024f3eaee5b5507ce9432cb4b"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
+                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "raw_sha256_variants": [
+                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
+                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                ]
+              },
+              "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
+                "normalized_sha256": "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f",
+                "raw_sha256_variants": [
+                  "1186c231c3bc66c75ae000fd7f8cccbc9b4d825f8160602d41a2c5bfd41ab254",
+                  "aea3fe7f64f95c2b1ed1063d554b9d24926d7392aff638d5e66126a84f3ca22f"
+                ]
+              }
             },
             "kill_switch_active": true,
             "logical_runner_path_count": 0,

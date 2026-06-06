@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect one bounded LPFS status bundle using an embedded reviewed script."""
+"""Collect one bounded LPFS status bundle using reviewed script artifacts."""
 
 from __future__ import annotations
 
@@ -581,7 +581,7 @@ def collect_compact_containment_bundle(
         "schema_version": 1,
         "status": "PASS" if passed else "STOPPED",
         "reason": (
-            "compact containment command completed with the embedded reviewed script"
+            "compact containment command completed with the stdin reviewed script"
             if passed
             else "compact containment command failed one or more mandatory safety checks"
         ),
