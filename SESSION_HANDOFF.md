@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-06 ICT for the owner-approved LPFS
-minimum-safety resumption path and bounded-status CLIXML consistency fix.
+Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption completed
+for FTMO first and IC second.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -50,9 +50,45 @@ file, and the JSONL journal before making operational decisions.
 
 ## AI Agent Continuity Rules
 
-- Current owner-approved objective: restore LPFS data collection with minimum
-  necessary live-safety checks. The old strict Gate 1 V2 path is historical
-  context, not the current operational blocker.
+- Current owner-approved objective is complete: LPFS live data collection is
+  resumed on both VPS lanes. FTMO was resumed first and proved clean before IC
+  was touched. The old strict Gate 1 V2 path is historical context, not the
+  current operational blocker.
+- Resumed runtime code SHA: `e10f3043ca4d33654a94f567536586f6725b4604`.
+  FTMO and IC were both resumed from this SHA. A later docs-only closeout
+  commit may advance `main`; it does not change live runner behavior unless a
+  future commit touches runtime code and the runners are deliberately
+  restarted.
+- FTMO final running evidence packet:
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_resume_minimal_20260607_102235`.
+  Its `manifest.json` SHA-256 is
+  `094bb379265ebab4fa083ed8532799018c5277227c72134205c4c3d690618c2c`.
+  Final proof shows `LPFS_Live` `Running`/`Enabled`, kill switch clear,
+  one logical runner path, fresh running heartbeat, `27` completed cycles,
+  MT5 `account_info`/`terminal_info`/`orders_get`/`positions_get` all `OK`,
+  pending strategy orders `0`, and the same three active FTMO positions
+  unchanged. No order-like journal rows or new broker exposure were observed.
+- IC final running evidence packet:
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\ic_resume_minimal_20260607_103929`.
+  Its `manifest.json` SHA-256 is
+  `66d2c0af3e42647ff09a457b5cb9cc7383765dd3b053c220ac6e6ed9ea09669e`.
+  Final proof shows `LPFS_IC_Live` `Running`/`Enabled`, kill switch clear,
+  one logical runner path, fresh running heartbeat, `6` completed cycles,
+  MT5 `account_info`/`terminal_info`/`orders_get`/`positions_get` all `OK`,
+  pending strategy orders `0`, and the same two active IC positions unchanged.
+  No order-like journal rows or new broker exposure were observed.
+- Combined final validation summary:
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\resume_final_20260607_104948`.
+  Its `manifest.json` SHA-256 is
+  `0b4e85e7948111ad16baebb9106065af01be3249015c0f19a41116ff516226f99`.
+  Overall status is `PASS`.
+- Operational non-actions during resumption: no reconciliation, no canary, no
+  manual broker order/position modification, and no strategy, risk, sizing,
+  SL/TP, or broker-send changes.
+- If either lane later needs maintenance, pause that lane with its kill
+  switch, disable only that lane's scheduled task, verify runner/watchdog
+  process count `0`, then collect fresh read-only MT5 and journal evidence
+  before making operational decisions.
 - Offline publication scope is narrow: fix bounded-status collector/verifier
   consistency for safe PowerShell CLIXML host/progress/information stderr,
   update the minimum read-only profile and necessary docs/tests, verify, and

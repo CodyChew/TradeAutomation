@@ -1,7 +1,7 @@
 # LPFS C-01 Live-Safety Release
 
-Last updated: 2026-06-06 ICT after the Gate 1 v2 evidence-tooling hardening
-patch for packet `gate1_v2_20260606_020556`.
+Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption completed
+for FTMO first and IC second.
 
 ## Current Objective
 
@@ -12,6 +12,69 @@ evidence-gated strategy research without changing LPFS entries, exits, risk
 settings, timeframe mix, or strategy heuristics.
 
 This is a live-safety release, not a strategy-improvement release.
+
+## Stage 5 Minimum-Safety Resumption Completed
+
+LPFS live data collection resumed on 2026-06-07 ICT. FTMO was resumed first
+and proved clean before IC was touched. Both lanes were resumed from runtime
+code SHA:
+
+```text
+e10f3043ca4d33654a94f567536586f6725b4604
+```
+
+Final state:
+
+| Lane | Task | Kill switch | Runner path | LPFS broker pending | Active positions |
+|---|---|---|---|---:|---:|
+| FTMO | `LPFS_Live` running/enabled | clear | one logical path | 0 | 3 unchanged |
+| IC | `LPFS_IC_Live` running/enabled | clear | one logical path | 0 | 2 unchanged |
+
+FTMO final packet:
+
+```text
+C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_resume_minimal_20260607_102235
+```
+
+FTMO `manifest.json` SHA-256:
+
+```text
+094bb379265ebab4fa083ed8532799018c5277227c72134205c4c3d690618c2c
+```
+
+IC final packet:
+
+```text
+C:\TradeAutomationEvidence\lpfs_c01_stage5\ic_resume_minimal_20260607_103929
+```
+
+IC `manifest.json` SHA-256:
+
+```text
+66d2c0af3e42647ff09a457b5cb9cc7383765dd3b053c220ac6e6ed9ea09669e
+```
+
+Combined final validation packet:
+
+```text
+C:\TradeAutomationEvidence\lpfs_c01_stage5\resume_final_20260607_104948
+```
+
+Combined `manifest.json` SHA-256:
+
+```text
+0b4e85e7948111ad16baebb9106065af01be3249015c0f19a41116ff516226f99
+```
+
+Final proof showed fresh running heartbeats, successful MT5
+`account_info`, `terminal_info`, `orders_get`, and `positions_get`, pending
+strategy orders `0`, unchanged active positions including SL/TP, no
+order-like journal rows, and no unexplained broker exposure. No
+reconciliation, canary, manual broker order/position modification, or
+strategy/risk/sizing/SL/TP/broker-send change was performed.
+A later docs-only closeout commit may advance `main`; it does not change live
+runner behavior unless future runtime code changes are deliberately deployed
+and the runners are restarted.
 
 ## Initial Contained Production State
 

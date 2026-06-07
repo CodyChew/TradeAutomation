@@ -1,7 +1,7 @@
 # TradeAutomation System Troubleshooting Map
 
-Last updated: 2026-06-06 after the owner-approved LPFS minimum-safety
-resumption path and bounded-status CLIXML consistency fix.
+Last updated: 2026-06-07 after LPFS minimum-safety resumption completed for
+FTMO first and IC second.
 
 This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
@@ -9,16 +9,33 @@ live trading state.
 
 ## C-01 Containment
 
-Read `lpfs_c01_live_safety_release.md` first. FTMO Stage 1 and IC Stage 3 both
-passed point-in-time and remain intentionally paused with kill switches active,
-scheduled tasks disabled, runner and watchdog process counts `0`, broker
-pending orders `0`, and unchanged active-position inventories. Keep both VPS
-machines powered on. Skip canaries by default. Do not clear kill switches,
-start watchdogs, enable tasks, deploy, run reconcile-only mode, or run a live
-canary unless a separate operator-approved deployment step authorizes it. The
-current owner-approved path is minimum-safety resumption: fresh read-only
-evidence first, FTMO resumption first, and IC only after FTMO post-start
-evidence is clean.
+Read `lpfs_c01_live_safety_release.md` first. LPFS minimum-safety resumption
+completed on 2026-06-07 ICT. Both VPS lanes were resumed from runtime code SHA
+`e10f3043ca4d33654a94f567536586f6725b4604` and both live data-collection
+tasks are running: FTMO `LPFS_Live` and IC `LPFS_IC_Live`. A later docs-only
+closeout commit may advance `main` without changing live runner behavior.
+FTMO was resumed first and proved clean before IC was touched. Skip canaries
+by default. Do not run reconcile-only mode, a live canary, or manual broker
+order/position changes unless a separate operator-approved step authorizes it.
+
+Authoritative final packets:
+
+- FTMO:
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_resume_minimal_20260607_102235`,
+  manifest SHA-256
+  `094bb379265ebab4fa083ed8532799018c5277227c72134205c4c3d690618c2c`
+- IC:
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\ic_resume_minimal_20260607_103929`,
+  manifest SHA-256
+  `66d2c0af3e42647ff09a457b5cb9cc7383765dd3b053c220ac6e6ed9ea09669e`
+- Combined final validation:
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\resume_final_20260607_104948`,
+  manifest SHA-256
+  `0b4e85e7948111ad16baebb9106065af01be3249015c0f19a41116ff516226f99`
+
+Final proof showed one logical runner path per lane, fresh running heartbeats,
+MT5 identity and reads `OK`, pending strategy orders `0`, unchanged active
+positions, no order-like journal rows, and no unexplained broker exposure.
 
 FTMO Stage 5 Gate 3 is accepted as `STOPPED`; do not retry it. Read
 `lpfs_stage5_gate3_retry_plan.md`. The authoritative ignored packet is

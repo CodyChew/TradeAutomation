@@ -1,30 +1,41 @@
 # LPFS Stage 5 FTMO Gate 3 Retry Plan
 
-Last updated: 2026-06-06 ICT for the owner-approved minimum-safety
-resumption path and bounded-status CLIXML consistency fix.
+Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption completed
+for FTMO first and IC second.
 
 ## Current Gate
 
-Current objective: restore LPFS data collection with minimum necessary
-live-safety checks. The old strict six-step Gate 1 V2 path is historical
-context, not the current operational blocker.
+Current objective is complete: LPFS data collection was restored with minimum
+necessary live-safety checks. The old strict six-step Gate 1 V2 path is
+historical context, not the current operational blocker.
 
-First publish the narrow offline bounded-status CLIXML collector/verifier
-consistency fix. Then collect fresh dual-lane minimum read-only evidence.
-Before final `main` deployment, FTMO must match approved runtime SHA
-`3dd1895ca5300d448e4d100095b294e78679a6b9` and IC must match approved
-runtime SHA `b02a3cb92a05e771782c7a9ca4e4339c9452969a`. After final `main`
-deployment, each lane must match the final approved `main` SHA before that
-lane can resume.
+Both VPS lanes were resumed from runtime code SHA
+`e10f3043ca4d33654a94f567536586f6725b4604`. FTMO `LPFS_Live` was resumed
+first, proved clean, and then IC `LPFS_IC_Live` was resumed. A later docs-only
+closeout commit may advance `main` without changing live runner behavior.
+Both lanes have one logical runner path, fresh running heartbeats, successful MT5
+`account_info`, `terminal_info`, `orders_get`, and `positions_get`, pending
+strategy orders `0`, unchanged active positions including SL/TP, and no
+unexplained broker exposure.
 
-Minimum read-only checks are: correct VPS/account identity, expected
-phase-specific runtime SHA, kill switch active, task disabled,
-runner/watchdog counts `0`, recovery disabled, broker pending orders `0`,
-exact approved active positions including SL/TP, and successful MT5
-`account_info`, `terminal_info`, `orders_get`, and `positions_get`.
+Final evidence:
 
-Do not run reconciliation or canary. Do not manually close, cancel, or modify
-broker orders or positions without separate approval.
+- FTMO packet:
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_resume_minimal_20260607_102235`,
+  manifest SHA-256
+  `094bb379265ebab4fa083ed8532799018c5277227c72134205c4c3d690618c2c`
+- IC packet:
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\ic_resume_minimal_20260607_103929`,
+  manifest SHA-256
+  `66d2c0af3e42647ff09a457b5cb9cc7383765dd3b053c220ac6e6ed9ea09669e`
+- Combined validation packet:
+  `C:\TradeAutomationEvidence\lpfs_c01_stage5\resume_final_20260607_104948`,
+  manifest SHA-256
+  `0b4e85e7948111ad16baebb9106065af01be3249015c0f19a41116ff516226f99`
+
+No reconciliation or canary was run. No manual broker order/position
+modification was performed. No strategy, risk, sizing, SL/TP, or broker-send
+setting was changed.
 
 The latest Gate 1 v2 packet is:
 
