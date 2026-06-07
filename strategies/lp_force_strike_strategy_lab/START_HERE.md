@@ -1,6 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption.
+Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption and Phase 1
+live quote telemetry deploy.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -15,6 +16,19 @@ operational decisions.
   running, kill switches clear, pending broker orders `0`, unchanged active
   positions, and recovery disabled. Use the dual VPS status packet for current
   process, heartbeat, config, and broker truth.
+- Phase 1 live quote telemetry separation is deployed on both lanes at runtime
+  SHA `027e0afe932081713067dc24b2bc457cddf1041e`. FTMO passed from packet
+  `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ftmo_task_repair_retry_20260607_201146`
+  with manifest SHA-256
+  `4ec14b8ad6f4ab0bb3fbe22e86dd20140039c95c8e41ce0ae1f4977e8a1a9461`; IC
+  passed from packet
+  `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ic_deploy_20260607_202435`
+  with manifest SHA-256
+  `7aba24f3227988473c9d6ab46a877e1c228e20faf29a5626cc11d664b900f23f`.
+  Lifecycle journals no longer receive new live `market_snapshot` rows;
+  separate FTMO/IC telemetry journals exist/grow; telemetry write/retention
+  failures were `0`; active positions stayed unchanged; no historical journal
+  cleanup was done.
 - Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
   C-01 fixed the historical MT5 epoch shift through `Europe/Helsinki` and
   remains relevant for normalization before strategy analysis. Do not rerun

@@ -1,7 +1,7 @@
 # LPFS C-01 Live-Safety Release
 
-Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption completed
-for FTMO first and IC second.
+Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption and Phase 1
+live quote telemetry deploy completed for FTMO first and IC second.
 
 ## Current Objective
 
@@ -13,14 +13,15 @@ settings, timeframe mix, or strategy heuristics.
 
 This is a live-safety release, not a strategy-improvement release.
 
-## Stage 5 Minimum-Safety Resumption Completed
+## Current Running State
 
 LPFS live data collection resumed on 2026-06-07 ICT. FTMO was resumed first
-and proved clean before IC was touched. Both lanes were resumed from runtime
-code SHA:
+and proved clean before IC was touched. Phase 1 live quote telemetry
+separation was then deployed sequentially, again FTMO first and IC only after
+FTMO proof was clean. Both lanes now run runtime code SHA:
 
 ```text
-e10f3043ca4d33654a94f567536586f6725b4604
+027e0afe932081713067dc24b2bc457cddf1041e
 ```
 
 Final state:
@@ -62,12 +63,40 @@ Use the packet's `manifest.sha256.txt` sidecar for the current combined
 Final proof showed fresh running heartbeats, successful MT5
 `account_info`, `terminal_info`, `orders_get`, and `positions_get`, pending
 strategy orders `0`, unchanged active positions including SL/TP, no
-order-like journal rows, and no unexplained broker exposure. No
-reconciliation, canary, manual broker order/position modification, or
-strategy/risk/sizing/SL/TP/broker-send change was performed.
-A later docs-only closeout commit may advance `main`; it does not change live
-runner behavior unless future runtime code changes are deliberately deployed
-and the runners are restarted.
+order-like journal rows, no unexplained broker exposure, primary lifecycle
+journals growing without new live `market_snapshot` rows, separated telemetry
+journals existing/growing, and telemetry write/retention failures `0`. No
+reconciliation, canary, manual broker order/position modification,
+runtime-state edit, historical journal cleanup, or strategy/risk/sizing/SL/TP/
+broker-send change was performed. Task executable path repairs to the full
+System32 PowerShell path are complete on both lanes.
+A later docs/status/handoff-only closeout commit may advance `main`; it does
+not change live runner behavior unless future runtime code changes are
+deliberately deployed and the runners are restarted.
+
+FTMO Phase 1 telemetry deploy packet:
+
+```text
+C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ftmo_task_repair_retry_20260607_201146
+```
+
+FTMO manifest SHA-256:
+
+```text
+4ec14b8ad6f4ab0bb3fbe22e86dd20140039c95c8e41ce0ae1f4977e8a1a9461
+```
+
+IC Phase 1 telemetry deploy packet:
+
+```text
+C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ic_deploy_20260607_202435
+```
+
+IC manifest SHA-256:
+
+```text
+7aba24f3227988473c9d6ab46a877e1c228e20faf29a5626cc11d664b900f23f
+```
 
 ## Historical Initial Contained Production State
 

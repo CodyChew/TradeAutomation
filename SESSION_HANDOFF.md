@@ -1,8 +1,8 @@
 # TradeAutomation Session Handoff
 
 Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption completed
-for FTMO first and IC second, and after local verification of the Phase 1 live
-quote telemetry separation patch.
+for FTMO first and IC second, and after the Phase 1 live quote telemetry
+separation deploy passed on both lanes.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -52,22 +52,25 @@ file, and the JSONL journal before making operational decisions.
 ## AI Agent Continuity Rules
 
 - Current owner-approved objective is complete: LPFS live data collection is
-  resumed on both VPS lanes. FTMO was resumed first and proved clean before IC
-  was touched. The old strict Gate 1 V2 path is historical context, not the
-  current operational blocker.
-- Resumed runtime code SHA: `e10f3043ca4d33654a94f567536586f6725b4604`.
-  FTMO and IC were both resumed from this SHA. A later docs-only closeout
+  resumed on both VPS lanes, and Phase 1 live quote telemetry separation is
+  deployed and running on both lanes. FTMO was resumed/deployed first and
+  proved clean before IC was touched. The old strict Gate 1 V2 path is
+  historical context, not the current operational blocker.
+- Current deployed runtime code SHA on both VPS lanes:
+  `027e0afe932081713067dc24b2bc457cddf1041e`. This SHA contains the live
+  quote telemetry separation patch. A later docs/status/handoff closeout
   commit may advance `main`; it does not change live runner behavior unless a
   future commit touches runtime code and the runners are deliberately
   restarted.
-- Phase 1 live quote telemetry separation is locally verified but not deployed
-  until each VPS checkout is pulled and each live runner is deliberately
-  restarted. The patch routes future live `market_snapshot` rows to
-  `lpfs_live_market_snapshots.jsonl` / `lpfs_ic_live_market_snapshots.jsonl`,
-  keeps primary lifecycle journals append-only, rejects telemetry paths that
-  resolve to the lifecycle journal path, trims telemetry with a 512 MiB cap and
-  90% hysteresis target, and exposes telemetry errors/counts in heartbeat and
-  status output. Dry-run and historical mixed journals remain unchanged.
+- Phase 1 live quote telemetry separation has been deployed after deliberate
+  runner restarts on both lanes. Future live `market_snapshot` rows are routed
+  to `lpfs_live_market_snapshots.jsonl` /
+  `lpfs_ic_live_market_snapshots.jsonl`; primary lifecycle journals remain
+  append-only and no longer receive new live `market_snapshot` rows. The patch
+  rejects telemetry paths that resolve to the lifecycle journal path, trims
+  telemetry with a 512 MiB cap and 90% hysteresis target, and exposes telemetry
+  errors/counts in heartbeat and status output. Dry-run and historical mixed
+  journals remain unchanged.
 - Phase 1 telemetry verification receipts from this workspace: focused live
   executor tests `37` passed; full LPFS suite `474` passed with `2` skipped;
   `scripts/run_core_coverage.py` reported `100.00%`; PowerShell parse checks
@@ -76,12 +79,53 @@ file, and the JSONL journal before making operational decisions.
   byte-stable; `git diff --check` passed with line-ending warnings only; scope
   audit found no runtime artifacts, journals, broker evidence, strategy/risk/
   sizing/SL/TP/broker-send changes, reconciliation, or canary changes.
-- Deploy Phase 1 telemetry sequentially only: FTMO first, verify one runner
-  path, fresh heartbeat, MT5 reads, unchanged pending orders/active positions,
-  lifecycle journal growth without new `market_snapshot` rows, and telemetry
-  journal growth. Restart IC only after FTMO proof is clean. No reconciliation,
-  canary, manual broker mutation, or historical journal cleanup is part of this
-  deploy.
+- Phase 1 telemetry deployment was sequential and is complete: FTMO first,
+  then IC only after FTMO telemetry proof was clean. No reconciliation, canary,
+  manual broker mutation, runtime-state edit, historical journal cleanup, or
+  strategy/risk/sizing/SL/TP/broker-send change was performed.
+- FTMO Phase 1 telemetry deploy PASS packet:
+  `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ftmo_task_repair_retry_20260607_201146`.
+  Manifest SHA-256:
+  `4ec14b8ad6f4ab0bb3fbe22e86dd20140039c95c8e41ce0ae1f4977e8a1a9461`.
+  Final proof showed `LPFS_Live` running on
+  `027e0afe932081713067dc24b2bc457cddf1041e`, kill switch clear, one logical
+  runner/watchdog path, fresh running heartbeat, MT5 reads OK, pending LPFS
+  broker orders `0`, the same `3` active FTMO positions unchanged, lifecycle
+  journal delta with `0` new `market_snapshot` rows, FTMO telemetry journal
+  exists/grows, sampled telemetry rows are complete `market_snapshot` rows, and
+  telemetry write/retention failures `0`.
+- IC Phase 1 telemetry deploy PASS packet:
+  `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ic_deploy_20260607_202435`.
+  Manifest SHA-256:
+  `7aba24f3227988473c9d6ab46a877e1c228e20faf29a5626cc11d664b900f23f`.
+  Final proof showed `LPFS_IC_Live` running on
+  `027e0afe932081713067dc24b2bc457cddf1041e`, kill switch clear, one logical
+  runner/watchdog path, fresh running heartbeat, MT5 reads OK on
+  `ICMarketsSC-MT5-2`, pending IC LPFS broker orders `0`, the same `2` active
+  IC positions unchanged, lifecycle journal delta with `0` new
+  `market_snapshot` rows, IC telemetry journal exists/grows, sampled telemetry
+  rows are complete `market_snapshot` rows, and telemetry write/retention
+  failures `0`.
+- FTMO and IC task executable path repairs are complete. Each live task now
+  uses the full System32 PowerShell executable path. Arguments, working
+  directory, principal, triggers, and `MultipleInstances=IgnoreNew` were
+  preserved.
+- Phase 1 closeout verification receipts from this workspace: dashboard/status
+  docs tests `32` passed; `docs/live_ops.html` regeneration was byte-stable
+  with SHA-256
+  `39A4006C26DF548D9E97850C41811F7F684FB8B78F9B92A2EAE9ACA2AFFCC1F8`;
+  `git diff --check` passed with line-ending warnings only; stale current-state
+  wording and mojibake scans passed; scope audit found only docs, handoff,
+  live-ops generator, generated HTML, and dashboard-test changes. Status
+  scripts were not changed, so no PowerShell status-script parse check was
+  required for this closeout.
+- Phase 1 closeout non-actions: no strategy, risk, sizing, SL/TP,
+  broker-send, reconciliation, runtime-state, journal, broker artifact, or
+  historical-data cleanup change was made in the repo closeout. No manual
+  broker order/position mutation was performed.
+- Final closeout publication SHA: after this docs/status/handoff-only closeout
+  is pushed, read `git rev-parse origin/main` from the repo. This file cannot
+  embed the immutable SHA of the same commit without changing that SHA.
 - FTMO final running evidence packet:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_resume_minimal_20260607_102235`.
   Use the packet's `manifest.sha256.txt` sidecar for the current

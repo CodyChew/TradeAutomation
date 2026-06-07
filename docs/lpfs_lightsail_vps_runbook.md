@@ -8,14 +8,17 @@ resumed first and IC `LPFS_IC_Live` was resumed only after FTMO post-start
 evidence was clean. Accepted final proof recorded both tasks running, kill
 switches clear, pending broker orders `0`, and unchanged active-position
 inventories. `live_send.market_recovery_mode="disabled"` remains mandatory.
+Phase 1 live quote telemetry separation is also deployed on FTMO from runtime
+SHA `027e0afe932081713067dc24b2bc457cddf1041e`; `LPFS_Live` was deliberately
+restarted and left running after proof passed.
 
 Do not start a duplicate runner, run reconciliation, run a canary, or manually
 modify broker orders or positions. Before any maintenance, run
 `scripts\Get-LpfsDualVpsStatus.ps1` and use MT5 broker state, heartbeat, and
 journal evidence as current truth.
 
-Last updated: 2026-05-23 after the LPFS weekly-report incident, runner
-recovery, diagnostic-logging upgrade, and journal-read safety update.
+Last updated: 2026-06-07 after the Phase 1 live quote telemetry deploy
+completed on FTMO and IC.
 
 This runbook moves the existing Python + MT5 live runner to Amazon Lightsail
 without rewriting strategy logic. The exact strategy behavior remains owned by
@@ -28,8 +31,8 @@ The live production environment is the Amazon Lightsail Windows VPS, not the
 local OneDrive workspace.
 
 - VPS repo path: `C:\TradeAutomation`.
-- VPS repo status: clean `main...origin/main` at `32a71d9` in the 2026-05-23
-  recovery packet.
+- VPS repo status: FTMO Phase 1 telemetry deploy proof showed clean
+  `main...origin/main` at `027e0afe932081713067dc24b2bc457cddf1041e`.
 - VPS runtime root: `C:\TradeAutomationRuntime`.
 - VPS scheduled task: `LPFS_Live`.
 - VPS startup alert task: `LPFS_FTMO_Startup_Alert`.
@@ -40,6 +43,25 @@ Future live-operation checks, deployment verification, and incident debugging
 should be performed from the VPS first. The local repo remains the development
 workspace unless changes are explicitly pushed/pulled to the VPS and
 `LPFS_Live` is intentionally restarted.
+
+Latest Phase 1 telemetry deploy proof:
+
+- packet:
+  `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ftmo_task_repair_retry_20260607_201146`
+- manifest SHA-256:
+  `4ec14b8ad6f4ab0bb3fbe22e86dd20140039c95c8e41ce0ae1f4977e8a1a9461`
+- task: `LPFS_Live` running, kill switch clear, one logical runner/watchdog
+  path, fresh heartbeat, recovery disabled
+- broker exposure: pending LPFS orders `0`; three active FTMO positions
+  unchanged
+- journals: lifecycle journal grew with `0` new complete `market_snapshot`
+  rows; `lpfs_live_market_snapshots.jsonl` exists/grows with complete
+  `market_snapshot` rows
+- telemetry health: write failures `0`; retention failures `0`
+- task executable path repair: completed to full System32 PowerShell path with
+  arguments, working directory, principal, triggers, and
+  `MultipleInstances=IgnoreNew` preserved
+- historical journal cleanup: not performed
 
 ## Remote Maintenance Access
 
@@ -87,7 +109,7 @@ blocker for heavy report scans, deploys, or large data collection until free
 space is addressed. Current policy is warn below `15 GB` or `25%` free, and
 action below `10 GB` or `15%` free.
 
-Latest spot check on 2026-05-23:
+Historical spot check on 2026-05-23:
 `reports/live_ops/lpfs_dual_vps_status_20260523_140154.md` showed
 `LPFS_Live` running with kill switch clear, fresh `running`
 `lpfs_live_heartbeat.json`, MT5 connected/trade allowed, `6` FTMO strategy

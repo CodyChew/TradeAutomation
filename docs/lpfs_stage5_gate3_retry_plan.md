@@ -1,22 +1,26 @@
 # LPFS Stage 5 FTMO Gate 3 Retry Plan
 
-Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption completed
-for FTMO first and IC second.
+Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption and Phase 1
+live quote telemetry deploy completed for FTMO first and IC second.
 
 ## Current Gate
 
 Current objective is complete: LPFS data collection was restored with minimum
-necessary live-safety checks. The old strict six-step Gate 1 V2 path is
+necessary live-safety checks, and Phase 1 live quote telemetry separation was
+deployed sequentially to FTMO and IC. The old strict six-step Gate 1 V2 path is
 historical context, not the current operational blocker.
 
-Both VPS lanes were resumed from runtime code SHA
-`e10f3043ca4d33654a94f567536586f6725b4604`. FTMO `LPFS_Live` was resumed
-first, proved clean, and then IC `LPFS_IC_Live` was resumed. A later docs-only
-closeout commit may advance `main` without changing live runner behavior.
+Both VPS lanes currently run runtime code SHA
+`027e0afe932081713067dc24b2bc457cddf1041e`. FTMO `LPFS_Live` was resumed and
+then updated/restarted first, proved clean, and then IC `LPFS_IC_Live` was
+updated/restarted. A later docs/status/handoff-only closeout commit may
+advance `main` without changing live runner behavior.
 Both lanes have one logical runner path, fresh running heartbeats, successful MT5
 `account_info`, `terminal_info`, `orders_get`, and `positions_get`, pending
 strategy orders `0`, unchanged active positions including SL/TP, and no
-unexplained broker exposure.
+unexplained broker exposure. Primary lifecycle journals no longer receive new
+live `market_snapshot` rows; separated telemetry journals exist/grow; telemetry
+write and retention failure counts were `0`.
 
 Final evidence:
 
@@ -29,10 +33,20 @@ Final evidence:
 - Combined validation packet:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\resume_final_20260607_104948`,
   current manifest SHA-256 in `manifest.sha256.txt`
+- FTMO Phase 1 telemetry packet:
+  `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ftmo_task_repair_retry_20260607_201146`,
+  manifest SHA-256
+  `4ec14b8ad6f4ab0bb3fbe22e86dd20140039c95c8e41ce0ae1f4977e8a1a9461`
+- IC Phase 1 telemetry packet:
+  `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ic_deploy_20260607_202435`,
+  manifest SHA-256
+  `7aba24f3227988473c9d6ab46a877e1c228e20faf29a5626cc11d664b900f23f`
 
 No reconciliation or canary was run. No manual broker order/position
-modification was performed. No strategy, risk, sizing, SL/TP, or broker-send
-setting was changed.
+modification, runtime-state edit, or historical journal cleanup was performed.
+No strategy, risk, sizing, SL/TP, or broker-send setting was changed. Task
+executable path repairs to the full System32 PowerShell path are complete on
+both lanes.
 
 The latest Gate 1 v2 packet is:
 

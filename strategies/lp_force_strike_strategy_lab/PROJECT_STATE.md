@@ -1,6 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption.
+Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption and Phase 1
+live quote telemetry deploy.
 
 ## Current Live-Ops State
 
@@ -12,6 +13,22 @@ running, kill switches clear, pending broker orders `0`, unchanged active
 positions, and recovery disabled. Use `scripts\Get-LpfsDualVpsStatus.ps1` for
 current process, heartbeat, config, and broker truth before any live
 maintenance.
+
+Phase 1 live quote telemetry separation is deployed on both VPS lanes from
+runtime SHA `027e0afe932081713067dc24b2bc457cddf1041e`. FTMO PASS packet:
+`C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ftmo_task_repair_retry_20260607_201146`,
+manifest SHA-256
+`4ec14b8ad6f4ab0bb3fbe22e86dd20140039c95c8e41ce0ae1f4977e8a1a9461`. IC
+PASS packet:
+`C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ic_deploy_20260607_202435`,
+manifest SHA-256
+`7aba24f3227988473c9d6ab46a877e1c228e20faf29a5626cc11d664b900f23f`.
+Both lanes are running with kill switches clear, recovery disabled, pending
+LPFS broker orders `0`, active positions unchanged, lifecycle journals growing
+without new live `market_snapshot` rows, separated telemetry journals
+existing/growing, and telemetry write/retention failures `0`. Task executable
+path repairs are complete on both lanes. No historical journal cleanup was
+done.
 
 Do not rerun reconciliation, run a canary, start a duplicate runner, manually
 modify broker orders or positions, or change strategy/risk/sizing/SL/TP/

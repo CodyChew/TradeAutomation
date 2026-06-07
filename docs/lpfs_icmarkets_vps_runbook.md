@@ -8,6 +8,9 @@ and IC was resumed only after FTMO post-start evidence was clean. Accepted
 final proof recorded both tasks running, kill switches clear, pending broker
 orders `0`, and unchanged active-position inventories. Keep
 `live_send.market_recovery_mode="disabled"`.
+Phase 1 live quote telemetry separation is also deployed on IC from runtime
+SHA `027e0afe932081713067dc24b2bc457cddf1041e`; `LPFS_IC_Live` was
+deliberately restarted and left running after proof passed.
 
 Do not run a canary, rerun reconciliation, start a duplicate runner, or
 manually modify broker orders or positions. Before IC maintenance, run
@@ -62,6 +65,28 @@ The current FTMO production task remains `LPFS_Live` on the existing VPS. The IC
 runner must use its own VPS, MT5 terminal, Telegram channel, ignored config,
 runtime root, state, journal, heartbeat, kill switch, and scheduled task.
 
+Latest IC Phase 1 telemetry deploy proof:
+
+- packet:
+  `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ic_deploy_20260607_202435`
+- manifest SHA-256:
+  `7aba24f3227988473c9d6ab46a877e1c228e20faf29a5626cc11d664b900f23f`
+- task: `LPFS_IC_Live` running, kill switch clear, one logical runner/watchdog
+  path, fresh heartbeat, recovery disabled
+- broker exposure: pending IC LPFS orders `0`; two active IC positions
+  unchanged
+- journals: lifecycle journal grew with `0` new complete `market_snapshot`
+  rows; `lpfs_ic_live_market_snapshots.jsonl` exists/grows with complete
+  `market_snapshot` rows
+- telemetry health: write failures `0`; retention failures `0`
+- task executable path repair: completed to full System32 PowerShell path with
+  arguments, working directory, principal, triggers, and
+  `MultipleInstances=IgnoreNew` preserved
+- historical journal cleanup: not performed
+- production config path: the task continues to use ignored
+  `C:\TradeAutomation\config.lpfs_icmarkets_raw_spread.local.json`; do not
+  replace it with `config.icmarkets.live.json`
+
 ## Target Shape
 
 | Area | FTMO Existing Production | IC Markets Production |
@@ -112,9 +137,9 @@ and trade allowed, and broker/state counts reconciled.
 - Hostname: `EC2AMAZ-DT73P0T`.
 - Tailscale IP: `100.98.12.113`.
 - SSH user: `Administrator`.
-- Repo checkout: `C:\TradeAutomation`, clean `main...origin/main` at
-  `32a71d9` in the 2026-05-23 recovery packet. Pull latest `main` before any
-  maintenance.
+- Repo checkout: `C:\TradeAutomation`; IC Phase 1 telemetry deploy proof showed
+  clean `main...origin/main` at
+  `027e0afe932081713067dc24b2bc457cddf1041e`.
 - Python venv: `C:\TradeAutomation\venv` with `pandas`, `pyarrow`,
   `MetaTrader5`, `certifi`, `pytest`, and `coverage[toml]` installed.
 - Public Lightsail RDP has been removed. Use Tailscale RDP to `100.98.12.113`
@@ -159,7 +184,7 @@ and trade allowed, and broker/state counts reconciled.
   After logging in and then disconnecting, not signing out, `LPFS_IC_Live`
   stayed running with fresh heartbeat, IC MT5 connected to
   `ICMarketsSC-MT5-2`, and broker/state counts reconciled.
-- Latest spot check on 2026-05-23:
+- Historical spot check on 2026-05-23:
   `reports/live_ops/lpfs_dual_vps_status_20260523_140154.md` showed
   `LPFS_IC_Live` running with kill switch clear, fresh `running`
   `lpfs_ic_live_heartbeat.json`, parent/child Python runner shape, MT5

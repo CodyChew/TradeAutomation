@@ -1,7 +1,7 @@
 # TradeAutomation System Troubleshooting Map
 
-Last updated: 2026-06-07 after LPFS minimum-safety resumption completed for
-FTMO first and IC second.
+Last updated: 2026-06-07 after LPFS minimum-safety resumption and Phase 1 live
+quote telemetry deploy completed for FTMO first and IC second.
 
 This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
@@ -10,11 +10,12 @@ live trading state.
 ## C-01 Containment
 
 Read `lpfs_c01_live_safety_release.md` first. LPFS minimum-safety resumption
-completed on 2026-06-07 ICT. Both VPS lanes were resumed from runtime code SHA
-`e10f3043ca4d33654a94f567536586f6725b4604` and both live data-collection
-tasks are running with kill switches clear: FTMO `LPFS_Live` and IC
-`LPFS_IC_Live`. A later docs-only closeout commit may advance `main` without
-changing live runner behavior.
+completed on 2026-06-07 ICT, then Phase 1 live quote telemetry separation was
+deployed after deliberate FTMO and IC runner restarts. Both VPS lanes are
+running from runtime code SHA `027e0afe932081713067dc24b2bc457cddf1041e`
+with kill switches clear: FTMO `LPFS_Live` and IC `LPFS_IC_Live`. A later
+docs/status/handoff-only closeout commit may advance `main` without changing
+live runner behavior.
 FTMO was resumed first and proved clean before IC was touched. Skip canaries
 by default. Do not run reconcile-only mode, a live canary, or manual broker
 order/position changes unless a separate operator-approved step authorizes it.
@@ -30,10 +31,21 @@ Authoritative final packets:
 - Combined final validation:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\resume_final_20260607_104948`,
   current manifest SHA-256 in `manifest.sha256.txt`
+- FTMO Phase 1 telemetry deploy:
+  `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ftmo_task_repair_retry_20260607_201146`,
+  manifest SHA-256
+  `4ec14b8ad6f4ab0bb3fbe22e86dd20140039c95c8e41ce0ae1f4977e8a1a9461`
+- IC Phase 1 telemetry deploy:
+  `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ic_deploy_20260607_202435`,
+  manifest SHA-256
+  `7aba24f3227988473c9d6ab46a877e1c228e20faf29a5626cc11d664b900f23f`
 
 Final proof showed one logical runner path per lane, fresh running heartbeats,
 MT5 identity and reads `OK`, pending strategy orders `0`, unchanged active
-positions, no order-like journal rows, and no unexplained broker exposure.
+positions, no order-like journal rows, no unexplained broker exposure, primary
+lifecycle journals growing without new live `market_snapshot` rows, separated
+market snapshot telemetry journals existing/growing, and telemetry write/
+retention failures `0`.
 
 FTMO Stage 5 Gate 3 is accepted as `STOPPED`; do not retry it. Read
 `lpfs_stage5_gate3_retry_plan.md`. The authoritative ignored packet is
@@ -175,11 +187,13 @@ mixed journals are immutable evidence; do not delete, truncate, compact, or
 rewrite them as part of this phase. Quote-telemetry analysis must explicitly
 read the market snapshot journal.
 
-This changes live runner behavior. Pulling code alone is not enough: each lane
-starts writing separated quote telemetry only after a deliberate runner restart.
-Deploy sequentially, FTMO first and IC only after FTMO telemetry/status proof is
-clean. Do not run reconciliation, canaries, manual broker mutation, or strategy,
-risk, sizing, SL/TP, or broker-send changes as part of this telemetry deploy.
+This changed live runner behavior and is now active on both lanes because each
+lane was deliberately restarted after pulling
+`027e0afe932081713067dc24b2bc457cddf1041e`. Pulling future runtime code alone
+is still not enough to change an already running process; a behavior-changing
+pull requires a deliberate, separately approved restart. The Phase 1 telemetry
+deploy did not run reconciliation, canaries, manual broker mutation, historical
+journal cleanup, or strategy, risk, sizing, SL/TP, or broker-send changes.
 
 Known unsafe patterns against `C:\TradeAutomationRuntime*\data\live\*.jsonl`
 or live state files:
