@@ -61,8 +61,9 @@ file, and the JSONL journal before making operational decisions.
   restarted.
 - FTMO final running evidence packet:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_resume_minimal_20260607_102235`.
-  Its `manifest.json` SHA-256 is
-  `094bb379265ebab4fa083ed8532799018c5277227c72134205c4c3d690618c2c`.
+  Use the packet's `manifest.sha256.txt` sidecar for the current
+  `manifest.json` SHA-256 because additional read-only proof artifacts may be
+  added during closeout.
   Final proof shows `LPFS_Live` `Running`/`Enabled`, kill switch clear,
   one logical runner path, fresh running heartbeat, `27` completed cycles,
   MT5 `account_info`/`terminal_info`/`orders_get`/`positions_get` all `OK`,
@@ -70,8 +71,9 @@ file, and the JSONL journal before making operational decisions.
   unchanged. No order-like journal rows or new broker exposure were observed.
 - IC final running evidence packet:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\ic_resume_minimal_20260607_103929`.
-  Its `manifest.json` SHA-256 is
-  `66d2c0af3e42647ff09a457b5cb9cc7383765dd3b053c220ac6e6ed9ea09669e`.
+  Use the packet's `manifest.sha256.txt` sidecar for the current
+  `manifest.json` SHA-256 because additional read-only proof artifacts may be
+  added during closeout.
   Final proof shows `LPFS_IC_Live` `Running`/`Enabled`, kill switch clear,
   one logical runner path, fresh running heartbeat, `6` completed cycles,
   MT5 `account_info`/`terminal_info`/`orders_get`/`positions_get` all `OK`,
@@ -79,8 +81,8 @@ file, and the JSONL journal before making operational decisions.
   No order-like journal rows or new broker exposure were observed.
 - Combined final validation summary:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\resume_final_20260607_104948`.
-  Its `manifest.json` SHA-256 is
-  `0b4e85e7948111ad16baebb9106065af01be3249015c0f19a41116ff516226f99`.
+  Use the packet's `manifest.sha256.txt` sidecar for the current
+  `manifest.json` SHA-256.
   Overall status is `PASS`.
 - Operational non-actions during resumption: no reconciliation, no canary, no
   manual broker order/position modification, and no strategy, risk, sizing,

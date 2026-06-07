@@ -22,16 +22,13 @@ Final evidence:
 
 - FTMO packet:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_resume_minimal_20260607_102235`,
-  manifest SHA-256
-  `094bb379265ebab4fa083ed8532799018c5277227c72134205c4c3d690618c2c`
+  current manifest SHA-256 in `manifest.sha256.txt`
 - IC packet:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\ic_resume_minimal_20260607_103929`,
-  manifest SHA-256
-  `66d2c0af3e42647ff09a457b5cb9cc7383765dd3b053c220ac6e6ed9ea09669e`
+  current manifest SHA-256 in `manifest.sha256.txt`
 - Combined validation packet:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\resume_final_20260607_104948`,
-  manifest SHA-256
-  `0b4e85e7948111ad16baebb9106065af01be3249015c0f19a41116ff516226f99`
+  current manifest SHA-256 in `manifest.sha256.txt`
 
 No reconciliation or canary was run. No manual broker order/position
 modification was performed. No strategy, risk, sizing, SL/TP, or broker-send

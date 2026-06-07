@@ -36,11 +36,9 @@ FTMO final packet:
 C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_resume_minimal_20260607_102235
 ```
 
-FTMO `manifest.json` SHA-256:
-
-```text
-094bb379265ebab4fa083ed8532799018c5277227c72134205c4c3d690618c2c
-```
+Use the packet's `manifest.sha256.txt` sidecar for the current FTMO
+`manifest.json` SHA-256 because additional read-only proof artifacts may be
+added during closeout.
 
 IC final packet:
 
@@ -48,11 +46,9 @@ IC final packet:
 C:\TradeAutomationEvidence\lpfs_c01_stage5\ic_resume_minimal_20260607_103929
 ```
 
-IC `manifest.json` SHA-256:
-
-```text
-66d2c0af3e42647ff09a457b5cb9cc7383765dd3b053c220ac6e6ed9ea09669e
-```
+Use the packet's `manifest.sha256.txt` sidecar for the current IC
+`manifest.json` SHA-256 because additional read-only proof artifacts may be
+added during closeout.
 
 Combined final validation packet:
 
@@ -60,11 +56,8 @@ Combined final validation packet:
 C:\TradeAutomationEvidence\lpfs_c01_stage5\resume_final_20260607_104948
 ```
 
-Combined `manifest.json` SHA-256:
-
-```text
-0b4e85e7948111ad16baebb9106065af01be3249015c0f19a41116ff516226f99
-```
+Use the packet's `manifest.sha256.txt` sidecar for the current combined
+`manifest.json` SHA-256.
 
 Final proof showed fresh running heartbeats, successful MT5
 `account_info`, `terminal_info`, `orders_get`, and `positions_get`, pending
