@@ -237,6 +237,63 @@ class LiveTrackedPosition:
 
 
 @dataclass(frozen=True)
+class LiveRecoveryAttempt:
+    """Durable idempotency marker for one market-recovery DEAL attempt."""
+
+    recovery_attempt_id: str
+    signal_key: str
+    symbol: str
+    timeframe: str
+    side: str
+    original_entry: float
+    fill_price: float
+    stop_loss: float
+    take_profit: float
+    volume: float
+    target_risk_pct: float
+    actual_risk_pct: float
+    magic: int
+    comment: str
+    setup_id: str
+    status: str = "presend_recorded"
+    created_time_utc: str = ""
+    updated_time_utc: str = ""
+    quote_path_evidence: dict[str, Any] | None = None
+    order_ticket: int | None = None
+    deal_ticket: int | None = None
+    position_id: int | None = None
+    timestamp_semantics_version: str = MT5_EPOCH_UTC_V2
+    timestamp_provenance: str = "system_utc"
+    signal_time_utc: str | None = None
+    max_entry_wait_bars: int = 6
+    strategy_expiry_mode: str = "bar_count"
+    broker_backstop_expiration_time_utc: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "LiveRecoveryAttempt":
+        values = {key: payload[key] for key in cls.__dataclass_fields__ if key in payload}
+        values.setdefault("status", "presend_recorded")
+        values.setdefault("created_time_utc", "")
+        values.setdefault("updated_time_utc", "")
+        values.setdefault("quote_path_evidence", None)
+        values.setdefault("order_ticket", None)
+        values.setdefault("deal_ticket", None)
+        values.setdefault("position_id", None)
+        values.setdefault("timestamp_semantics_version", MT5_EPOCH_UTC_V2)
+        values.setdefault("timestamp_provenance", "system_utc")
+        values.setdefault("target_risk_pct", 0.0)
+        values.setdefault("actual_risk_pct", 0.0)
+        values.setdefault("signal_time_utc", _signal_time_from_signal_key(str(payload.get("signal_key", ""))))
+        values.setdefault("max_entry_wait_bars", 6)
+        values.setdefault("strategy_expiry_mode", "bar_count")
+        values.setdefault("broker_backstop_expiration_time_utc", None)
+        return cls(**values)
+
+
+@dataclass(frozen=True)
 class LiveExecutorState:
     """Restart-safe live state for idempotency and lifecycle alerts."""
 
@@ -253,6 +310,7 @@ class LiveExecutorState:
     telegram_message_ids: dict[str, int] = field(default_factory=dict)
     state_writer_timestamp_semantics_version: str = MT5_EPOCH_UTC_V2
     reconciliation_receipts: dict[str, dict[str, Any]] = field(default_factory=dict)
+    recovery_attempts: tuple[LiveRecoveryAttempt, ...] = ()
 
     def __post_init__(self) -> None:
         processed = dict(self.processed_signal_key_semantics)
@@ -279,6 +337,7 @@ class LiveExecutorState:
             "telegram_message_ids": dict(self.telegram_message_ids),
             "state_writer_timestamp_semantics_version": MT5_EPOCH_UTC_V2,
             "reconciliation_receipts": dict(self.reconciliation_receipts),
+            "recovery_attempts": [attempt.to_dict() for attempt in self.recovery_attempts],
         }
 
 
@@ -336,6 +395,7 @@ class MarketRecoveryCheck:
     target_touched_time_utc: str | None = None
     target_touched_high: float | None = None
     target_touched_low: float | None = None
+    quote_path_evidence: dict[str, Any] | None = None
     detail: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -931,6 +991,7 @@ def load_live_state(path: str | Path) -> LiveExecutorState:
         },
         state_writer_timestamp_semantics_version=MT5_EPOCH_UTC_V2,
         reconciliation_receipts=dict(payload.get("reconciliation_receipts", {}) or {}),
+        recovery_attempts=tuple(LiveRecoveryAttempt.from_dict(item) for item in payload.get("recovery_attempts", ())),
     )
     return state
 
@@ -1140,8 +1201,9 @@ def market_recovery_check(
         return MarketRecoveryCheck(
             checked=False,
             recoverable=False,
-            status="market_recovery_path_unavailable",
+            status="recovery_quote_path_unavailable",
             detail=str(path_block.get("detail", "")),
+            quote_path_evidence=_path_block_evidence(path_block),
             **base_fields,
         )
     if path_block["status"] == "stop_touched":
@@ -1153,6 +1215,7 @@ def market_recovery_check(
             stop_touched_high=path_block.get("high"),
             stop_touched_low=path_block.get("low"),
             detail="structural stop traded before market recovery",
+            quote_path_evidence=_path_block_evidence(path_block),
             **base_fields,
         )
     if path_block["status"] == "target_touched":
@@ -1164,6 +1227,7 @@ def market_recovery_check(
             target_touched_high=path_block.get("high"),
             target_touched_low=path_block.get("low"),
             detail="original 1R target traded before market recovery",
+            quote_path_evidence=_path_block_evidence(path_block),
             **base_fields,
         )
 
@@ -1184,6 +1248,7 @@ def market_recovery_check(
             spread_risk_fraction=spread_gate.spread_risk_fraction,
             max_spread_risk_fraction=spread_gate.max_spread_risk_fraction,
             detail="spread is too large versus actual market fill-to-stop risk",
+            quote_path_evidence=_path_block_evidence(path_block),
             **base_fields,
         )
     return MarketRecoveryCheck(
@@ -1193,6 +1258,7 @@ def market_recovery_check(
         recalculated_take_profit=recalculated_take_profit,
         spread_risk_fraction=spread_gate.spread_risk_fraction,
         max_spread_risk_fraction=spread_gate.max_spread_risk_fraction,
+        quote_path_evidence=_path_block_evidence(path_block),
         **base_fields,
     )
 
@@ -1371,46 +1437,176 @@ def _market_recovery_path_block(
     from_time_utc: pd.Timestamp | str | None = None,
 ) -> dict[str, Any]:
     try:
-        signal_time = setup_signal_time_utc(setup)
-        data = _fetch_candles_including_current(
+        until_time = pd.Timestamp.now(tz="UTC") if until_time_utc is None else _as_utc_timestamp(until_time_utc)
+        if from_time_utc is None:
+            return {
+                "status": "path_unavailable",
+                "detail": "missing executable entry-touch time for market recovery",
+                "quote_path_semantics": "mt5_tick_bid_ask_v1",
+            }
+        from_time = _as_utc_timestamp(from_time_utc)
+        ticks = _fetch_executable_ticks(
             mt5_module,
             symbol=str(setup.symbol).upper(),
-            timeframe=str(setup.timeframe).upper(),
-            bars=config.history_bars,
+            start_time_utc=from_time,
+            end_time_utc=until_time,
             broker_timezone=config.broker_timezone,
         )
     except Exception as exc:
-        return {"status": "path_unavailable", "detail": str(exc)}
-    if data.empty:
-        return {"status": "path_unavailable", "detail": "copy_rates_from_pos returned no rows"}
+        return {"status": "path_unavailable", "detail": str(exc), "quote_path_semantics": "mt5_tick_bid_ask_v1"}
+    if not ticks:
+        return {
+            "status": "path_unavailable",
+            "detail": "copy_ticks_range returned no executable bid/ask ticks",
+            "quote_path_semantics": "mt5_tick_bid_ask_v1",
+            "path_checked_from_utc": from_time.isoformat(),
+            "path_checked_until_utc": until_time.isoformat(),
+        }
 
-    until_time = pd.Timestamp.now(tz="UTC") if until_time_utc is None else _as_utc_timestamp(until_time_utc)
-    times = pd.to_datetime(data["time_utc"], utc=True)
-    if from_time_utc is None:
-        after_signal = data.loc[(times > signal_time) & (times <= until_time)].copy()
-    else:
-        from_time = _as_utc_timestamp(from_time_utc)
-        after_signal = data.loc[(times >= from_time) & (times <= until_time)].copy()
-    if after_signal.empty:
-        return {"status": "clear"}
-
-    high = after_signal["high"].astype(float)
-    low = after_signal["low"].astype(float)
     stop = float(setup.stop_price)
     target = float(setup.target_price)
+    entry = float(setup.entry_price)
     if setup.side == "long":
-        stop_hits = after_signal.loc[low <= stop]
-        target_hits = after_signal.loc[high >= target]
+        entry_quote_side = "ask"
+        exit_quote_side = "bid"
+        entry_touches = [tick for tick in ticks if tick["ask"] <= entry]
+        stop_hits = [tick for tick in ticks if tick["bid"] <= stop]
+        target_hits = [tick for tick in ticks if tick["bid"] >= target]
     else:
-        stop_hits = after_signal.loc[high >= stop]
-        target_hits = after_signal.loc[low <= target]
-    first_stop = _first_touch_row(stop_hits)
-    first_target = _first_touch_row(target_hits)
-    if first_stop is not None and (first_target is None or pd.Timestamp(first_stop["time_utc"]) <= pd.Timestamp(first_target["time_utc"])):
-        return {"status": "stop_touched", **first_stop}
+        entry_quote_side = "bid"
+        exit_quote_side = "ask"
+        entry_touches = [tick for tick in ticks if tick["bid"] >= entry]
+        stop_hits = [tick for tick in ticks if tick["ask"] >= stop]
+        target_hits = [tick for tick in ticks if tick["ask"] <= target]
+
+    evidence_base = {
+        "quote_path_semantics": "mt5_tick_bid_ask_v1",
+        "entry_quote_side": entry_quote_side,
+        "exit_quote_side": exit_quote_side,
+        "path_checked_from_utc": from_time.isoformat(),
+        "path_checked_until_utc": until_time.isoformat(),
+        "tick_count": len(ticks),
+    }
+    if not entry_touches:
+        return {
+            "status": "path_unavailable",
+            "detail": "executable-side entry touch was not proven by MT5 ticks",
+            **evidence_base,
+        }
+
+    first_entry = entry_touches[0]
+    after_entry_ticks = [
+        tick for tick in ticks if _as_utc_timestamp(tick["time_utc"]) >= _as_utc_timestamp(first_entry["time_utc"])
+    ]
+    if setup.side == "long":
+        stop_hits = [tick for tick in after_entry_ticks if tick["bid"] <= stop]
+        target_hits = [tick for tick in after_entry_ticks if tick["bid"] >= target]
+    else:
+        stop_hits = [tick for tick in after_entry_ticks if tick["ask"] >= stop]
+        target_hits = [tick for tick in after_entry_ticks if tick["ask"] <= target]
+
+    evidence = {**evidence_base, "entry_touch": _tick_evidence(first_entry)}
+    first_stop = _first_tick_touch(stop_hits)
+    first_target = _first_tick_touch(target_hits)
+    if first_stop is not None and (
+        first_target is None or pd.Timestamp(first_stop["time_utc"]) <= pd.Timestamp(first_target["time_utc"])
+    ):
+        return {"status": "stop_touched", **_tick_touch_fields(first_stop), "quote_path_evidence": evidence}
     if first_target is not None:
-        return {"status": "target_touched", **first_target}
-    return {"status": "clear"}
+        return {"status": "target_touched", **_tick_touch_fields(first_target), "quote_path_evidence": evidence}
+    return {"status": "clear", "quote_path_evidence": evidence}
+
+
+def _fetch_executable_ticks(
+    mt5_module: Any,
+    *,
+    symbol: str,
+    start_time_utc: pd.Timestamp,
+    end_time_utc: pd.Timestamp,
+    broker_timezone: str,
+) -> list[dict[str, Any]]:
+    if not hasattr(mt5_module, "copy_ticks_range"):
+        raise RuntimeError("MT5 copy_ticks_range unavailable for executable recovery path proof")
+    if end_time_utc < start_time_utc:
+        raise RuntimeError("market recovery path end time is before start time")
+    flags = getattr(mt5_module, "COPY_TICKS_ALL", 0)
+    raw_ticks = mt5_module.copy_ticks_range(
+        symbol,
+        start_time_utc.to_pydatetime(),
+        end_time_utc.to_pydatetime(),
+        flags,
+    )
+    if raw_ticks is None:
+        raise RuntimeError("copy_ticks_range returned None")
+    ticks: list[dict[str, Any]] = []
+    for raw in raw_ticks:
+        bid = _optional_float_attr(raw, "bid")
+        ask = _optional_float_attr(raw, "ask")
+        if bid is None or ask is None:
+            continue
+        if not math.isfinite(bid) or not math.isfinite(ask):
+            continue
+        if bid > ask:
+            raise RuntimeError("copy_ticks_range returned inverted bid/ask tick")
+        raw_time_msc = getattr(raw, "time_msc", None) if not isinstance(raw, dict) else raw.get("time_msc")
+        raw_time = getattr(raw, "time", None) if not isinstance(raw, dict) else raw.get("time")
+        if raw_time_msc not in (None, 0):
+            time_utc = broker_time_epoch_to_utc(raw_time_msc, broker_timezone, unit="ms")
+            provenance = "mt5_time_msc"
+        else:
+            time_utc = broker_time_epoch_to_utc(raw_time, broker_timezone, unit="s")
+            provenance = "mt5_time" if time_utc is not None else "unavailable"
+        if time_utc is None:
+            continue
+        ticks.append(
+            {
+                "time_utc": pd.Timestamp(time_utc).isoformat(),
+                "bid": bid,
+                "ask": ask,
+                "raw_mt5_time": None if raw_time in (None, 0) else int(raw_time),
+                "raw_mt5_time_msc": None if raw_time_msc in (None, 0) else int(raw_time_msc),
+                "timestamp_semantics_version": MT5_EPOCH_UTC_V2,
+                "timestamp_provenance": provenance,
+            }
+        )
+    return sorted(ticks, key=lambda item: pd.Timestamp(item["time_utc"]))
+
+
+def _optional_float_attr(item: Any, name: str) -> float | None:
+    value = item.get(name) if isinstance(item, dict) else getattr(item, name, None)
+    if value in (None, ""):
+        return None
+    return float(value)
+
+
+def _first_tick_touch(ticks: Sequence[dict[str, Any]]) -> dict[str, Any] | None:
+    if not ticks:
+        return None
+    return sorted(ticks, key=lambda item: pd.Timestamp(item["time_utc"]))[0]
+
+
+def _tick_evidence(tick: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "time_utc": tick["time_utc"],
+        "bid": tick["bid"],
+        "ask": tick["ask"],
+        "raw_mt5_time": tick.get("raw_mt5_time"),
+        "raw_mt5_time_msc": tick.get("raw_mt5_time_msc"),
+        "timestamp_semantics_version": tick.get("timestamp_semantics_version"),
+        "timestamp_provenance": tick.get("timestamp_provenance"),
+    }
+
+
+def _tick_touch_fields(tick: dict[str, Any]) -> dict[str, Any]:
+    evidence = _tick_evidence(tick)
+    return {
+        "time_utc": evidence["time_utc"],
+        "high": evidence["ask"],
+        "low": evidence["bid"],
+        "bid": evidence["bid"],
+        "ask": evidence["ask"],
+        "tick_evidence": evidence,
+    }
 
 
 def _first_touch_row(frame: pd.DataFrame) -> dict[str, Any] | None:
@@ -1422,6 +1618,21 @@ def _first_touch_row(frame: pd.DataFrame) -> dict[str, Any] | None:
         "high": float(first["high"]),
         "low": float(first["low"]),
     }
+
+
+def _path_block_evidence(path_block: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(path_block.get("quote_path_evidence"), dict):
+        return dict(path_block["quote_path_evidence"])
+    keys = (
+        "quote_path_semantics",
+        "entry_quote_side",
+        "exit_quote_side",
+        "path_checked_from_utc",
+        "path_checked_until_utc",
+        "tick_count",
+        "detail",
+    )
+    return {key: path_block[key] for key in keys if key in path_block}
 
 
 def _market_recovery_take_profit(side: str, *, fill_price: float, stop_loss: float) -> float:
@@ -1707,7 +1918,28 @@ def _process_market_recovery_live_send(
         missed_entry=missed_entry,
         symbol_spec=symbol_spec,
     )
+    _append_market_recovery_lifecycle(
+        config,
+        "market_recovery_candidate",
+        **_market_recovery_lifecycle_fields(
+            signal_key=signal_key,
+            setup=setup,
+            recovery_check=recovery_check,
+            reason=recovery_check.status,
+        ),
+        market=asdict(recovery_market),
+    )
     if not recovery_check.checked:
+        _append_market_recovery_lifecycle(
+            config,
+            "market_recovery_blocked",
+            **_market_recovery_lifecycle_fields(
+                signal_key=signal_key,
+                setup=setup,
+                recovery_check=recovery_check,
+                reason=recovery_check.status,
+            ),
+        )
         event = _rejection_event(
             recovery_check.status,
             recovery_check.detail or "Could not verify market recovery path.",
@@ -1724,6 +1956,16 @@ def _process_market_recovery_live_send(
         next_state = _record_event_once(config, next_state, notifier, f"setup_rejected:{signal_key}:market_recovery_unavailable", event)
         return LiveSetupResult(state=next_state, signal_key=signal_key, status="rejected")
     if not recovery_check.recoverable:
+        _append_market_recovery_lifecycle(
+            config,
+            "market_recovery_blocked",
+            **_market_recovery_lifecycle_fields(
+                signal_key=signal_key,
+                setup=setup,
+                recovery_check=recovery_check,
+                reason=recovery_check.status,
+            ),
+        )
         event = _rejection_event(
             recovery_check.status,
             recovery_check.detail or "Missed pending entry is not eligible for market recovery.",
@@ -1802,6 +2044,72 @@ def _process_market_recovery_live_send(
         diagnostic_schema_version=DIAGNOSTIC_SCHEMA_VERSION,
         diagnostics=intent_diagnostics,
     )
+    recovery_attempt_id = _recovery_attempt_id(intent, recovery_check)
+    existing_recovery_attempt = _unresolved_recovery_attempt_for_id(state, recovery_attempt_id)
+    try:
+        recovery_snapshot = validated_broker_snapshot(mt5_module, config)
+    except BrokerSnapshotUnavailable as exc:
+        _record_market_recovery_reconcile_required(
+            config,
+            signal_key=signal_key,
+            setup=setup,
+            intent=intent,
+            recovery_check=recovery_check,
+            recovery_attempt_id=recovery_attempt_id,
+            reason="broker_snapshot_unavailable_before_recovery_send",
+            error=str(exc),
+        )
+        return LiveSetupResult(state=state, signal_key=signal_key, status="blocked")
+    adopted = _adopt_market_recovery_from_broker(
+        mt5_module,
+        intent,
+        config=config,
+        state=state,
+        symbol_spec=symbol_spec,
+        snapshot=recovery_snapshot,
+        recovery_check=recovery_check,
+        recovery_attempt_id=recovery_attempt_id,
+        notifier=notifier,
+        diagnostics=intent_diagnostics,
+    )
+    if adopted is not None:
+        return adopted
+    history_only_reason = _history_only_recovery_execution_reason(
+        mt5_module,
+        intent,
+        recovery_snapshot,
+        symbol_spec,
+        reason="history_deal_without_matching_open_position_before_send",
+        ambiguous_reason="ambiguous_history_deals_before_send",
+    )
+    if history_only_reason is not None:
+        _record_market_recovery_reconcile_required(
+            config,
+            signal_key=signal_key,
+            setup=setup,
+            intent=intent,
+            recovery_check=recovery_check,
+            recovery_attempt_id=recovery_attempt_id,
+            reason=history_only_reason,
+        )
+        blocked_state = state
+        if existing_recovery_attempt is not None:
+            blocked_state = _mark_recovery_attempt(blocked_state, existing_recovery_attempt, status="reconcile_required")
+            _save_live_state(config, blocked_state)
+        return LiveSetupResult(state=blocked_state, signal_key=signal_key, status="blocked")
+    if existing_recovery_attempt is not None:
+        _record_market_recovery_reconcile_required(
+            config,
+            signal_key=signal_key,
+            setup=setup,
+            intent=intent,
+            recovery_check=recovery_check,
+            recovery_attempt_id=recovery_attempt_id,
+            reason="unresolved_recovery_attempt_without_broker_execution",
+        )
+        blocked_state = _mark_recovery_attempt(state, existing_recovery_attempt, status="reconcile_required")
+        _save_live_state(config, blocked_state)
+        return LiveSetupResult(state=blocked_state, signal_key=signal_key, status="blocked")
     processed_state = _with_processed_key(state, signal_key)
     order_check = run_market_order_check(
         mt5_module,
@@ -1863,8 +2171,14 @@ def _process_market_recovery_live_send(
         checked_state = _record_event_once(config, checked_state, notifier, f"market_recovery_check_failed:{signal_key}", event)
         return LiveSetupResult(state=checked_state, signal_key=signal_key, status="order_check_failed", order_check=order_check)
 
-    # TODO: Unlike pending-limit sends, this path does not perform broker-item
-    # adoption before order_send. Review ambiguous-send restart idempotency.
+    attempt = _recovery_attempt_from_intent(intent, recovery_check, recovery_attempt_id)
+    checked_state = _record_market_recovery_presend(
+        config,
+        checked_state,
+        attempt=attempt,
+        intent=intent,
+        recovery_check=recovery_check,
+    )
     outcome = send_market_recovery_order(
         mt5_module,
         intent,
@@ -1872,6 +2186,69 @@ def _process_market_recovery_live_send(
         checked_request=order_check.request,
     )
     if not outcome.sent:
+        try:
+            post_send_snapshot = validated_broker_snapshot(mt5_module, config)
+        except BrokerSnapshotUnavailable as exc:
+            _record_market_recovery_reconcile_required(
+                config,
+                signal_key=signal_key,
+                setup=setup,
+                intent=intent,
+                recovery_check=recovery_check,
+                recovery_attempt_id=recovery_attempt_id,
+                reason="broker_snapshot_unavailable_after_recovery_send_attempt",
+                error=str(exc),
+            )
+            reconcile_state = _mark_recovery_attempt(checked_state, attempt, status="reconcile_required")
+            _save_live_state(config, reconcile_state)
+            return LiveSetupResult(
+                state=reconcile_state,
+                signal_key=signal_key,
+                status="blocked",
+                order_check=order_check,
+                order_send=outcome,
+            )
+        adopted_after_send = _adopt_market_recovery_from_broker(
+            mt5_module,
+            intent,
+            config=config,
+            state=checked_state,
+            symbol_spec=symbol_spec,
+            snapshot=post_send_snapshot,
+            recovery_check=recovery_check,
+            recovery_attempt_id=recovery_attempt_id,
+            notifier=notifier,
+            diagnostics=intent_diagnostics,
+        )
+        if adopted_after_send is not None:
+            return adopted_after_send
+        history_only_reason = _history_only_recovery_execution_reason(
+            mt5_module,
+            intent,
+            post_send_snapshot,
+            symbol_spec,
+            reason="history_deal_without_matching_open_position_after_send_attempt",
+            ambiguous_reason="ambiguous_history_deals_after_send_attempt",
+        )
+        if history_only_reason is not None:
+            _record_market_recovery_reconcile_required(
+                config,
+                signal_key=signal_key,
+                setup=setup,
+                intent=intent,
+                recovery_check=recovery_check,
+                recovery_attempt_id=recovery_attempt_id,
+                reason=history_only_reason,
+            )
+            reconcile_state = _mark_recovery_attempt(checked_state, attempt, status="reconcile_required")
+            _save_live_state(config, reconcile_state)
+            return LiveSetupResult(
+                state=reconcile_state,
+                signal_key=signal_key,
+                status="blocked",
+                order_check=order_check,
+                order_send=outcome,
+            )
         retry_status = _retryable_order_send_block_status(outcome)
         if retry_status is not None:
             event = _retryable_broker_block_event(
@@ -1899,41 +2276,79 @@ def _process_market_recovery_live_send(
             retry_state = _without_processed_key(checked_state, signal_key)
             retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:{retry_status}", event)
             return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check, order_send=outcome)
-        event = NotificationEvent(
-            kind="order_rejected",
-            mode="LIVE",
-            title="Live market recovery order rejected",
-            severity="warning",
-            symbol=intent.symbol,
-            timeframe=intent.timeframe,
-            side=intent.side,
-            status="rejected",
+        _record_market_recovery_reconcile_required(
+            config,
             signal_key=signal_key,
-            fields={
-                "retcode": outcome.retcode,
-                "comment": outcome.comment,
-                "execution_type": "market_recovery",
-                **recovery_check.to_dict(),
-            },
+            setup=setup,
+            intent=intent,
+            recovery_check=recovery_check,
+            recovery_attempt_id=recovery_attempt_id,
+            reason="ambiguous_or_unknown_recovery_send_result",
+            error=f"retcode={outcome.retcode!r} comment={outcome.comment!r}",
         )
-        event = _with_event_diagnostics(
-            event,
-            intent_diagnostics,
-            market=recovery_market,
-            execution={
-                "stage": "market_recovery_order_rejected",
-                "execution_path": "market_recovery",
-                "order_check_retcode": order_check.retcode,
-                "order_send_retcode": outcome.retcode,
-                "order_send_comment": outcome.comment,
-            },
+        reconcile_state = _mark_recovery_attempt(checked_state, attempt, status="reconcile_required")
+        _save_live_state(config, reconcile_state)
+        return LiveSetupResult(
+            state=reconcile_state,
+            signal_key=signal_key,
+            status="blocked",
+            order_check=order_check,
+            order_send=outcome,
         )
-        checked_state = _record_event_once(config, checked_state, notifier, f"market_recovery_rejected:{signal_key}", event)
-        return LiveSetupResult(state=checked_state, signal_key=signal_key, status="order_rejected", order_check=order_check, order_send=outcome)
 
-    position = _matching_broker_position_for_intent(mt5_module, intent, config, symbol_spec)
+    try:
+        post_send_snapshot = validated_broker_snapshot(mt5_module, config)
+    except BrokerSnapshotUnavailable as exc:
+        _record_market_recovery_reconcile_required(
+            config,
+            signal_key=signal_key,
+            setup=setup,
+            intent=intent,
+            recovery_check=recovery_check,
+            recovery_attempt_id=recovery_attempt_id,
+            reason="broker_snapshot_unavailable_after_recovery_send",
+            error=str(exc),
+        )
+        reconcile_state = _mark_recovery_attempt(checked_state, attempt, status="reconcile_required")
+        _save_live_state(config, reconcile_state)
+        return LiveSetupResult(
+            state=reconcile_state,
+            signal_key=signal_key,
+            status="blocked",
+            order_check=order_check,
+            order_send=outcome,
+        )
+    position = _matching_recovery_position_from_snapshot(mt5_module, intent, post_send_snapshot, symbol_spec)
     if position is None:
-        position = _fallback_market_recovery_position(mt5_module, intent, outcome, config)
+        reason = _history_only_recovery_execution_reason(
+            mt5_module,
+            intent,
+            post_send_snapshot,
+            symbol_spec,
+            reason="history_deal_without_matching_open_position_after_recovery_send",
+            ambiguous_reason="ambiguous_history_deals_after_recovery_send",
+        )
+        if reason is None:
+            reason = "broker_position_missing_after_recovery_send"
+        _record_market_recovery_reconcile_required(
+            config,
+            signal_key=signal_key,
+            setup=setup,
+            intent=intent,
+            recovery_check=recovery_check,
+            recovery_attempt_id=recovery_attempt_id,
+            reason=reason,
+        )
+        reconcile_state = _mark_recovery_attempt(checked_state, attempt, status="reconcile_required")
+        _save_live_state(config, reconcile_state)
+        return LiveSetupResult(
+            state=reconcile_state,
+            signal_key=signal_key,
+            status="blocked",
+            order_check=order_check,
+            order_send=outcome,
+        )
+    deal = _matching_recovery_entry_deal_from_snapshot(mt5_module, intent, post_send_snapshot, symbol_spec)
     send_diagnostics = enrich_diagnostics(
         intent_diagnostics,
         market=recovery_market,
@@ -1955,9 +2370,17 @@ def _process_market_recovery_live_send(
         diagnostics=send_diagnostics,
     )
     next_state = replace(checked_state, active_positions=(*checked_state.active_positions, tracked_position))
+    next_state = _mark_recovery_attempt(
+        next_state,
+        attempt,
+        status="sent",
+        order_ticket=outcome.order_ticket or tracked_position.order_ticket,
+        deal_ticket=outcome.deal_ticket or (None if deal is None else _optional_int(getattr(deal, "ticket", None))),
+        position_id=tracked_position.position_id,
+    )
     # Persist broker-affecting state before best-effort notification delivery.
     _save_live_state(config, next_state)
-    event = _market_recovery_sent_event(tracked_position, outcome, recovery_check)
+    event = _market_recovery_sent_event(tracked_position, outcome, recovery_check, recovery_attempt_id=recovery_attempt_id)
     thread_key = f"order:{tracked_position.order_ticket}"
     next_state = _record_event_once(
         config,
@@ -1966,6 +2389,20 @@ def _process_market_recovery_live_send(
         f"market_recovery_sent:{tracked_position.position_id}:{outcome.deal_ticket or outcome.order_ticket or 0}",
         event,
         store_thread_key=thread_key,
+    )
+    _append_market_recovery_lifecycle(
+        config,
+        "market_recovery_sent",
+        **_market_recovery_lifecycle_fields(
+            signal_key=signal_key,
+            intent=intent,
+            recovery_check=recovery_check,
+            recovery_attempt_id=recovery_attempt_id,
+            reason="broker_position_confirmed_after_send",
+            broker_item=position,
+        ),
+        order_send=outcome.to_dict(),
+        broker_deal=None if deal is None else _broker_item_dict(deal),
     )
     return LiveSetupResult(state=next_state, signal_key=signal_key, status="market_recovery_sent", order_check=order_check, order_send=outcome)
 
@@ -2321,9 +2758,15 @@ def reconcile_live_state(
     _validate_operational_signal_keys(state, journal_path=config.journal_path)
     orders = {int(getattr(order, "ticket")): order for order in snapshot.orders}
     positions = snapshot.positions
-    next_state = state
+    next_state = _reconcile_market_recovery_attempts(
+        mt5_module,
+        config=config,
+        state=state,
+        snapshot=snapshot,
+        notifier=notifier,
+    )
     kept_pending: list[LiveTrackedOrder] = []
-    new_active: list[LiveTrackedPosition] = list(state.active_positions)
+    new_active: list[LiveTrackedPosition] = list(next_state.active_positions)
 
     for pending in state.pending_orders:
         order = orders.get(pending.order_ticket)
@@ -2419,6 +2862,89 @@ def reconcile_live_state(
     next_state = replace(next_state, active_positions=tuple(kept_active))
     _save_live_state(config, next_state)
     return next_state
+
+
+def _reconcile_market_recovery_attempts(
+    mt5_module: Any,
+    *,
+    config: LiveSendExecutorConfig,
+    state: LiveExecutorState,
+    snapshot: ValidatedBrokerSnapshot,
+    notifier: TelegramNotifier | None,
+) -> LiveExecutorState:
+    """Adopt or hold unresolved market-recovery presend markers before scanning."""
+
+    next_state = state
+    for attempt in state.recovery_attempts:
+        if attempt.status not in {"presend_recorded", "reconcile_required"}:
+            continue
+        try:
+            intent = _intent_from_recovery_attempt(attempt)
+            symbol_spec = symbol_spec_from_mt5(mt5_module, intent.symbol)
+        except Exception as exc:
+            _record_market_recovery_reconcile_required(
+                config,
+                signal_key=attempt.signal_key,
+                setup=None,
+                intent=None,
+                recovery_check=_market_recovery_check_from_attempt(attempt),
+                recovery_attempt_id=attempt.recovery_attempt_id,
+                reason="recovery_attempt_reconstruction_failed",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            next_state = _mark_recovery_attempt(next_state, attempt, status="reconcile_required")
+            continue
+        recovery_check = _market_recovery_check_from_attempt(attempt)
+        result = _adopt_market_recovery_from_broker(
+            mt5_module,
+            intent,
+            config=config,
+            state=next_state,
+            symbol_spec=symbol_spec,
+            snapshot=snapshot,
+            recovery_check=recovery_check,
+            recovery_attempt_id=attempt.recovery_attempt_id,
+            notifier=notifier,
+            diagnostics={"execution": {"stage": "market_recovery_restart_reconcile", "execution_path": "market_recovery"}},
+        )
+        if result is not None:
+            next_state = result.state
+            continue
+        reason = _history_only_recovery_execution_reason(
+            mt5_module,
+            intent,
+            snapshot,
+            symbol_spec,
+            reason="history_deal_without_matching_open_position",
+            ambiguous_reason="ambiguous_history_deals_without_matching_open_position",
+        )
+        if reason is None:
+            reason = "unresolved_recovery_attempt_without_broker_execution"
+        _record_market_recovery_reconcile_required(
+            config,
+            signal_key=attempt.signal_key,
+            setup=None,
+            intent=intent,
+            recovery_check=recovery_check,
+            recovery_attempt_id=attempt.recovery_attempt_id,
+            reason=reason,
+        )
+        next_state = _mark_recovery_attempt(next_state, attempt, status="reconcile_required")
+    return next_state
+
+
+def _market_recovery_check_from_attempt(attempt: LiveRecoveryAttempt) -> MarketRecoveryCheck:
+    return MarketRecoveryCheck(
+        checked=True,
+        recoverable=True,
+        status="market_recovery_ready",
+        original_entry=float(attempt.original_entry),
+        fill_price=float(attempt.fill_price),
+        stop_loss=float(attempt.stop_loss),
+        original_take_profit=None,
+        recalculated_take_profit=float(attempt.take_profit),
+        quote_path_evidence=attempt.quote_path_evidence,
+    )
 
 
 def retain_market_snapshot_journal(path: str | Path, max_bytes: int) -> None:
@@ -2999,6 +3525,20 @@ def _build_market_recovery_intent(
                 recovery_check.to_dict(),
             ),
         )
+    base_comment = _live_order_comment(setup, config.order_comment_prefix)
+    attempt_id = _recovery_attempt_id_from_fields(
+        signal_key=signal_key,
+        symbol=str(setup.symbol).upper(),
+        side=setup.side,
+        original_entry=float(recovery_check.original_entry),
+        entry_price=rounded_fill,
+        stop_loss=rounded_stop,
+        take_profit=rounded_take_profit,
+        magic=limits.strategy_magic,
+        volume=float(volume_decision["volume"]),
+        comment=base_comment,
+        strategy_identity=_market_recovery_strategy_identity(base_comment),
+    )
     intent = MT5OrderIntent(
         signal_key=signal_key,
         symbol=str(setup.symbol).upper(),
@@ -3013,7 +3553,7 @@ def _build_market_recovery_intent(
         actual_risk_pct=actual_risk_pct,
         expiration_time_utc=broker_backstop,
         magic=limits.strategy_magic,
-        comment=_live_order_comment(setup, config.order_comment_prefix),
+        comment=_market_recovery_comment_with_marker(base_comment, attempt_id),
         setup_id=setup.setup_id,
         signal_time_utc=signal_time,
         max_entry_wait_bars=config.max_entry_wait_bars,
@@ -3110,6 +3650,423 @@ def _live_order_comment(setup: TradeSetup, prefix: str = "LPFS") -> str:
     return f"{safe_prefix} {str(setup.timeframe).upper()} {str(setup.side)[0].upper()} {signal_index}"[:31]
 
 
+def _recovery_attempt_id_from_fields(**fields: Any) -> str:
+    payload = {key: fields[key] for key in sorted(fields)}
+    text = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _market_recovery_comment_with_marker(base_comment: str, recovery_attempt_id: str) -> str:
+    marker = f" R{recovery_attempt_id[:8]}"
+    base = str(base_comment or "LPFS").strip() or "LPFS"
+    if len(base) + len(marker) <= 31:
+        return f"{base}{marker}"
+    return f"{base[: 31 - len(marker)]}{marker}"
+
+
+def _market_recovery_base_comment(comment: str) -> str:
+    text = str(comment or "")
+    marker_index = text.rfind(" R")
+    if marker_index >= 0:
+        suffix = text[marker_index + 2 :]
+        if len(suffix) == 8 and all(char in "0123456789abcdef" for char in suffix.casefold()):
+            return text[:marker_index]
+    return text
+
+
+def _market_recovery_strategy_identity(base_comment: str) -> str:
+    text = str(base_comment or "").strip()
+    return (text.split(" ", 1)[0] if text else "LPFS")
+
+
+def _recovery_attempt_id(intent: MT5OrderIntent, recovery_check: MarketRecoveryCheck) -> str:
+    base_comment = _market_recovery_base_comment(intent.comment)
+    return _recovery_attempt_id_from_fields(
+        signal_key=intent.signal_key,
+        symbol=intent.symbol,
+        side=intent.side,
+        original_entry=float(recovery_check.original_entry),
+        entry_price=float(intent.entry_price),
+        stop_loss=float(intent.stop_loss),
+        take_profit=float(intent.take_profit),
+        magic=int(intent.magic),
+        volume=float(intent.volume),
+        comment=base_comment,
+        strategy_identity=_market_recovery_strategy_identity(base_comment),
+    )
+
+
+def _recovery_attempt_from_intent(
+    intent: MT5OrderIntent,
+    recovery_check: MarketRecoveryCheck,
+    recovery_attempt_id: str,
+) -> LiveRecoveryAttempt:
+    now = pd.Timestamp.now(tz="UTC").isoformat()
+    return LiveRecoveryAttempt(
+        recovery_attempt_id=recovery_attempt_id,
+        signal_key=intent.signal_key,
+        symbol=intent.symbol,
+        timeframe=intent.timeframe,
+        side=intent.side,
+        original_entry=float(recovery_check.original_entry),
+        fill_price=float(intent.entry_price),
+        stop_loss=float(intent.stop_loss),
+        take_profit=float(intent.take_profit),
+        volume=float(intent.volume),
+        target_risk_pct=float(intent.target_risk_pct),
+        actual_risk_pct=float(intent.actual_risk_pct),
+        magic=int(intent.magic),
+        comment=intent.comment,
+        setup_id=intent.setup_id,
+        status="presend_recorded",
+        created_time_utc=now,
+        updated_time_utc=now,
+        quote_path_evidence=recovery_check.quote_path_evidence,
+        signal_time_utc=None if intent.signal_time_utc is None else intent.signal_time_utc.isoformat(),
+        max_entry_wait_bars=int(intent.max_entry_wait_bars),
+        strategy_expiry_mode=intent.strategy_expiry_mode,
+        broker_backstop_expiration_time_utc=None
+        if intent.broker_backstop_expiration_time_utc is None
+        else intent.broker_backstop_expiration_time_utc.isoformat(),
+    )
+
+
+def _intent_from_recovery_attempt(attempt: LiveRecoveryAttempt) -> MT5OrderIntent:
+    signal_time = _as_utc_timestamp(attempt.signal_time_utc) if attempt.signal_time_utc else None
+    expiration = (
+        _as_utc_timestamp(attempt.broker_backstop_expiration_time_utc)
+        if attempt.broker_backstop_expiration_time_utc
+        else pd.Timestamp.now(tz="UTC")
+    )
+    return MT5OrderIntent(
+        signal_key=attempt.signal_key,
+        symbol=attempt.symbol,
+        timeframe=attempt.timeframe,
+        side=attempt.side,
+        order_type="BUY" if attempt.side == "long" else "SELL",  # type: ignore[arg-type]
+        volume=float(attempt.volume),
+        entry_price=float(attempt.fill_price),
+        stop_loss=float(attempt.stop_loss),
+        take_profit=float(attempt.take_profit),
+        target_risk_pct=float(attempt.target_risk_pct),
+        actual_risk_pct=float(attempt.actual_risk_pct),
+        expiration_time_utc=expiration,
+        magic=int(attempt.magic),
+        comment=attempt.comment,
+        setup_id=attempt.setup_id,
+        signal_time_utc=signal_time,
+        max_entry_wait_bars=int(attempt.max_entry_wait_bars),
+        strategy_expiry_mode=attempt.strategy_expiry_mode,
+        broker_backstop_expiration_time_utc=expiration,
+    )
+
+
+def _with_recovery_attempt(state: LiveExecutorState, attempt: LiveRecoveryAttempt) -> LiveExecutorState:
+    attempts = [item for item in state.recovery_attempts if item.recovery_attempt_id != attempt.recovery_attempt_id]
+    attempts.append(attempt)
+    return replace(state, recovery_attempts=tuple(attempts))
+
+
+def _unresolved_recovery_attempt_for_id(
+    state: LiveExecutorState,
+    recovery_attempt_id: str,
+) -> LiveRecoveryAttempt | None:
+    for attempt in state.recovery_attempts:
+        if attempt.recovery_attempt_id != recovery_attempt_id:
+            continue
+        if attempt.status in {"presend_recorded", "reconcile_required"}:
+            return attempt
+    return None
+
+
+def _mark_recovery_attempt(
+    state: LiveExecutorState,
+    attempt: LiveRecoveryAttempt,
+    *,
+    status: str,
+    order_ticket: int | None = None,
+    deal_ticket: int | None = None,
+    position_id: int | None = None,
+) -> LiveExecutorState:
+    updated = replace(
+        attempt,
+        status=status,
+        updated_time_utc=pd.Timestamp.now(tz="UTC").isoformat(),
+        order_ticket=attempt.order_ticket if order_ticket is None else order_ticket,
+        deal_ticket=attempt.deal_ticket if deal_ticket is None else deal_ticket,
+        position_id=attempt.position_id if position_id is None else position_id,
+    )
+    return _with_recovery_attempt(state, updated)
+
+
+def _market_recovery_lifecycle_fields(
+    *,
+    signal_key: str,
+    setup: TradeSetup | None = None,
+    intent: MT5OrderIntent | None = None,
+    recovery_check: MarketRecoveryCheck | None = None,
+    recovery_attempt_id: str | None = None,
+    reason: str | None = None,
+    broker_item: Any | None = None,
+) -> dict[str, Any]:
+    symbol = intent.symbol if intent is not None else (str(setup.symbol).upper() if setup is not None else None)
+    timeframe = intent.timeframe if intent is not None else (str(setup.timeframe).upper() if setup is not None else None)
+    side = intent.side if intent is not None else (str(setup.side) if setup is not None else None)
+    fields: dict[str, Any] = {
+        "signal_key": signal_key,
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "side": side,
+        "original_entry": None if recovery_check is None else recovery_check.original_entry,
+        "executable_fill_quote": None if recovery_check is None else recovery_check.fill_price,
+        "stop_loss": intent.stop_loss if intent is not None else (None if recovery_check is None else recovery_check.stop_loss),
+        "take_profit": intent.take_profit if intent is not None else (None if recovery_check is None else recovery_check.recalculated_take_profit),
+        "recovery_decision_reason": reason,
+        "quote_path_evidence_semantics": None
+        if recovery_check is None or not recovery_check.quote_path_evidence
+        else recovery_check.quote_path_evidence.get("quote_path_semantics"),
+        "quote_path_evidence": None if recovery_check is None else recovery_check.quote_path_evidence,
+        "recovery_attempt_id": recovery_attempt_id,
+        "timestamp_semantics_version": MT5_EPOCH_UTC_V2,
+        "timestamp_provenance": "system_utc",
+    }
+    if broker_item is not None:
+        fields.update(_broker_recovery_ids(broker_item))
+    return fields
+
+
+def _broker_recovery_ids(item: Any) -> dict[str, Any]:
+    return {
+        "broker_order_ticket": _optional_int(getattr(item, "order", None)) or _optional_int(getattr(item, "ticket", None)),
+        "broker_deal_ticket": _optional_int(getattr(item, "deal", None)),
+        "broker_position_id": _optional_int(getattr(item, "position_id", None)) or _optional_int(getattr(item, "identifier", None)),
+    }
+
+
+def _append_market_recovery_lifecycle(config: LiveSendExecutorConfig, event: str, **fields: Any) -> None:
+    append_audit_event(config.journal_path, event, **fields)
+
+
+def _record_market_recovery_reconcile_required(
+    config: LiveSendExecutorConfig,
+    *,
+    signal_key: str,
+    setup: TradeSetup | None,
+    intent: MT5OrderIntent | None,
+    recovery_check: MarketRecoveryCheck | None,
+    recovery_attempt_id: str | None,
+    reason: str,
+    error: str | None = None,
+) -> None:
+    _append_market_recovery_lifecycle(
+        config,
+        "market_recovery_reconcile_required",
+        **_market_recovery_lifecycle_fields(
+            signal_key=signal_key,
+            setup=setup,
+            intent=intent,
+            recovery_check=recovery_check,
+            recovery_attempt_id=recovery_attempt_id,
+            reason=reason,
+        ),
+        error=error,
+    )
+
+
+def _record_market_recovery_presend(
+    config: LiveSendExecutorConfig,
+    state: LiveExecutorState,
+    *,
+    attempt: LiveRecoveryAttempt,
+    intent: MT5OrderIntent,
+    recovery_check: MarketRecoveryCheck,
+) -> LiveExecutorState:
+    marked_state = _with_recovery_attempt(state, attempt)
+    _save_live_state(config, marked_state)
+    _append_market_recovery_lifecycle(
+        config,
+        "market_recovery_presend_recorded",
+        **_market_recovery_lifecycle_fields(
+            signal_key=intent.signal_key,
+            intent=intent,
+            recovery_check=recovery_check,
+            recovery_attempt_id=attempt.recovery_attempt_id,
+            reason="presend_marker_persisted",
+        ),
+        intent=intent.to_dict(),
+    )
+    return marked_state
+
+
+def _matching_recovery_position_from_snapshot(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    snapshot: ValidatedBrokerSnapshot,
+    spec: MT5SymbolExecutionSpec,
+) -> Any | None:
+    expected_type = getattr(mt5_module, "ORDER_TYPE_BUY", 0) if intent.side == "long" else getattr(mt5_module, "ORDER_TYPE_SELL", 1)
+    for position in snapshot.positions:
+        if str(getattr(position, "symbol", "") or "").upper() != intent.symbol:
+            continue
+        if int(getattr(position, "type", expected_type) or expected_type) != expected_type:
+            continue
+        if str(getattr(position, "comment", "") or "") != intent.comment:
+            continue
+        if not _any_volume_matches(position, intent.volume, spec):
+            continue
+        if not _price_attr_matches(position, ("price_open", "price"), intent.entry_price, spec):
+            continue
+        if not _price_attr_matches(position, ("sl",), intent.stop_loss, spec):
+            continue
+        if not _price_attr_matches(position, ("tp",), intent.take_profit, spec):
+            continue
+        return position
+    return None
+
+
+def _matching_recovery_entry_deal_from_snapshot(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    snapshot: ValidatedBrokerSnapshot,
+    spec: MT5SymbolExecutionSpec,
+) -> Any | None:
+    matches = _matching_recovery_entry_deals_from_snapshot(mt5_module, intent, snapshot, spec)
+    if len(matches) != 1:
+        return None
+    return matches[0]
+
+
+def _matching_recovery_entry_deals_from_snapshot(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    snapshot: ValidatedBrokerSnapshot,
+    spec: MT5SymbolExecutionSpec,
+) -> tuple[Any, ...]:
+    expected_type = getattr(mt5_module, "DEAL_TYPE_BUY", getattr(mt5_module, "ORDER_TYPE_BUY", 0)) if intent.side == "long" else getattr(mt5_module, "DEAL_TYPE_SELL", getattr(mt5_module, "ORDER_TYPE_SELL", 1))
+    entry_in = int(getattr(mt5_module, "DEAL_ENTRY_IN", 0))
+    entry_inout = int(getattr(mt5_module, "DEAL_ENTRY_INOUT", 2))
+    matches: list[Any] = []
+    for deal in snapshot.history_deals:
+        if str(getattr(deal, "symbol", "") or "").upper() != intent.symbol:
+            continue
+        if int(getattr(deal, "magic", intent.magic) or intent.magic) != intent.magic:
+            continue
+        if int(getattr(deal, "type", expected_type) or expected_type) != expected_type:
+            continue
+        if int(getattr(deal, "entry", entry_in) or entry_in) not in {entry_in, entry_inout}:
+            continue
+        comment = str(getattr(deal, "comment", "") or "")
+        if comment and comment != intent.comment:
+            continue
+        if not _any_volume_matches(deal, intent.volume, spec):
+            continue
+        if not _price_attr_matches(deal, ("price",), intent.entry_price, spec):
+            continue
+        matches.append(deal)
+    return tuple(matches)
+
+
+def _history_only_recovery_execution_exists(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    snapshot: ValidatedBrokerSnapshot,
+    spec: MT5SymbolExecutionSpec,
+) -> bool:
+    return (
+        _history_only_recovery_execution_reason(
+            mt5_module,
+            intent,
+            snapshot,
+            spec,
+            reason="history_deal_without_matching_open_position",
+            ambiguous_reason="ambiguous_history_deals_without_matching_open_position",
+        )
+        is not None
+    )
+
+
+def _history_only_recovery_execution_reason(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    snapshot: ValidatedBrokerSnapshot,
+    spec: MT5SymbolExecutionSpec,
+    *,
+    reason: str,
+    ambiguous_reason: str,
+) -> str | None:
+    matches = _matching_recovery_entry_deals_from_snapshot(mt5_module, intent, snapshot, spec)
+    if len(matches) == 1:
+        return reason
+    if len(matches) > 1:
+        return ambiguous_reason
+    return None
+
+
+def _adopt_market_recovery_from_broker(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    *,
+    config: LiveSendExecutorConfig,
+    state: LiveExecutorState,
+    symbol_spec: MT5SymbolExecutionSpec,
+    snapshot: ValidatedBrokerSnapshot,
+    recovery_check: MarketRecoveryCheck,
+    recovery_attempt_id: str,
+    notifier: TelegramNotifier | None,
+    diagnostics: dict[str, Any] | None,
+) -> LiveSetupResult | None:
+    position = _matching_recovery_position_from_snapshot(mt5_module, intent, snapshot, symbol_spec)
+    if position is None:
+        return None
+    deal = _matching_recovery_entry_deal_from_snapshot(mt5_module, intent, snapshot, symbol_spec)
+    tracked_position = _tracked_position_from_intent(
+        intent,
+        position,
+        config,
+        price_digits=symbol_spec.digits,
+        diagnostics=diagnostics,
+    )
+    base_state = _with_processed_key(state, intent.signal_key)
+    next_state = replace(base_state, active_positions=(*base_state.active_positions, tracked_position))
+    next_state = _mark_recovery_attempt(
+        next_state,
+        _recovery_attempt_from_intent(intent, recovery_check, recovery_attempt_id),
+        status="adopted",
+        order_ticket=tracked_position.order_ticket,
+        deal_ticket=None if deal is None else _optional_int(getattr(deal, "ticket", None)),
+        position_id=tracked_position.position_id,
+    )
+    _save_live_state(config, next_state)
+    event = _market_recovery_adopted_event(tracked_position, recovery_check, broker_position=position, broker_deal=deal)
+    next_state = _record_event_once(
+        config,
+        next_state,
+        notifier,
+        f"market_recovery_adopted:{recovery_attempt_id}:{tracked_position.position_id}",
+        event,
+        store_thread_key=f"order:{tracked_position.order_ticket}",
+    )
+    _append_market_recovery_lifecycle(
+        config,
+        "market_recovery_adopted",
+        **_market_recovery_lifecycle_fields(
+            signal_key=intent.signal_key,
+            intent=intent,
+            recovery_check=recovery_check,
+            recovery_attempt_id=recovery_attempt_id,
+            reason="matched_existing_broker_position",
+            broker_item=position,
+        ),
+        broker_deal=None if deal is None else _broker_item_dict(deal),
+    )
+    return LiveSetupResult(
+        state=next_state,
+        signal_key=intent.signal_key,
+        status="market_recovery_adopted",
+        order_send=_adopted_outcome(mt5_module, intent, tracked_position.order_ticket, "existing market recovery position"),
+    )
+
+
 def _adopt_existing_broker_item(
     mt5_module: Any,
     intent: MT5OrderIntent,
@@ -3174,12 +4131,70 @@ def _adopt_existing_broker_item(
 
 
 def _adopted_outcome(mt5_module: Any, intent: MT5OrderIntent, ticket: int, source: str) -> LiveOrderSendOutcome:
+    if intent.order_type in {"BUY", "SELL"}:
+        request = build_market_order_request(mt5_module, intent, deviation_points=0)
+    else:
+        request = build_order_check_request(mt5_module, intent)
     return LiveOrderSendOutcome(
         sent=True,
-        request=build_order_check_request(mt5_module, intent),
+        request=request,
         retcode=None,
         comment=f"adopted {source}; no order_send call",
         order_ticket=ticket,
+    )
+
+
+def _market_recovery_adopted_event(
+    active: LiveTrackedPosition,
+    recovery_check: MarketRecoveryCheck,
+    *,
+    broker_position: Any,
+    broker_deal: Any | None,
+) -> NotificationEvent:
+    opened_utc = _normalized_position_opened_time(active)
+    fields = fields_with_diagnostics(
+        {
+            "adoption_source": "market recovery broker reconciliation",
+            "position_id": active.position_id,
+            "order_ticket": active.order_ticket,
+            "deal_ticket": None if broker_deal is None else _optional_int(getattr(broker_deal, "ticket", None)),
+            "order_type": "BUY" if active.side == "long" else "SELL",
+            "original_entry": recovery_check.original_entry,
+            "fill_price": active.entry_price,
+            "stop_loss": active.stop_loss,
+            "take_profit": active.take_profit,
+            "volume": active.volume,
+            "actual_risk_pct": active.actual_risk_pct,
+            "target_risk_pct": active.target_risk_pct,
+            "quote_path_evidence": recovery_check.quote_path_evidence,
+            "opened_utc": opened_utc,
+            "opened_timestamp_semantics_version": MT5_EPOCH_UTC_V2,
+            "opened_source_timestamp_semantics_version": active.timestamp_semantics_version,
+            "opened_timestamp_provenance": active.timestamp_provenance,
+            "opened_raw_mt5_time": active.raw_mt5_time,
+            "opened_raw_mt5_time_msc": active.raw_mt5_time_msc,
+            "price_digits": active.price_digits,
+            "broker_position": _broker_item_dict(broker_position),
+            "broker_deal": None if broker_deal is None else _broker_item_dict(broker_deal),
+        },
+        active.diagnostics,
+        execution={
+            "stage": "market_recovery_adopted",
+            "execution_path": "market_recovery",
+        },
+    )
+    return NotificationEvent(
+        kind="market_recovery_adopted",
+        mode="LIVE",
+        title="Live market recovery position adopted",
+        severity="info",
+        symbol=active.symbol,
+        timeframe=active.timeframe,
+        side=active.side,
+        status="open",
+        signal_key=active.signal_key,
+        fields=fields,
+        message="Existing broker market-recovery execution matched the durable recovery attempt marker; no duplicate send was placed.",
     )
 
 
@@ -3233,10 +4248,13 @@ def _market_recovery_sent_event(
     active: LiveTrackedPosition,
     outcome: LiveOrderSendOutcome,
     recovery_check: MarketRecoveryCheck,
+    *,
+    recovery_attempt_id: str | None = None,
 ) -> NotificationEvent:
     opened_utc = _normalized_position_opened_time(active)
     fields = fields_with_diagnostics(
         {
+            "recovery_attempt_id": recovery_attempt_id,
             "position_id": active.position_id,
             "order_ticket": active.order_ticket,
             "deal_ticket": outcome.deal_ticket,
@@ -3256,6 +4274,7 @@ def _market_recovery_sent_event(
             "first_touch_time_utc": recovery_check.first_touch_time_utc,
             "first_touch_high": recovery_check.first_touch_high,
             "first_touch_low": recovery_check.first_touch_low,
+            "quote_path_evidence": recovery_check.quote_path_evidence,
             "opened_utc": opened_utc,
             "opened_timestamp_semantics_version": MT5_EPOCH_UTC_V2,
             "opened_source_timestamp_semantics_version": active.timestamp_semantics_version,

@@ -111,24 +111,51 @@ Historical behavior before the C-01 hold:
 - `live_send.market_recovery_deviation_points=0` by default, so market recovery
   does not silently accept worse slippage.
 
-If the planned entry was touched before placement, the live executor now
-attempts market recovery before final skip. It sends `TRADE_ACTION_DEAL` only
-when all of these are true:
+Recovery remains disabled in deployable live settings. The current patch only
+hardens the dormant recovery path so it can be reviewed later; it does not
+approve or enable recovery. If a future reviewed config change enables recovery
+after this hold, the executor may send `TRADE_ACTION_DEAL` only when all of
+these are true:
 
 - long recovery uses current broker `ask` and requires `ask <= original_entry`;
 - short recovery uses current broker `bid` and requires `bid >= original_entry`;
+- the executable entry touch is proven from MT5 bid/ask tick history, not bar
+  OHLC;
+- the recovery path is checked from the executable entry-touch time through the
+  current recovery decision time;
 - the executable price is still on the valid side of the original Force Strike
   structure stop;
 - the setup is still inside the 6 actual MT5-bar entry window;
-- the original structure stop has not traded after the signal;
-- the original 1R target has not traded after the signal;
+- long stop/target path proof uses bid ticks after the entry touch;
+- short stop/target path proof uses ask ticks after the entry touch;
 - spread is no more than `10%` of actual fill-to-stop risk.
+
+If the executable tick path is unavailable, the entry touch cannot be proven,
+or the post-touch stop/target path cannot be proven on the required side, the
+executor blocks recovery with quote-path evidence rather than inferring from
+bid-only bars.
 
 Market recovery keeps the original structure stop, recalculates TP to 1R from
 the actual market fill, and sizes volume from the actual fill-to-stop risk so
 the configured account-risk bucket remains aligned. This is a live execution
 enhancement only; it does not change signal generation or historical baseline
 reports.
+
+Before any future recovery `order_send`, the executor records a deterministic
+recovery attempt marker derived from the signal key, strategy identity, symbol,
+side, fill, stop, TP, magic, volume, and comment marker. If the marker cannot
+be durably persisted to state and the lifecycle journal, no broker send is
+allowed. On restart, unresolved recovery markers force broker reconciliation
+before any retry.
+
+Recovery reconciliation reads current strategy orders, current strategy
+positions, order history, and deal history through the strict broker snapshot
+path. Any `None` or incomplete broker read fails closed with
+`market_recovery_reconcile_required`. Exact matching open recovery positions
+are adopted with `market_recovery_adopted`; matching history without a current
+open position remains reconcile-required. Unknown `order_send` results, missing
+order/deal identifiers, missing post-send broker positions, and ambiguous
+history never trigger blind retry.
 
 ## Risk Sizing
 
@@ -181,7 +208,8 @@ The executor must reject before sending if any of these are true:
   pending-order path;
 - live-send is starting late and MT5 bars since the signal candle show the
   planned pullback entry was already touched before the order could be placed,
-  unless default market recovery passes every better-than-entry recovery gate;
+  unless a separately approved recovery re-enable passes every hardened
+  recovery gate;
 - pending price, stop, or target is inside broker stop/freeze distance;
 - timeframe has no configured risk bucket;
 - target risk is zero, negative, or above the configured per-trade cap;
