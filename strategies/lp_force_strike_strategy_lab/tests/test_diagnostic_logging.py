@@ -127,6 +127,14 @@ class DiagnosticLoggingTests(unittest.TestCase):
                             "position_id": 1,
                             "entry": 1.1,
                             "close_price": 1.105,
+                            "initial_volume": 0.02,
+                            "closed_volume": 0.02,
+                            "remaining_volume": 0.0,
+                            "close_deal_tickets": [1001, 1002],
+                            "close_deal_count": 2,
+                            "aggregate_close_profit": 12.0,
+                            "aggregate_r_result": 1.0,
+                            "close_reason_detail": "all_close_deals_tp",
                             "r_result": 1.0,
                             "closed_utc": "2026-01-01T04:00:00Z",
                         },
@@ -138,6 +146,11 @@ class DiagnosticLoggingTests(unittest.TestCase):
         )
         self.assertEqual(new_rows[0]["lane"], "FTMO")
         self.assertEqual(new_rows[0]["diagnostic_setup_setup_id"], "EURUSD_H4_long")
+        self.assertEqual(new_rows[0]["close_deal_tickets"], "1001,1002")
+        self.assertEqual(new_rows[0]["close_deal_count"], 2)
+        self.assertEqual(new_rows[0]["aggregate_close_profit"], 12.0)
+        self.assertEqual(new_rows[0]["aggregate_r_result"], 1.0)
+        self.assertEqual(new_rows[0]["close_reason_detail"], "all_close_deals_tp")
 
         old_rows = closed_trade_diagnostic_rows(
             [

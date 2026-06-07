@@ -83,6 +83,7 @@ LIVE_STATE_SCHEMA_VERSION = 2
 MINIMUM_LIVE_STATE_READER_SCHEMA_VERSION = 2
 DEFAULT_MARKET_SNAPSHOT_JOURNAL_MAX_BYTES = 512 * 1024 * 1024
 MARKET_SNAPSHOT_RETENTION_TRIM_TARGET_FRACTION = 0.90
+CLOSE_VOLUME_TOLERANCE = 1e-9
 
 
 class BrokerSnapshotUnavailable(RuntimeError):
@@ -191,6 +192,42 @@ class LiveTrackedOrder:
 
 
 @dataclass(frozen=True)
+class LiveCloseDealSummary:
+    """Compact MT5 exit deal evidence retained for partial/final close accounting."""
+
+    ticket: int
+    position_id: int
+    volume: float
+    price: float
+    profit: float
+    close_reason: str
+    close_time_utc: str
+    comment: str
+    timestamp_semantics_version: str = MT5_EPOCH_UTC_V2
+    raw_mt5_time: int | None = None
+    raw_mt5_time_msc: int | None = None
+    timestamp_provenance: str = "mt5_epoch"
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "LiveCloseDealSummary":
+        values = {key: payload[key] for key in cls.__dataclass_fields__ if key in payload}
+        values.setdefault("volume", 0.0)
+        values.setdefault("price", 0.0)
+        values.setdefault("profit", 0.0)
+        values.setdefault("close_reason", "manual")
+        values.setdefault("close_time_utc", "")
+        values.setdefault("comment", "")
+        values.setdefault("timestamp_semantics_version", MT5_EPOCH_UTC_V2)
+        values.setdefault("raw_mt5_time", None)
+        values.setdefault("raw_mt5_time_msc", None)
+        values.setdefault("timestamp_provenance", "mt5_epoch")
+        return cls(**values)
+
+
+@dataclass(frozen=True)
 class LiveTrackedPosition:
     """Open position tracked locally after MT5 fills a pending order."""
 
@@ -218,6 +255,9 @@ class LiveTrackedPosition:
     timestamp_provenance: str = "legacy_state"
     signal_key_timestamp_semantics_version: str = LEGACY_HELSINKI_RELOCALIZED_V1
     legacy_signal_key: str | None = None
+    initial_volume: float | None = None
+    remaining_volume: float | None = None
+    processed_close_deals: tuple[LiveCloseDealSummary, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -233,6 +273,11 @@ class LiveTrackedPosition:
         values.setdefault("timestamp_provenance", "legacy_state")
         values.setdefault("signal_key_timestamp_semantics_version", LEGACY_HELSINKI_RELOCALIZED_V1)
         values.setdefault("legacy_signal_key", None)
+        values.setdefault("initial_volume", values.get("volume"))
+        values.setdefault("remaining_volume", values.get("volume"))
+        values["processed_close_deals"] = tuple(
+            LiveCloseDealSummary.from_dict(item) for item in values.get("processed_close_deals", ()) or ()
+        )
         return cls(**values)
 
 
@@ -448,6 +493,15 @@ class LiveCloseEvent:
     raw_mt5_time: int | None = None
     raw_mt5_time_msc: int | None = None
     timestamp_provenance: str = "mt5_epoch"
+    close_volume: float | None = None
+    initial_volume: float | None = None
+    remaining_volume: float | None = None
+    aggregate_close_profit: float | None = None
+    aggregate_r_result: float | None = None
+    close_deal_tickets: tuple[int, ...] = ()
+    close_deal_count: int = 1
+    close_reason_detail: str = ""
+    close_deals: tuple[LiveCloseDealSummary, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -2835,20 +2889,100 @@ def reconcile_live_state(
     positions_by_id = {_position_id(position): position for position in positions}
     kept_active: list[LiveTrackedPosition] = []
     for active in next_state.active_positions:
-        if active.position_id in positions_by_id:
-            kept_active.append(active)
+        broker_position = positions_by_id.get(active.position_id)
+        if broker_position is not None:
+            broker_volume = _broker_position_volume(broker_position)
+            tracked_remaining = _position_remaining_volume(active)
+            if broker_volume > tracked_remaining + CLOSE_VOLUME_TOLERANCE:
+                kept_active.append(active)
+                append_audit_event(
+                    config.journal_path,
+                    "active_position_volume_mismatch",
+                    signal_key=active.signal_key,
+                    position_id=active.position_id,
+                    tracked_remaining_volume=tracked_remaining,
+                    broker_current_volume=broker_volume,
+                    position=active.to_dict(),
+                )
+                continue
+            if broker_volume < tracked_remaining - CLOSE_VOLUME_TOLERANCE:
+                close_deals = _exit_deal_summaries_for_position(mt5_module, active, config, snapshot=snapshot)
+                unprocessed = _unprocessed_close_deals(active, close_deals)
+                expected_delta = tracked_remaining - broker_volume
+                actual_delta = _close_deal_volume(unprocessed)
+                if not _volume_equal(actual_delta, expected_delta):
+                    kept_active.append(active)
+                    append_audit_event(
+                        config.journal_path,
+                        "active_position_partial_close_unresolved",
+                        signal_key=active.signal_key,
+                        position_id=active.position_id,
+                        tracked_remaining_volume=tracked_remaining,
+                        broker_current_volume=broker_volume,
+                        expected_closed_volume=expected_delta,
+                        unprocessed_close_volume=actual_delta,
+                        unprocessed_close_deals=_close_deals_payload(unprocessed),
+                        position=active.to_dict(),
+                    )
+                    continue
+                merged_deals = _merge_close_deal_summaries(active.processed_close_deals, unprocessed)
+                updated_active = replace(
+                    _active_with_initialized_close_ledger(active),
+                    remaining_volume=broker_volume,
+                    processed_close_deals=merged_deals,
+                )
+                append_audit_event(
+                    config.journal_path,
+                    "position_partially_closed",
+                    signal_key=active.signal_key,
+                    position_id=active.position_id,
+                    symbol=active.symbol,
+                    timeframe=active.timeframe,
+                    side=active.side,
+                    initial_volume=_position_initial_volume(active),
+                    previous_remaining_volume=tracked_remaining,
+                    closed_volume=actual_delta,
+                    remaining_volume=broker_volume,
+                    close_profit=sum(float(deal.profit) for deal in unprocessed),
+                    aggregate_r_result=_aggregate_close_r(active, unprocessed),
+                    close_deal_tickets=[deal.ticket for deal in unprocessed],
+                    close_deal_count=len(unprocessed),
+                    close_deals=_close_deals_payload(unprocessed),
+                    close_reason_detail=_aggregate_close_reason(unprocessed)[1],
+                )
+                kept_active.append(updated_active)
+                continue
+            kept_active.append(_active_with_initialized_close_ledger(active, broker_volume=broker_volume))
             continue
-        close = latest_close_for_position(mt5_module, active, config, snapshot=snapshot)
-        if close is None:
+
+        close_deals = _exit_deal_summaries_for_position(mt5_module, active, config, snapshot=snapshot)
+        merged_deals = _merge_close_deal_summaries(active.processed_close_deals, close_deals)
+        if not merged_deals:
             kept_active.append(active)
             append_audit_event(config.journal_path, "active_position_missing_close", position=active.to_dict())
             continue
+        closed_volume = _close_deal_volume(merged_deals)
+        initial_volume = _position_initial_volume(active)
+        if not _volume_equal(closed_volume, initial_volume):
+            kept_active.append(active)
+            append_audit_event(
+                config.journal_path,
+                "active_position_final_close_unresolved",
+                signal_key=active.signal_key,
+                position_id=active.position_id,
+                initial_volume=initial_volume,
+                closed_volume=closed_volume,
+                close_deals=_close_deals_payload(merged_deals),
+                position=active.to_dict(),
+            )
+            continue
+        close = _aggregate_close_event(active, merged_deals)
         event = _close_event(active, close)
         next_state = _record_event_once(
             config,
             next_state,
             None if _close_is_old(next_state, close) else notifier,
-            f"close:{close.ticket}",
+            f"close:{active.position_id}:{_close_deal_ticket_hash(merged_deals)}",
             event,
             reply_thread_key=f"order:{active.order_ticket}",
         )
@@ -3160,30 +3294,191 @@ def latest_close_for_position(
     *,
     snapshot: ValidatedBrokerSnapshot | None = None,
 ) -> LiveCloseEvent | None:
+    close_deals = _exit_deal_summaries_for_position(mt5_module, active, config, snapshot=snapshot)
+    if not close_deals:
+        return None
+    deal = close_deals[-1]
+    return LiveCloseEvent(
+        ticket=deal.ticket,
+        position_id=active.position_id,
+        close_reason=deal.close_reason,
+        close_time_utc=deal.close_time_utc,
+        close_price=deal.price,
+        close_profit=deal.profit,
+        close_comment=deal.comment,
+        timestamp_semantics_version=deal.timestamp_semantics_version,
+        raw_mt5_time=deal.raw_mt5_time,
+        raw_mt5_time_msc=deal.raw_mt5_time_msc,
+        timestamp_provenance=deal.timestamp_provenance,
+        close_volume=deal.volume,
+        initial_volume=_position_initial_volume(active),
+        remaining_volume=0.0,
+        aggregate_close_profit=deal.profit,
+        aggregate_r_result=_aggregate_close_r(active, (deal,)),
+        close_deal_tickets=(deal.ticket,),
+        close_deal_count=1,
+        close_reason_detail=f"single_{deal.close_reason}_deal",
+        close_deals=(deal,),
+    )
+
+
+def _exit_deal_summaries_for_position(
+    mt5_module: Any,
+    active: LiveTrackedPosition,
+    config: LiveSendExecutorConfig,
+    *,
+    snapshot: ValidatedBrokerSnapshot | None = None,
+) -> tuple[LiveCloseDealSummary, ...]:
     deals = _history_deals_for_position(mt5_module, active.position_id, config, snapshot=snapshot)
-    close_deals = [
-        deal
+    summaries = [
+        _close_deal_summary(mt5_module, deal, config)
         for deal in deals
         if _deal_is_exit(mt5_module, deal)
         and int(getattr(deal, "position_id", active.position_id) or active.position_id) == active.position_id
     ]
-    if not close_deals:
-        return None
-    deal = sorted(close_deals, key=lambda item: (int(getattr(item, "time_msc", 0) or 0), int(getattr(item, "ticket", 0) or 0)))[-1]
+    return tuple(sorted(summaries, key=_close_deal_sort_key))
+
+
+def _close_deal_summary(mt5_module: Any, deal: Any, config: LiveSendExecutorConfig) -> LiveCloseDealSummary:
     timestamp_fields = _deal_timestamp_fields(deal, config)
-    return LiveCloseEvent(
+    return LiveCloseDealSummary(
         ticket=int(getattr(deal, "ticket", 0) or 0),
-        position_id=active.position_id,
+        position_id=int(getattr(deal, "position_id", 0) or 0),
+        volume=float(getattr(deal, "volume", 0.0) or 0.0),
+        price=float(getattr(deal, "price", 0.0) or 0.0),
+        profit=float(getattr(deal, "profit", 0.0) or 0.0),
         close_reason=_close_reason(mt5_module, deal),
         close_time_utc=timestamp_fields["normalized_utc"],
-        close_price=float(getattr(deal, "price", 0.0) or 0.0),
-        close_profit=float(getattr(deal, "profit", 0.0) or 0.0),
-        close_comment=str(getattr(deal, "comment", "") or ""),
+        comment=str(getattr(deal, "comment", "") or ""),
         timestamp_semantics_version=MT5_EPOCH_UTC_V2,
         raw_mt5_time=timestamp_fields["raw_time"],
         raw_mt5_time_msc=timestamp_fields["raw_time_msc"],
         timestamp_provenance=timestamp_fields["provenance"],
     )
+
+
+def _close_deal_sort_key(deal: LiveCloseDealSummary) -> tuple[int, int]:
+    try:
+        close_ns = int(_as_utc_timestamp(deal.close_time_utc).value)
+    except Exception:
+        close_ns = 0
+    return close_ns, int(deal.ticket)
+
+
+def _position_initial_volume(active: LiveTrackedPosition) -> float:
+    return float(active.initial_volume if active.initial_volume not in (None, "") else active.volume)
+
+
+def _position_remaining_volume(active: LiveTrackedPosition) -> float:
+    if active.remaining_volume not in (None, ""):
+        return float(active.remaining_volume)
+    processed_volume = _close_deal_volume(active.processed_close_deals)
+    return max(0.0, _position_initial_volume(active) - processed_volume)
+
+
+def _broker_position_volume(position: Any) -> float:
+    return float(getattr(position, "volume", 0.0) or 0.0)
+
+
+def _close_deal_volume(deals: Sequence[LiveCloseDealSummary]) -> float:
+    return sum(float(deal.volume or 0.0) for deal in deals)
+
+
+def _volume_equal(left: float, right: float) -> bool:
+    return abs(float(left) - float(right)) <= CLOSE_VOLUME_TOLERANCE
+
+
+def _merge_close_deal_summaries(*groups: Sequence[LiveCloseDealSummary]) -> tuple[LiveCloseDealSummary, ...]:
+    by_ticket: dict[int, LiveCloseDealSummary] = {}
+    for group in groups:
+        for deal in group:
+            by_ticket[int(deal.ticket)] = deal
+    return tuple(sorted(by_ticket.values(), key=_close_deal_sort_key))
+
+
+def _unprocessed_close_deals(
+    active: LiveTrackedPosition,
+    deals: Sequence[LiveCloseDealSummary],
+) -> tuple[LiveCloseDealSummary, ...]:
+    processed = {int(deal.ticket) for deal in active.processed_close_deals}
+    return tuple(deal for deal in deals if int(deal.ticket) not in processed)
+
+
+def _aggregate_close_r(active: LiveTrackedPosition, deals: Sequence[LiveCloseDealSummary]) -> float | None:
+    initial_volume = _position_initial_volume(active)
+    risk_price = abs(active.entry_price - active.stop_loss)
+    if initial_volume <= 0 or risk_price <= 0:
+        return None
+    total = 0.0
+    for deal in deals:
+        deal_r = (float(deal.price) - active.entry_price) / risk_price
+        if active.side == "short":
+            deal_r *= -1
+        total += deal_r * (float(deal.volume) / initial_volume)
+    return total
+
+
+def _weighted_close_price(deals: Sequence[LiveCloseDealSummary]) -> float:
+    total_volume = _close_deal_volume(deals)
+    if total_volume <= 0:
+        return 0.0
+    return sum(float(deal.price) * float(deal.volume) for deal in deals) / total_volume
+
+
+def _aggregate_close_reason(deals: Sequence[LiveCloseDealSummary]) -> tuple[str, str]:
+    reasons = [str(deal.close_reason or "manual") for deal in deals]
+    unique = set(reasons)
+    if unique == {"tp"}:
+        return "tp", "all_close_deals_tp"
+    if unique == {"sl"}:
+        return "sl", "all_close_deals_sl"
+    detail = "mixed_or_manual_close_reasons:" + ",".join(sorted(unique or {"manual"}))
+    return "manual", detail
+
+
+def _aggregate_close_event(active: LiveTrackedPosition, deals: Sequence[LiveCloseDealSummary]) -> LiveCloseEvent:
+    ordered = tuple(sorted(deals, key=_close_deal_sort_key))
+    latest = ordered[-1]
+    reason, reason_detail = _aggregate_close_reason(ordered)
+    profit = sum(float(deal.profit) for deal in ordered)
+    tickets = tuple(int(deal.ticket) for deal in ordered)
+    return LiveCloseEvent(
+        ticket=latest.ticket,
+        position_id=active.position_id,
+        close_reason=reason,
+        close_time_utc=latest.close_time_utc,
+        close_price=_weighted_close_price(ordered),
+        close_profit=profit,
+        close_comment=latest.comment,
+        timestamp_semantics_version=latest.timestamp_semantics_version,
+        raw_mt5_time=latest.raw_mt5_time,
+        raw_mt5_time_msc=latest.raw_mt5_time_msc,
+        timestamp_provenance=latest.timestamp_provenance,
+        close_volume=_close_deal_volume(ordered),
+        initial_volume=_position_initial_volume(active),
+        remaining_volume=0.0,
+        aggregate_close_profit=profit,
+        aggregate_r_result=_aggregate_close_r(active, ordered),
+        close_deal_tickets=tickets,
+        close_deal_count=len(ordered),
+        close_reason_detail=reason_detail,
+        close_deals=ordered,
+    )
+
+
+def _close_deal_ticket_hash(deals: Sequence[LiveCloseDealSummary]) -> str:
+    payload = ",".join(str(ticket) for ticket in sorted(int(deal.ticket) for deal in deals))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def _close_deals_payload(deals: Sequence[LiveCloseDealSummary]) -> list[dict[str, Any]]:
+    return [deal.to_dict() for deal in sorted(deals, key=_close_deal_sort_key)]
+
+
+def _active_with_initialized_close_ledger(active: LiveTrackedPosition, *, broker_volume: float | None = None) -> LiveTrackedPosition:
+    initial_volume = _position_initial_volume(active)
+    remaining_volume = _position_remaining_volume(active) if broker_volume is None else float(broker_volume)
+    return replace(active, initial_volume=initial_volume, remaining_volume=remaining_volume)
 
 
 def _record_event_once(
@@ -3341,6 +3636,7 @@ def _seconds_between(start_utc: Any, end_utc: Any) -> int | None:
 
 def _tracked_position_from_pending(pending: LiveTrackedOrder, position: Any, config: LiveSendExecutorConfig) -> LiveTrackedPosition:
     timestamp_fields = _position_timestamp_fields(position, config)
+    volume = float(getattr(position, "volume", pending.volume) or pending.volume)
     return LiveTrackedPosition(
         signal_key=pending.signal_key,
         position_id=_position_id(position),
@@ -3348,7 +3644,7 @@ def _tracked_position_from_pending(pending: LiveTrackedOrder, position: Any, con
         symbol=pending.symbol,
         timeframe=pending.timeframe,
         side=pending.side,
-        volume=float(getattr(position, "volume", pending.volume) or pending.volume),
+        volume=volume,
         entry_price=float(getattr(position, "price_open", pending.entry_price) or pending.entry_price),
         stop_loss=float(getattr(position, "sl", pending.stop_loss) or pending.stop_loss),
         take_profit=float(getattr(position, "tp", pending.take_profit) or pending.take_profit),
@@ -3370,6 +3666,8 @@ def _tracked_position_from_pending(pending: LiveTrackedOrder, position: Any, con
             if pending.signal_key_timestamp_semantics_version == LEGACY_HELSINKI_RELOCALIZED_V1
             else pending.legacy_signal_key
         ),
+        initial_volume=volume,
+        remaining_volume=volume,
     )
 
 
@@ -3384,6 +3682,7 @@ def _tracked_position_from_intent(
     position_id = _position_id(position)
     timestamp_fields = _position_timestamp_fields(position, config)
     _, legacy_signal_key = canonical_and_legacy_signal_keys(intent.signal_key)
+    volume = float(getattr(position, "volume", intent.volume) or intent.volume)
     return LiveTrackedPosition(
         signal_key=intent.signal_key,
         position_id=position_id,
@@ -3391,7 +3690,7 @@ def _tracked_position_from_intent(
         symbol=intent.symbol,
         timeframe=intent.timeframe,
         side=intent.side,
-        volume=float(getattr(position, "volume", intent.volume) or intent.volume),
+        volume=volume,
         entry_price=float(getattr(position, "price_open", intent.entry_price) or intent.entry_price),
         stop_loss=float(getattr(position, "sl", intent.stop_loss) or intent.stop_loss),
         take_profit=float(getattr(position, "tp", intent.take_profit) or intent.take_profit),
@@ -3409,6 +3708,8 @@ def _tracked_position_from_intent(
         timestamp_provenance=timestamp_fields["provenance"],
         signal_key_timestamp_semantics_version=MT5_EPOCH_UTC_V2,
         legacy_signal_key=legacy_signal_key,
+        initial_volume=volume,
+        remaining_volume=volume,
     )
 
 
@@ -4388,9 +4689,12 @@ def _close_event(active: LiveTrackedPosition, close: LiveCloseEvent) -> Notifica
     opened_utc = _normalized_position_opened_time(active)
     closed_utc = normalize_recorded_timestamp(close.close_time_utc, close.timestamp_semantics_version).isoformat()
     risk_price = abs(active.entry_price - active.stop_loss)
-    r_result = 0.0 if risk_price <= 0 else (close.close_price - active.entry_price) / risk_price
-    if active.side == "short":
-        r_result *= -1
+    if close.aggregate_r_result is not None:
+        r_result = close.aggregate_r_result
+    else:
+        r_result = 0.0 if risk_price <= 0 else (close.close_price - active.entry_price) / risk_price
+        if active.side == "short":
+            r_result *= -1
     if close.close_reason == "tp":
         kind = "take_profit_hit"
     elif close.close_reason == "sl":
@@ -4406,19 +4710,32 @@ def _close_event(active: LiveTrackedPosition, close: LiveCloseEvent) -> Notifica
             "execution_path": execution_path,
             "fill_to_close_seconds": _seconds_between(opened_utc, closed_utc),
             "close_reason": close.close_reason,
+            "close_reason_detail": close.close_reason_detail,
+            "close_deal_count": close.close_deal_count,
         },
     )
+    initial_volume = close.initial_volume if close.initial_volume is not None else _position_initial_volume(active)
+    close_volume = close.close_volume if close.close_volume is not None else _close_deal_volume(close.close_deals)
+    remaining_volume = close.remaining_volume if close.remaining_volume is not None else 0.0
+    close_profit = close.aggregate_close_profit if close.aggregate_close_profit is not None else close.close_profit
     fields = fields_with_diagnostics(
         {
             "position_id": active.position_id,
             "deal_ticket": close.ticket,
+            "close_deal_tickets": list(close.close_deal_tickets or (close.ticket,)),
+            "close_deal_count": close.close_deal_count,
             "entry": active.entry_price,
             "stop_loss": active.stop_loss,
             "take_profit": active.take_profit,
-            "volume": active.volume,
+            "volume": initial_volume,
+            "initial_volume": initial_volume,
+            "closed_volume": close_volume,
+            "remaining_volume": remaining_volume,
             "close_price": close.close_price,
-            "close_profit": close.close_profit,
+            "close_profit": close_profit,
+            "aggregate_close_profit": close_profit,
             "r_result": r_result,
+            "aggregate_r_result": r_result,
             "opened_utc": opened_utc,
             "opened_timestamp_semantics_version": MT5_EPOCH_UTC_V2,
             "opened_source_timestamp_semantics_version": active.timestamp_semantics_version,
@@ -4434,6 +4751,8 @@ def _close_event(active: LiveTrackedPosition, close: LiveCloseEvent) -> Notifica
             "price_digits": active.price_digits,
             "broker_comment": close.close_comment,
             "close_reason": close.close_reason,
+            "close_reason_detail": close.close_reason_detail,
+            "close_deals": _close_deals_payload(close.close_deals),
         },
         close_diagnostics,
     )

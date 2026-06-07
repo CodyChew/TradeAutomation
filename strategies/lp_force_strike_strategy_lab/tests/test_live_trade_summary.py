@@ -214,6 +214,89 @@ class LiveTradeSummaryTests(unittest.TestCase):
         message = build_recent_trade_summary_message(events=events, limit=5)
         self.assertIn("Exit mix: TP 0 | SL 0 | Other 1", message)
 
+    def test_summary_ignores_partial_rows_and_uses_aggregate_final_close(self) -> None:
+        events = [
+            _journal_row(
+                "order_sent",
+                fields={"order_ticket": 9001, "entry": 1.1, "volume": 0.02, "price_digits": 5},
+            ),
+            _journal_row(
+                "position_opened",
+                fields={
+                    "position_id": 7001,
+                    "order_ticket": 9001,
+                    "fill_price": 1.1,
+                    "volume": 0.02,
+                    "opened_utc": "2026-05-01T14:00:00+00:00",
+                    "price_digits": 5,
+                },
+            ),
+            {
+                "event": "position_partially_closed",
+                "signal_key": "lpfs:EURUSD:H4:10:long:c:2026-01-01T00:00:00Z",
+                "position_id": 7001,
+                "closed_volume": 0.01,
+                "remaining_volume": 0.01,
+                "close_profit": 5.0,
+            },
+            _journal_row(
+                "take_profit_hit",
+                fields={
+                    "position_id": 7001,
+                    "deal_ticket": 3102,
+                    "close_deal_tickets": [3101, 3102],
+                    "close_deal_count": 2,
+                    "entry": 1.1,
+                    "close_price": 1.10375,
+                    "volume": 0.02,
+                    "initial_volume": 0.02,
+                    "closed_volume": 0.02,
+                    "remaining_volume": 0.0,
+                    "close_profit": 15.0,
+                    "aggregate_close_profit": 15.0,
+                    "r_result": 0.75,
+                    "aggregate_r_result": 0.75,
+                    "opened_utc": "2026-05-01T14:00:00+00:00",
+                    "closed_utc": "2026-05-01T22:15:00+00:00",
+                    "close_reason_detail": "all_close_deals_tp",
+                    "price_digits": 5,
+                },
+            ),
+        ]
+
+        trades = build_closed_trade_summaries(events)
+
+        self.assertEqual(len(trades), 1)
+        self.assertEqual(trades[0].close_deal_tickets, (3101, 3102))
+        self.assertEqual(trades[0].close_deal_count, 2)
+        self.assertEqual(trades[0].initial_volume, 0.02)
+        self.assertEqual(trades[0].closed_volume, 0.02)
+        self.assertEqual(trades[0].remaining_volume, 0.0)
+        self.assertEqual(trades[0].close_profit, 15.0)
+        self.assertEqual(trades[0].r_result, 0.75)
+        self.assertEqual(trades[0].close_reason_detail, "all_close_deals_tp")
+        message = build_recent_trade_summary_message(events=events, limit=5)
+        self.assertIn("Closed trades 1", message)
+        self.assertIn("Net PnL +15.00 | Total +0.75R", message)
+
+        scalar_ticket_trade = build_closed_trade_summaries(
+            [
+                _journal_row("position_opened", fields={"position_id": 1, "opened_utc": "2026-05-01T14:00:00+00:00"}),
+                _journal_row(
+                    "position_closed",
+                    fields={
+                        "position_id": 1,
+                        "deal_ticket": 4001,
+                        "close_deal_tickets": [],
+                        "close_profit": 1.0,
+                        "r_result": 0.1,
+                        "closed_utc": "2026-05-01T15:00:00+00:00",
+                    },
+                ),
+            ]
+        )[0]
+        self.assertEqual(scalar_ticket_trade.close_deal_tickets, (4001,))
+
     def test_summary_filters_by_days_and_weeks_without_trade_list(self) -> None:
         recent_trade = summary_module.LPFSLiveClosedTrade(
             symbol="GBPJPY",

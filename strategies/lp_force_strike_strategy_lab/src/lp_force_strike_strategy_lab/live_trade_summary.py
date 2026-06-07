@@ -41,6 +41,14 @@ class LPFSLiveClosedTrade:
     signal_key: str
     price_digits: int | None = None
     diagnostics: dict[str, Any] | None = None
+    initial_volume: float | None = None
+    closed_volume: float | None = None
+    remaining_volume: float | None = None
+    close_deal_tickets: tuple[int, ...] = ()
+    close_deal_count: int | None = None
+    aggregate_close_profit: float | None = None
+    aggregate_r_result: float | None = None
+    close_reason_detail: str | None = None
 
 
 def load_live_journal_events(path: str | Path) -> list[dict[str, Any]]:
@@ -111,14 +119,22 @@ def build_closed_trade_summaries(events: Sequence[dict[str, Any]]) -> list[LPFSL
                 deal_ticket=_safe_int(fields.get("deal_ticket")),
                 entry_price=_first_float(fields.get("entry"), opened_fields.get("fill_price"), order_fields.get("entry")),
                 close_price=_safe_float(fields.get("close_price")),
-                volume=_first_float(fields.get("volume"), opened_fields.get("volume"), order_fields.get("volume")),
-                close_profit=_safe_float(fields.get("close_profit")),
-                r_result=_safe_float(fields.get("r_result")),
+                volume=_first_float(fields.get("initial_volume"), fields.get("volume"), opened_fields.get("volume"), order_fields.get("volume")),
+                close_profit=_first_float(fields.get("aggregate_close_profit"), fields.get("close_profit")),
+                r_result=_first_float(fields.get("aggregate_r_result"), fields.get("r_result")),
                 opened_utc=_first_text(fields.get("opened_utc"), opened_fields.get("opened_utc")),
                 closed_utc=_first_text(fields.get("closed_utc")),
                 signal_key=str(event.get("signal_key") or opened.get("signal_key") or order.get("signal_key") or ""),
                 price_digits=price_digits,
                 diagnostics=diagnostics or None,
+                initial_volume=_first_float(fields.get("initial_volume"), fields.get("volume"), opened_fields.get("volume"), order_fields.get("volume")),
+                closed_volume=_first_float(fields.get("closed_volume")),
+                remaining_volume=_first_float(fields.get("remaining_volume")),
+                close_deal_tickets=_int_tuple(fields.get("close_deal_tickets"), fields.get("deal_ticket")),
+                close_deal_count=_first_int(fields.get("close_deal_count")),
+                aggregate_close_profit=_first_float(fields.get("aggregate_close_profit"), fields.get("close_profit")),
+                aggregate_r_result=_first_float(fields.get("aggregate_r_result"), fields.get("r_result")),
+                close_reason_detail=_first_text(fields.get("close_reason_detail")),
             )
         )
 
@@ -370,6 +386,20 @@ def _first_int(*values: Any) -> int | None:
     return None
 
 
+def _int_tuple(*values: Any) -> tuple[int, ...]:
+    for value in values:
+        if value in (None, ""):
+            continue
+        if isinstance(value, (list, tuple)):
+            parsed = tuple(item for item in (_safe_int(item) for item in value) if item is not None)
+            if parsed:
+                return parsed
+        parsed_single = _safe_int(value)
+        if parsed_single is not None:
+            return (parsed_single,)
+    return ()
+
+
 def _safe_float(value: Any) -> float | None:
     try:
         if value in (None, ""):
@@ -417,6 +447,14 @@ def closed_trade_diagnostic_rows(
             "closed_utc": trade.closed_utc,
             "signal_key": trade.signal_key,
             "price_digits": trade.price_digits,
+            "initial_volume": trade.initial_volume,
+            "closed_volume": trade.closed_volume,
+            "remaining_volume": trade.remaining_volume,
+            "close_deal_tickets": ",".join(str(ticket) for ticket in trade.close_deal_tickets),
+            "close_deal_count": trade.close_deal_count,
+            "aggregate_close_profit": trade.aggregate_close_profit,
+            "aggregate_r_result": trade.aggregate_r_result,
+            "close_reason_detail": trade.close_reason_detail,
         }
         base.update(flatten_diagnostics(trade.diagnostics or {}))
         rows.append(base)

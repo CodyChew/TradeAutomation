@@ -43,6 +43,12 @@ Sparse lifecycle rows can now include:
 - `notification_event.fields.diagnostic_schema_version` and
   `notification_event.fields.diagnostics` on notification lifecycle rows.
 
+Broker-side partial closes are journaled as lifecycle evidence and are not
+counted as closed trades. Final close rows aggregate all verified MT5 close
+deals for the position, so summaries and diagnostic reports count the trade
+once while preserving close deal tickets, closed volume, realized broker PnL,
+and volume-weighted R.
+
 The current diagnostic payload is versioned as `schema_version=2`. Older
 `schema_version=1` rows remain readable. Schema v2 adds
 `timestamp_semantics_version=mt5_epoch_utc_v2` plus raw MT5 epoch and

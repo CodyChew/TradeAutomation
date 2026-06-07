@@ -677,7 +677,15 @@ class LiveExecutorTests(unittest.TestCase):
                 processed_signal_keys=("a",),
                 order_checked_signal_keys=("b",),
                 pending_orders=(_pending(),),
-                active_positions=(_active(),),
+                active_positions=(
+                    _active(
+                        processed_close_deals=(
+                            live_module.LiveCloseDealSummary.from_dict(
+                                {"ticket": 3010, "position_id": 7001, "close_time_utc": "2026-01-01T05:00:00+00:00"}
+                            ),
+                        )
+                    ),
+                ),
                 notified_event_keys=("n",),
                 last_seen_close_ticket=1,
                 last_seen_close_time_utc="2026-01-01T00:00:00+00:00",
@@ -688,6 +696,8 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(loaded, state)
             self.assertEqual(loaded.pending_orders[0].to_dict()["order_ticket"], 9001)
             self.assertEqual(loaded.active_positions[0].to_dict()["position_id"], 7001)
+            self.assertEqual(loaded.active_positions[0].processed_close_deals[0].volume, 0.0)
+            self.assertEqual(loaded.active_positions[0].processed_close_deals[0].close_reason, "manual")
 
             old_payload = state.to_dict()
             old_payload.pop("telegram_message_ids")
@@ -2821,6 +2831,7 @@ class LiveExecutorTests(unittest.TestCase):
                     time_msc=int(pd.Timestamp("2026-01-01T08:00:00Z").timestamp() * 1000),
                     price=1.105,
                     profit=10.0,
+                    volume=0.02,
                     comment="[tp 1.105]",
                 )
             ]
@@ -2992,6 +3003,7 @@ class LiveExecutorTests(unittest.TestCase):
                     time_msc=int(pd.Timestamp("2026-01-01T08:00:00Z").timestamp() * 1000),
                     price=1.105,
                     profit=10.0,
+                    volume=0.02,
                     comment="[tp 1.105]",
                 )
             ]
@@ -3011,6 +3023,7 @@ class LiveExecutorTests(unittest.TestCase):
                     time_msc=int(pd.Timestamp("2026-01-01T08:30:00Z").timestamp() * 1000),
                     price=1.21,
                     profit=-10.0,
+                    volume=0.02,
                     comment="[sl 1.21]",
                 )
             ]
@@ -3030,6 +3043,7 @@ class LiveExecutorTests(unittest.TestCase):
                     time_msc=int(pd.Timestamp("2026-01-01T07:00:00Z").timestamp() * 1000),
                     price=1.095,
                     profit=-10.0,
+                    volume=0.02,
                     comment="[sl 1.095]",
                 )
             ]
@@ -3053,6 +3067,7 @@ class LiveExecutorTests(unittest.TestCase):
                     time_msc=int(pd.Timestamp("2026-01-01T08:00:00Z").timestamp() * 1000),
                     price=1.1,
                     profit=0.0,
+                    volume=0.02,
                     comment="manual close",
                 )
             ]
@@ -3091,6 +3106,261 @@ class LiveExecutorTests(unittest.TestCase):
             manual_event = live_module._close_event(_active(), LiveCloseEvent(**close_payload))
             self.assertEqual(manual_event.kind, "position_closed")
             self.assertEqual(manual_event.fields["close_reason"], "manual")
+
+    def test_partial_close_updates_ledger_without_telegram_or_full_exit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            mt5.positions = [
+                SimpleNamespace(
+                    identifier=7001,
+                    ticket=7001,
+                    symbol="EURUSD",
+                    magic=131500,
+                    comment="LPFS H4 L 10",
+                    volume=0.01,
+                )
+            ]
+            mt5.deals = [
+                SimpleNamespace(
+                    ticket=3101,
+                    position_id=7001,
+                    entry=mt5.DEAL_ENTRY_OUT,
+                    reason=mt5.DEAL_REASON_TP,
+                    time_msc=int(pd.Timestamp("2026-01-01T06:00:00Z").timestamp() * 1000),
+                    price=1.1025,
+                    profit=5.0,
+                    volume=0.01,
+                    comment="[tp partial]",
+                )
+            ]
+            notifier_client = FakeNotifierClient()
+            notifier = TelegramNotifier(TelegramConfig("token", "chat", dry_run=False), notifier_client)
+
+            partial = reconcile_live_state(
+                mt5,
+                config=config,
+                state=LiveExecutorState(active_positions=(_active(),), telegram_message_ids={"order:9001": 44}),
+                notifier=notifier,
+            )
+
+            self.assertEqual(len(partial.active_positions), 1)
+            active = partial.active_positions[0]
+            self.assertEqual(active.initial_volume, 0.02)
+            self.assertEqual(active.remaining_volume, 0.01)
+            self.assertEqual([deal.ticket for deal in active.processed_close_deals], [3101])
+            self.assertEqual(notifier_client.payloads, [])
+            rows = _journal_rows(Path(config.journal_path))
+            partial_rows = [row for row in rows if row["event"] == "position_partially_closed"]
+            self.assertEqual(len(partial_rows), 1)
+            self.assertEqual(partial_rows[0]["closed_volume"], 0.01)
+            self.assertEqual(partial_rows[0]["remaining_volume"], 0.01)
+
+            duplicate = reconcile_live_state(mt5, config=config, state=partial)
+            self.assertEqual(len(duplicate.active_positions), 1)
+            rows_after_duplicate = _journal_rows(Path(config.journal_path))
+            self.assertEqual(
+                [row["event"] for row in rows_after_duplicate].count("position_partially_closed"),
+                1,
+            )
+
+    def test_unexplained_partial_volume_drop_preserves_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            active = _active()
+            mt5.positions = [
+                SimpleNamespace(
+                    identifier=7001,
+                    ticket=7001,
+                    symbol="EURUSD",
+                    magic=131500,
+                    comment="LPFS H4 L 10",
+                    volume=0.01,
+                )
+            ]
+            mt5.deals = []
+
+            result = reconcile_live_state(mt5, config=config, state=LiveExecutorState(active_positions=(active,)))
+
+            self.assertEqual(result.active_positions, (active,))
+            rows = _journal_rows(Path(config.journal_path))
+            self.assertEqual(rows[-1]["event"], "active_position_partial_close_unresolved")
+            self.assertEqual(rows[-1]["expected_closed_volume"], 0.01)
+            self.assertEqual(rows[-1]["unprocessed_close_volume"], 0)
+
+    def test_broker_volume_increase_is_audited_without_state_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            active = _active()
+            mt5.positions = [
+                SimpleNamespace(
+                    identifier=7001,
+                    ticket=7001,
+                    symbol="EURUSD",
+                    magic=131500,
+                    comment="LPFS H4 L 10",
+                    volume=0.03,
+                )
+            ]
+
+            result = reconcile_live_state(mt5, config=config, state=LiveExecutorState(active_positions=(active,)))
+
+            self.assertEqual(result.active_positions, (active,))
+            row = _journal_rows(Path(config.journal_path))[-1]
+            self.assertEqual(row["event"], "active_position_volume_mismatch")
+            self.assertEqual(row["tracked_remaining_volume"], 0.02)
+            self.assertEqual(row["broker_current_volume"], 0.03)
+
+    def test_final_close_after_partial_aggregates_deals_once(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            partial_deal = live_module.LiveCloseDealSummary(
+                ticket=3101,
+                position_id=7001,
+                volume=0.01,
+                price=1.1025,
+                profit=5.0,
+                close_reason="tp",
+                close_time_utc="2026-01-01T06:00:00+00:00",
+                comment="[tp partial]",
+            )
+            active = _active(initial_volume=0.02, remaining_volume=0.01, processed_close_deals=(partial_deal,))
+            mt5.positions = []
+            mt5.deals = [
+                SimpleNamespace(
+                    ticket=3101,
+                    position_id=7001,
+                    entry=mt5.DEAL_ENTRY_OUT,
+                    reason=mt5.DEAL_REASON_TP,
+                    time_msc=int(pd.Timestamp("2026-01-01T06:00:00Z").timestamp() * 1000),
+                    price=1.1025,
+                    profit=5.0,
+                    volume=0.01,
+                    comment="[tp partial]",
+                ),
+                SimpleNamespace(
+                    ticket=3102,
+                    position_id=7001,
+                    entry=mt5.DEAL_ENTRY_OUT,
+                    reason=mt5.DEAL_REASON_TP,
+                    time_msc=int(pd.Timestamp("2026-01-01T08:00:00Z").timestamp() * 1000),
+                    price=1.105,
+                    profit=10.0,
+                    volume=0.01,
+                    comment="[tp final]",
+                ),
+            ]
+
+            closed = reconcile_live_state(mt5, config=config, state=LiveExecutorState(active_positions=(active,)))
+
+            self.assertEqual(closed.active_positions, ())
+            rows = _journal_rows(Path(config.journal_path))
+            close_row = rows[-1]
+            self.assertEqual(close_row["event"], "take_profit_hit")
+            fields = close_row["notification_event"]["fields"]
+            self.assertEqual(fields["close_deal_tickets"], [3101, 3102])
+            self.assertEqual(fields["close_deal_count"], 2)
+            self.assertAlmostEqual(fields["close_profit"], 15.0)
+            self.assertAlmostEqual(fields["r_result"], 0.75)
+            self.assertAlmostEqual(fields["close_price"], 1.10375)
+            self.assertIn("close:7001:", close_row["event_key"])
+
+            duplicate = reconcile_live_state(mt5, config=config, state=closed)
+            self.assertEqual(duplicate.active_positions, ())
+            self.assertEqual(len(_journal_rows(Path(config.journal_path))), len(rows))
+
+    def test_manual_multi_deal_full_close_is_one_conservative_close(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            mt5.positions = []
+            mt5.deals = [
+                SimpleNamespace(
+                    ticket=3201,
+                    position_id=7001,
+                    entry=mt5.DEAL_ENTRY_OUT,
+                    reason=mt5.DEAL_REASON_TP,
+                    time_msc=int(pd.Timestamp("2026-01-01T06:00:00Z").timestamp() * 1000),
+                    price=1.1025,
+                    profit=5.0,
+                    volume=0.01,
+                    comment="[tp partial]",
+                ),
+                SimpleNamespace(
+                    ticket=3202,
+                    position_id=7001,
+                    entry=mt5.DEAL_ENTRY_OUT,
+                    reason=0,
+                    time_msc=int(pd.Timestamp("2026-01-01T08:00:00Z").timestamp() * 1000),
+                    price=1.101,
+                    profit=2.0,
+                    volume=0.01,
+                    comment="manual final",
+                ),
+            ]
+
+            closed = reconcile_live_state(mt5, config=config, state=LiveExecutorState(active_positions=(_active(),)))
+
+            self.assertEqual(closed.active_positions, ())
+            row = _journal_rows(Path(config.journal_path))[-1]
+            self.assertEqual(row["event"], "position_closed")
+            fields = row["notification_event"]["fields"]
+            self.assertEqual(fields["close_deal_tickets"], [3201, 3202])
+            self.assertEqual(fields["close_reason"], "manual")
+            self.assertIn("mixed_or_manual_close_reasons", fields["close_reason_detail"])
+            self.assertAlmostEqual(fields["close_profit"], 7.0)
+
+    def test_incomplete_final_close_evidence_preserves_active_position(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            active = _active()
+            mt5.positions = []
+            mt5.deals = [
+                SimpleNamespace(
+                    ticket=3301,
+                    position_id=7001,
+                    entry=mt5.DEAL_ENTRY_OUT,
+                    reason=mt5.DEAL_REASON_TP,
+                    time_msc=int(pd.Timestamp("2026-01-01T06:00:00Z").timestamp() * 1000),
+                    price=1.1025,
+                    profit=5.0,
+                    volume=0.01,
+                    comment="[tp partial]",
+                )
+            ]
+
+            result = reconcile_live_state(mt5, config=config, state=LiveExecutorState(active_positions=(active,)))
+
+            self.assertEqual(result.active_positions, (active,))
+            row = _journal_rows(Path(config.journal_path))[-1]
+            self.assertEqual(row["event"], "active_position_final_close_unresolved")
+            self.assertEqual(row["initial_volume"], 0.02)
+            self.assertEqual(row["closed_volume"], 0.01)
+
+    def test_close_aggregation_helper_edges_are_conservative(self) -> None:
+        malformed_time_deal = live_module.LiveCloseDealSummary(
+            ticket=1,
+            position_id=7001,
+            volume=0.0,
+            price=1.1,
+            profit=0.0,
+            close_reason="manual",
+            close_time_utc="not-a-time",
+            comment="bad time",
+        )
+        self.assertEqual(live_module._close_deal_sort_key(malformed_time_deal), (0, 1))
+        self.assertIsNone(live_module._aggregate_close_r(_active(stop_loss=1.1), (malformed_time_deal,)))
+        self.assertEqual(live_module._weighted_close_price((malformed_time_deal,)), 0.0)
+
+        short_event = live_module._close_event(
+            _active(side="short", entry_price=1.2, stop_loss=1.21, take_profit=1.19),
+            LiveCloseEvent(9, 7001, "tp", "2026-01-01T08:00:00Z", 1.19, 10.0, "tp"),
+        )
+        self.assertAlmostEqual(short_event.fields["r_result"], 1.0)
 
     def test_reconciliation_helpers_filter_and_read_history(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

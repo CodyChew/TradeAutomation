@@ -751,6 +751,14 @@ def live_week_history_rows(
                     "opened_utc": trade.opened_utc,
                     "closed_utc": trade.closed_utc,
                     "signal_key": trade.signal_key,
+                    "initial_volume": trade.initial_volume,
+                    "closed_volume": trade.closed_volume,
+                    "remaining_volume": trade.remaining_volume,
+                    "close_deal_tickets": ",".join(str(ticket) for ticket in trade.close_deal_tickets),
+                    "close_deal_count": trade.close_deal_count,
+                    "aggregate_close_profit": trade.aggregate_close_profit,
+                    "aggregate_r_result": trade.aggregate_r_result,
+                    "close_reason_detail": trade.close_reason_detail,
                 }
             )
 

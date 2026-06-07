@@ -469,7 +469,9 @@ Sensitive values must never appear in these files:
   and the original signal remains processed.
 - Live-send tracks order placement/adoption, fill, TP/SL/manual close,
   cancellation, and expiry notifications in local state so restarts do not
-  replay alerts. It also stores Telegram order-card message IDs for best-effort
+  replay alerts. Broker-side partial closes are lifecycle-only journal rows;
+  final close rows aggregate all verified close deals so summaries count the
+  trade once. It also stores Telegram order-card message IDs for best-effort
   lifecycle replies.
 - The live runner sends and journals start/stop process notifications when
   Telegram is configured. Stop cards are emitted for completed cycles, Ctrl+C,
