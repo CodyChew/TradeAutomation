@@ -508,8 +508,9 @@ C:\TradeAutomationEvidence\lpfs_c01_stage5\gate3_pre_execution_contract_rehearsa
 
 ## Minimum-Safety Resumption Plan
 
-This is the current owner-approved operational path after the narrow offline
-bounded-status CLIXML fix is published.
+The sequence below is the historical owner-approved operational path that was
+used for the accepted 2026-06-07 minimum-safety resumption. It is retained for
+audit context, not as a pending gate.
 
 1. Collect fresh dual-lane minimum read-only evidence with
    `stage5_minimum_dual_lane_read_only_v1`. Before final `main` deployment,

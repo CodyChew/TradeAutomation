@@ -12,8 +12,9 @@ live trading state.
 Read `lpfs_c01_live_safety_release.md` first. LPFS minimum-safety resumption
 completed on 2026-06-07 ICT. Both VPS lanes were resumed from runtime code SHA
 `e10f3043ca4d33654a94f567536586f6725b4604` and both live data-collection
-tasks are running: FTMO `LPFS_Live` and IC `LPFS_IC_Live`. A later docs-only
-closeout commit may advance `main` without changing live runner behavior.
+tasks are running with kill switches clear: FTMO `LPFS_Live` and IC
+`LPFS_IC_Live`. A later docs-only closeout commit may advance `main` without
+changing live runner behavior.
 FTMO was resumed first and proved clean before IC was touched. Skip canaries
 by default. Do not run reconcile-only mode, a live canary, or manual broker
 order/position changes unless a separate operator-approved step authorizes it.
@@ -44,15 +45,16 @@ Fallback containment refreshed the FTMO `KILL_SWITCH` content and invoked
 kill-switch clear, IC access, reconciliation, canary, pull, or broker mutation
 occurred.
 
-FTMO-only Stage 1 retry passed point-in-time from exact SHA
+Historical FTMO-only Stage 1 retry passed point-in-time from exact SHA
 `3dd1895ca5300d448e4d100095b294e78679a6b9`. FTMO state is schema v2 with
-one deterministic `clean_noop_migration` receipt. FTMO remains contained; IC
-was not touched. The authoritative archived packet is
+one deterministic `clean_noop_migration` receipt. At that historical retry
+checkpoint FTMO was contained and IC was not touched; Stage 5 later resumed
+FTMO first and IC second. The authoritative archived packet is
 `C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_160716\ftmo_stage1_retry`
 with manifest SHA-256
 `f8155e042fb183070440f22516c05de8075203964217252edea19f05100e2341`.
-Do not rerun either lane reconciliation or perform any resumption action
-without separate approval.
+Do not rerun either lane reconciliation, run a canary, or manually mutate
+broker exposure without separate approval.
 
 `Get-LpfsLiveStatus.ps1` must render normal-cycle, reconciliation-only, and
 error heartbeats. Reconciliation and error heartbeats may omit

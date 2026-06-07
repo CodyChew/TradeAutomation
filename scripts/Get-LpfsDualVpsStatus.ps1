@@ -199,7 +199,10 @@ if (Test-Path -LiteralPath (Join-Path `$RepoRoot "scripts\Get-LpfsLiveStatus.ps1
 Write-Output ""
 Write-Output "### Broker And State Snapshot"
 `$SnapshotScript = @'
+import hashlib
 import json
+import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 name = r"""$($Spec.Name)"""
@@ -262,9 +265,200 @@ def mask_login(value):
         return "***" + text
     return "***" + text[-4:]
 
+def file_sha256(path):
+    try:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    except Exception as exc:
+        return "ERROR:" + str(exc)
+
+def run_command(args, timeout=20):
+    try:
+        completed = subprocess.run(args, text=True, capture_output=True, timeout=timeout)
+        return {
+            "args": args,
+            "returncode": completed.returncode,
+            "stdout": completed.stdout,
+            "stderr": completed.stderr,
+        }
+    except Exception as exc:
+        return {"args": args, "error": str(exc), "stdout": "", "stderr": ""}
+
+def read_config_summary(path):
+    summary = {
+        "exists": path.exists(),
+        "sha256": file_sha256(path) if path.exists() else None,
+        "live_send_market_recovery_mode": None,
+    }
+    if not path.exists():
+        return summary
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        live_send = payload.get("live_send") if isinstance(payload, dict) else None
+        if isinstance(live_send, dict):
+            summary["live_send_market_recovery_mode"] = live_send.get("market_recovery_mode")
+    except Exception as exc:
+        summary["parse_error"] = str(exc)
+    return summary
+
+def task_summary(task_name):
+    completed = run_command(["schtasks.exe", "/Query", "/TN", task_name, "/FO", "LIST", "/V"])
+    parsed = {}
+    for line in completed.get("stdout", "").splitlines():
+        if ":" in line:
+            key, value = line.split(":", 1)
+            parsed[key.strip()] = value.strip()
+    return {
+        "returncode": completed.get("returncode"),
+        "stderr": completed.get("stderr"),
+        "status": parsed.get("Status"),
+        "scheduled_state": parsed.get("Scheduled Task State"),
+        "last_result": parsed.get("Last Result"),
+    }
+
+def process_summary():
+    completed = run_command(["wmic", "process", "get", "ProcessId,ParentProcessId,CommandLine", "/format:csv"])
+    probe_trusted = (
+        completed.get("returncode") == 0
+        and not completed.get("error")
+        and bool(str(completed.get("stdout") or "").strip())
+        and not bool(str(completed.get("stderr") or "").strip())
+    )
+    if not probe_trusted:
+        return {
+            "returncode": completed.get("returncode"),
+            "stderr": completed.get("stderr"),
+            "error": completed.get("error"),
+            "probe_trusted": False,
+            "watchdog_process_rows": None,
+            "runner_process_rows": None,
+            "logical_runner_paths": None,
+            "process_shape": "probe_untrusted",
+        }
+    watchdog_rows = []
+    runner_rows = []
+    for line in completed.get("stdout", "").splitlines():
+        lowered = line.lower()
+        if "run_lpfs_live_forever.ps1" in lowered and str(runtime_root).lower() in lowered:
+            watchdog_rows.append(line)
+        if "run_lp_force_strike_live_executor.py" in lowered and str(runtime_root).lower() in lowered:
+            runner_rows.append(line)
+    watchdog_count = len(watchdog_rows)
+    runner_count = len(runner_rows)
+    if watchdog_count == 1 and 1 <= runner_count <= 2:
+        logical_runner_paths = 1
+        shape = "watchdog_with_runner_chain"
+    elif watchdog_count == 0 and 1 <= runner_count <= 2:
+        logical_runner_paths = 1
+        shape = "direct_runner_chain"
+    elif watchdog_count == 0 and runner_count == 0:
+        logical_runner_paths = 0
+        shape = "stopped"
+    else:
+        logical_runner_paths = max(watchdog_count, runner_count)
+        shape = "ambiguous"
+    return {
+        "returncode": completed.get("returncode"),
+        "stderr": completed.get("stderr"),
+        "error": completed.get("error"),
+        "probe_trusted": True,
+        "watchdog_process_rows": watchdog_count,
+        "runner_process_rows": runner_count,
+        "logical_runner_paths": logical_runner_paths,
+        "process_shape": shape,
+    }
+
+def parse_utc(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+def heartbeat_summary(path):
+    summary = {"exists": path.exists(), "status": None, "updated_at_utc": None, "age_seconds": None, "fresh": False}
+    if not path.exists():
+        return summary
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        summary["status"] = payload.get("status")
+        summary["updated_at_utc"] = payload.get("updated_at_utc")
+        updated = parse_utc(summary["updated_at_utc"])
+        if updated is not None:
+            if updated.tzinfo is None:
+                updated = updated.replace(tzinfo=timezone.utc)
+            age = (datetime.now(timezone.utc) - updated.astimezone(timezone.utc)).total_seconds()
+            summary["age_seconds"] = round(age, 3)
+            summary["fresh"] = age <= 300
+    except Exception as exc:
+        summary["parse_error"] = str(exc)
+    return summary
+
+def classify_lane(kill_switch_active, task, processes, heartbeat, broker):
+    broker_available = bool(broker.get("available"))
+    broker_status = "OK" if broker_available else "ERROR/UNKNOWN"
+    task_status = task.get("status")
+    task_state = task.get("scheduled_state")
+    process_probe_trusted = bool(processes.get("probe_trusted"))
+    logical_paths = processes.get("logical_runner_paths") if process_probe_trusted else None
+    pending_order_count = len(broker.get("strategy_orders") or []) if broker_available else None
+    position_count = len(broker.get("strategy_positions") or []) if broker_available else None
+
+    if not process_probe_trusted:
+        state = "AMBIGUOUS"
+        reason = "process_probe_untrusted"
+    elif (
+        not kill_switch_active
+        and task_status == "Running"
+        and task_state == "Enabled"
+        and logical_paths == 1
+        and heartbeat.get("status") == "running"
+        and bool(heartbeat.get("fresh"))
+        and broker_available
+    ):
+        state = "RUNNING"
+        reason = "task_running_kill_clear_one_logical_runner_fresh_heartbeat_broker_ok"
+    elif kill_switch_active and task_state == "Disabled" and logical_paths == 0:
+        state = "PAUSED"
+        reason = "kill_switch_active_task_disabled_no_runner"
+    else:
+        state = "AMBIGUOUS"
+        reason = "state_signals_conflict_or_incomplete"
+
+    return {
+        "lane_state_summary": state,
+        "lane_state_reason": reason,
+        "kill_switch_active": kill_switch_active,
+        "task_status": task_status,
+        "task_scheduled_state": task_state,
+        "task_last_result": task.get("last_result"),
+        "runner_process_rows": processes.get("runner_process_rows"),
+        "watchdog_process_rows": processes.get("watchdog_process_rows"),
+        "logical_runner_paths": logical_paths,
+        "process_shape": processes.get("process_shape"),
+        "process_probe_trusted": process_probe_trusted,
+        "process_probe_error": processes.get("error"),
+        "heartbeat_status": heartbeat.get("status"),
+        "heartbeat_age_seconds": heartbeat.get("age_seconds"),
+        "heartbeat_fresh": heartbeat.get("fresh"),
+        "broker_status": broker_status,
+        "pending_strategy_order_count": pending_order_count,
+        "strategy_position_count": position_count,
+    }
+
 live_dir = runtime_root / "data" / "live"
 state_path = live_dir / state_name
 journal_path = live_dir / journal_name
+kill_switch_path = live_dir / "KILL_SWITCH"
+heartbeat_path = live_dir / r"""$($Spec.HeartbeatFileName)"""
+config_summary = read_config_summary(config_path)
+task = task_summary(r"""$($Spec.TaskName)""")
+processes = process_summary()
+heartbeat = heartbeat_summary(heartbeat_path)
 state_document = read_json(state_path)
 if isinstance(state_document, dict) and state_document.get("state_schema_version") == 2:
     state = state_document.get("state", {})
@@ -378,10 +572,18 @@ try:
 except Exception as exc:
     broker = {"available": False, "error": str(exc)}
 
+operational_summary = classify_lane(kill_switch_path.exists(), task, processes, heartbeat, broker)
+
 snapshot = {
     "name": name,
     "state_path": str(state_path),
     "journal_path": str(journal_path),
+    "config_path": str(config_path),
+    "config": config_summary,
+    "task": task,
+    "processes": processes,
+    "heartbeat": heartbeat,
+    "operational_summary": operational_summary,
     "state_schema_version": state_document.get("state_schema_version", 1) if isinstance(state_document, dict) else None,
     "state_error": state_document.get("_error") if isinstance(state_document, dict) else "state_not_dict",
     "processed_signal_keys": len(state.get("processed_signal_keys", []) or []) if isinstance(state, dict) else 0,
@@ -390,6 +592,26 @@ snapshot = {
     "recent_signal_rows": recent_signal_rows,
     "broker": broker,
 }
+print("### Lane State Summary")
+print("lane_state_summary=" + str(operational_summary["lane_state_summary"]))
+print("lane_state_reason=" + str(operational_summary["lane_state_reason"]))
+print("kill_switch_active=" + str(operational_summary["kill_switch_active"]))
+print("task_status=" + str(operational_summary["task_status"]))
+print("task_scheduled_state=" + str(operational_summary["task_scheduled_state"]))
+print("runner_process_rows=" + str(operational_summary["runner_process_rows"]))
+print("watchdog_process_rows=" + str(operational_summary["watchdog_process_rows"]))
+print("logical_runner_paths=" + str(operational_summary["logical_runner_paths"]))
+print("process_shape=" + str(operational_summary["process_shape"]))
+print("process_probe_trusted=" + str(operational_summary["process_probe_trusted"]))
+print("process_probe_error=" + str(operational_summary["process_probe_error"]))
+print("heartbeat_status=" + str(operational_summary["heartbeat_status"]))
+print("heartbeat_age_seconds=" + str(operational_summary["heartbeat_age_seconds"]))
+print("heartbeat_fresh=" + str(operational_summary["heartbeat_fresh"]))
+print("broker_status=" + str(operational_summary["broker_status"]))
+print("pending_strategy_order_count=" + str(operational_summary["pending_strategy_order_count"]))
+print("strategy_position_count=" + str(operational_summary["strategy_position_count"]))
+print("config_sha256=" + str(config_summary.get("sha256")))
+print("live_send.market_recovery_mode=" + str(config_summary.get("live_send_market_recovery_mode")))
 print("LPFS_SNAPSHOT_JSON=" + json.dumps(snapshot, separators=(",", ":"), sort_keys=True))
 print(json.dumps(snapshot, indent=2, sort_keys=True))
 '@

@@ -1,7 +1,6 @@
 # LPFS Start Here
 
-Last updated: 2026-06-04 ICT after the accepted C-01 FTMO Stage 5 Gate 3
-`STOPPED` result.
+Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -10,43 +9,30 @@ operational decisions.
 
 ## Current Status
 
-- FTMO Stage 5 Gate 3 is accepted as `STOPPED`; do not retry it. Read
-  `../../docs/lpfs_stage5_gate3_retry_plan.md`. The authoritative ignored
-  packet is
-  `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_gate3_20260604_100840`
-  with manifest SHA-256
-  `85df11692de17e3d35b986dafee1ce729a15b822b8ce0f3c3ccea367eb27318e`.
-  FTMO remains contained with kill switch active, task disabled, processes
-  `0`, pending orders `0`, and the same three positions. Fallback containment
-  refreshed the kill-switch content and invoked task disablement while the
-  task was already disabled. The previous Gate 1 packet is stale. No future
-  operation is approved. Fresh Gate 1 remains blocked until the offline
-  complete six-step v2 producer, expected-command hash barrier, pre-execution
-  contract, tests, and documentation are reviewed. After that review, fresh
-  dual-lane Gate 1 read-only collection still requires separate approval and
-  must stop for review.
+- Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO
+  `LPFS_Live` was resumed first and IC `LPFS_IC_Live` was resumed only after
+  FTMO post-start evidence was clean. Accepted final proof recorded both tasks
+  running, kill switches clear, pending broker orders `0`, unchanged active
+  positions, and recovery disabled. Use the dual VPS status packet for current
+  process, heartbeat, config, and broker truth.
 - Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
-  C-01 is the current priority: historical MT5 epochs were shifted through
-  `Europe/Helsinki`. FTMO is intentionally paused with kill switch active,
-  scheduled task disabled, runner count `0`, broker pending orders `0`, and
-  `3` active positions. IC Stage 3 also passed point-in-time: kill switch
-  active, task disabled, runner and watchdog counts `0`, broker pending orders
-  `0`, the same `2` active positions, and schema-v2 state. Leave active
-  positions untouched.
+  C-01 fixed the historical MT5 epoch shift through `Europe/Helsinki` and
+  remains relevant for normalization before strategy analysis. Do not rerun
+  reconciliation, run a canary, start a duplicate runner, or manually mutate
+  broker exposure.
 - FTMO-only Stage 1 passed point-in-time after exact reviewed SHA
   `3dd1895ca5300d448e4d100095b294e78679a6b9` was pulled. One contained
   `--reconcile-only` invocation migrated FTMO state to schema v2 with one
   deterministic `clean_noop_migration` receipt, completion row, CLI completion
   row, and reconciliation heartbeat. Broker pending orders stayed `0`; the
   same `3` FTMO positions remained. The archived packet and SHA-256 are in
-  `../../SESSION_HANDOFF.md`. FTMO remains contained. IC was not accessed.
-- IC-only Stage 3 passed at exact reviewed SHA
+  `../../SESSION_HANDOFF.md`. At that historical checkpoint FTMO was
+  contained and IC was not accessed; Stage 5 later resumed FTMO first and IC
+  second.
+- Historical IC-only Stage 3 passed at exact reviewed SHA
   `b02a3cb92a05e771782c7a9ca4e4339c9452969a`. Its archived packet and
-  SHA-256 are in `../../SESSION_HANDOFF.md`. Skip the multi-order FTMO and IC
-  canaries by default. Stop before Stage 5. Do not rerun reconciliation, clear
-  kill switches, enable tasks, restart watchdogs, or run a canary until a
-  separate operator-approved Stage 5 pre-resumption plan refreshes read-only
-  evidence for both lanes.
+  SHA-256 are in `../../SESSION_HANDOFF.md`. Stage 5 later resumed FTMO first
+  and IC second.
 - The local C-01 branch adds direct UTC parsing, code-enforced
   `market_recovery_mode="disabled"`, fail-closed broker reads, atomic v2 state
   with a legacy-loader tripwire, proof-backed isolated reconciliation, and
@@ -69,10 +55,8 @@ operational decisions.
   cycle completed, and continuous task `LPFS_IC_Live` installed/running with
   its own runtime state, journal, heartbeat, logs, Telegram channel, magic
   `231500`, and broker comment prefix `LPFSIC`. Do not treat this as current IC
-  truth. The contained IC Stage 3 point-in-time pass is the current handoff
-  boundary: kill switch active, task disabled, runners and watchdogs `0`,
-  pending orders `0`, and the same `2` active positions. Refresh both lanes
-  before any approved Stage 5 resumption step.
+  truth. Current truth comes from accepted Stage 5 resumed evidence and the
+  latest dual VPS status packet.
 - Watchdog hardening deploy: documentation PR `#1` squash-merged as `9dcfafc`
   and watchdog PR `#2` squash-merged as `3657323`. Both VPSes pulled
   `3657323` with deliberate kill-switch-first restarts on 2026-05-31 ICT, IC

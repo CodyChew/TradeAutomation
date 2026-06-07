@@ -69,7 +69,7 @@ A later docs-only closeout commit may advance `main`; it does not change live
 runner behavior unless future runtime code changes are deliberately deployed
 and the runners are restarted.
 
-## Initial Contained Production State
+## Historical Initial Contained Production State
 
 Both VPS lanes were intentionally contained before implementation work. This
 table is the approved Stage 0 baseline, not a fresh post-retry IC read:
@@ -79,10 +79,10 @@ table is the approved Stage 0 baseline, not a fresh post-retry IC read:
 | FTMO | `LPFS_Live` disabled | active | 0 | 0 | 3 |
 | IC | `LPFS_IC_Live` disabled | active | 0 | 0 | 2 |
 
-Both VPS machines remain powered on. Active positions are untouched and remain
-supervised broker-side. Do not clear either kill switch, enable either task,
-start a watchdog, restart a runner, modify broker orders, or rewrite runtime
-state or journals until the reviewed release and deployment plan are approved.
+At that historical Stage 0 point both VPS machines remained powered on. Active
+positions were untouched and supervised broker-side. These pre-release
+containment instructions were superseded by the Stage 5 resumption summary
+above; use the latest dual VPS status packet for current live-ops truth.
 
 Containment evidence:
 
@@ -104,9 +104,11 @@ ICT and stopped before IC. FTMO pulled reviewed commit
 `79a3b21548653c4729eda07dc5f6da066d8018be`, passed `100` VPS-focused tests,
 passed strict read-only broker exports before and after `--reconcile-only`,
 and preserved broker exposure unchanged: pending orders `0`, active positions
-`3`, and no broker history delta. FTMO remains contained with `KILL_SWITCH`
-active, `LPFS_Live` disabled, runner process count `0`, and recovery disabled.
-IC was not touched after the stop condition.
+`3`, and no broker history delta. At that historical stop checkpoint FTMO was
+contained with `KILL_SWITCH` active, `LPFS_Live` disabled, runner process
+count `0`, and recovery disabled. IC was not touched after the stop condition.
+Stage 5 later superseded this contained state by resuming FTMO first and IC
+second.
 
 Authoritative ignored local FTMO stop packet:
 
@@ -158,9 +160,11 @@ fa7afa51991ee1b1ca90cf5821f6a6a07bd131416798f396f50a62393360de42
 ```
 
 Broker exposure remained unchanged: pending orders `0`, the same `3` active
-positions, and identical historical order/deal ticket inventories. FTMO
-remains contained with `KILL_SWITCH` active, `LPFS_Live` disabled, runner
-count `0`, and recovery disabled. IC was not accessed.
+positions, and identical historical order/deal ticket inventories. At that
+historical retry checkpoint FTMO was contained with `KILL_SWITCH` active,
+`LPFS_Live` disabled, runner count `0`, and recovery disabled. IC was not
+accessed. Stage 5 later superseded this contained state by resuming FTMO first
+and IC second.
 
 The authoritative ignored packet was archived outside the disposable worktree:
 
@@ -201,10 +205,11 @@ Receipt operation ID:
 ```
 
 Broker exposure remained unchanged: pending orders `0`, the same `2` active
-positions, and unchanged historical order/deal counts (`232` / `129`). IC
-remains contained with `KILL_SWITCH` active, `LPFS_IC_Live` disabled, runner
-count `0`, watchdog count `0`, recovery disabled, and `26.24 GiB` free disk.
-FTMO was not accessed.
+positions, and unchanged historical order/deal counts (`232` / `129`). At
+that historical Stage 3 checkpoint IC was contained with `KILL_SWITCH` active,
+`LPFS_IC_Live` disabled, runner count `0`, watchdog count `0`, recovery
+disabled, and `26.24 GiB` free disk. FTMO was not accessed. Stage 5 later
+superseded this contained state by resuming FTMO first and IC second.
 
 The authoritative packet is archived outside the disposable worktree:
 
@@ -319,11 +324,12 @@ Its `manifest.json` SHA-256 is:
 85df11692de17e3d35b986dafee1ce729a15b822b8ce0f3c3ccea367eb27318e
 ```
 
-Final evidence proves FTMO remains contained: `KILL_SWITCH` active,
-`LPFS_Live` disabled, runner/watchdog process count `0`, broker pending orders
-`0`, strict MT5 reads successful, correct account/server identity, and the
-same three active positions with unchanged symbol, magic, comment, volume,
-SL, and TP.
+Final evidence at that historical stop checkpoint proved FTMO was contained:
+`KILL_SWITCH` active, `LPFS_Live` disabled, runner/watchdog process count `0`,
+broker pending orders `0`, strict MT5 reads successful, correct account/server
+identity, and the same three active positions with unchanged symbol, magic,
+comment, volume, SL, and TP. Stage 5 later superseded this stopped state by
+resuming FTMO first and IC second.
 
 Fallback containment refreshed the FTMO `KILL_SWITCH` content and invoked
 `Disable-ScheduledTask` while `LPFS_Live` was already disabled. No task
@@ -537,21 +543,16 @@ Once both lanes are safely migrated and normalized evidence exists:
 7. `scripts/normalize_lpfs_c01_evidence.py`
 8. `strategies/lp_force_strike_strategy_lab/tests/test_c01_live_safety.py`
 
-## Current Blockers And Open Questions
+## Current Status And Open Questions
 
-- FTMO Stage 1 reconciliation passed point-in-time. Do not rerun FTMO
-  reconciliation.
-- The default decision is to skip the multi-order FTMO canary.
-- IC-only contained Stage 3 passed point-in-time. Do not rerun IC
-  reconciliation.
-- Skip the IC Stage 4 canary by default. Stop before Stage 5.
-- Stage 5 watchdog resumption follows the owner-approved minimum-safety path:
-  publish the narrow bounded-status CLIXML consistency fix; collect fresh
-  dual-lane minimum read-only evidence; merge/deploy final approved `main`
-  under containment; rerun the lane's minimum checks after deploy; resume
-  FTMO first; touch IC only after FTMO post-start evidence is clean.
-- Skip canaries by default. Do not run reconciliation. Do not manually close,
-  cancel, or modify broker orders or positions without separate approval.
+- Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO was
+  resumed first and IC was resumed only after FTMO post-start evidence was
+  clean. Accepted final proof recorded both tasks running, kill switches clear,
+  pending broker orders `0`, unchanged active positions, and recovery disabled.
+- FTMO Stage 1 and IC Stage 3 reconciliation are historical point-in-time
+  operations. Do not rerun either reconciliation for analysis.
+- Skip canaries by default. Do not manually close, cancel, or modify broker
+  orders or positions without separate approval.
 - Observability backlog: reconciliation snapshot `stable_hash()` currently
   includes full live position rows, including moving `price_current` and
   `profit`. The receipt chain is internally valid, but adjacent read-only
@@ -611,10 +612,10 @@ Results:
 
 The historical docs-only IC consistency follow-up added dashboard assertions
 that required the then-current last-approved IC Stage 0 snapshot label and
-rejected unqualified current-containment wording. The contained IC Stage 3
-pass above supersedes that handoff boundary. It did not change runtime code or
-VPS state.
+rejected unqualified current-containment wording. The later contained IC Stage
+3 pass was also historical and was superseded by Stage 5 resumption. It did
+not change runtime code or VPS state.
 
 The contained FTMO-only Stage 1 retry completed and is recorded above. IC was
-not accessed. Production remains intentionally paused pending separate
-operator approval for any next step.
+not accessed during that historical retry. Stage 5 later resumed FTMO first
+and IC second; use fresh dual VPS status for current truth.

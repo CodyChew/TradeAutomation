@@ -1,18 +1,18 @@
 # LPFS Amazon Lightsail VPS Runbook
 
-## C-01 Containment Override
+## Current Live-Ops Boundary
 
-Read `lpfs_c01_live_safety_release.md` before using this runbook. As of
-2026-06-01 ICT, both VPS machines remain powered on but intentionally paused:
-both kill switches exist, `LPFS_Live` and `LPFS_IC_Live` are disabled, runner
-process count is `0`, and strict read-only MT5 exports confirm zero LPFS broker
-pending orders. FTMO has `3` active positions and IC has `2`; leave them
-untouched and supervised broker-side.
+Read `lpfs_c01_live_safety_release.md` before using this runbook. Stage 5
+minimum-safety resumption completed on 2026-06-07 ICT: FTMO `LPFS_Live` was
+resumed first and IC `LPFS_IC_Live` was resumed only after FTMO post-start
+evidence was clean. Accepted final proof recorded both tasks running, kill
+switches clear, pending broker orders `0`, and unchanged active-position
+inventories. `live_send.market_recovery_mode="disabled"` remains mandatory.
 
-Do not follow any start, clear-kill-switch, or watchdog-enable command below
-until the C-01 release is reviewed and a separate operator-approved deployment
-step authorizes it. During this release,
-`live_send.market_recovery_mode="disabled"` is mandatory.
+Do not start a duplicate runner, run reconciliation, run a canary, or manually
+modify broker orders or positions. Before any maintenance, run
+`scripts\Get-LpfsDualVpsStatus.ps1` and use MT5 broker state, heartbeat, and
+journal evidence as current truth.
 
 Last updated: 2026-05-23 after the LPFS weekly-report incident, runner
 recovery, diagnostic-logging upgrade, and journal-read safety update.

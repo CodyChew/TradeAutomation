@@ -27,8 +27,8 @@ real-account capable.
 ## C-01 Safety Hold
 
 Read `lpfs_c01_live_safety_release.md` before operating either LPFS lane.
-During the C-01 repair, both production lanes remain paused with kill switches
-active, tasks disabled, and runners stopped. The live validator accepts only:
+Stage 5 minimum-safety resumption completed on 2026-06-07 ICT, but the live
+validator still accepts only:
 
 ```json
 "market_recovery_mode": "disabled"
@@ -37,6 +37,10 @@ active, tasks disabled, and runners stopped. The live validator accepts only:
 MT5 Python `time` and `time_msc` values are UTC epochs. They are now parsed
 directly as UTC for bars, ticks, positions, and deals. `broker_timezone`
 remains a compatibility config field, but it must not reinterpret MT5 epochs.
+
+Do not run reconciliation, a canary, a duplicate runner, or manual broker
+order/position changes from this executor context. Use the dual VPS status
+packet and MT5 broker state for current live truth.
 
 ## Local Config
 

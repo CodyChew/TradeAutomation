@@ -1,44 +1,29 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-06-04 ICT after the accepted C-01 FTMO Stage 5 Gate 3
-`STOPPED` result.
+Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption.
 
-## Current C-01 Priority
+## Current Live-Ops State
 
 Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
-Read `../../docs/lpfs_stage5_gate3_retry_plan.md` before any Stage 5 work.
-FTMO Stage 5 Gate 3 is accepted as `STOPPED` and must not be retried. Its
-authoritative ignored packet is
-`C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_gate3_20260604_100840`;
-manifest SHA-256:
-`85df11692de17e3d35b986dafee1ce729a15b822b8ce0f3c3ccea367eb27318e`.
-Fallback containment refreshed the FTMO kill-switch content and invoked
-`Disable-ScheduledTask` while the task was already disabled. No enable/start,
-kill-switch clear, IC access, reconciliation, canary, pull, or broker mutation
-occurred. The prior Gate 1 packet is stale. Require reviewed offline tooling,
-a fresh dual-lane Gate 1 read-only packet, and a separate approval before any
-future FTMO Gate 3 attempt. Fresh Gate 1 remains blocked until the complete
-six-step Gate 1 v2 producer, expected-command hash barrier, pre-execution
-contract, tests, and documentation pass review. The producer covers FTMO/IC
-compact containment, bounded status, and strict MT5 without executing them;
-compact containment emits tracked-worktree cleanliness and exact critical
-runtime-file hashes.
+Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO
+`LPFS_Live` was resumed first and IC `LPFS_IC_Live` was resumed only after
+FTMO post-start evidence was clean. Accepted final proof recorded both tasks
+running, kill switches clear, pending broker orders `0`, unchanged active
+positions, and recovery disabled. Use `scripts\Get-LpfsDualVpsStatus.ps1` for
+current process, heartbeat, config, and broker truth before any live
+maintenance.
 
-FTMO is intentionally paused: kill switch active, scheduled task disabled,
-runner process count `0`, machine powered on, zero LPFS broker pending orders,
-and `3` active positions. IC Stage 3 passed point-in-time and is also
-intentionally paused: kill switch active, scheduled task disabled, runner and
-watchdog process counts `0`, zero pending orders, the same `2` active
-positions, and schema-v2 state. Leave all positions untouched and supervised
-broker-side.
+Do not rerun reconciliation, run a canary, start a duplicate runner, manually
+modify broker orders or positions, or change strategy/risk/sizing/SL/TP/
+broker-send behavior without a separately approved operation.
 
 The local branch `codex/lpfs-c01-live-safety-release` repairs direct MT5 UTC
 epoch handling, enforces recovery disabled, fails closed on unavailable broker
 truth, introduces atomic v2 state with a downgrade barrier, adds isolated
 proof-backed reconciliation, and preserves immutable normalization evidence.
 It does not change strategy heuristics. FTMO Stage 1 and IC Stage 3
-reconciliation are complete point-in-time. No reconciliation rerun, canary,
-task enablement, or watchdog resumption is approved yet.
+reconciliation are complete historical point-in-time operations. Do not rerun
+them for analysis.
 
 The immutable normalizer explicitly classifies every historical `*_utc` leaf.
 It corrects archived expiration paths including `expiration_utc`,
@@ -53,12 +38,14 @@ Historical `IC`-first instructions describe the prior watchdog rollout.
 
 Historical note: FTMO-only Stage 1 stopped before IC on 2026-06-02 ICT. FTMO pulled reviewed
 commit `79a3b21548653c4729eda07dc5f6da066d8018be`, passed `100` VPS-focused
-tests and strict broker comparisons, and remains contained with unchanged
-broker exposure. IC was not touched after the stop condition. The stop packet
-is `reports/live_ops/lpfs_c01_deploy/20260602_003007/ftmo`. The narrow
-forward fix makes status heartbeat counters optional and atomically migrates a
+tests and strict broker comparisons, and was contained at that historical
+stop checkpoint with unchanged broker exposure. IC was not touched after the
+stop condition. The stop packet is
+`reports/live_ops/lpfs_c01_deploy/20260602_003007/ftmo`. The narrow forward
+fix makes status heartbeat counters optional and atomically migrates a
 validated clean no-pending reconciliation to v2 state with one deterministic
-receipt. The contained retry below superseded this stop gate.
+receipt. The contained retry below superseded this stop gate, and Stage 5
+later resumed both lanes.
 
 The contained FTMO retry then passed from exact SHA
 `3dd1895ca5300d448e4d100095b294e78679a6b9`: `102` VPS-focused tests,
@@ -67,8 +54,9 @@ bounded pre/post status, strict pre/post MT5 exports, and exactly one
 deterministic `clean_noop_migration` receipt and operation ID
 `fa7afa51991ee1b1ca90cf5821f6a6a07bd131416798f396f50a62393360de42`.
 Broker pending orders stayed `0`; the same `3` active FTMO positions remained.
-FTMO remains contained and IC was not accessed. The authoritative ignored
-packet is archived outside the disposable worktree at
+At that historical retry checkpoint FTMO stayed contained and IC was not
+accessed; Stage 5 later superseded that paused state by resuming FTMO first
+and IC second. The authoritative ignored packet is archived outside the disposable worktree at
 `C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_160716\ftmo_stage1_retry`;
 manifest SHA-256:
 `f8155e042fb183070440f22516c05de8075203964217252edea19f05100e2341`.
@@ -79,14 +67,18 @@ and exactly one `--reconcile-only` invocation passed. IC state is schema v2
 with one deterministic `clean_noop_migration` receipt and operation ID
 `016bd67907de7987ad84ba6186ab60e2fd44f22ac3ae3cf7cc5cd94eb68619a2`.
 Broker pending orders stayed `0`; the same `2` active IC positions remained.
-IC remains contained. FTMO was not accessed. The authoritative ignored packet
-is archived outside the disposable worktree at
+At that historical IC Stage 3 checkpoint IC stayed contained and FTMO was not
+accessed; Stage 5 later superseded that paused state by resuming FTMO first
+and IC second. The authoritative ignored packet is archived outside the disposable worktree at
 `C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_152110\ic_stage3`;
 manifest SHA-256:
 `033a67a66a5064015d38c5c1a69d084d21cc4130e1539040a854421ab8fb81ed`.
-Default next decision: skip both multi-order canaries, stop before Stage 5,
-and require a separately reviewed pre-resumption plan with fresh read-only
-dual-lane evidence before either watchdog is restarted.
+Historical default before Stage 5: skip both multi-order canaries and require
+a separately reviewed pre-resumption plan with fresh read-only dual-lane
+evidence before either watchdog is restarted. Stage 5 later completed the
+minimum-safety resumption. Current default is to keep reconciliation, canaries,
+manual broker mutation, and strategy changes skipped unless separately
+approved, and to use current dual VPS status for live truth.
 
 Observability backlog: reconciliation receipt `stable_hash()` includes full
 live position rows, including moving `price_current` and `profit`. The receipt
@@ -106,7 +98,8 @@ tests `164`, full LPFS tests `392`, strict core coverage `6396` statements plus
 `100.00%`, generated live-ops regeneration stable, and `git diff --check`
 clean. A local rehearsal streamed all `275578` archived snapshot rows through
 the normalizer with `0` unresolved warnings. This is local release verification
-only; production remains paused.
+only. At that historical release-verification point production had not yet
+resumed; Stage 5 later resumed both lanes with minimum-safety proof.
 
 ## Purpose
 
@@ -590,11 +583,10 @@ Dedicated IC VPS live lane:
   `0` active positions.
 - Historical promoted-state note: continuous task `LPFS_IC_Live` was
   installed/running through the watchdog wrapper. Do not treat this as current
-  IC truth. The contained IC Stage 3 point-in-time pass records kill switch
-  active, task disabled, runners `0`, watchdogs `0`, pending orders `0`, and
-  the same `2` active positions. Refresh both lanes before any approved Stage
-  5 resumption step, and never start a manual IC live process while its
-  scheduled task is active.
+  IC truth. The later contained IC Stage 3 point-in-time pass was also
+  historical and was superseded by Stage 5 resumption. Current IC truth comes
+  from accepted Stage 5 resumed evidence and the latest dual VPS status packet.
+  Never start a manual IC live process while its scheduled task is active.
 - FTMO uses startup alert task `LPFS_FTMO_Startup_Alert`; IC uses
   `LPFS_IC_Startup_Alert`. These at-startup SYSTEM tasks send `VPS STARTED`
   Telegram cards and journal `vps_startup_alert` rows after Windows boot,

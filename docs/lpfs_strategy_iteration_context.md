@@ -1,6 +1,6 @@
 # LPFS Strategy Iteration Context
 
-Last updated: 2026-06-01 ICT during the contained C-01 timestamp repair.
+Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption.
 
 This is the durable handoff for the current LPFS diagnostic reporting and
 strategy-iteration work. A new Codex chat should be able to read this file,
@@ -25,9 +25,12 @@ timeframe selection, spread gates, recovery behavior, or broker execution.
 H8 was discussed as an example. H8 is not a selected change candidate unless
 future diagnostics prove a persistent cross-lane issue.
 
-Both VPS lanes are currently intentionally contained with kill switches active,
-scheduled tasks disabled, runners stopped, and zero LPFS broker pending orders.
-Leave FTMO `3` and IC `2` active positions untouched and supervised broker-side.
+Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO and IC
+live data collection are running again, recovery remains disabled, and final
+proof recorded zero pending broker orders plus unchanged active-position
+inventories. Before strategy analysis, refresh current status from the dual
+VPS status packet and use normalized C-01 evidence for production-derived
+historical timestamps.
 
 ## Current Project State
 

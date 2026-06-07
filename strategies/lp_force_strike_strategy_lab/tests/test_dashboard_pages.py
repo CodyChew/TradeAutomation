@@ -247,9 +247,17 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("No spread auto-cancel", html)
         self.assertIn("Market recovery", html)
         self.assertIn("MARKET RECOVERY", html)
-        self.assertIn("C-01 containment active", html)
-        self.assertIn("Contained Stage 3 snapshot", html)
-        self.assertIn("Refresh both lanes with read-only status and strict MT5 evidence before either watchdog restart", html)
+        self.assertIn("Stage 5 resumption completed", html)
+        self.assertIn("LPFS_Live</code> and IC <code>LPFS_IC_Live</code> resumed and running", html)
+        self.assertIn("kill switches clear", html)
+        self.assertIn("pending broker orders 0", html)
+        self.assertIn("Stage 5 resumed state", html)
+        self.assertIn("use the dual VPS status packet for current process and broker truth", html)
+        self.assertNotIn("C-01 containment active", html)
+        self.assertNotIn("C-01 contained review hold", html)
+        self.assertNotIn("remain paused", html)
+        self.assertNotIn("kill switches active", html)
+        self.assertNotIn("Refresh both lanes with read-only status and strict MT5 evidence before either watchdog restart", html)
         self.assertNotIn("IC was not accessed", html)
         self.assertNotIn("both production lanes are paused with kill switches active", html)
         self.assertNotIn("<span>Current containment</span>", html)
@@ -309,7 +317,7 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("C:\\TradeAutomationRuntimeIC", html)
         self.assertIn("lpfs_ic_live_heartbeat.json", html)
         self.assertIn("scripts/Get-LpfsDualVpsStatus.ps1", html)
-        self.assertIn("LPFS_IC_Live disabled", html)
+        self.assertIn("LPFS_IC_Live running", html)
         self.assertIn("configs/live_policy_ledger.csv", html)
         self.assertIn("ledger scale 1.0", html)
         self.assertIn("docs/lpfs_icmarkets_vps_runbook.md", html)
@@ -325,13 +333,84 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("href=\"v15.html\"", html)
         self.assertNotIn("<script", lower_html)
 
+    def test_dual_vps_status_script_reports_operator_truth_fields(self) -> None:
+        script = (SCRIPTS_ROOT / "Get-LpfsDualVpsStatus.ps1").read_text(encoding="utf-8")
+
+        for expected in (
+            "lane_state_summary=",
+            "lane_state_reason=",
+            "kill_switch_active=",
+            "task_status=",
+            "task_scheduled_state=",
+            "runner_process_rows=",
+            "watchdog_process_rows=",
+            "logical_runner_paths=",
+            "process_probe_trusted=",
+            "process_probe_error=",
+            "heartbeat_status=",
+            "heartbeat_age_seconds=",
+            "broker_status=",
+            "pending_strategy_order_count=",
+            "strategy_position_count=",
+            "config_sha256=",
+            "live_send.market_recovery_mode=",
+        ):
+            self.assertIn(expected, script)
+
+        self.assertIn('"RUNNING"', script)
+        self.assertIn('"PAUSED"', script)
+        self.assertIn('"AMBIGUOUS"', script)
+        self.assertIn("watchdog_with_runner_chain", script)
+        self.assertIn("direct_runner_chain", script)
+        self.assertIn("process_probe_untrusted", script)
+        self.assertIn("if not process_probe_trusted", script)
+        self.assertIn('"probe_trusted": False', script)
+
+    def test_operator_first_read_docs_do_not_present_stage5_as_pending(self) -> None:
+        docs = {
+            "START_HERE.md": (PROJECT_ROOT / "START_HERE.md").read_text(encoding="utf-8"),
+            "PROJECT_STATE.md": (PROJECT_ROOT / "PROJECT_STATE.md").read_text(encoding="utf-8"),
+            "system_troubleshooting.md": (DOCS_ROOT / "system_troubleshooting.md").read_text(encoding="utf-8"),
+            "lpfs_icmarkets_vps_runbook.md": (DOCS_ROOT / "lpfs_icmarkets_vps_runbook.md").read_text(
+                encoding="utf-8"
+            ),
+            "lpfs_c01_live_safety_release.md": (DOCS_ROOT / "lpfs_c01_live_safety_release.md").read_text(
+                encoding="utf-8"
+            ),
+            "SESSION_HANDOFF.md": (WORKSPACE_ROOT / "SESSION_HANDOFF.md").read_text(encoding="utf-8"),
+        }
+        stale_current_phrases = (
+            "FTMO remains contained",
+            "IC remains contained",
+            "remain paused",
+            "remains paused",
+            "production remains paused",
+            "Production remains intentionally paused",
+            "stop before Stage 5",
+            "Stop before Stage 5",
+            "kill switches active",
+            "contained IC Stage 3 point-in-time boundary",
+            "current handoff boundary is the contained IC Stage 3",
+            "Refresh both lanes before any approved Stage 5 resumption",
+            "before any approved Stage 5 resumption",
+        )
+
+        for name, text in docs.items():
+            self.assertIn("Stage 5", text, f"{name} missing Stage 5 context")
+            self.assertIn("resum", text.lower(), f"{name} missing resumption context")
+            self.assertIn("kill switches clear", text, f"{name} missing current kill-switch truth")
+            for phrase in stale_current_phrases:
+                self.assertNotIn(phrase, text, f"{name} has stale current-state wording: {phrase}")
+
     def test_session_handoff_does_not_present_historical_ic_runner_as_current(self) -> None:
         handoff = (WORKSPACE_ROOT / "SESSION_HANDOFF.md").read_text(encoding="utf-8")
 
         self.assertIn("Historical IC promotion state", handoff)
-        self.assertIn("use the contained IC Stage 3 point-in-time boundary above", handoff)
+        self.assertIn("superseded by Stage 5 resumption", handoff)
+        self.assertIn("latest dual VPS status packet for current IC", handoff)
         self.assertNotIn("IC Markets production is now a separate live VPS lane", handoff)
         self.assertNotIn("`LPFS_IC_Live` is installed\n  and running", handoff)
+        self.assertNotIn("contained IC Stage 3 point-in-time boundary", handoff)
 
     def test_entry_wait_pages_show_rejected_conclusion(self) -> None:
         expected = "Do not replace the fixed 6-bar pullback wait"

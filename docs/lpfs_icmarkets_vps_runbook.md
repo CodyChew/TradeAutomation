@@ -1,20 +1,18 @@
 # LPFS IC Markets VPS Runbook
 
-## C-01 Containment Override
+## Current Live-Ops Boundary
 
-Read `lpfs_c01_live_safety_release.md` before using this runbook. As of
-2026-06-02 ICT, FTMO Stage 1 and IC Stage 3 both passed point-in-time and
-remain intentionally contained. FTMO has kill switch active, scheduled task
-disabled, runner count `0`, broker pending orders `0`, and `3` active
-positions. IC has kill switch active, scheduled task disabled, runner count
-`0`, watchdog count `0`, broker pending orders `0`, and the same `2` active
-positions. Leave all positions untouched and supervised broker-side.
-
-The default next decision is to skip both multi-order canaries. Stop before
-Stage 5. Do not clear either kill switch, enable tasks, run watchdogs, rerun
-reconcile-only mode, or modify broker exposure until a separate Stage 5
-pre-resumption plan is reviewed and approved. Keep
+Read `lpfs_c01_live_safety_release.md` before using this runbook. Stage 5
+minimum-safety resumption completed on 2026-06-07 ICT: FTMO was resumed first
+and IC was resumed only after FTMO post-start evidence was clean. Accepted
+final proof recorded both tasks running, kill switches clear, pending broker
+orders `0`, and unchanged active-position inventories. Keep
 `live_send.market_recovery_mode="disabled"`.
+
+Do not run a canary, rerun reconciliation, start a duplicate runner, or
+manually modify broker orders or positions. Before IC maintenance, run
+`scripts\Get-LpfsDualVpsStatus.ps1` and use MT5 broker state, heartbeat, and
+journal evidence as current truth.
 
 For any future packet capture, set
 `$ProgressPreference="SilentlyContinue"` in remote PowerShell, redirect
@@ -54,8 +52,8 @@ Archive `evidence_manifest.json` SHA-256:
 ```
 
 All `92` payload hashes and byte counts revalidated. Keep the packet ignored.
-Skip Stage 4 by default. Stop before Stage 5 and require fresh read-only
-dual-lane evidence before either watchdog is restarted.
+This Stage 3 packet is historical containment evidence. Stage 5 later resumed
+FTMO first and IC second; use fresh dual-lane status before maintenance.
 
 This runbook is for bringing up a second LP + Force Strike production runner
 for IC Markets Raw Spread while leaving the existing FTMO VPS runner untouched.
@@ -86,10 +84,9 @@ runtime root, state, journal, heartbeat, kill switch, and scheduled task.
 ## Historical Verified IC VPS State
 
 The entries in this section are historical promotion and maintenance evidence.
-They are not current IC truth. The current handoff boundary is the contained
-IC Stage 3 point-in-time pass above: kill switch active, task disabled,
-runners `0`, watchdogs `0`, pending orders `0`, and the same `2` active
-positions. Refresh both lanes before any approved Stage 5 resumption step.
+They are not current IC truth. Current truth comes from the dual VPS status
+packet and accepted Stage 5 resumed proof recorded in
+`lpfs_c01_live_safety_release.md`.
 
 Last verified on 2026-05-23 after the LPFS weekly-report incident, runner
 recovery, diagnostic-logging upgrade, and journal-read safety update.
@@ -483,11 +480,11 @@ git status --short --branch
 
 Historical promoted-state note: the one-cycle live-send smoke completed and
 `LPFS_IC_Live` was installed/running. Do not treat this as current IC truth.
-The contained IC Stage 3 point-in-time pass records kill switch active, task
-disabled, runners `0`, watchdogs `0`, pending orders `0`, and the same `2`
-active positions. Refresh both lanes before any approved Stage 5 resumption
-step. Future agents should still repeat the same reconciliation after any
-approved config change or restart.
+The later contained IC Stage 3 point-in-time pass was also historical and was
+superseded by Stage 5 resumption. Current truth comes from accepted Stage 5
+resumed evidence and the latest dual VPS status packet. Future agents should
+still repeat reconciliation after any separately approved config change or
+restart that requires it.
 
 ## Watchdog And Scheduled Task
 

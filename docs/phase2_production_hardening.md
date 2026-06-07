@@ -1,12 +1,17 @@
 # LPFS Phase 2 Production Hardening
 
-## C-01 Containment Override
+## Current Live-Ops Boundary
 
-Read `lpfs_c01_live_safety_release.md` before using any start or resume command
-in this document. Both lanes are intentionally paused during the C-01 repair.
-Keep kill switches active, scheduled tasks disabled, watchdogs stopped, and
-`live_send.market_recovery_mode="disabled"` until a separately approved
-deployment step.
+Read `lpfs_c01_live_safety_release.md` before using any start, pause, or
+resume command in this document. Stage 5 minimum-safety resumption completed
+on 2026-06-07 ICT: FTMO was resumed first, IC second, both tasks were accepted
+as running, kill switches were clear, pending broker orders were `0`, and
+active positions were unchanged. `live_send.market_recovery_mode="disabled"`
+remains mandatory.
+
+Do not start duplicate runners, run reconciliation, run a canary, or manually
+modify broker orders or positions. For current truth, run the dual VPS status
+packet and inspect MT5 broker state, heartbeat, and journal evidence.
 
 Last updated: 2026-05-08 after documenting rollover spread / broker-feed
 divergence observations and live gate-attribution guidance.

@@ -91,29 +91,22 @@ file, and the JSONL journal before making operational decisions.
   switch, disable only that lane's scheduled task, verify runner/watchdog
   process count `0`, then collect fresh read-only MT5 and journal evidence
   before making operational decisions.
-- Offline publication scope is narrow: fix bounded-status collector/verifier
-  consistency for safe PowerShell CLIXML host/progress/information stderr,
-  update the minimum read-only profile and necessary docs/tests, verify, and
-  publish to `origin/codex/lpfs-c01-live-safety-release`. Do not add broad
+- Historical Stage 5 implementation scope was narrow: fix bounded-status
+  collector/verifier consistency for safe PowerShell CLIXML
+  host/progress/information stderr, update the minimum read-only profile and
+  necessary docs/tests, verify, and publish to
+  `origin/codex/lpfs-c01-live-safety-release`. It did not add broad
   evidence-framework features.
-- After publication, collect fresh dual-lane minimum read-only evidence.
-  Before final `main` deployment, FTMO must match approved runtime SHA
-  `3dd1895ca5300d448e4d100095b294e78679a6b9` and IC must match approved
-  runtime SHA `b02a3cb92a05e771782c7a9ca4e4339c9452969a`. After final `main`
-  deployment, each lane must match the final approved `main` SHA before that
-  lane can resume.
-- Minimum read-only checks are: correct VPS/account identity, expected
-  phase-specific runtime SHA, kill switch active, task disabled,
-  runner/watchdog counts `0`, recovery disabled, broker pending orders `0`,
-  exact approved active positions including SL/TP, and successful MT5
-  `account_info`, `terminal_info`, `orders_get`, and `positions_get`.
-- Resumption is sequential. Resume FTMO first, capture post-start evidence,
-  and touch IC only if FTMO post-start evidence is clean. For each lane:
-  confirm kill switch active; confirm task disabled and runner/watchdog counts
-  `0`; enable task; confirm enabled/ready but not running; clear only that
-  lane's kill switch; start only that lane's scheduled task; immediately
-  capture status, MT5 inventory, heartbeat, journal tail, process count,
-  pending orders, active positions, and any new exposure.
+- Historical pre-resumption checks before the accepted 2026-06-07 restart were:
+  correct VPS/account identity, expected phase-specific runtime SHA, kill
+  switch present, task disabled, runner/watchdog counts `0`, recovery
+  disabled, broker pending orders `0`, exact approved active positions
+  including SL/TP, and successful MT5 `account_info`, `terminal_info`,
+  `orders_get`, and `positions_get`.
+- Historical resumption was sequential: FTMO first, then IC only after FTMO
+  post-start evidence was clean. For future maintenance, pause only the
+  affected lane, preserve evidence, and collect fresh read-only status/MT5
+  proof before changing live operations.
 - Skip canaries. Do not run reconciliation. Do not manually close, cancel, or
   modify broker orders or positions without separate approval.
 - 2026-06-04 FTMO Stage 5 Gate 3 is accepted as `STOPPED`; do not retry it.
@@ -210,7 +203,7 @@ file, and the JSONL journal before making operational decisions.
   tests, and documentation changed. No VPS/MT5 access, reconciliation, canary,
   kill-switch clear, task enable/start, broker mutation, runtime-state edit,
   or journal write was performed by the offline patch.
-- 2026-06-02 C-01 containment is the current operational priority. Read
+- Historical 2026-06-02 C-01 containment record: read
   `docs/lpfs_c01_live_safety_release.md` before any LPFS operation. FTMO
   Stage 1 reconciliation passed point-in-time at exact SHA
   `3dd1895ca5300d448e4d100095b294e78679a6b9`: broker pending orders remain
@@ -220,12 +213,11 @@ file, and the JSONL journal before making operational decisions.
   `b02a3cb92a05e771782c7a9ca4e4339c9452969a`: broker pending orders remain
   `0`, the same `2` active positions remain supervised broker-side, and IC
   state is schema v2 with `KILL_SWITCH` active, `LPFS_IC_Live` disabled,
-  runner count `0`, and watchdog count `0`. Skip the IC Stage 4 canary by
-  default. Stop before Stage 5. Do not clear kill switches, enable tasks,
-  start watchdogs, rerun reconciliation, run a canary, edit runtime
-  state/journals, or modify broker exposure without a separate
-  operator-approved pre-resumption plan and fresh dual-lane read-only
-  evidence.
+  runner count `0`, and watchdog count `0`. This was superseded by the
+  accepted 2026-06-07 minimum-safety resumption recorded near the top of this
+  handoff. Do not rerun reconciliation, run a canary, start duplicate runners,
+  edit runtime state/journals, or manually modify broker exposure without a
+  separate operator-approved operation.
 - C-01 deployment order is `FTMO` first, then `IC`. Earlier `IC`-first
   instructions below are historical watchdog-rollout guidance and do not apply
   to the C-01 release.
@@ -246,8 +238,9 @@ file, and the JSONL journal before making operational decisions.
   `100.00%`, generated `docs/live_ops.html` was stable on regeneration, and
   `git diff --check` passed. A local rehearsal streamed all `275578` archived
   snapshot rows through the normalizer with `0` unresolved warnings. No
-  deployment was performed. Production remains intentionally paused until a
-  separate operator-approved deployment step.
+  deployment was performed. In that historical 2026-06-01 context, production
+  was intentionally paused until a separate operator-approved deployment step.
+  Stage 5 later resumed both lanes as recorded near the top of this handoff.
 - C-01 publication for final diff review: release commit
   `d9fdded3a5e66c7e72ab0719862cdc1e629a9a52` was pushed on branch
   `codex/lpfs-c01-live-safety-release` and draft PR
@@ -269,9 +262,10 @@ file, and the JSONL journal before making operational decisions.
   `reports/live_ops/lpfs_c01_stage0/20260601_233746`; its `manifest.json`
   SHA-256 is
   `0ea210c27637b6eb69b7383920bf76e673ec2db6794bb02ec73b580abdefca4e`.
-  It confirms both kill switches active, both scheduled tasks disabled,
-  runner process count `0` on both lanes, zero LPFS broker pending orders,
-  unchanged active-position inventory (FTMO `3`, IC `2`), and
+  At that historical Stage 0 checkpoint it confirmed both kill-switch files
+  existed, both scheduled tasks were disabled, runner process count `0` on
+  both lanes, zero LPFS broker pending orders, unchanged active-position
+  inventory (FTMO `3`, IC `2`), and
   `live_send.market_recovery_mode="disabled"` on both lanes. The earlier
   packet `reports/live_ops/lpfs_c01_stage0/20260601_233513` is incomplete and
   superseded. No VPS pull, v2 state write, reconcile-only execution, canary,
@@ -283,9 +277,11 @@ file, and the JSONL journal before making operational decisions.
   `79a3b21548653c4729eda07dc5f6da066d8018be`, passed `100` VPS-focused
   tests, passed strict broker reads before and after `--reconcile-only`, and
   preserved broker exposure unchanged: pending orders `0`, active positions
-  `3`. FTMO remains contained with `KILL_SWITCH` active, `LPFS_Live`
-  disabled, runner process count `0`, and recovery disabled. IC was not
-  accessed after the FTMO stop condition and must remain untouched. The
+  `3`. At that historical stop checkpoint FTMO was contained with
+  `KILL_SWITCH` active, `LPFS_Live` disabled, runner process count `0`, and
+  recovery disabled. IC was not accessed after the FTMO stop condition. Stage
+  5 later superseded this contained state by resuming FTMO first and IC
+  second. The
   authoritative ignored local FTMO stop packet is
   `reports/live_ops/lpfs_c01_deploy/20260602_003007/ftmo`; its
   `evidence_manifest.json` SHA-256 is
@@ -318,9 +314,11 @@ file, and the JSONL journal before making operational decisions.
   reconciliation heartbeat. Receipt operation ID:
   `fa7afa51991ee1b1ca90cf5821f6a6a07bd131416798f396f50a62393360de42`.
   Broker exposure remained unchanged: pending orders `0`, the same `3`
-  positions, and unchanged order/deal history ticket inventories. FTMO
-  remains contained with `KILL_SWITCH` active, `LPFS_Live` disabled, runner
-  count `0`, and recovery disabled. IC was not accessed.
+  positions, and unchanged order/deal history ticket inventories. At that
+  historical retry checkpoint FTMO was contained with `KILL_SWITCH` active,
+  `LPFS_Live` disabled, runner count `0`, and recovery disabled. IC was not
+  accessed. Stage 5 later superseded this contained state by resuming FTMO
+  first and IC second.
 - The authoritative FTMO Stage 1 retry packet was archived outside the
   disposable worktree at
   `C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_160716\ftmo_stage1_retry`.
@@ -338,10 +336,11 @@ file, and the JSONL journal before making operational decisions.
   completion row, and reconciliation heartbeat. Receipt operation ID:
   `016bd67907de7987ad84ba6186ab60e2fd44f22ac3ae3cf7cc5cd94eb68619a2`.
   Broker exposure remained unchanged: pending orders `0`, the same `2`
-  positions, and unchanged order/deal history counts (`232` / `129`). IC
-  remains contained with `KILL_SWITCH` active, `LPFS_IC_Live` disabled,
-  runner count `0`, watchdog count `0`, recovery disabled, and `26.24 GiB`
-  free disk. FTMO was not accessed.
+  positions, and unchanged order/deal history counts (`232` / `129`). At that
+  historical Stage 3 checkpoint IC was contained with `KILL_SWITCH` active,
+  `LPFS_IC_Live` disabled, runner count `0`, watchdog count `0`, recovery
+  disabled, and `26.24 GiB` free disk. FTMO was not accessed. Stage 5 later
+  superseded this contained state by resuming FTMO first and IC second.
 - The authoritative IC Stage 3 packet is archived outside the disposable
   worktree at
   `C:\TradeAutomationEvidence\lpfs_c01_deploy\20260602_152110\ic_stage3`.
@@ -1208,7 +1207,9 @@ ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; gi
   `config.lpfs_icmarkets_raw_spread.local.json`, magic `231500`, broker comment
   prefix `LPFSIC`, and separate Telegram channel. Historical promotion
   evidence recorded `LPFS_IC_Live` installed and running. Do not treat this as
-  current IC truth; use the contained IC Stage 3 point-in-time boundary above.
+  current IC truth; it is historical and was superseded by Stage 5 resumption.
+  Use the latest dual VPS status packet for current IC process, heartbeat,
+  config, and broker truth.
   IC live sizing policy epochs are tracked in
   `configs/live_policy_ledger.csv`; the active future-order policy is
   `risk_bucket_scale=1.0`, `max_risk_pct_per_trade=0.75`, and
@@ -1237,10 +1238,9 @@ ssh lpfs-vps "powershell -NoProfile -Command Set-Location C:\TradeAutomation; gi
 
 The dedicated IC VPS was provisioned, smoke-tested, and promoted on
 2026-05-06. This section is historical promotion evidence, not current IC
-truth. The current handoff boundary is the contained IC Stage 3 point-in-time
-pass: kill switch active, task disabled, runners `0`, watchdogs `0`, pending
-orders `0`, and the same `2` active positions. Refresh both lanes before any
-approved Stage 5 resumption step.
+truth. The later contained IC Stage 3 point-in-time pass was also historical
+and was superseded by Stage 5 resumption. Current truth comes from accepted
+Stage 5 resumed evidence and the latest dual VPS status packet.
 
 - SSH alias `lpfs-ic-vps` works from the local PC.
 - Repo checkout `C:\TradeAutomation` is clean on `main...origin/main`.
