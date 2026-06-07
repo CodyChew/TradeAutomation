@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOTS = [
+    ROOT / "scripts",
     ROOT / "concepts" / "lp_levels_lab" / "src",
     ROOT / "concepts" / "force_strike_pattern_lab" / "src",
     ROOT / "shared" / "backtest_engine_lab" / "src",
