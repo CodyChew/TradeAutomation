@@ -25,6 +25,7 @@ for src_root in [
 from lp_force_strike_strategy_lab import NotificationDelivery  # noqa: E402
 from scripts.run_lp_force_strike_live_executor import (  # noqa: E402
     DEFAULT_JOURNAL_NAME,
+    DEFAULT_MARKET_SNAPSHOT_JOURNAL_NAME,
     DEFAULT_STATE_NAME,
     LiveRunnerLock,
     RunnerLockActive,
@@ -288,10 +289,18 @@ class LiveRunnerNotificationTests(unittest.TestCase):
                 Path(runtime_settings.executor.journal_path),
                 Path(tmpdir) / "data" / "live" / "lpfs_ic_live_journal.jsonl",
             )
+            self.assertEqual(
+                Path(runtime_settings.executor.market_snapshot_journal_path),
+                Path(tmpdir) / "data" / "live" / "lpfs_ic_live_market_snapshots.jsonl",
+            )
 
             default_settings = _settings_with_runtime_root(settings, tmpdir)
             self.assertEqual(Path(default_settings.executor.state_path).name, DEFAULT_STATE_NAME)
             self.assertEqual(Path(default_settings.executor.journal_path).name, DEFAULT_JOURNAL_NAME)
+            self.assertEqual(
+                Path(default_settings.executor.market_snapshot_journal_path).name,
+                DEFAULT_MARKET_SNAPSHOT_JOURNAL_NAME,
+            )
 
     def test_kill_switch_event_is_journaled_and_sent(self) -> None:
         notifier = RecordingNotifier()

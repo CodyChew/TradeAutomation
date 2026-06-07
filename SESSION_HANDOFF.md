@@ -1,7 +1,8 @@
 # TradeAutomation Session Handoff
 
 Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption completed
-for FTMO first and IC second.
+for FTMO first and IC second, and after local verification of the Phase 1 live
+quote telemetry separation patch.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -59,6 +60,28 @@ file, and the JSONL journal before making operational decisions.
   commit may advance `main`; it does not change live runner behavior unless a
   future commit touches runtime code and the runners are deliberately
   restarted.
+- Phase 1 live quote telemetry separation is locally verified but not deployed
+  until each VPS checkout is pulled and each live runner is deliberately
+  restarted. The patch routes future live `market_snapshot` rows to
+  `lpfs_live_market_snapshots.jsonl` / `lpfs_ic_live_market_snapshots.jsonl`,
+  keeps primary lifecycle journals append-only, rejects telemetry paths that
+  resolve to the lifecycle journal path, trims telemetry with a 512 MiB cap and
+  90% hysteresis target, and exposes telemetry errors/counts in heartbeat and
+  status output. Dry-run and historical mixed journals remain unchanged.
+- Phase 1 telemetry verification receipts from this workspace: focused live
+  executor tests `37` passed; full LPFS suite `474` passed with `2` skipped;
+  `scripts/run_core_coverage.py` reported `100.00%`; PowerShell parse checks
+  passed for `Get-LpfsLiveStatus.ps1`, `Get-LpfsDualVpsStatus.ps1`, and
+  `run_lpfs_live_forever.ps1`; `docs/live_ops.html` regeneration was
+  byte-stable; `git diff --check` passed with line-ending warnings only; scope
+  audit found no runtime artifacts, journals, broker evidence, strategy/risk/
+  sizing/SL/TP/broker-send changes, reconciliation, or canary changes.
+- Deploy Phase 1 telemetry sequentially only: FTMO first, verify one runner
+  path, fresh heartbeat, MT5 reads, unchanged pending orders/active positions,
+  lifecycle journal growth without new `market_snapshot` rows, and telemetry
+  journal growth. Restart IC only after FTMO proof is clean. No reconciliation,
+  canary, manual broker mutation, or historical journal cleanup is part of this
+  deploy.
 - FTMO final running evidence packet:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_resume_minimal_20260607_102235`.
   Use the packet's `manifest.sha256.txt` sidecar for the current

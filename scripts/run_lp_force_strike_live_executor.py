@@ -55,6 +55,7 @@ ONE_CYCLE_CANARY_ACK = "I_ACCEPT_ONE_CYCLE_MAY_PLACE_AND_FILL_MULTIPLE_REAL_ORDE
 DEFAULT_RUNTIME_LIVE_DIR = Path("data/live")
 DEFAULT_STATE_NAME = "lpfs_live_state.json"
 DEFAULT_JOURNAL_NAME = "lpfs_live_journal.jsonl"
+DEFAULT_MARKET_SNAPSHOT_JOURNAL_NAME = "lpfs_live_market_snapshots.jsonl"
 DEFAULT_HEARTBEAT_NAME = "lpfs_live_heartbeat.json"
 
 
@@ -155,6 +156,13 @@ def _default_heartbeat_path(state_path: str | Path) -> Path:
     return Path(state_path).parent / DEFAULT_HEARTBEAT_NAME
 
 
+def _telemetry_heartbeat_fields(executor_config) -> dict[str, Any]:
+    return {
+        "market_snapshot_journal_path": executor_config.market_snapshot_journal_path,
+        "market_snapshot_journal_max_bytes": executor_config.market_snapshot_journal_max_bytes,
+    }
+
+
 def _settings_with_runtime_root(
     settings,
     runtime_root: str | Path | None,
@@ -167,14 +175,27 @@ def _settings_with_runtime_root(
     live_dir = Path(runtime_root) / DEFAULT_RUNTIME_LIVE_DIR
     state_name = str(state_file_name or DEFAULT_STATE_NAME)
     journal_name = str(journal_file_name or DEFAULT_JOURNAL_NAME)
+    market_snapshot_journal_name = _market_snapshot_journal_name(journal_name)
     return replace(
         settings,
         executor=replace(
             settings.executor,
             journal_path=str(live_dir / journal_name),
+            market_snapshot_journal_path=str(live_dir / market_snapshot_journal_name),
             state_path=str(live_dir / state_name),
         ),
     )
+
+
+def _market_snapshot_journal_name(journal_file_name: str) -> str:
+    name = str(journal_file_name or DEFAULT_JOURNAL_NAME)
+    if name == DEFAULT_JOURNAL_NAME:
+        return DEFAULT_MARKET_SNAPSHOT_JOURNAL_NAME
+    if name.endswith("_journal.jsonl"):
+        return f"{name[:-len('_journal.jsonl')]}_market_snapshots.jsonl"
+    if name.endswith(".jsonl"):
+        return f"{name[:-len('.jsonl')]}_market_snapshots.jsonl"
+    return f"{name}_market_snapshots.jsonl"
 
 
 def _runtime_state_requires_migration(original_state_path: str | Path, runtime_state_path: str | Path) -> bool:
@@ -317,6 +338,7 @@ def _run_reconcile_only(
             state_path=settings.executor.state_path,
             journal_path=settings.executor.journal_path,
             kill_switch_path=str(kill_switch_path),
+            **_telemetry_heartbeat_fields(settings.executor),
         )
         import MetaTrader5 as mt5_module
 
@@ -345,6 +367,7 @@ def _run_reconcile_only(
             state_path=settings.executor.state_path,
             journal_path=settings.executor.journal_path,
             kill_switch_path=str(kill_switch_path),
+            **_telemetry_heartbeat_fields(settings.executor),
             **_mt5_account_fields(mt5),
         )
         return 0
@@ -497,6 +520,7 @@ def main() -> int:
             state_path=settings.executor.state_path,
             journal_path=settings.executor.journal_path,
             kill_switch_path=str(kill_switch_path),
+            **_telemetry_heartbeat_fields(settings.executor),
             detail=_kill_switch_detail(kill_switch_path),
         )
         return KILL_SWITCH_EXIT_CODE
@@ -526,6 +550,7 @@ def main() -> int:
             state_path=settings.executor.state_path,
             journal_path=settings.executor.journal_path,
             kill_switch_path=str(kill_switch_path),
+            **_telemetry_heartbeat_fields(settings.executor),
         )
         import MetaTrader5 as mt5
 
@@ -568,6 +593,7 @@ def main() -> int:
             state_path=settings.executor.state_path,
             journal_path=settings.executor.journal_path,
             kill_switch_path=str(kill_switch_path),
+            **_telemetry_heartbeat_fields(settings.executor),
             **account_fields,
         )
         try:
@@ -594,6 +620,12 @@ def main() -> int:
                     orders_sent=result.orders_sent,
                     setups_rejected=result.setups_rejected,
                     setups_blocked=result.setups_blocked,
+                    market_snapshot_journal_path=result.market_snapshot_journal_path,
+                    market_snapshot_journal_max_bytes=result.market_snapshot_journal_max_bytes,
+                    market_snapshot_telemetry_write_failures=result.market_snapshot_telemetry_write_failures,
+                    market_snapshot_telemetry_retention_failures=result.market_snapshot_telemetry_retention_failures,
+                    latest_market_snapshot_telemetry_write_error=result.latest_market_snapshot_telemetry_write_error,
+                    latest_market_snapshot_telemetry_retention_error=result.latest_market_snapshot_telemetry_retention_error,
                 )
                 _write_heartbeat(
                     heartbeat_path,
@@ -608,12 +640,19 @@ def main() -> int:
                         "orders_sent": result.orders_sent,
                         "setups_rejected": result.setups_rejected,
                         "setups_blocked": result.setups_blocked,
+                        "market_snapshot_journal_path": result.market_snapshot_journal_path,
+                        "market_snapshot_journal_max_bytes": result.market_snapshot_journal_max_bytes,
+                        "market_snapshot_telemetry_write_failures": result.market_snapshot_telemetry_write_failures,
+                        "market_snapshot_telemetry_retention_failures": result.market_snapshot_telemetry_retention_failures,
+                        "latest_market_snapshot_telemetry_write_error": result.latest_market_snapshot_telemetry_write_error,
+                        "latest_market_snapshot_telemetry_retention_error": result.latest_market_snapshot_telemetry_retention_error,
                     },
                     sleep_seconds=sleep_seconds,
                     config_path=args.config,
                     state_path=settings.executor.state_path,
                     journal_path=settings.executor.journal_path,
                     kill_switch_path=str(kill_switch_path),
+                    **_telemetry_heartbeat_fields(settings.executor),
                     **account_fields,
                 )
                 if cycle_index + 1 < requested_cycles:
@@ -684,6 +723,7 @@ def main() -> int:
                     state_path=settings.executor.state_path,
                     journal_path=settings.executor.journal_path,
                     kill_switch_path=str(kill_switch_path),
+                    **_telemetry_heartbeat_fields(settings.executor),
                     detail=stop_detail,
                     **account_fields,
                 )

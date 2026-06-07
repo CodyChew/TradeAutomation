@@ -730,7 +730,7 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             )
             self.assertEqual(hash_result["actual"][live_executor_path], FTMO_LIVE_EXECUTOR_CRLF_SHA256)
 
-    def test_archived_gate1_v2_packet_only_keeps_ic_compact_timeout_blocker(self) -> None:
+    def test_archived_gate1_v2_packet_rejects_stale_bounded_status_after_status_refresh(self) -> None:
         if not ARCHIVED_GATE1_V2_PACKET.exists():
             self.skipTest(f"archived packet not found: {ARCHIVED_GATE1_V2_PACKET}")
         result = verifier.verify_packet(
@@ -743,16 +743,10 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
         by_step = {step["step"]: step for step in result["steps"]}
         self.assertEqual(by_step["FTMO/strict_mt5_probe"]["status"], "PASS")
         self.assertEqual(by_step["IC/strict_mt5_probe"]["status"], "PASS")
-        self.assertEqual(by_step["FTMO/bounded_status"]["status"], "PASS")
-        self.assertEqual(by_step["IC/bounded_status"]["status"], "PASS")
-        self.assertEqual(
-            by_step["FTMO/bounded_status"]["stderr_classification"]["kind"],
-            "safe_powershell_host_progress_clixml",
-        )
-        self.assertEqual(
-            by_step["IC/bounded_status"]["stderr_classification"]["kind"],
-            "safe_powershell_host_progress_clixml",
-        )
+        self.assertEqual(by_step["FTMO/bounded_status"]["status"], "STOPPED")
+        self.assertEqual(by_step["IC/bounded_status"]["status"], "STOPPED")
+        self.assertIn("status_implementation artifact SHA-256 mismatch", by_step["FTMO/bounded_status"]["reason"])
+        self.assertIn("status_implementation artifact SHA-256 mismatch", by_step["IC/bounded_status"]["reason"])
         self.assertEqual(by_step["FTMO/compact_containment"]["status"], "PASS")
         hash_result = next(
             item
@@ -772,6 +766,8 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             failure
             for failure in result["failures"]
             if "IC/compact_containment:" not in failure
+            and "FTMO/bounded_status:" not in failure
+            and "IC/bounded_status:" not in failure
             and "manifest result mismatch" not in failure
             and "validation_summary result mismatch" not in failure
         ]
@@ -2186,6 +2182,8 @@ class Stage5PreExecutionContractTests(unittest.TestCase):
                 "947105e7a50c46b582f7f0ed336b6a602c38d7a931b9cbc4d1f5d7f4ed72ba10",
                 "61f2831aa3a3d2ca82a57e83274389a98a2095be0b3cd8a728a9dbcada441c16",
                 "c6a0ccedf632a79ecee725bb4db55a186ddbe640bba6c4d1603c1d8fff4a52cd",
+                "4d091773f2d3e65e038d80e53cfa5abc3180f840404249624c5e07448de91930",
+                "77d3f62019efb5808f425b9847ef6346bdc254293ddc53b3c70356f6809db22d",
             },
         )
         self.assertNotIn(stale_contract_sha, pre_execution.PINNED_READ_ONLY_CONTRACT_DOCUMENT_SHA256S)

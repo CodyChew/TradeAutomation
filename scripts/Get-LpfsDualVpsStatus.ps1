@@ -205,6 +205,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+DEFAULT_MARKET_SNAPSHOT_JOURNAL_MAX_BYTES = 536870912
 name = r"""$($Spec.Name)"""
 runtime_root = Path(r"""$($Spec.RuntimeRoot)""")
 state_name = r"""$($Spec.StateFileName)"""
@@ -275,6 +276,27 @@ def file_sha256(path):
     except Exception as exc:
         return "ERROR:" + str(exc)
 
+def market_snapshot_journal_name(journal_file_name):
+    value = str(journal_file_name or "lpfs_live_journal.jsonl")
+    if value == "lpfs_live_journal.jsonl":
+        return "lpfs_live_market_snapshots.jsonl"
+    if value.endswith("_journal.jsonl"):
+        return value[: -len("_journal.jsonl")] + "_market_snapshots.jsonl"
+    if value.endswith(".jsonl"):
+        return value[: -len(".jsonl")] + "_market_snapshots.jsonl"
+    return value + "_market_snapshots.jsonl"
+
+def file_metadata(path):
+    path = Path(path)
+    if not path.exists():
+        return {"path": str(path), "size_bytes": 0, "mtime": ""}
+    stat = path.stat()
+    return {
+        "path": str(path),
+        "size_bytes": int(stat.st_size),
+        "mtime": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+    }
+
 def run_command(args, timeout=20):
     try:
         completed = subprocess.run(args, text=True, capture_output=True, timeout=timeout)
@@ -292,6 +314,7 @@ def read_config_summary(path):
         "exists": path.exists(),
         "sha256": file_sha256(path) if path.exists() else None,
         "live_send_market_recovery_mode": None,
+        "market_snapshot_journal_max_bytes": DEFAULT_MARKET_SNAPSHOT_JOURNAL_MAX_BYTES,
     }
     if not path.exists():
         return summary
@@ -300,6 +323,9 @@ def read_config_summary(path):
         live_send = payload.get("live_send") if isinstance(payload, dict) else None
         if isinstance(live_send, dict):
             summary["live_send_market_recovery_mode"] = live_send.get("market_recovery_mode")
+            summary["market_snapshot_journal_max_bytes"] = int(
+                live_send.get("market_snapshot_journal_max_bytes", DEFAULT_MARKET_SNAPSHOT_JOURNAL_MAX_BYTES)
+            )
     except Exception as exc:
         summary["parse_error"] = str(exc)
     return summary
@@ -380,13 +406,16 @@ def parse_utc(value):
         return None
 
 def heartbeat_summary(path):
-    summary = {"exists": path.exists(), "status": None, "updated_at_utc": None, "age_seconds": None, "fresh": False}
+    summary = {"exists": path.exists(), "status": None, "updated_at_utc": None, "age_seconds": None, "fresh": False, "last_cycle": {}}
     if not path.exists():
         return summary
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
         summary["status"] = payload.get("status")
         summary["updated_at_utc"] = payload.get("updated_at_utc")
+        summary["last_cycle"] = payload.get("last_cycle") if isinstance(payload.get("last_cycle"), dict) else {}
+        summary["market_snapshot_journal_path"] = payload.get("market_snapshot_journal_path")
+        summary["market_snapshot_journal_max_bytes"] = payload.get("market_snapshot_journal_max_bytes")
         updated = parse_utc(summary["updated_at_utc"])
         if updated is not None:
             if updated.tzinfo is None:
@@ -453,6 +482,7 @@ def classify_lane(kill_switch_active, task, processes, heartbeat, broker):
 live_dir = runtime_root / "data" / "live"
 state_path = live_dir / state_name
 journal_path = live_dir / journal_name
+market_snapshot_journal_path = live_dir / market_snapshot_journal_name(journal_name)
 kill_switch_path = live_dir / "KILL_SWITCH"
 heartbeat_path = live_dir / r"""$($Spec.HeartbeatFileName)"""
 config_summary = read_config_summary(config_path)
@@ -465,6 +495,8 @@ if isinstance(state_document, dict) and state_document.get("state_schema_version
 else:
     state = state_document
 journal_rows = tail_jsonl(journal_path)
+lifecycle_journal = file_metadata(journal_path)
+market_snapshot_journal = file_metadata(market_snapshot_journal_path)
 
 open_state_items = []
 if isinstance(state, dict):
@@ -578,6 +610,9 @@ snapshot = {
     "name": name,
     "state_path": str(state_path),
     "journal_path": str(journal_path),
+    "lifecycle_journal": lifecycle_journal,
+    "market_snapshot_journal": market_snapshot_journal,
+    "market_snapshot_journal_max_bytes": heartbeat.get("market_snapshot_journal_max_bytes") or config_summary.get("market_snapshot_journal_max_bytes"),
     "config_path": str(config_path),
     "config": config_summary,
     "task": task,
@@ -610,6 +645,17 @@ print("heartbeat_fresh=" + str(operational_summary["heartbeat_fresh"]))
 print("broker_status=" + str(operational_summary["broker_status"]))
 print("pending_strategy_order_count=" + str(operational_summary["pending_strategy_order_count"]))
 print("strategy_position_count=" + str(operational_summary["strategy_position_count"]))
+print("lifecycle_journal_path=" + str(lifecycle_journal["path"]))
+print("lifecycle_journal_size_bytes=" + str(lifecycle_journal["size_bytes"]))
+print("lifecycle_journal_mtime=" + str(lifecycle_journal["mtime"]))
+print("market_snapshot_journal_path=" + str(market_snapshot_journal["path"]))
+print("market_snapshot_journal_size_bytes=" + str(market_snapshot_journal["size_bytes"]))
+print("market_snapshot_journal_mtime=" + str(market_snapshot_journal["mtime"]))
+print("market_snapshot_journal_max_bytes=" + str(snapshot["market_snapshot_journal_max_bytes"]))
+print("market_snapshot_telemetry_write_failure_count=" + str(heartbeat.get("last_cycle", {}).get("market_snapshot_telemetry_write_failures", 0)))
+print("market_snapshot_telemetry_retention_failure_count=" + str(heartbeat.get("last_cycle", {}).get("market_snapshot_telemetry_retention_failures", 0)))
+print("latest_market_snapshot_telemetry_write_error=" + str(heartbeat.get("last_cycle", {}).get("latest_market_snapshot_telemetry_write_error", "")))
+print("latest_market_snapshot_telemetry_retention_error=" + str(heartbeat.get("last_cycle", {}).get("latest_market_snapshot_telemetry_retention_error", "")))
 print("config_sha256=" + str(config_summary.get("sha256")))
 print("live_send.market_recovery_mode=" + str(config_summary.get("live_send_market_recovery_mode")))
 print("LPFS_SNAPSHOT_JSON=" + json.dumps(snapshot, separators=(",", ":"), sort_keys=True))

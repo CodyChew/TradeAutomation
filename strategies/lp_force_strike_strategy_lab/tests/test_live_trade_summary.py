@@ -77,6 +77,23 @@ def _write_snapshot(
 
 
 class LiveTradeSummaryTests(unittest.TestCase):
+    def test_historical_mixed_journal_market_snapshots_still_load_and_do_not_create_trades(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            journal = Path(tmpdir) / "mixed.jsonl"
+            rows = [
+                {"event": "market_snapshot", "symbol": "EURUSD", "timeframe": "H4", "bid": 1.1, "ask": 1.2},
+                _journal_row(
+                    "order_sent",
+                    fields={"order_ticket": 9001, "entry": 1.1, "volume": 0.02, "price_digits": 5},
+                ),
+            ]
+            journal.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+
+            events = load_live_journal_events(journal)
+
+            self.assertEqual([event["event"] for event in events], ["market_snapshot", "order_sent"])
+            self.assertEqual(build_closed_trade_summaries(events), [])
+
     def test_summary_pairs_lifecycle_events_and_formats_recent_trades(self) -> None:
         events = [
             _journal_row(

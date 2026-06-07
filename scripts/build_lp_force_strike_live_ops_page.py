@@ -203,9 +203,14 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
             "Processed signal keys, pending metadata, active positions, and Telegram message IDs prevent duplicate sends after restart.",
         ),
         (
-            "Audit proof",
+            "Lifecycle journal",
             "data/live/lpfs_live_journal.jsonl",
-            "Every placement, adoption, fill, cancellation, close, skip, and notification outcome is recorded as durable JSONL.",
+            "Every placement, adoption, fill, cancellation, close, skip, error, and notification outcome is recorded as durable JSONL.",
+        ),
+        (
+            "Quote telemetry",
+            "data/live/lpfs_live_market_snapshots.jsonl",
+            "High-volume market_snapshot rows are separated from lifecycle truth and capped by telemetry-only retention.",
         ),
         (
             "Runner proof",
@@ -248,7 +253,8 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
                 "Monitor RUNNER STARTED / STOPPED cards and the latest cycle summary.",
                 "Monitor lpfs_live_heartbeat.json and the latest timestamped log when using the Phase 2 wrapper.",
                 "Use MT5 orders_get / positions_get as the source of truth for open exposure.",
-                "Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled.",
+                "Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled; quote telemetry lives in lpfs_live_market_snapshots.jsonl after the Phase 1 telemetry split.",
+                "Pulling code alone does not start separated telemetry; restart each live runner deliberately, FTMO first and IC only after FTMO proof is clean.",
                 "Treat spread waits and broker market-closed placement blocks as retryable until entry touch or bar-count expiry makes the setup invalid. C-01 holds market recovery disabled.",
             ],
         ),
@@ -707,9 +713,14 @@ Get-CimInstance Win32_Process |
             "Restart continuity, processed signal keys, pending orders, active positions, Telegram message IDs.",
         ),
         (
-            "Journal",
+            "Lifecycle journal",
             "data/live/lpfs_live_journal.jsonl",
-            "Durable audit log with raw technical fields and notification payloads.",
+            "Append-only lifecycle/trade audit log with raw technical fields and notification payloads.",
+        ),
+        (
+            "Market snapshot journal",
+            "data/live/lpfs_live_market_snapshots.jsonl",
+            "Separated high-volume quote telemetry. Retention applies here only; historical mixed journals remain immutable evidence.",
         ),
         (
             "Handoff",
@@ -756,7 +767,7 @@ Get-CimInstance Win32_Process |
       <div class="eyebrow">Static Verification Guide</div>
       <h2 id="proof-title">What Proves The Runner Is Correct</h2>
       <p class="callout warning"><strong>Stage 5 resumption completed:</strong> accepted final proof shows FTMO <code>LPFS_Live</code> and IC <code>LPFS_IC_Live</code> resumed and running, kill switches clear, pending broker orders 0, and active positions unchanged. Recovery remains held at <code>market_recovery_mode=disabled</code>. This static page records the accepted state; run the dual VPS status packet for current truth before any operation.</p>
-      <p class="callout warning"><strong>Real orders can be sent.</strong> Correctness is proven from MT5 broker state, local state, and journal rows. Telegram is useful for operator awareness, but Telegram is reporting only and does not prove broker state.</p>
+      <p class="callout warning"><strong>Real orders can be sent.</strong> Correctness is proven from MT5 broker state, local state, and lifecycle journal rows. Quote telemetry is stored separately after the Phase 1 telemetry split. Telegram is useful for operator awareness, but Telegram is reporting only and does not prove broker state.</p>
       <div class="ops-grid">
         {_fact_grid(proof_facts)}
       </div>
@@ -959,7 +970,7 @@ Get-CimInstance Win32_Process |
       </div>
     </section>
   </main>
-  <footer>Generated static live-ops guide. Current broker state must be checked from MT5, live state, and the JSONL journal.</footer>
+  <footer>Generated static live-ops guide. Current broker state must be checked from MT5, live state, and the lifecycle JSONL journal.</footer>
 </body>
 </html>
 """

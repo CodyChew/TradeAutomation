@@ -20,10 +20,10 @@
         "post_bounded_status": {
           "bundle_kind": "hash_approved_bounded_status_v1",
           "contract_version": 2,
-          "expected_command_sha256": "ba9b9d4e12c15fa0cf07f470eebf7aaf195281070710ba16e054ae1347898ac6",
-          "expected_status_implementation_sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+          "expected_command_sha256": "49c78f26fb8821803aea805049f2b9e873cf4e3e5829404021bc8ac01d0919b5",
+          "expected_status_implementation_sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
           "required_stdout_substrings": [
-            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
             "LPFS live status"
           ]
         },
@@ -205,10 +205,10 @@
         "pre_bounded_status": {
           "bundle_kind": "hash_approved_bounded_status_v1",
           "contract_version": 2,
-          "expected_command_sha256": "9b3773d5d1d8fb213194bb92aba46e0fa60497ec626af3f959e1466e045b8efd",
-          "expected_status_implementation_sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+          "expected_command_sha256": "ad5087482e1c3c2e264ea047a5f733df7666eba009373de74303ab92ffb2e112",
+          "expected_status_implementation_sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
           "required_stdout_substrings": [
-            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
             "LPFS live status"
           ]
         },
@@ -403,10 +403,10 @@
         "FTMO/bounded_status": {
           "bundle_kind": "hash_approved_bounded_status_v1",
           "contract_version": 2,
-          "expected_command_sha256": "f9eb4a3aef457c529a7a0356643084268c859d8035e3181b7c62507b900d46ff",
-          "expected_status_implementation_sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+          "expected_command_sha256": "30b9b1f3fea9015880235cb9db09d17a3a92bf7eb931de71ba60d6bf02992af6",
+          "expected_status_implementation_sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
           "required_stdout_substrings": [
-            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
             "LPFS live status"
           ]
         },
@@ -566,10 +566,10 @@
         "IC/bounded_status": {
           "bundle_kind": "hash_approved_bounded_status_v1",
           "contract_version": 2,
-          "expected_command_sha256": "826121376eba41da090baeb334fd61b056813eca0552488ff2ed07b3e7d27961",
-          "expected_status_implementation_sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+          "expected_command_sha256": "88bb2929e1619722c7acd1387d2ea0c34bf82bed34381f188c6a925da41c0e1c",
+          "expected_status_implementation_sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
           "required_stdout_substrings": [
-            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
             "LPFS live status"
           ]
         },
@@ -919,10 +919,10 @@
         "post_bounded_status": {
           "bundle_kind": "hash_approved_bounded_status_v1",
           "contract_version": 2,
-          "expected_command_sha256": "ab0e441481f078e32c2295645fcb3aa002b6ce282ba03806945a51c5a042c671",
-          "expected_status_implementation_sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+          "expected_command_sha256": "d182012ba68d4d8a8aa261ba139085e384ee71f341a9000d1933e596c3cc7dae",
+          "expected_status_implementation_sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
           "required_stdout_substrings": [
-            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
             "LPFS live status"
           ]
         },
@@ -1094,10 +1094,10 @@
         "pre_bounded_status": {
           "bundle_kind": "hash_approved_bounded_status_v1",
           "contract_version": 2,
-          "expected_command_sha256": "898e3c12c0aad185a6caa67d0317cfaca61e8762f0b13a50cbbd951688bd2d5e",
-          "expected_status_implementation_sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+          "expected_command_sha256": "a1a1f9b9eeb4ad65ac4b79d38bdaccbc61ec2711b614885cde5d52d8a39fefdc",
+          "expected_status_implementation_sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
           "required_stdout_substrings": [
-            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38",
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
             "LPFS live status"
           ]
         },

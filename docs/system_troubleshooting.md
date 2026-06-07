@@ -165,6 +165,22 @@ Production LPFS journals and state files are actively written by the live
 runners. Reads can still become operationally unsafe if they open the files
 without sharing modes that permit the writer to continue.
 
+After the Phase 1 live quote telemetry split, the primary lifecycle journals
+(`lpfs_live_journal.jsonl` and `lpfs_ic_live_journal.jsonl`) remain append-only
+trade/lifecycle truth. New high-volume `market_snapshot` rows are written to
+the separate market snapshot journals
+(`lpfs_live_market_snapshots.jsonl` and
+`lpfs_ic_live_market_snapshots.jsonl`) with telemetry-only retention. Historical
+mixed journals are immutable evidence; do not delete, truncate, compact, or
+rewrite them as part of this phase. Quote-telemetry analysis must explicitly
+read the market snapshot journal.
+
+This changes live runner behavior. Pulling code alone is not enough: each lane
+starts writing separated quote telemetry only after a deliberate runner restart.
+Deploy sequentially, FTMO first and IC only after FTMO telemetry/status proof is
+clean. Do not run reconciliation, canaries, manual broker mutation, or strategy,
+risk, sizing, SL/TP, or broker-send changes as part of this telemetry deploy.
+
 Known unsafe patterns against `C:\TradeAutomationRuntime*\data\live\*.jsonl`
 or live state files:
 

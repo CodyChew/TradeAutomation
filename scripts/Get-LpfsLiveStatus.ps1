@@ -3,6 +3,7 @@ param(
     [string]$RuntimeRoot = "C:\TradeAutomationRuntime",
     [string]$StateFileName = "lpfs_live_state.json",
     [string]$JournalFileName = "lpfs_live_journal.jsonl",
+    [string]$MarketSnapshotJournalFileName = "",
     [string]$HeartbeatFileName = "lpfs_live_heartbeat.json",
     [string]$LogFilter = "*.log",
     [int]$JournalLines = 10,
@@ -15,6 +16,18 @@ $ErrorActionPreference = "Stop"
 $LiveDir = Join-Path $RuntimeRoot "data\live"
 $StatePath = Join-Path $LiveDir $StateFileName
 $JournalPath = Join-Path $LiveDir $JournalFileName
+if ([string]::IsNullOrWhiteSpace($MarketSnapshotJournalFileName)) {
+    if ($JournalFileName -eq "lpfs_live_journal.jsonl") {
+        $MarketSnapshotJournalFileName = "lpfs_live_market_snapshots.jsonl"
+    } elseif ($JournalFileName.EndsWith("_journal.jsonl")) {
+        $MarketSnapshotJournalFileName = $JournalFileName.Substring(0, $JournalFileName.Length - "_journal.jsonl".Length) + "_market_snapshots.jsonl"
+    } elseif ($JournalFileName.EndsWith(".jsonl")) {
+        $MarketSnapshotJournalFileName = $JournalFileName.Substring(0, $JournalFileName.Length - ".jsonl".Length) + "_market_snapshots.jsonl"
+    } else {
+        $MarketSnapshotJournalFileName = "$($JournalFileName)_market_snapshots.jsonl"
+    }
+}
+$MarketSnapshotJournalPath = Join-Path $LiveDir $MarketSnapshotJournalFileName
 $HeartbeatPath = Join-Path $LiveDir $HeartbeatFileName
 $KillSwitchPath = Join-Path $LiveDir "KILL_SWITCH"
 $LogDir = Join-Path $LiveDir "logs"
@@ -50,6 +63,23 @@ function Get-JsonField {
         return "$Value"
     }
     return $Default
+}
+
+function Write-FileMetadata {
+    param(
+        [string]$Prefix,
+        [string]$Path
+    )
+
+    Write-Host "$($Prefix)_path=$Path"
+    if (Test-Path -LiteralPath $Path) {
+        $Item = Get-Item -LiteralPath $Path
+        Write-Host "$($Prefix)_size_bytes=$($Item.Length)"
+        Write-Host "$($Prefix)_mtime=$($Item.LastWriteTimeUtc.ToString("o"))"
+    } else {
+        Write-Host "$($Prefix)_size_bytes=0"
+        Write-Host "$($Prefix)_mtime="
+    }
 }
 
 function Write-DiskStatus {
@@ -179,6 +209,34 @@ if ($null -eq $State) {
 }
 
 Write-Host ""
+Write-Host "lifecycle_journal_path=$JournalPath"
+if (Test-Path -LiteralPath $JournalPath) {
+    $LifecycleJournalItem = Get-Item -LiteralPath $JournalPath
+    Write-Host "lifecycle_journal_size_bytes=$($LifecycleJournalItem.Length)"
+    Write-Host "lifecycle_journal_mtime=$($LifecycleJournalItem.LastWriteTimeUtc.ToString("o"))"
+} else {
+    Write-Host "lifecycle_journal_size_bytes=0"
+    Write-Host "lifecycle_journal_mtime="
+}
+Write-Host "market_snapshot_journal_path=$MarketSnapshotJournalPath"
+if (Test-Path -LiteralPath $MarketSnapshotJournalPath) {
+    $MarketSnapshotJournalItem = Get-Item -LiteralPath $MarketSnapshotJournalPath
+    Write-Host "market_snapshot_journal_size_bytes=$($MarketSnapshotJournalItem.Length)"
+    Write-Host "market_snapshot_journal_mtime=$($MarketSnapshotJournalItem.LastWriteTimeUtc.ToString("o"))"
+} else {
+    Write-Host "market_snapshot_journal_size_bytes=0"
+    Write-Host "market_snapshot_journal_mtime="
+}
+$MarketSnapshotMaxBytes = Get-JsonField -Object $Heartbeat -Name "market_snapshot_journal_max_bytes" -Default "536870912"
+Write-Host "market_snapshot_journal_max_bytes=$MarketSnapshotMaxBytes"
+$LastCycle = $null
+if ($null -ne $Heartbeat -and $Heartbeat.PSObject.Properties.Name -contains "last_cycle") {
+    $LastCycle = $Heartbeat.last_cycle
+}
+Write-Host "market_snapshot_telemetry_write_failure_count=$(Get-JsonField -Object $LastCycle -Name 'market_snapshot_telemetry_write_failures' -Default '0')"
+Write-Host "market_snapshot_telemetry_retention_failure_count=$(Get-JsonField -Object $LastCycle -Name 'market_snapshot_telemetry_retention_failures' -Default '0')"
+Write-Host "latest_market_snapshot_telemetry_write_error=$(Get-JsonField -Object $LastCycle -Name 'latest_market_snapshot_telemetry_write_error')"
+Write-Host "latest_market_snapshot_telemetry_retention_error=$(Get-JsonField -Object $LastCycle -Name 'latest_market_snapshot_telemetry_retention_error')"
 Write-Host "journal_path=$JournalPath"
 if (Test-Path -LiteralPath $JournalPath) {
     $Rows = @(Get-Content -LiteralPath $JournalPath -Tail $JournalLines)

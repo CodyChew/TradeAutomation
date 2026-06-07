@@ -81,6 +81,8 @@ TRADE_RETCODE_CLIENT_DISABLES_AT = 10027
 TRADE_RETCODE_MARKET_CLOSED = 10018
 LIVE_STATE_SCHEMA_VERSION = 2
 MINIMUM_LIVE_STATE_READER_SCHEMA_VERSION = 2
+DEFAULT_MARKET_SNAPSHOT_JOURNAL_MAX_BYTES = 512 * 1024 * 1024
+MARKET_SNAPSHOT_RETENTION_TRIM_TARGET_FRACTION = 0.90
 
 
 class BrokerSnapshotUnavailable(RuntimeError):
@@ -103,6 +105,8 @@ class LiveSendExecutorConfig:
     broker_timezone: str = "UTC"
     history_bars: int = 300
     journal_path: str = "data/live/lpfs_live_journal.jsonl"
+    market_snapshot_journal_path: str = "data/live/lpfs_live_market_snapshots.jsonl"
+    market_snapshot_journal_max_bytes: int = DEFAULT_MARKET_SNAPSHOT_JOURNAL_MAX_BYTES
     state_path: str = "data/live/lpfs_live_state.json"
     max_lots_per_order: float | None = None
     max_risk_pct_per_trade: float = 0.75
@@ -409,6 +413,22 @@ class LiveCycleResult:
     orders_sent: int
     setups_rejected: int
     setups_blocked: int = 0
+    market_snapshot_journal_path: str | None = None
+    market_snapshot_journal_max_bytes: int | None = None
+    market_snapshot_telemetry_write_failures: int = 0
+    market_snapshot_telemetry_retention_failures: int = 0
+    latest_market_snapshot_telemetry_write_error: str | None = None
+    latest_market_snapshot_telemetry_retention_error: str | None = None
+
+
+@dataclass(frozen=True)
+class MarketSnapshotTelemetryOutcome:
+    """Best-effort result from writing quote telemetry outside the lifecycle journal."""
+
+    write_failed: bool = False
+    retention_failed: bool = False
+    write_error: str | None = None
+    retention_error: str | None = None
 
 
 @dataclass(frozen=True)
@@ -780,6 +800,15 @@ def load_live_send_settings(path: str | Path = "config.local.json", *, env: dict
         broker_timezone=str(live_payload.get("broker_timezone", dry_executor.broker_timezone)),
         history_bars=int(live_payload.get("history_bars", dry_executor.history_bars)),
         journal_path=str(_resolve_local_path(base_dir, live_payload.get("journal_path", "data/live/lpfs_live_journal.jsonl"))),
+        market_snapshot_journal_path=str(
+            _resolve_local_path(
+                base_dir,
+                live_payload.get("market_snapshot_journal_path", "data/live/lpfs_live_market_snapshots.jsonl"),
+            )
+        ),
+        market_snapshot_journal_max_bytes=int(
+            live_payload.get("market_snapshot_journal_max_bytes", DEFAULT_MARKET_SNAPSHOT_JOURNAL_MAX_BYTES)
+        ),
         state_path=str(_resolve_local_path(base_dir, live_payload.get("state_path", "data/live/lpfs_live_state.json"))),
         max_lots_per_order=_optional_float(live_payload.get("max_lots_per_order", dry_executor.max_lots_per_order)),
         max_risk_pct_per_trade=float(
@@ -833,6 +862,18 @@ def validate_live_send_settings(settings: LiveSendSettings) -> None:
         raise LocalConfigError("live_send.market_recovery_mode must be 'disabled' during the recovery safety hold.")
     if config.market_recovery_deviation_points < 0:
         raise LocalConfigError("live_send.market_recovery_deviation_points must be zero or positive.")
+    if config.market_snapshot_journal_max_bytes <= 0:
+        raise LocalConfigError("live_send.market_snapshot_journal_max_bytes must be positive.")
+    if _path_identity(config.journal_path) == _path_identity(config.market_snapshot_journal_path):
+        raise LocalConfigError("live_send.market_snapshot_journal_path must differ from live_send.journal_path.")
+
+
+def _path_identity(path: str | Path) -> str:
+    try:
+        resolved = Path(path).resolve(strict=False)
+    except OSError:
+        resolved = Path(path).absolute()
+    return os.path.normcase(os.path.normpath(str(resolved)))
 
 
 def load_live_state(path: str | Path) -> LiveExecutorState:
@@ -2380,6 +2421,91 @@ def reconcile_live_state(
     return next_state
 
 
+def retain_market_snapshot_journal(path: str | Path, max_bytes: int) -> None:
+    """Keep newest complete telemetry JSONL rows under a lower target using atomic replacement."""
+
+    telemetry_path = Path(path)
+    max_size = int(max_bytes)
+    if max_size <= 0 or not telemetry_path.exists():
+        return
+    current_size = telemetry_path.stat().st_size
+    if current_size <= max_size:
+        return
+
+    trim_target = max(1, int(max_size * MARKET_SNAPSHOT_RETENTION_TRIM_TARGET_FRACTION))
+    start_offset = max(0, current_size - trim_target)
+    with telemetry_path.open("rb") as handle:
+        handle.seek(start_offset - 1)
+        if handle.read(1) != b"\n":
+            handle.readline()
+        payload = handle.read()
+    if payload and not payload.endswith(b"\n"):
+        boundary = payload.rfind(b"\n")
+        payload = b"" if boundary < 0 else payload[: boundary + 1]
+
+    temp_path = telemetry_path.with_name(f".{telemetry_path.name}.{os.getpid()}.retain.tmp")
+    try:
+        temp_path.write_bytes(payload)
+        os.replace(temp_path, telemetry_path)
+    finally:
+        try:
+            temp_path.unlink()
+        except OSError:
+            pass
+
+
+def append_market_snapshot_telemetry(
+    config: LiveSendExecutorConfig,
+    symbol: str,
+    timeframe: str,
+    market: MT5MarketSnapshot,
+) -> MarketSnapshotTelemetryOutcome:
+    """Write quote telemetry best-effort while auditing failures to the lifecycle journal."""
+
+    write_error: str | None = None
+    retention_error: str | None = None
+    try:
+        append_market_snapshot(config.market_snapshot_journal_path, symbol, timeframe, market)
+    except Exception as exc:
+        write_error = f"{type(exc).__name__}: {exc}"
+        try:
+            append_audit_event(
+                config.journal_path,
+                "market_snapshot_telemetry_write_failed",
+                symbol=symbol,
+                timeframe=timeframe,
+                market_snapshot_journal_path=config.market_snapshot_journal_path,
+                error=write_error,
+            )
+        except Exception:
+            pass
+        return MarketSnapshotTelemetryOutcome(write_failed=True, write_error=write_error)
+
+    try:
+        retain_market_snapshot_journal(
+            config.market_snapshot_journal_path,
+            config.market_snapshot_journal_max_bytes,
+        )
+    except Exception as exc:
+        retention_error = f"{type(exc).__name__}: {exc}"
+        try:
+            append_audit_event(
+                config.journal_path,
+                "market_snapshot_telemetry_retention_failed",
+                symbol=symbol,
+                timeframe=timeframe,
+                market_snapshot_journal_path=config.market_snapshot_journal_path,
+                market_snapshot_journal_max_bytes=config.market_snapshot_journal_max_bytes,
+                error=retention_error,
+            )
+        except Exception:
+            pass
+    return MarketSnapshotTelemetryOutcome(
+        retention_failed=retention_error is not None,
+        retention_error=retention_error,
+    )
+
+
 def run_live_send_cycle(
     mt5_module: Any,
     *,
@@ -2397,11 +2523,21 @@ def run_live_send_cycle(
     orders_sent = 0
     setups_rejected = 0
     setups_blocked = 0
+    telemetry_write_failures = 0
+    telemetry_retention_failures = 0
+    latest_telemetry_write_error: str | None = None
+    latest_telemetry_retention_error: str | None = None
     for symbol in config.symbols:
         for timeframe in config.timeframes:
             frame = fetch_closed_candles(mt5_module, symbol=symbol, timeframe=timeframe, bars=config.history_bars, broker_timezone=config.broker_timezone)
             market = market_snapshot_from_mt5(mt5_module, symbol, broker_timezone=config.broker_timezone)
-            append_market_snapshot(config.journal_path, symbol, timeframe, market)
+            telemetry = append_market_snapshot_telemetry(config, symbol, timeframe, market)
+            if telemetry.write_failed:
+                telemetry_write_failures += 1
+                latest_telemetry_write_error = telemetry.write_error
+            if telemetry.retention_failed:
+                telemetry_retention_failures += 1
+                latest_telemetry_retention_error = telemetry.retention_error
             frames_processed += 1
             for item in setup_provider(frame, symbol, timeframe, _dry_compatible_config(config)):
                 if isinstance(item, SkippedTrade):
@@ -2428,6 +2564,12 @@ def run_live_send_cycle(
         orders_sent=orders_sent,
         setups_rejected=setups_rejected,
         setups_blocked=setups_blocked,
+        market_snapshot_journal_path=config.market_snapshot_journal_path,
+        market_snapshot_journal_max_bytes=config.market_snapshot_journal_max_bytes,
+        market_snapshot_telemetry_write_failures=telemetry_write_failures,
+        market_snapshot_telemetry_retention_failures=telemetry_retention_failures,
+        latest_market_snapshot_telemetry_write_error=latest_telemetry_write_error,
+        latest_market_snapshot_telemetry_retention_error=latest_telemetry_retention_error,
     )
 
 

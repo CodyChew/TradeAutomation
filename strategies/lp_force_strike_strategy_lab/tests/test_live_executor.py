@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -106,11 +107,18 @@ def _config(tmpdir: str, **overrides) -> LiveSendExecutorConfig:
         "timeframes": ("H4",),
         "broker_timezone": "UTC",
         "journal_path": str(Path(tmpdir) / "live.jsonl"),
+        "market_snapshot_journal_path": str(Path(tmpdir) / "market_snapshots.jsonl"),
         "state_path": str(Path(tmpdir) / "state.json"),
         "market_recovery_mode": "better_than_entry_only",
     }
     values.update(overrides)
     return LiveSendExecutorConfig(**values)
+
+
+def _journal_rows(path: Path) -> list[dict[str, object]]:
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def _pending(**overrides) -> LiveTrackedOrder:
@@ -381,6 +389,8 @@ class LiveExecutorTests(unittest.TestCase):
                             "max_spread_risk_fraction": 0.1,
                             "require_lp_pivot_before_fs_mother": False,
                             "journal_path": str(Path(tmpdir) / "absolute_journal.jsonl"),
+                            "market_snapshot_journal_path": "live/market_snapshots.jsonl",
+                            "market_snapshot_journal_max_bytes": 12345,
                             "state_path": "live/state.json",
                         },
                     }
@@ -397,6 +407,11 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(settings.executor.risk_buckets_pct, {"H4": 0.25, "H8": 0.25})
             self.assertEqual(settings.executor.strategy_magic, 231500)
             self.assertEqual(settings.executor.order_comment_prefix, "LPFSIC")
+            self.assertEqual(
+                Path(settings.executor.market_snapshot_journal_path),
+                Path(tmpdir) / "live" / "market_snapshots.jsonl",
+            )
+            self.assertEqual(settings.executor.market_snapshot_journal_max_bytes, 12345)
             self.assertEqual(settings.executor.market_recovery_mode, "disabled")
             self.assertEqual(settings.executor.market_recovery_deviation_points, 0)
             self.assertFalse(settings.executor.require_lp_pivot_before_fs_mother)
@@ -415,9 +430,19 @@ class LiveExecutorTests(unittest.TestCase):
                 {"market_recovery_mode": "better_than_entry_only"},
                 {"market_recovery_mode": "always"},
                 {"market_recovery_deviation_points": -1},
+                {"market_snapshot_journal_max_bytes": 0},
             ]
             for overrides in bad_values:
                 with self.subTest(overrides=overrides), self.assertRaises(LocalConfigError):
+                    validate_live_send_settings(type(settings)(settings.local, type(settings.executor)(**{**settings.executor.safe_dict(), **overrides})))
+
+            same_path_overrides = [
+                {"market_snapshot_journal_path": settings.executor.journal_path},
+            ]
+            if os.name == "nt":
+                same_path_overrides.append({"market_snapshot_journal_path": settings.executor.journal_path.upper()})
+            for overrides in same_path_overrides:
+                with self.subTest(overrides=overrides), self.assertRaisesRegex(LocalConfigError, "market_snapshot_journal_path"):
                     validate_live_send_settings(type(settings)(settings.local, type(settings.executor)(**{**settings.executor.safe_dict(), **overrides})))
 
             fallback = load_live_send_settings(Path(tmpdir) / "missing.json", env={"MT5_EXPECTED_LOGIN": "1", "MT5_EXPECTED_SERVER": "Real"})
@@ -2495,7 +2520,14 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(result.orders_sent, 1)
             self.assertEqual(result.setups_rejected, 0)
             self.assertEqual(result.setups_blocked, 0)
+            self.assertEqual(result.market_snapshot_telemetry_write_failures, 0)
+            self.assertEqual(result.market_snapshot_telemetry_retention_failures, 0)
             self.assertTrue(Path(config.state_path).exists())
+            main_events = [row["event"] for row in _journal_rows(Path(config.journal_path))]
+            telemetry_events = [row["event"] for row in _journal_rows(Path(config.market_snapshot_journal_path))]
+            self.assertNotIn("market_snapshot", main_events)
+            self.assertIn("order_sent", main_events)
+            self.assertEqual(telemetry_events, ["market_snapshot"])
 
             skipped = run_live_send_cycle(
                 mt5,
@@ -2532,6 +2564,177 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(blocked.setups_rejected, 0)
             self.assertEqual(blocked.setups_blocked, 1)
             self.assertEqual(blocked.state.processed_signal_keys, ())
+
+    def test_live_market_snapshot_telemetry_write_failure_is_audited_without_blocking_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            telemetry_path = Path(tmpdir) / "telemetry_is_directory.jsonl"
+            telemetry_path.mkdir()
+            config = _config(tmpdir, market_snapshot_journal_path=str(telemetry_path))
+
+            result = run_live_send_cycle(
+                FakeMT5(),
+                config=config,
+                state=LiveExecutorState(),
+                setup_provider=lambda frame, symbol, timeframe, run_config: [_setup()],
+            )
+
+            self.assertEqual(result.orders_sent, 1)
+            self.assertEqual(result.market_snapshot_telemetry_write_failures, 1)
+            self.assertIn("PermissionError", result.latest_market_snapshot_telemetry_write_error or "")
+            events = [row["event"] for row in _journal_rows(Path(config.journal_path))]
+            self.assertIn("market_snapshot_telemetry_write_failed", events)
+            self.assertIn("order_sent", events)
+
+    def test_market_snapshot_telemetry_write_failure_still_returns_if_primary_audit_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            telemetry_path = Path(tmpdir) / "telemetry_is_directory.jsonl"
+            telemetry_path.mkdir()
+            config = _config(tmpdir, market_snapshot_journal_path=str(telemetry_path))
+            market = MT5MarketSnapshot(bid=1.1, ask=1.2, time_utc="2026-01-01T00:00:00Z")
+
+            with mock.patch.object(live_module, "append_audit_event", side_effect=OSError("primary failed")):
+                outcome = live_module.append_market_snapshot_telemetry(config, "EURUSD", "H4", market)
+
+            self.assertTrue(outcome.write_failed)
+            self.assertIn("PermissionError", outcome.write_error or "")
+
+    def test_market_snapshot_retention_preserves_complete_newest_rows_and_never_touches_primary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            primary = Path(tmpdir) / "live.jsonl"
+            telemetry = Path(tmpdir) / "market.jsonl"
+            primary.write_text('{"event":"runner_started"}\n', encoding="utf-8")
+            rows = [
+                b'{"event":"market_snapshot","n":1}\n',
+                b'{"event":"market_snapshot","n":2}\n',
+                b'{"event":"market_snapshot","n":3}\n',
+            ]
+            telemetry.write_bytes(b"".join(rows) + b'{"event":"market_snapshot","n":4')
+
+            live_module.retain_market_snapshot_journal(telemetry, 120)
+
+            self.assertEqual(primary.read_text(encoding="utf-8"), '{"event":"runner_started"}\n')
+            kept = telemetry.read_bytes()
+            self.assertTrue(kept.endswith(b"\n"))
+            kept_rows = [json.loads(line) for line in kept.splitlines()]
+            self.assertEqual([row["n"] for row in kept_rows], [2, 3])
+
+            telemetry.write_bytes(b"".join(rows))
+            live_module.retain_market_snapshot_journal(telemetry, len(rows[1]) + len(rows[2]))
+            boundary_rows = [json.loads(line) for line in telemetry.read_bytes().splitlines()]
+            self.assertEqual([row["n"] for row in boundary_rows], [3])
+
+            line = b'{"event":"market_snapshot","n":9}\n'
+            boundary_cap = next(
+                value
+                for value in range(len(line), len(line) * 2)
+                if int(value * live_module.MARKET_SNAPSHOT_RETENTION_TRIM_TARGET_FRACTION) == len(line)
+            )
+            telemetry.write_bytes(line * 3)
+            live_module.retain_market_snapshot_journal(telemetry, boundary_cap)
+            self.assertEqual(telemetry.read_bytes(), line)
+
+    def test_market_snapshot_retention_noops_for_missing_file_and_nonpositive_cap(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            missing = Path(tmpdir) / "missing.jsonl"
+            live_module.retain_market_snapshot_journal(missing, 10)
+            self.assertFalse(missing.exists())
+
+            telemetry = Path(tmpdir) / "market.jsonl"
+            original = b'{"event":"market_snapshot","n":1}\n'
+            telemetry.write_bytes(original)
+            live_module.retain_market_snapshot_journal(telemetry, 0)
+            self.assertEqual(telemetry.read_bytes(), original)
+
+    def test_path_identity_falls_back_when_resolve_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "journal.jsonl"
+            expected = os.path.normcase(os.path.normpath(str(path)))
+
+            with mock.patch.object(live_module.Path, "resolve", side_effect=OSError("resolve failed")):
+                self.assertEqual(live_module._path_identity(path), expected)
+
+    def test_market_snapshot_retention_uses_hysteresis_to_avoid_repeated_rewrites_at_cap(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            telemetry = Path(tmpdir) / "market.jsonl"
+            line = b'{"event":"market_snapshot","n":0}\n'
+            max_bytes = 220
+            telemetry.write_bytes(line * 10)
+
+            with mock.patch.object(live_module.os, "replace", wraps=live_module.os.replace) as replace_mock:
+                live_module.retain_market_snapshot_journal(telemetry, max_bytes)
+                self.assertEqual(replace_mock.call_count, 1)
+                self.assertLessEqual(
+                    telemetry.stat().st_size,
+                    int(max_bytes * live_module.MARKET_SNAPSHOT_RETENTION_TRIM_TARGET_FRACTION),
+                )
+
+                telemetry.write_bytes(telemetry.read_bytes() + line)
+                self.assertLessEqual(telemetry.stat().st_size, max_bytes)
+                live_module.retain_market_snapshot_journal(telemetry, max_bytes)
+                self.assertEqual(replace_mock.call_count, 1)
+
+    def test_market_snapshot_retention_failure_is_audited_and_original_telemetry_stays(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            telemetry = Path(tmpdir) / "market.jsonl"
+            config = _config(
+                tmpdir,
+                market_snapshot_journal_path=str(telemetry),
+                market_snapshot_journal_max_bytes=20,
+            )
+            market = MT5MarketSnapshot(bid=1.1, ask=1.2, time_utc="2026-01-01T00:00:00Z")
+
+            with mock.patch.object(live_module.os, "replace", side_effect=OSError("replace failed")):
+                outcome = live_module.append_market_snapshot_telemetry(config, "EURUSD", "H4", market)
+
+            self.assertFalse(outcome.write_failed)
+            self.assertTrue(outcome.retention_failed)
+            self.assertIn("replace failed", outcome.retention_error or "")
+            telemetry_rows = _journal_rows(telemetry)
+            self.assertEqual([row["event"] for row in telemetry_rows], ["market_snapshot"])
+            main_events = [row["event"] for row in _journal_rows(Path(config.journal_path))]
+            self.assertEqual(main_events, ["market_snapshot_telemetry_retention_failed"])
+
+    def test_market_snapshot_retention_failure_still_returns_if_primary_audit_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            telemetry = Path(tmpdir) / "market.jsonl"
+            config = _config(
+                tmpdir,
+                market_snapshot_journal_path=str(telemetry),
+                market_snapshot_journal_max_bytes=20,
+            )
+            market = MT5MarketSnapshot(bid=1.1, ask=1.2, time_utc="2026-01-01T00:00:00Z")
+
+            with mock.patch.object(live_module.os, "replace", side_effect=OSError("replace failed")):
+                with mock.patch.object(live_module, "append_audit_event", side_effect=OSError("primary failed")):
+                    outcome = live_module.append_market_snapshot_telemetry(config, "EURUSD", "H4", market)
+
+            self.assertFalse(outcome.write_failed)
+            self.assertTrue(outcome.retention_failed)
+            self.assertIn("replace failed", outcome.retention_error or "")
+
+    def test_run_live_send_cycle_counts_retention_failure_without_blocking_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+
+            with mock.patch.object(
+                live_module,
+                "retain_market_snapshot_journal",
+                side_effect=OSError("retain failed"),
+            ):
+                result = run_live_send_cycle(
+                    FakeMT5(),
+                    config=config,
+                    state=LiveExecutorState(),
+                    setup_provider=lambda frame, symbol, timeframe, run_config: [_setup()],
+                )
+
+            self.assertEqual(result.orders_sent, 1)
+            self.assertEqual(result.market_snapshot_telemetry_write_failures, 0)
+            self.assertEqual(result.market_snapshot_telemetry_retention_failures, 1)
+            self.assertIn("retain failed", result.latest_market_snapshot_telemetry_retention_error or "")
+            events = [row["event"] for row in _journal_rows(Path(config.journal_path))]
+            self.assertIn("market_snapshot_telemetry_retention_failed", events)
+            self.assertIn("order_sent", events)
 
 
 if __name__ == "__main__":

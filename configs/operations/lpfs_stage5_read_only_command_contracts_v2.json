@@ -3,12 +3,12 @@
     "stage5_ftmo_gate3_resumption_bounded_status_read_only_v1": {
       "artifacts": {
         "scripts/Get-LpfsLiveStatus.ps1": {
-          "bytes": 8125,
-          "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
+          "bytes": 11349,
+          "sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345"
         },
         "scripts/collect_lpfs_bounded_status_bundle.py": {
-          "bytes": 33160,
-          "sha256": "b9147c8501b5bb7b344eaf375d48f4815de77f5179b1b14c16d7ce2892c3855d"
+          "bytes": 34009,
+          "sha256": "67d537c78c832ffb9de7f247aa1ee557998e81912e847b7cb4c4444713f1924b"
         }
       },
       "contract_version": 1,
@@ -21,12 +21,12 @@
     "stage5_gate1_bounded_status_read_only_v1": {
       "artifacts": {
         "scripts/Get-LpfsLiveStatus.ps1": {
-          "bytes": 8125,
-          "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
+          "bytes": 11349,
+          "sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345"
         },
         "scripts/collect_lpfs_bounded_status_bundle.py": {
-          "bytes": 33160,
-          "sha256": "b9147c8501b5bb7b344eaf375d48f4815de77f5179b1b14c16d7ce2892c3855d"
+          "bytes": 34009,
+          "sha256": "67d537c78c832ffb9de7f247aa1ee557998e81912e847b7cb4c4444713f1924b"
         }
       },
       "contract_version": 1,
@@ -40,7 +40,7 @@
       "artifacts": {
         "FTMO/bounded_status.command.txt": {
           "bytes": 3066,
-          "sha256": "f9eb4a3aef457c529a7a0356643084268c859d8035e3181b7c62507b900d46ff"
+          "sha256": "30b9b1f3fea9015880235cb9db09d17a3a92bf7eb931de71ba60d6bf02992af6"
         },
         "FTMO/compact_containment.command.txt": {
           "bytes": 2266,
@@ -60,7 +60,7 @@
         },
         "IC/bounded_status.command.txt": {
           "bytes": 3109,
-          "sha256": "826121376eba41da090baeb334fd61b056813eca0552488ff2ed07b3e7d27961"
+          "sha256": "88bb2929e1619722c7acd1387d2ea0c34bf82bed34381f188c6a925da41c0e1c"
         },
         "IC/compact_containment.command.txt": {
           "bytes": 2269,
@@ -79,16 +79,16 @@
           "sha256": "77ed24f05e0f14b93d5471e58088f468d00d75e1e2670ac028386284a7b617c7"
         },
         "scripts/Get-LpfsLiveStatus.ps1": {
-          "bytes": 8125,
-          "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
+          "bytes": 11349,
+          "sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345"
         },
         "scripts/build_lpfs_stage5_gate1_v2_pre_execution.py": {
-          "bytes": 20280,
-          "sha256": "d235a50e37dc4b1c945d3e84b31c7529a7015307c65f5d3c9d1103e62b0f1c53"
+          "bytes": 20759,
+          "sha256": "46e5704b933bf310743f9eb6f48b20fec7ee58c2da75eacdd22c9ff671763948"
         },
         "scripts/collect_lpfs_bounded_status_bundle.py": {
-          "bytes": 33160,
-          "sha256": "b9147c8501b5bb7b344eaf375d48f4815de77f5179b1b14c16d7ce2892c3855d"
+          "bytes": 34009,
+          "sha256": "67d537c78c832ffb9de7f247aa1ee557998e81912e847b7cb4c4444713f1924b"
         }
       },
       "contract_version": 1,
@@ -112,12 +112,12 @@
     "stage5_ic_gate3_resumption_bounded_status_read_only_v1": {
       "artifacts": {
         "scripts/Get-LpfsLiveStatus.ps1": {
-          "bytes": 8125,
-          "sha256": "8121205b5222b6722715ee3edca6e6399bd9d7b23af4083660f2171ff10bac38"
+          "bytes": 11349,
+          "sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345"
         },
         "scripts/collect_lpfs_bounded_status_bundle.py": {
-          "bytes": 33160,
-          "sha256": "b9147c8501b5bb7b344eaf375d48f4815de77f5179b1b14c16d7ce2892c3855d"
+          "bytes": 34009,
+          "sha256": "67d537c78c832ffb9de7f247aa1ee557998e81912e847b7cb4c4444713f1924b"
         }
       },
       "contract_version": 1,

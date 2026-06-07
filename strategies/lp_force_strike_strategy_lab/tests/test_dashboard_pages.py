@@ -225,6 +225,11 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("MT5 orders_get / positions_get", html)
         self.assertIn("data/live/lpfs_live_state.json", html)
         self.assertIn("data/live/lpfs_live_journal.jsonl", html)
+        self.assertIn("data/live/lpfs_live_market_snapshots.jsonl", html)
+        self.assertIn("Market snapshot journal", html)
+        self.assertIn("High-volume market_snapshot rows are separated", html)
+        self.assertIn("Retention applies here only", html)
+        self.assertIn("Pulling code alone does not start separated telemetry", html)
         self.assertIn("Telegram is reporting only", html)
         self.assertIn("Operator Checklist", html)
         self.assertIn("Weekly dashboard is latest-week only", html)
@@ -352,6 +357,17 @@ class DashboardPagesTests(unittest.TestCase):
             "broker_status=",
             "pending_strategy_order_count=",
             "strategy_position_count=",
+            "lifecycle_journal_path=",
+            "lifecycle_journal_size_bytes=",
+            "lifecycle_journal_mtime=",
+            "market_snapshot_journal_path=",
+            "market_snapshot_journal_size_bytes=",
+            "market_snapshot_journal_mtime=",
+            "market_snapshot_journal_max_bytes=",
+            "market_snapshot_telemetry_write_failure_count=",
+            "market_snapshot_telemetry_retention_failure_count=",
+            "latest_market_snapshot_telemetry_write_error=",
+            "latest_market_snapshot_telemetry_retention_error=",
             "config_sha256=",
             "live_send.market_recovery_mode=",
         ):
@@ -365,6 +381,25 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("process_probe_untrusted", script)
         self.assertIn("if not process_probe_trusted", script)
         self.assertIn('"probe_trusted": False', script)
+
+    def test_single_lane_status_script_reports_separate_journal_fields(self) -> None:
+        script = (SCRIPTS_ROOT / "Get-LpfsLiveStatus.ps1").read_text(encoding="utf-8")
+
+        for expected in (
+            "lifecycle_journal_path=",
+            "lifecycle_journal_size_bytes=",
+            "lifecycle_journal_mtime=",
+            "market_snapshot_journal_path=",
+            "market_snapshot_journal_size_bytes=",
+            "market_snapshot_journal_mtime=",
+            "market_snapshot_journal_max_bytes=",
+            "market_snapshot_telemetry_write_failure_count=",
+            "market_snapshot_telemetry_retention_failure_count=",
+            "latest_market_snapshot_telemetry_write_error=",
+            "latest_market_snapshot_telemetry_retention_error=",
+        ):
+            self.assertIn(expected, script)
+        self.assertIn("_market_snapshots.jsonl", script)
 
     def test_operator_first_read_docs_do_not_present_stage5_as_pending(self) -> None:
         docs = {
