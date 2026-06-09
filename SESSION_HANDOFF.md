@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-09 ICT after the LPFS active-position state/broker
-repair patch and docs follow-up.
+Last updated: 2026-06-10 ICT after the LPFS active-position state/broker
+repair deploy closeout.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -51,17 +51,61 @@ file, and the JSONL journal before making operational decisions.
 ## AI Agent Continuity Rules
 
 - Current owner-approved objective is complete: LPFS live data collection is
-  resumed on both VPS lanes, and Phase 1 live quote telemetry separation is
-  deployed and running on both lanes. FTMO was resumed/deployed first and
-  proved clean before IC was touched. The old strict Gate 1 V2 path is
-  historical context, not the current operational blocker.
-- Active-position state/broker repair patch status: implemented offline and
-  left unstaged for review. It strengthens final-close proof so local active
-  state can remove a broker-missing position only after full MT5 close-deal
-  volume is proven, and status output now exposes active state/broker mismatch
-  fields. No VPS/MT5 access, broker mutation, runtime-state edit, deployment,
-  strategy/risk/sizing/SL/TP/broker-send change, reconciliation, or canary was
-  performed.
+  running on both VPS lanes, Phase 1 live quote telemetry separation is
+  deployed on both lanes, and the active-position state/broker repair is
+  deployed on both lanes. FTMO was deployed first and proved clean before IC
+  was touched. The old strict Gate 1 V2 path is historical context, not the
+  current operational blocker.
+- Active-position state/broker repair deployment closeout: exact deployed SHA
+  on both VPS lanes is
+  `45efa748423f20881507cda9d4f81e4afe617bde`. The patch strengthens
+  final-close proof so local active state can remove a broker-missing position
+  only after full MT5 close-deal volume is proven, and status output exposes
+  active state/broker mismatch fields.
+- Active-position repair FTMO PASS packet:
+  `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ftmo_v3`.
+  Manifest SHA-256:
+  `a78a4eb4b0dc9aa9162cd737ecfc951ed03cd8cab7b8e0ac8af4d9e8171cf81d`.
+  Final proof showed `LPFS_Live` running on
+  `45efa748423f20881507cda9d4f81e4afe617bde`, kill switch clear, one logical
+  runner path, fresh heartbeat, broker OK, recovery disabled, telemetry
+  write/retention failures `0`, pending LPFS broker orders `3` matching the
+  fresh broker baseline, active positions `2` matching baseline, and active
+  state/broker mismatch count `0`.
+- Active-position repair IC PASS packet:
+  `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ic_v3`.
+  Manifest SHA-256:
+  `cd51fb720477de10cb6295f60198bab402717ea1b0253efda6eec94a2027729a`.
+  Final proof showed `LPFS_IC_Live` running on
+  `45efa748423f20881507cda9d4f81e4afe617bde`, kill switch clear, one logical
+  runner path, fresh heartbeat, broker OK, recovery disabled, telemetry
+  write/retention failures `0`, pending LPFS broker orders `2` matching the
+  fresh broker baseline, active positions `1` matching baseline, and active
+  state/broker mismatch count `0`.
+- Active-position repair final dual-status report:
+  `C:\CodexWorktrees\TradeAutomation-lpfs-c01-forward-fix\reports\live_ops\lpfs_dual_vps_status_20260609_234530.md`.
+  Final dual-status manifest SHA-256:
+  `f7f4eed83c711b2c22e21c62bc5569c866c9f7963974e60b795c6d05309930e4`.
+  Root evidence manifest SHA-256:
+  `1212407f35fa3d8d618ed8e7a71d1595618361b821afc5fcb76a9b61261ec2d0`.
+- IC deploy-window close repair evidence: the active-position repair emitted
+  broker-proven `stop_loss_hit` rows for stale local active positions that MT5
+  no longer showed as active:
+  `USDJPY H12 short` position `4439978943`, close deal `4234438950`,
+  `-1.0074349442379535R`, broker PnL `-3.38`; and `AUDCHF H8 long` position
+  `4440556829`, close deal `4234376721`, `-1.0R`, broker PnL `-3.11`. Final
+  IC state/broker mismatch count is `0`.
+- Active-position repair deployment non-actions: no recovery enablement, no
+  reconciliation-only run, no canary, no manual broker mutation, no config
+  changes, no historical journal migration, and no strategy/risk/sizing/SL/TP/
+  broker-send changes. `live_send.market_recovery_mode` remains `disabled`.
+- Follow-up note, not a rollback blocker: during IC containment/hash
+  collection, the old runner emitted a `runner_stopped` row with
+  `PermissionError: [Errno 13] Permission denied` for
+  `C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl`. The lane
+  then restarted cleanly; final broker/status proof passed, pending orders and
+  active positions matched baseline, telemetry failures were `0`, and mismatch
+  count was `0`.
 - Prior Stage 5 safety profiles are retired/historical because their embedded
   active-position inventories and runtime hashes were point-in-time C-01
   rollout evidence. Do not use them for new live rollout gates. Any future live

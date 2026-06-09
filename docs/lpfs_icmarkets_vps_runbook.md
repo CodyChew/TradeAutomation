@@ -5,12 +5,25 @@
 Read `lpfs_c01_live_safety_release.md` before using this runbook. Stage 5
 minimum-safety resumption completed on 2026-06-07 ICT: FTMO was resumed first
 and IC was resumed only after FTMO post-start evidence was clean. Accepted
-final proof recorded both tasks running, kill switches clear, pending broker
-orders `0`, and unchanged active-position inventories. Keep
-`live_send.market_recovery_mode="disabled"`.
+current operating proof is now the later active-position state/broker repair
+deploy: both tasks running, kill switches clear, recovery disabled, telemetry
+failures `0`, active state/broker mismatch count `0`, FTMO `3` pending LPFS
+orders plus `2` active positions, and IC `2` pending LPFS orders plus `1`
+active position. Pending orders are healthy only when they match the fresh
+broker baseline or are fully journal-explained; do not require zero pending
+orders for a running lane. Keep `live_send.market_recovery_mode="disabled"`.
 Phase 1 live quote telemetry separation is also deployed on IC from runtime
 SHA `027e0afe932081713067dc24b2bc457cddf1041e`; `LPFS_IC_Live` was
 deliberately restarted and left running after proof passed.
+Active-position state/broker repair is deployed on IC from runtime SHA
+`45efa748423f20881507cda9d4f81e4afe617bde`; accepted proof packet:
+`C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ic_v3`,
+manifest SHA-256
+`cd51fb720477de10cb6295f60198bab402717ea1b0253efda6eec94a2027729a`.
+The IC deploy emitted broker-proven aggregate close rows for stale local active
+positions `4439978943` and `4440556829`. The IC PermissionError observed during
+packet collection is a follow-up note, not a rollback blocker, because final
+status and broker proof passed after restart.
 
 Do not run a canary, rerun reconciliation, start a duplicate runner, or
 manually modify broker orders or positions. Before IC maintenance, run

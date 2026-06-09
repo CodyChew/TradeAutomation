@@ -1,18 +1,50 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-06-09 ICT after the LPFS active-position state/broker
-repair patch and docs follow-up.
+Last updated: 2026-06-10 ICT after the LPFS active-position state/broker
+repair deploy closeout.
 
 ## Current Live-Ops State
 
 Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
-Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO
-`LPFS_Live` was resumed first and IC `LPFS_IC_Live` was resumed only after
-FTMO post-start evidence was clean. Accepted final proof recorded both tasks
-running, kill switches clear, pending broker orders `0`, unchanged active
-positions, and recovery disabled. Use `scripts\Get-LpfsDualVpsStatus.ps1` for
-current process, heartbeat, config, and broker truth before any live
-maintenance.
+Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. Phase 1
+telemetry separation and the active-position state/broker repair have both
+been deployed sequentially with FTMO first and IC second. Accepted final proof
+records both tasks running, kill switches clear, recovery disabled, telemetry
+failures `0`, and active state/broker mismatch count `0`. Use
+`scripts\Get-LpfsDualVpsStatus.ps1` for current process, heartbeat, config,
+and broker truth before any live maintenance.
+
+Active-position state/broker repair is deployed on both VPS lanes at exact SHA
+`45efa748423f20881507cda9d4f81e4afe617bde`.
+
+- FTMO PASS packet:
+  `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ftmo_v3`;
+  manifest SHA-256
+  `a78a4eb4b0dc9aa9162cd737ecfc951ed03cd8cab7b8e0ac8af4d9e8171cf81d`.
+  Final broker exposure: `3` pending LPFS orders and `2` active positions,
+  matching the fresh pre-deploy baseline; mismatch count `0`.
+- IC PASS packet:
+  `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ic_v3`;
+  manifest SHA-256
+  `cd51fb720477de10cb6295f60198bab402717ea1b0253efda6eec94a2027729a`.
+  Final broker exposure: `2` pending LPFS orders and `1` active position,
+  matching the fresh pre-deploy baseline; mismatch count `0`.
+- Final dual-status report:
+  `C:\CodexWorktrees\TradeAutomation-lpfs-c01-forward-fix\reports\live_ops\lpfs_dual_vps_status_20260609_234530.md`;
+  final dual-status manifest SHA-256
+  `f7f4eed83c711b2c22e21c62bc5569c866c9f7963974e60b795c6d05309930e4`.
+- IC broker-proven close repair rows were emitted for stale local active
+  positions: `USDJPY H12 short` position `4439978943`, close deal
+  `4234438950`, `-1.0074349442379535R`, broker PnL `-3.38`; and
+  `AUDCHF H8 long` position `4440556829`, close deal `4234376721`, `-1.0R`,
+  broker PnL `-3.11`.
+- Non-actions: no recovery enablement, no reconciliation-only run, no canary,
+  no manual broker mutation, no config change, no historical journal
+  migration, and no strategy/risk/sizing/SL/TP/broker-send change.
+- Follow-up note, not a rollback blocker: during IC containment/hash
+  collection the old runner emitted a `runner_stopped` row with a journal
+  `PermissionError`. The lane then restarted cleanly and final broker/status
+  proof passed.
 
 Phase 1 live quote telemetry separation is deployed on both VPS lanes from
 runtime SHA `027e0afe932081713067dc24b2bc457cddf1041e`. FTMO PASS packet:
@@ -34,16 +66,15 @@ Do not rerun reconciliation, run a canary, start a duplicate runner, manually
 modify broker orders or positions, or change strategy/risk/sizing/SL/TP/
 broker-send behavior without a separately approved operation.
 
-Active-position state/broker repair patch status: implemented offline and left
-unstaged for review. The patch requires full MT5 close-deal volume evidence
-before a broker-missing active position can be removed from local state, and it
-keeps unresolved or partial evidence as lifecycle/audit evidence only. Status
-output now exposes `state_not_in_broker`, `broker_not_in_state`,
-`active_position_state_broker_mismatch_count`, and dual-lane
-`position_comparison.status` / `position_comparison.mismatch_count`. Any
-state/broker active-position mismatch marks the lane `AMBIGUOUS`; stop and get
-reviewer inspection before live operations, deploys, restarts, reconciliation,
-canaries, or broker-affecting actions.
+Active-position state/broker repair behavior: full MT5 close-deal volume
+evidence is required before a broker-missing active position can be removed
+from local state, and unresolved or partial evidence remains lifecycle/audit
+evidence only. Status output exposes `state_not_in_broker`,
+`broker_not_in_state`, `active_position_state_broker_mismatch_count`, and
+dual-lane `position_comparison.status` / `position_comparison.mismatch_count`.
+Any state/broker active-position mismatch marks the lane `AMBIGUOUS`; stop and
+get reviewer inspection before live operations, deploys, restarts,
+reconciliation, canaries, or broker-affecting actions.
 
 The older Stage 5 safety profiles are retired/historical. They contain
 point-in-time C-01 active-position inventories and runtime hashes and must not

@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption and Phase 1
-live quote telemetry deploy.
+Last updated: 2026-06-10 ICT after LPFS active-position state/broker repair
+deploy closeout.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -12,10 +12,31 @@ operational decisions.
 
 - Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO
   `LPFS_Live` was resumed first and IC `LPFS_IC_Live` was resumed only after
-  FTMO post-start evidence was clean. Accepted final proof recorded both tasks
-  running, kill switches clear, pending broker orders `0`, unchanged active
-  positions, and recovery disabled. Use the dual VPS status packet for current
-  process, heartbeat, config, and broker truth.
+  FTMO post-start evidence was clean. A later active-position state/broker
+  repair deploy is now the accepted operating boundary: both tasks are running,
+  kill switches are clear, recovery is disabled, telemetry failures are `0`,
+  pending LPFS broker orders match the fresh broker baselines (FTMO `3`, IC
+  `2`), active positions match the fresh broker baselines (FTMO `2`, IC `1`),
+  and active state/broker mismatch count is `0`. Use the dual VPS status packet
+  for current process, heartbeat, config, and broker truth.
+- Active-position state/broker repair is deployed on both VPS lanes at runtime
+  SHA `45efa748423f20881507cda9d4f81e4afe617bde`. FTMO PASS packet:
+  `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ftmo_v3`
+  with manifest SHA-256
+  `a78a4eb4b0dc9aa9162cd737ecfc951ed03cd8cab7b8e0ac8af4d9e8171cf81d`; IC
+  PASS packet:
+  `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ic_v3`
+  with manifest SHA-256
+  `cd51fb720477de10cb6295f60198bab402717ea1b0253efda6eec94a2027729a`.
+  Final dual-status report:
+  `C:\CodexWorktrees\TradeAutomation-lpfs-c01-forward-fix\reports\live_ops\lpfs_dual_vps_status_20260609_234530.md`
+  with manifest SHA-256
+  `f7f4eed83c711b2c22e21c62bc5569c866c9f7963974e60b795c6d05309930e4`.
+  IC emitted broker-proven aggregate close rows for stale local active
+  positions `4439978943` and `4440556829`. No recovery enablement,
+  reconciliation-only run, canary, manual broker mutation, historical journal
+  cleanup, config change, strategy/risk/sizing/SL/TP change, or broker-send
+  change was performed.
 - Phase 1 live quote telemetry separation is deployed on both lanes at runtime
   SHA `027e0afe932081713067dc24b2bc457cddf1041e`. FTMO passed from packet
   `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ftmo_task_repair_retry_20260607_201146`
