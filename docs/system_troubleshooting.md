@@ -1,7 +1,7 @@
 # TradeAutomation System Troubleshooting Map
 
-Last updated: 2026-06-09 after the LPFS active-position state/broker repair
-patch and docs follow-up.
+Last updated: 2026-06-10 after the LPFS active-position state/broker repair
+deploy closeout.
 
 This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
@@ -10,12 +10,11 @@ live trading state.
 ## C-01 Containment
 
 Read `lpfs_c01_live_safety_release.md` first. LPFS minimum-safety resumption
-completed on 2026-06-07 ICT, then Phase 1 live quote telemetry separation was
-deployed after deliberate FTMO and IC runner restarts. Both VPS lanes are
-running from runtime code SHA `027e0afe932081713067dc24b2bc457cddf1041e`
-with kill switches clear: FTMO `LPFS_Live` and IC `LPFS_IC_Live`. A later
-docs/status/handoff-only closeout commit may advance `main` without changing
-live runner behavior.
+completed on 2026-06-07 ICT, Phase 1 live quote telemetry separation was
+deployed after deliberate FTMO and IC runner restarts, and the
+active-position state/broker repair is deployed on both VPS lanes from runtime
+code SHA `45efa748423f20881507cda9d4f81e4afe617bde`. Both VPS lanes are
+running with kill switches clear: FTMO `LPFS_Live` and IC `LPFS_IC_Live`.
 FTMO was resumed first and proved clean before IC was touched. Skip canaries
 by default. Do not run reconcile-only mode, a live canary, or manual broker
 order/position changes unless a separate operator-approved step authorizes it.
@@ -39,13 +38,47 @@ Authoritative final packets:
   `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ic_deploy_20260607_202435`,
   manifest SHA-256
   `7aba24f3227988473c9d6ab46a877e1c228e20faf29a5626cc11d664b900f23f`
+- FTMO active-position repair deploy:
+  `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ftmo_v3`,
+  manifest SHA-256
+  `a78a4eb4b0dc9aa9162cd737ecfc951ed03cd8cab7b8e0ac8af4d9e8171cf81d`
+- IC active-position repair deploy:
+  `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ic_v3`,
+  manifest SHA-256
+  `cd51fb720477de10cb6295f60198bab402717ea1b0253efda6eec94a2027729a`
+- Active-position repair final dual status:
+  `C:\CodexWorktrees\TradeAutomation-lpfs-c01-forward-fix\reports\live_ops\lpfs_dual_vps_status_20260609_234530.md`,
+  manifest SHA-256
+  `f7f4eed83c711b2c22e21c62bc5569c866c9f7963974e60b795c6d05309930e4`
 
 Final proof showed one logical runner path per lane, fresh running heartbeats,
-MT5 identity and reads `OK`, pending strategy orders `0`, unchanged active
-positions, no order-like journal rows, no unexplained broker exposure, primary
-lifecycle journals growing without new live `market_snapshot` rows, separated
-market snapshot telemetry journals existing/growing, and telemetry write/
-retention failures `0`.
+MT5 identity and reads `OK`, recovery disabled, primary lifecycle journals
+growing without new live `market_snapshot` rows, separated market snapshot
+telemetry journals existing/growing, telemetry write/retention failures `0`,
+and active state/broker mismatch count `0` on both lanes. Final broker
+exposure after the active-position repair deploy was FTMO `3` pending LPFS
+orders and `2` active positions, and IC `2` pending LPFS orders and `1` active
+position, each matching that lane's fresh pre-deploy broker baseline.
+
+IC close repair evidence: during the active-position repair deploy the runner
+emitted broker-proven `stop_loss_hit` rows for stale local active positions
+that MT5 no longer showed as active: `USDJPY H12 short` position
+`4439978943`, close deal `4234438950`, `-1.0074349442379535R`, broker PnL
+`-3.38`; and `AUDCHF H8 long` position `4440556829`, close deal
+`4234376721`, `-1.0R`, broker PnL `-3.11`.
+
+Follow-up note, not a rollback blocker: during IC containment/hash collection
+the old runner emitted a `runner_stopped` row with
+`PermissionError: [Errno 13] Permission denied` for
+`C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl`. The lane
+then restarted cleanly; final broker/status proof passed, pending orders and
+active positions matched baseline, telemetry failures were `0`, and mismatch
+count was `0`.
+
+Explicit non-actions during the active-position repair deploy: no recovery
+enablement, no reconciliation-only run, no canary, no manual broker mutation,
+no config change, no historical journal migration, and no strategy/risk/
+sizing/SL/TP/broker-send change.
 
 FTMO Stage 5 Gate 3 is accepted as `STOPPED`; do not retry it. Read
 `lpfs_stage5_gate3_retry_plan.md`. The authoritative ignored packet is

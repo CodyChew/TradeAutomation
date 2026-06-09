@@ -254,7 +254,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
                 "Monitor lpfs_live_heartbeat.json and the latest timestamped log when using the Phase 2 wrapper.",
                 "Use MT5 orders_get / positions_get as the source of truth for open exposure.",
                 "Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled; quote telemetry lives in lpfs_live_market_snapshots.jsonl after the Phase 1 telemetry split.",
-                "Phase 1 telemetry is active on both lanes after deliberate FTMO-first and IC-second restarts from runtime SHA 027e0afe932081713067dc24b2bc457cddf1041e.",
+                "Phase 1 telemetry is active on both lanes after deliberate FTMO-first and IC-second restarts; active-position repair later deployed on both lanes at runtime SHA 45efa748423f20881507cda9d4f81e4afe617bde.",
                 "Treat spread waits and broker market-closed placement blocks as retryable until entry touch or bar-count expiry makes the setup invalid. C-01 holds market recovery disabled.",
             ],
         ),
@@ -766,8 +766,8 @@ Get-CimInstance Win32_Process |
     <section id="proof" class="ops-hero" aria-labelledby="proof-title">
       <div class="eyebrow">Static Verification Guide</div>
       <h2 id="proof-title">What Proves The Runner Is Correct</h2>
-      <p class="callout warning"><strong>Stage 5 resumption completed:</strong> accepted final proof shows FTMO <code>LPFS_Live</code> and IC <code>LPFS_IC_Live</code> resumed and running, kill switches clear, pending broker orders 0, and active positions unchanged. Recovery remains held at <code>market_recovery_mode=disabled</code>. This static page records the accepted state; run the dual VPS status packet for current truth before any operation.</p>
-      <p class="callout warning"><strong>Phase 1 telemetry deploy completed:</strong> FTMO and IC are running runtime SHA <code>027e0afe932081713067dc24b2bc457cddf1041e</code>. Lifecycle journals no longer receive new live <code>market_snapshot</code> rows, separated telemetry journals exist/grow, telemetry write/retention failures were 0, and no historical journal cleanup was done.</p>
+      <p class="callout warning"><strong>Current accepted operating state:</strong> accepted final proof shows FTMO <code>LPFS_Live</code> and IC <code>LPFS_IC_Live</code> running on deployed SHA <code>45efa748423f20881507cda9d4f81e4afe617bde</code>, kill switches clear, recovery disabled, telemetry failures 0, and active state/broker mismatch count 0. Pending broker orders are not required to be zero; final proof recorded FTMO 3 and IC 2 pending LPFS orders, each matching its fresh broker baseline.</p>
+      <p class="callout warning"><strong>Phase 1 telemetry and active-position repair completed:</strong> lifecycle journals no longer receive new live <code>market_snapshot</code> rows, separated telemetry journals exist/grow, and broker-missing active positions are removed from local state only with full MT5 close-deal volume proof. No historical journal cleanup was done.</p>
       <p class="callout warning"><strong>Real orders can be sent.</strong> Correctness is proven from MT5 broker state, local state, and lifecycle journal rows. Quote telemetry is stored separately after the Phase 1 telemetry split. Telegram is useful for operator awareness, but Telegram is reporting only and does not prove broker state.</p>
       <div class="ops-grid">
         {_fact_grid(proof_facts)}
@@ -918,7 +918,7 @@ Get-CimInstance Win32_Process |
             ("Runtime files", "lpfs_ic_live_*", "State, journal, heartbeat, and logs use IC-specific names under C:\\TradeAutomationRuntimeIC."),
             ("MT5 identity", "ICMarketsSC-MT5-2", "Fail closed if the VPS MT5 terminal is not logged into the expected IC account/server."),
             ("Broker identity", "magic 231500 / LPFSIC", "Separate magic and broker comment prefix prevent FTMO and IC state from being confused."),
-            ("Phase 1 telemetry state", "LPFS_IC_Live running", "Accepted final proof recorded IC running on runtime SHA 027e0afe932081713067dc24b2bc457cddf1041e after FTMO proof, task running/enabled, kill switch clear, one logical runner path, fresh heartbeat, pending orders 0, the same 2 active positions, lifecycle journal delta without market_snapshot rows, and telemetry journal growth. Run the dual VPS status packet for current truth before maintenance."),
+            ("Active-position repair state", "LPFS_IC_Live running", "Accepted final proof recorded IC running on runtime SHA 45efa748423f20881507cda9d4f81e4afe617bde after FTMO proof, task running/enabled, kill switch clear, one logical runner path, fresh heartbeat, 2 pending LPFS orders matching baseline, 1 active position matching baseline, mismatch count 0, lifecycle journal delta with broker-proven stale-position close rows, and telemetry failures 0. Run the dual VPS status packet for current truth before maintenance."),
             ("Startup alert", "LPFS_IC_Startup_Alert", "At-startup SYSTEM task sends IC Telegram boot/restart cards into the IC channel and journals into lpfs_ic_live_journal.jsonl."),
             ("Latest IC live smoke", "1 pending order placed", "The first IC VPS live-send cycle completed before continuous task startup; broker/runtime reconciliation is captured by the dual VPS status report."),
             ("Sizing policy", "ledger scale 1.0", "See configs/live_policy_ledger.csv. The active IC live policy keeps the 0.25/0.30/0.75 bucket shape, uses risk_bucket_scale=1.0, max_risk_pct_per_trade=0.75, and keeps the historical scale-2 epoch traceable."),
@@ -929,7 +929,7 @@ Get-CimInstance Win32_Process |
 
     <section id="commands" aria-labelledby="commands-title">
       <h2 id="commands-title">Operator Commands</h2>
-      <p class="callout warning"><strong>Current accepted operating state:</strong> Stage 5 minimum-safety resumption and Phase 1 telemetry deploy completed with FTMO first and IC second. Both live data-collection tasks were accepted as running with kill switches clear, pending broker orders 0, unchanged active positions, recovery disabled, lifecycle journals free of new live market_snapshot rows, separated telemetry journals growing, and telemetry failures 0. Do not run reconciliation, run a canary, manually mutate broker exposure, clean historical journals, or start duplicate runners; use the dual VPS status packet for current process and broker truth.</p>
+      <p class="callout warning"><strong>Current accepted operating state:</strong> Stage 5 minimum-safety resumption, Phase 1 telemetry deploy, and active-position state/broker repair deploy completed with FTMO first and IC second. Both live data-collection tasks were accepted as running with kill switches clear, recovery disabled, telemetry failures 0, active state/broker mismatch count 0, FTMO 3 pending orders plus 2 active positions, and IC 2 pending orders plus 1 active position. Pending orders must match the fresh broker baseline or be fully journal-explained; do not require zero pending orders for a healthy running lane. Do not run reconciliation, run a canary, manually mutate broker exposure, clean historical journals, or start duplicate runners; use the dual VPS status packet for current process and broker truth.</p>
       <p>Run these from the repository root after confirming <code>config.local.json</code> is intentionally set for the target account.</p>
       <div class="command-list">
         {command_html}

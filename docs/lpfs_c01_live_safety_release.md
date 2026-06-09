@@ -576,8 +576,26 @@ Once both lanes are safely migrated and normalized evidence exists:
 
 - Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO was
   resumed first and IC was resumed only after FTMO post-start evidence was
-  clean. Accepted final proof recorded both tasks running, kill switches clear,
-  pending broker orders `0`, unchanged active positions, and recovery disabled.
+  clean. A later active-position state/broker repair deploy is now the current
+  accepted operating boundary: both tasks running, kill switches clear,
+  recovery disabled, telemetry failures `0`, active state/broker mismatch count
+  `0`, FTMO `3` pending LPFS orders plus `2` active positions, and IC `2`
+  pending LPFS orders plus `1` active position. Pending orders must match the
+  fresh broker baseline or be fully journal-explained; do not require zero
+  pending orders for a healthy running lane.
+- Active-position state/broker repair deployed runtime SHA
+  `45efa748423f20881507cda9d4f81e4afe617bde`. FTMO packet:
+  `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ftmo_v3`,
+  manifest SHA-256
+  `a78a4eb4b0dc9aa9162cd737ecfc951ed03cd8cab7b8e0ac8af4d9e8171cf81d`. IC
+  packet:
+  `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ic_v3`,
+  manifest SHA-256
+  `cd51fb720477de10cb6295f60198bab402717ea1b0253efda6eec94a2027729a`. Final
+  dual-status report:
+  `C:\CodexWorktrees\TradeAutomation-lpfs-c01-forward-fix\reports\live_ops\lpfs_dual_vps_status_20260609_234530.md`,
+  manifest SHA-256
+  `f7f4eed83c711b2c22e21c62bc5569c866c9f7963974e60b795c6d05309930e4`.
 - FTMO Stage 1 and IC Stage 3 reconciliation are historical point-in-time
   operations. Do not rerun either reconciliation for analysis.
 - Skip canaries by default. Do not manually close, cancel, or modify broker

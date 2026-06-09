@@ -229,9 +229,9 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Market snapshot journal", html)
         self.assertIn("High-volume market_snapshot rows are separated", html)
         self.assertIn("Retention applies here only", html)
-        self.assertIn("Phase 1 telemetry deploy completed", html)
-        self.assertIn("027e0afe932081713067dc24b2bc457cddf1041e", html)
-        self.assertIn("telemetry write/retention failures were 0", html)
+        self.assertIn("Phase 1 telemetry and active-position repair completed", html)
+        self.assertIn("45efa748423f20881507cda9d4f81e4afe617bde", html)
+        self.assertIn("telemetry failures 0", html)
         self.assertIn("Telegram is reporting only", html)
         self.assertIn("Operator Checklist", html)
         self.assertIn("Weekly dashboard is latest-week only", html)
@@ -254,12 +254,13 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("No spread auto-cancel", html)
         self.assertIn("Market recovery", html)
         self.assertIn("MARKET RECOVERY", html)
-        self.assertIn("Stage 5 resumption completed", html)
-        self.assertIn("LPFS_Live</code> and IC <code>LPFS_IC_Live</code> resumed and running", html)
+        self.assertIn("Current accepted operating state", html)
+        self.assertIn("LPFS_Live</code> and IC <code>LPFS_IC_Live</code> running", html)
         self.assertIn("kill switches clear", html)
-        self.assertIn("pending broker orders 0", html)
-        self.assertIn("Phase 1 telemetry state", html)
-        self.assertIn("lifecycle journal delta without market_snapshot rows", html)
+        self.assertIn("FTMO 3 and IC 2 pending LPFS orders", html)
+        self.assertIn("Pending orders must match the fresh broker baseline", html)
+        self.assertIn("Active-position repair state", html)
+        self.assertIn("broker-proven stale-position close rows", html)
         self.assertIn("use the dual VPS status packet for current process and broker truth", html)
         self.assertNotIn("C-01 containment active", html)
         self.assertNotIn("C-01 contained review hold", html)
@@ -452,6 +453,12 @@ class DashboardPagesTests(unittest.TestCase):
             self.assertIn("resum", text.lower(), f"{name} missing resumption context")
             self.assertIn("kill switches clear", text, f"{name} missing current kill-switch truth")
             self.assertIn("027e0afe932081713067dc24b2bc457cddf1041e", text, f"{name} missing Phase 1 telemetry runtime SHA")
+            self.assertIn(
+                "45efa748423f20881507cda9d4f81e4afe617bde",
+                text,
+                f"{name} missing active-position repair deployed SHA",
+            )
+            self.assertIn("mismatch", text.lower(), f"{name} missing active state/broker mismatch context")
             for phrase in stale_current_phrases:
                 self.assertNotIn(phrase, text, f"{name} has stale current-state wording: {phrase}")
 
