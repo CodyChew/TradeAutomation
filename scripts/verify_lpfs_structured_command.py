@@ -19,6 +19,7 @@ SAFE_STEP_RE = re.compile(r"^[A-Za-z0-9_.\-/]+$")
 SAFE_FIELD_RE = re.compile(r"^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 VALID_PACKET_RESULTS = {"PASS", "STOPPED"}
+VALID_PROFILE_STATUSES = {"active", "retired"}
 SAFETY_PROFILE_SCHEMA_VERSION = 1
 SUPPORTED_SAFETY_PROFILE_VERSIONS = {1, 2}
 STRUCTURED_STEP_CONTRACT_VERSION = 1
@@ -53,6 +54,9 @@ PINNED_SAFETY_PROFILE_DOCUMENT_SHA256S = {
     "ae861848e923b3135fb46e48398aba9c0fbb67e5a4f09d7d094180515e920d77",
     "d0d9dd4e9d1cc2a0902990363633a576674deed6585272a423bd3846509f6cf1",
     "3a880b4650e6cade9e100412aa2d4da6ab8bb76dad46261da2be8400f48ab209",
+    "f546ab7bc3ab7e83d55321677841d5fdc03f35f2d5269c87b41019191b414b6c",
+    "7582ac6656f319e0e78117ff87a6150847135a318489af29321f87dba76007f8",
+    "24ed3339e253f2c8b5154bef0068142a2f4ad957f2a7127f676a244f2a44e579",
 }
 
 
@@ -1381,6 +1385,7 @@ def load_safety_profile(
     profile_id: str,
     *,
     expected_document_sha256: str | None = None,
+    allow_retired: bool = False,
 ) -> dict[str, Any]:
     path = Path(profile_path)
     actual_document_sha256 = _sha256(path)
@@ -1414,7 +1419,20 @@ def load_safety_profile(
     profile_keys = {"profile_version", "gate", "expected_packet_result", "required_steps", "steps"}
     if profile_version >= 2:
         profile_keys.add("runtime_integrity_steps")
+    if "profile_status" in profile or "profile_status_reason" in profile:
+        profile_keys.update({"profile_status", "profile_status_reason"})
     _require_exact_keys(profile, profile_keys, "safety profile")
+    if profile_id.startswith("stage5_") and "profile_status" not in profile:
+        raise ValueError("stage5 safety profile must declare profile_status")
+    profile_status = str(profile.get("profile_status", "active") or "")
+    profile_status_reason = str(profile.get("profile_status_reason", "") or "")
+    if profile_status not in VALID_PROFILE_STATUSES:
+        raise ValueError(f"safety profile profile_status must be one of {sorted(VALID_PROFILE_STATUSES)}")
+    if profile_status == "retired":
+        if not profile_status_reason:
+            raise ValueError("retired safety profile requires profile_status_reason")
+        if not allow_retired:
+            raise ValueError(f"safety profile is retired/historical and cannot be used for live rollout gates: {profile_status_reason}")
     if not isinstance(profile.get("gate"), str) or not profile["gate"]:
         raise ValueError("safety profile gate must be a nonempty string")
     if profile.get("expected_packet_result") not in VALID_PACKET_RESULTS:
@@ -1677,6 +1695,8 @@ def load_safety_profile(
     return {
         "profile_id": profile_id,
         "profile_version": profile_version,
+        "profile_status": profile_status,
+        "profile_status_reason": profile_status_reason,
         "gate": profile["gate"],
         "expected_packet_result": profile["expected_packet_result"],
         "profile_path": str(path),
@@ -1820,6 +1840,8 @@ def _verify_packet_with_profile(
         "safety_profile": {
             "profile_id": safety_profile.get("profile_id"),
             "profile_version": safety_profile.get("profile_version"),
+            "profile_status": safety_profile.get("profile_status"),
+            "profile_status_reason": safety_profile.get("profile_status_reason"),
             "gate": safety_profile.get("gate"),
             "profile_path": safety_profile.get("profile_path"),
             "profile_sha256": safety_profile.get("profile_sha256"),

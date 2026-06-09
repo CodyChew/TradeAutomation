@@ -4,6 +4,8 @@
     "stage5_ftmo_gate3_stopped_v1": {
       "expected_packet_result": "STOPPED",
       "gate": "stage5_ftmo_gate3",
+      "profile_status": "retired",
+      "profile_status_reason": "Historical Stage 5 C-01 profile with archived active-position inventory; do not use for current live rollout gates.",
       "profile_version": 1,
       "required_steps": [
         "precheck",
@@ -206,6 +208,8 @@
     "stage5_gate1_dual_lane_contained_v1": {
       "expected_packet_result": "PASS",
       "gate": "stage5_gate1",
+      "profile_status": "retired",
+      "profile_status_reason": "Historical Stage 5 C-01 profile with archived active-position inventory; do not use for current live rollout gates.",
       "profile_version": 1,
       "required_steps": [
         "FTMO/compact_containment",

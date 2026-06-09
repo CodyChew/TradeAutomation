@@ -427,7 +427,7 @@ def heartbeat_summary(path):
         summary["parse_error"] = str(exc)
     return summary
 
-def classify_lane(kill_switch_active, task, processes, heartbeat, broker):
+def classify_lane(kill_switch_active, task, processes, heartbeat, broker, position_comparison):
     broker_available = bool(broker.get("available"))
     broker_status = "OK" if broker_available else "ERROR/UNKNOWN"
     task_status = task.get("status")
@@ -436,10 +436,14 @@ def classify_lane(kill_switch_active, task, processes, heartbeat, broker):
     logical_paths = processes.get("logical_runner_paths") if process_probe_trusted else None
     pending_order_count = len(broker.get("strategy_orders") or []) if broker_available else None
     position_count = len(broker.get("strategy_positions") or []) if broker_available else None
+    position_mismatch_count = int(position_comparison.get("mismatch_count") or 0)
 
     if not process_probe_trusted:
         state = "AMBIGUOUS"
         reason = "process_probe_untrusted"
+    elif position_mismatch_count:
+        state = "AMBIGUOUS"
+        reason = "active_position_state_broker_mismatch"
     elif (
         not kill_switch_active
         and task_status == "Running"
@@ -477,6 +481,9 @@ def classify_lane(kill_switch_active, task, processes, heartbeat, broker):
         "broker_status": broker_status,
         "pending_strategy_order_count": pending_order_count,
         "strategy_position_count": position_count,
+        "active_position_state_broker_mismatch_count": position_mismatch_count,
+        "state_not_in_broker": position_comparison.get("state_not_in_broker"),
+        "broker_not_in_state": position_comparison.get("broker_not_in_state"),
     }
 
 live_dir = runtime_root / "data" / "live"
@@ -604,7 +611,53 @@ try:
 except Exception as exc:
     broker = {"available": False, "error": str(exc)}
 
-operational_summary = classify_lane(kill_switch_path.exists(), task, processes, heartbeat, broker)
+def as_int(value):
+    try:
+        if value in (None, ""):
+            return None
+        integer = int(value)
+        return integer if integer != 0 else None
+    except Exception:
+        return None
+
+state_active_ids = sorted(
+    {
+        item_id
+        for item_id in (
+            as_int(item.get("position_id"))
+            for item in open_state_items
+            if item.get("bucket") == "active_positions"
+        )
+        if item_id is not None
+    }
+)
+if broker.get("available"):
+    broker_active_ids = sorted(
+        {
+            item_id
+            for item_id in (
+                as_int(item.get("identifier")) or as_int(item.get("ticket"))
+                for item in (broker.get("strategy_positions") or [])
+            )
+            if item_id is not None
+        }
+    )
+    state_not_in_broker = sorted(set(state_active_ids) - set(broker_active_ids))
+    broker_not_in_state = sorted(set(broker_active_ids) - set(state_active_ids))
+else:
+    broker_active_ids = []
+    state_not_in_broker = []
+    broker_not_in_state = []
+position_comparison = {
+    "state_active_position_ids": state_active_ids,
+    "broker_active_position_ids": broker_active_ids,
+    "state_not_in_broker": state_not_in_broker,
+    "broker_not_in_state": broker_not_in_state,
+    "mismatch_count": len(state_not_in_broker) + len(broker_not_in_state) if broker.get("available") else 0,
+    "status": "OK" if broker.get("available") and not state_not_in_broker and not broker_not_in_state else ("ERROR/UNKNOWN" if not broker.get("available") else "MISMATCH"),
+}
+
+operational_summary = classify_lane(kill_switch_path.exists(), task, processes, heartbeat, broker, position_comparison)
 
 snapshot = {
     "name": name,
@@ -626,6 +679,7 @@ snapshot = {
     "open_state_items": open_state_items,
     "recent_signal_rows": recent_signal_rows,
     "broker": broker,
+    "position_comparison": position_comparison,
 }
 print("### Lane State Summary")
 print("lane_state_summary=" + str(operational_summary["lane_state_summary"]))
@@ -645,6 +699,11 @@ print("heartbeat_fresh=" + str(operational_summary["heartbeat_fresh"]))
 print("broker_status=" + str(operational_summary["broker_status"]))
 print("pending_strategy_order_count=" + str(operational_summary["pending_strategy_order_count"]))
 print("strategy_position_count=" + str(operational_summary["strategy_position_count"]))
+print("active_position_state_broker_mismatch_count=" + str(operational_summary["active_position_state_broker_mismatch_count"]))
+print("state_active_position_ids=" + json.dumps(position_comparison["state_active_position_ids"], separators=(",", ":")))
+print("broker_active_position_ids=" + json.dumps(position_comparison["broker_active_position_ids"], separators=(",", ":")))
+print("state_not_in_broker=" + json.dumps(position_comparison["state_not_in_broker"], separators=(",", ":")))
+print("broker_not_in_state=" + json.dumps(position_comparison["broker_not_in_state"], separators=(",", ":")))
 print("lifecycle_journal_path=" + str(lifecycle_journal["path"]))
 print("lifecycle_journal_size_bytes=" + str(lifecycle_journal["size_bytes"]))
 print("lifecycle_journal_mtime=" + str(lifecycle_journal["mtime"]))
@@ -767,6 +826,8 @@ if ($null -ne $Ftmo -and $null -ne $Ic) {
 
     $ComparisonLines.Add("ftmo_open_state_items=$(@($Ftmo.open_state_items).Count)")
     $ComparisonLines.Add("ic_open_state_items=$(@($Ic.open_state_items).Count)")
+    $ComparisonLines.Add("ftmo_active_position_state_broker_mismatch_count=$($Ftmo.position_comparison.mismatch_count)")
+    $ComparisonLines.Add("ic_active_position_state_broker_mismatch_count=$($Ic.position_comparison.mismatch_count)")
     $ComparisonLines.Add("shared_open_signal_keys=$($Shared.Count)")
     $ComparisonLines.Add("ftmo_only_open_signal_keys=$($OnlyFtmo.Count)")
     $ComparisonLines.Add("ic_only_open_signal_keys=$($OnlyIc.Count)")

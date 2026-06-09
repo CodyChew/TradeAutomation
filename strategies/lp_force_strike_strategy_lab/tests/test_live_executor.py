@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -315,8 +316,9 @@ class FakeMT5:
         self.positions: list[SimpleNamespace] | None = []
         self.deals: list[SimpleNamespace] | None = []
         self.history_orders: list[SimpleNamespace] | None = []
-        self.direct_deals: list[SimpleNamespace] | None = None
+        self.direct_deals: list[SimpleNamespace] | None = []
         self.direct_deals_type_error = False
+        self.direct_deal_position_requests: list[int] = []
         self.calc_profit_result: float | None = -500.0
         self.auto_create_market_position = True
 
@@ -405,6 +407,7 @@ class FakeMT5:
 
     def history_deals_get(self, *args, **kwargs):
         if "position" in kwargs:
+            self.direct_deal_position_requests.append(int(kwargs["position"]))
             if self.direct_deals_type_error:
                 raise TypeError("position keyword unsupported")
             return self.direct_deals
@@ -3277,6 +3280,7 @@ class LiveExecutorTests(unittest.TestCase):
             config = _config(tmpdir)
             mt5 = FakeMT5()
             mt5.positions = []
+            mt5.direct_deals = []
             mt5.deals = [
                 SimpleNamespace(
                     ticket=3201,
@@ -3340,6 +3344,298 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(row["event"], "active_position_final_close_unresolved")
             self.assertEqual(row["initial_volume"], 0.02)
             self.assertEqual(row["closed_volume"], 0.01)
+
+    def test_missing_broker_position_uses_history_linked_full_close_proof(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            mt5.positions = []
+            mt5.direct_deals = []
+            mt5.history_orders = [
+                SimpleNamespace(ticket=4101, symbol="EURUSD", magic=131500, position_id=7001),
+                SimpleNamespace(ticket=4102, symbol="EURUSD", magic=131500, position_by_id=7001),
+            ]
+            mt5.deals = [
+                SimpleNamespace(
+                    ticket=4101,
+                    order=4101,
+                    position_id=0,
+                    symbol="EURUSD",
+                    magic=131500,
+                    type=mt5.DEAL_TYPE_SELL,
+                    entry=mt5.DEAL_ENTRY_OUT,
+                    reason=mt5.DEAL_REASON_TP,
+                    time_msc=int(pd.Timestamp("2026-01-01T06:00:00Z").timestamp() * 1000),
+                    price=1.1025,
+                    profit=5.0,
+                    volume=0.01,
+                    comment="[tp partial]",
+                ),
+                SimpleNamespace(
+                    ticket=4102,
+                    order=4102,
+                    position_id=0,
+                    symbol="EURUSD",
+                    magic=131500,
+                    type=mt5.DEAL_TYPE_SELL,
+                    entry=mt5.DEAL_ENTRY_OUT,
+                    reason=mt5.DEAL_REASON_TP,
+                    time_msc=int(pd.Timestamp("2026-01-01T08:00:00Z").timestamp() * 1000),
+                    price=1.105,
+                    profit=10.0,
+                    volume=0.01,
+                    comment="[tp final]",
+                ),
+            ]
+
+            closed = reconcile_live_state(mt5, config=config, state=LiveExecutorState(active_positions=(_active(),)))
+
+            self.assertEqual(closed.active_positions, ())
+            row = _journal_rows(Path(config.journal_path))[-1]
+            self.assertEqual(row["event"], "take_profit_hit")
+            self.assertEqual(row["notification_event"]["fields"]["close_deal_tickets"], [4101, 4102])
+            expected_hash = hashlib.sha256("4101,4102".encode("utf-8")).hexdigest()[:16]
+            self.assertEqual(row["event_key"], f"close:7001:{expected_hash}")
+
+    def test_snapshot_present_reconcile_uses_direct_position_close_lookup(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            mt5.positions = []
+            mt5.deals = []
+            mt5.direct_deals = [
+                SimpleNamespace(
+                    ticket=4151,
+                    position_id=7001,
+                    symbol="EURUSD",
+                    magic=131500,
+                    type=mt5.DEAL_TYPE_SELL,
+                    entry=mt5.DEAL_ENTRY_OUT,
+                    reason=mt5.DEAL_REASON_TP,
+                    time_msc=int(pd.Timestamp("2026-01-01T08:00:00Z").timestamp() * 1000),
+                    price=1.105,
+                    profit=10.0,
+                    volume=0.02,
+                    comment="[tp final]",
+                )
+            ]
+
+            closed = reconcile_live_state(mt5, config=config, state=LiveExecutorState(active_positions=(_active(),)))
+
+            self.assertEqual(mt5.direct_deal_position_requests, [7001])
+            self.assertEqual(closed.active_positions, ())
+            row = _journal_rows(Path(config.journal_path))[-1]
+            self.assertEqual(row["event"], "take_profit_hit")
+            self.assertEqual(row["notification_event"]["fields"]["close_deal_tickets"], [4151])
+
+    def test_snapshot_present_direct_close_lookup_none_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            mt5.positions = []
+            mt5.direct_deals = None
+            mt5.deals = [
+                SimpleNamespace(
+                    ticket=4161,
+                    position_id=7001,
+                    symbol="EURUSD",
+                    magic=131500,
+                    type=mt5.DEAL_TYPE_SELL,
+                    entry=mt5.DEAL_ENTRY_OUT,
+                    reason=mt5.DEAL_REASON_TP,
+                    time_msc=int(pd.Timestamp("2026-01-01T08:00:00Z").timestamp() * 1000),
+                    price=1.105,
+                    profit=10.0,
+                    volume=0.02,
+                    comment="[tp final]",
+                )
+            ]
+
+            with self.assertRaises(live_module.BrokerSnapshotUnavailable):
+                reconcile_live_state(mt5, config=config, state=LiveExecutorState(active_positions=(_active(),)))
+
+            self.assertEqual(mt5.direct_deal_position_requests, [7001])
+            self.assertEqual(_journal_rows(Path(config.journal_path)), [])
+            self.assertFalse(Path(config.state_path).exists())
+
+    def test_missing_broker_position_rejects_lookalike_deal_with_different_position_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            mt5.positions = []
+            mt5.direct_deals = []
+            mt5.deals = [
+                SimpleNamespace(
+                    ticket=4201,
+                    position_id=9999,
+                    symbol="EURUSD",
+                    magic=131500,
+                    type=mt5.DEAL_TYPE_SELL,
+                    entry=mt5.DEAL_ENTRY_OUT,
+                    reason=mt5.DEAL_REASON_TP,
+                    time_msc=int(pd.Timestamp("2026-01-01T08:00:00Z").timestamp() * 1000),
+                    price=1.105,
+                    profit=10.0,
+                    volume=0.02,
+                    comment="LPFS H4 L 10",
+                )
+            ]
+
+            result = reconcile_live_state(mt5, config=config, state=LiveExecutorState(active_positions=(_active(),)))
+
+            self.assertEqual(result.active_positions, (_active(),))
+            row = _journal_rows(Path(config.journal_path))[-1]
+            self.assertEqual(row["event"], "active_position_missing_close")
+
+    def test_fallback_close_deal_matching_is_conservative(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            active = _active()
+            base = {
+                "ticket": 4301,
+                "position_id": 0,
+                "order": 0,
+                "symbol": "EURUSD",
+                "magic": 131500,
+                "type": mt5.DEAL_TYPE_SELL,
+                "entry": mt5.DEAL_ENTRY_OUT,
+                "time_msc": int(pd.Timestamp("2026-01-01T08:00:00Z").timestamp() * 1000),
+                "price": 1.105,
+                "profit": 10.0,
+                "volume": 0.02,
+                "comment": "LPFS H4 L 10 manual close",
+            }
+
+            self.assertTrue(
+                live_module._deal_matches_tracked_position_close(
+                    mt5,
+                    SimpleNamespace(**base),
+                    active,
+                    config,
+                )
+            )
+            self.assertFalse(
+                live_module._deal_matches_tracked_position_close(
+                    mt5,
+                    SimpleNamespace(**{**base, "symbol": "GBPUSD"}),
+                    active,
+                    config,
+                )
+            )
+            self.assertFalse(
+                live_module._deal_matches_tracked_position_close(
+                    mt5,
+                    SimpleNamespace(**{**base, "magic": 999}),
+                    active,
+                    config,
+                )
+            )
+            self.assertFalse(
+                live_module._deal_matches_tracked_position_close(
+                    mt5,
+                    SimpleNamespace(**{**base, "type": mt5.DEAL_TYPE_BUY}),
+                    active,
+                    config,
+                )
+            )
+            self.assertFalse(
+                live_module._deal_matches_tracked_position_close(
+                    mt5,
+                    SimpleNamespace(**{**base, "time_msc": int(pd.Timestamp("2026-01-01T04:00:00Z").timestamp() * 1000)}),
+                    active,
+                    config,
+                )
+            )
+            self.assertFalse(
+                live_module._deal_matches_tracked_position_close(
+                    mt5,
+                    SimpleNamespace(**{**base, "comment": ""}),
+                    active,
+                    config,
+                )
+            )
+
+            linked_by_order = SimpleNamespace(**{**base, "order": 4302, "comment": ""})
+            self.assertTrue(
+                live_module._deal_matches_tracked_position_close(
+                    mt5,
+                    linked_by_order,
+                    active,
+                    config,
+                    history_orders=(SimpleNamespace(ticket=4302, symbol="EURUSD", magic=131500, comment="LPFS H4 L 10"),),
+                )
+            )
+            self.assertFalse(
+                live_module._deal_matches_tracked_position_close(
+                    mt5,
+                    linked_by_order,
+                    active,
+                    config,
+                    history_orders=(SimpleNamespace(ticket=4302, symbol="GBPUSD", magic=131500, comment="LPFS H4 L 10"),),
+                )
+            )
+            self.assertFalse(
+                live_module._deal_matches_tracked_position_close(
+                    mt5,
+                    linked_by_order,
+                    active,
+                    config,
+                    history_orders=(SimpleNamespace(ticket=4302, symbol="EURUSD", magic=999, comment="LPFS H4 L 10"),),
+                )
+            )
+            self.assertFalse(
+                live_module._deal_matches_tracked_position_close(
+                    mt5,
+                    linked_by_order,
+                    active,
+                    config,
+                    history_orders=(SimpleNamespace(ticket=4302, symbol="EURUSD", magic=131500, comment="other"),),
+                )
+            )
+            self.assertTrue(
+                live_module._deal_matches_tracked_position_close(
+                    mt5,
+                    SimpleNamespace(**{**base, "order": 9999}),
+                    active,
+                    config,
+                    history_orders=(SimpleNamespace(ticket=1111, symbol="EURUSD", magic=131500, comment="LPFS H4 L 10"),),
+                )
+            )
+            self.assertTrue(
+                live_module._deal_close_side_matches(
+                    mt5,
+                    SimpleNamespace(type=mt5.DEAL_TYPE_BUY),
+                    _active(side="short"),
+                )
+            )
+            self.assertIsNone(live_module._deal_linked_position_id(linked_by_order, (SimpleNamespace(ticket=9999),)))
+            self.assertFalse(live_module._deal_not_before_active_open(SimpleNamespace(**base), _active(opened_time_utc="not-a-time"), config))
+
+    def test_history_deal_lookup_uses_snapshot_and_empty_direct_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            matching = SimpleNamespace(ticket=4401, position_id=7001)
+            other = SimpleNamespace(ticket=4402, position_id=9999)
+            snapshot = live_module.ValidatedBrokerSnapshot(
+                account_login="123",
+                account_server="Real",
+                orders=(),
+                positions=(),
+                history_orders=(),
+                history_deals=(matching, other),
+            )
+
+            mt5.direct_deals = [matching]
+            self.assertEqual(live_module._history_deals_for_position(mt5, 7001, config, snapshot=snapshot), (matching,))
+            self.assertEqual(mt5.direct_deal_position_requests, [7001])
+
+            mt5.direct_deals = []
+            self.assertEqual(live_module._history_deals_for_position(mt5, 7001, config, snapshot=snapshot), (matching, other))
+
+            mt5.deals = [matching]
+            self.assertEqual(live_module._history_deals_for_position(mt5, 7001, config), (matching,))
 
     def test_close_aggregation_helper_edges_are_conservative(self) -> None:
         malformed_time_deal = live_module.LiveCloseDealSummary(

@@ -360,6 +360,11 @@ class DashboardPagesTests(unittest.TestCase):
             "broker_status=",
             "pending_strategy_order_count=",
             "strategy_position_count=",
+            "active_position_state_broker_mismatch_count=",
+            "state_active_position_ids=",
+            "broker_active_position_ids=",
+            "state_not_in_broker=",
+            "broker_not_in_state=",
             "lifecycle_journal_path=",
             "lifecycle_journal_size_bytes=",
             "lifecycle_journal_mtime=",
@@ -382,6 +387,7 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("watchdog_with_runner_chain", script)
         self.assertIn("direct_runner_chain", script)
         self.assertIn("process_probe_untrusted", script)
+        self.assertIn("active_position_state_broker_mismatch", script)
         self.assertIn("if not process_probe_trusted", script)
         self.assertIn('"probe_trusted": False', script)
 
@@ -400,9 +406,15 @@ class DashboardPagesTests(unittest.TestCase):
             "market_snapshot_telemetry_retention_failure_count=",
             "latest_market_snapshot_telemetry_write_error=",
             "latest_market_snapshot_telemetry_retention_error=",
+            "state_active_position_ids=",
+            "broker_active_position_ids=",
+            "state_not_in_broker=",
+            "broker_not_in_state=",
+            "active_position_state_broker_mismatch_count=",
         ):
             self.assertIn(expected, script)
         self.assertIn("_market_snapshots.jsonl", script)
+        self.assertIn("unavailable_single_lane_status", script)
 
     def test_operator_first_read_docs_do_not_present_stage5_as_pending(self) -> None:
         docs = {

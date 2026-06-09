@@ -31,7 +31,7 @@ TRACKED_RESUMPTION_PRE_EXECUTION_CONTRACT_PATH = (
     WORKSPACE_ROOT / "configs" / "operations" / "lpfs_stage5_read_only_command_contracts_v2.json"
 )
 ARCHIVED_GATE1_V2_PACKET = Path(r"C:\TradeAutomationEvidence\lpfs_c01_stage5\gate1_v2_20260606_020556")
-FTMO_LIVE_EXECUTOR_CRLF_SHA256 = "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+FTMO_LIVE_EXECUTOR_CRLF_SHA256 = "0466b87c13ebd64d14da1505948912e4ba3727f0e67f2cc41515a49c15cc1780"
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
@@ -642,6 +642,7 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             TRACKED_RESUMPTION_PROFILE_PATH,
             "stage5_gate1_dual_lane_contained_v2",
             expected_document_sha256=verifier._sha256(TRACKED_RESUMPTION_PROFILE_PATH),
+            allow_retired=True,
         )
         expectations = profile["steps"]["FTMO/compact_containment"]["expectations"]
         expected_hashes = expectations["critical_runtime_file_hashes"]
@@ -677,6 +678,7 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             TRACKED_RESUMPTION_PROFILE_PATH,
             "stage5_gate1_dual_lane_contained_v2",
             expected_document_sha256=verifier._sha256(TRACKED_RESUMPTION_PROFILE_PATH),
+            allow_retired=True,
         )
         expectations = profile["steps"]["FTMO/compact_containment"]["expectations"]
         expected_hashes = expectations["critical_runtime_file_hashes"]
@@ -740,38 +742,8 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             expected_profile_sha256=verifier._sha256(TRACKED_RESUMPTION_PROFILE_PATH),
         )
         self.assertEqual(result["status"], "STOPPED")
-        by_step = {step["step"]: step for step in result["steps"]}
-        self.assertEqual(by_step["FTMO/strict_mt5_probe"]["status"], "PASS")
-        self.assertEqual(by_step["IC/strict_mt5_probe"]["status"], "PASS")
-        self.assertEqual(by_step["FTMO/bounded_status"]["status"], "STOPPED")
-        self.assertEqual(by_step["IC/bounded_status"]["status"], "STOPPED")
-        self.assertIn("status_implementation artifact SHA-256 mismatch", by_step["FTMO/bounded_status"]["reason"])
-        self.assertIn("status_implementation artifact SHA-256 mismatch", by_step["IC/bounded_status"]["reason"])
-        self.assertEqual(by_step["FTMO/compact_containment"]["status"], "PASS")
-        hash_result = next(
-            item
-            for item in by_step["FTMO/compact_containment"]["expectations"]
-            if item["field"] == "critical_runtime_file_hashes"
-        )
-        self.assertTrue(hash_result["matched"])
-        self.assertEqual(
-            hash_result["actual"][
-                "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py"
-            ],
-            FTMO_LIVE_EXECUTOR_CRLF_SHA256,
-        )
-        self.assertEqual(by_step["IC/compact_containment"]["status"], "STOPPED")
-        self.assertIn("timed out", " ".join(by_step["IC/compact_containment"]["failures"]))
-        nonderived_failures = [
-            failure
-            for failure in result["failures"]
-            if "IC/compact_containment:" not in failure
-            and "FTMO/bounded_status:" not in failure
-            and "IC/bounded_status:" not in failure
-            and "manifest result mismatch" not in failure
-            and "validation_summary result mismatch" not in failure
-        ]
-        self.assertEqual(nonderived_failures, [])
+        self.assertIn("retired/historical", result["reason"])
+        self.assertEqual(result["steps"], [])
 
     def test_compact_containment_bundle_fails_closed_on_incomplete_artifacts(self) -> None:
         cases = (
@@ -989,7 +961,9 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
                 self.assertIn(pattern, result["reason"])
 
     def test_gate1_profile_requires_exact_position_inventories(self) -> None:
-        profile = verifier.load_safety_profile(TRACKED_PROFILE_PATH, "stage5_gate1_dual_lane_contained_v1")
+        with self.assertRaisesRegex(ValueError, "retired/historical"):
+            verifier.load_safety_profile(TRACKED_PROFILE_PATH, "stage5_gate1_dual_lane_contained_v1")
+        profile = verifier.load_safety_profile(TRACKED_PROFILE_PATH, "stage5_gate1_dual_lane_contained_v1", allow_retired=True)
         ftmo = profile["steps"]["FTMO/strict_mt5_probe"]["expectations"]["strategy_positions"]
         ic = profile["steps"]["IC/strict_mt5_probe"]["expectations"]["strategy_positions"]
         self.assertEqual([item["ticket"] for item in ftmo], [259140457, 261720587, 262778049])
@@ -1004,9 +978,11 @@ class Stage5StructuredVerifierTests(unittest.TestCase):
             "stage5_ic_gate3_resumption_v1",
         )
         profiles = {
-            profile_id: verifier.load_safety_profile(TRACKED_RESUMPTION_PROFILE_PATH, profile_id)
+            profile_id: verifier.load_safety_profile(TRACKED_RESUMPTION_PROFILE_PATH, profile_id, allow_retired=True)
             for profile_id in profile_ids
         }
+        with self.assertRaisesRegex(ValueError, "retired/historical"):
+            verifier.load_safety_profile(TRACKED_RESUMPTION_PROFILE_PATH, "stage5_minimum_dual_lane_read_only_v1")
         gate1 = profiles["stage5_gate1_dual_lane_contained_v2"]
         self.assertEqual(gate1["profile_version"], 2)
         self.assertEqual(
@@ -1959,6 +1935,7 @@ class Stage5Gate1V2ProducerTests(unittest.TestCase):
             profile = verifier.load_safety_profile(
                 TRACKED_RESUMPTION_PROFILE_PATH,
                 "stage5_gate1_dual_lane_contained_v2",
+                allow_retired=True,
             )
             for lane in ("FTMO", "IC"):
                 with self.subTest(lane=lane):
@@ -1990,6 +1967,7 @@ class Stage5Gate1V2ProducerTests(unittest.TestCase):
             profile = verifier.load_safety_profile(
                 TRACKED_RESUMPTION_PROFILE_PATH,
                 "stage5_gate1_dual_lane_contained_v2",
+                allow_retired=True,
             )
             aliases = {"FTMO": "lpfs-vps", "IC": "lpfs-ic-vps"}
             for lane, alias in aliases.items():
@@ -2184,6 +2162,7 @@ class Stage5PreExecutionContractTests(unittest.TestCase):
                 "c6a0ccedf632a79ecee725bb4db55a186ddbe640bba6c4d1603c1d8fff4a52cd",
                 "4d091773f2d3e65e038d80e53cfa5abc3180f840404249624c5e07448de91930",
                 "77d3f62019efb5808f425b9847ef6346bdc254293ddc53b3c70356f6809db22d",
+                "dd26e150ff90fd13acdfe5bad4b102e1c30169f27cc01e4c86b04c5681b060d1",
             },
         )
         self.assertNotIn(stale_contract_sha, pre_execution.PINNED_READ_ONLY_CONTRACT_DOCUMENT_SHA256S)

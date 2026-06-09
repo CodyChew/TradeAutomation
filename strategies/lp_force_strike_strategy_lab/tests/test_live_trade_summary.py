@@ -239,6 +239,18 @@ class LiveTradeSummaryTests(unittest.TestCase):
                 "remaining_volume": 0.01,
                 "close_profit": 5.0,
             },
+            {
+                "event": "active_position_missing_close",
+                "signal_key": "lpfs:EURUSD:H4:10:long:c:2026-01-01T00:00:00Z",
+                "position": {"position_id": 7001, "symbol": "EURUSD"},
+            },
+            {
+                "event": "active_position_final_close_unresolved",
+                "signal_key": "lpfs:EURUSD:H4:10:long:c:2026-01-01T00:00:00Z",
+                "position_id": 7001,
+                "initial_volume": 0.02,
+                "closed_volume": 0.01,
+            },
             _journal_row(
                 "take_profit_hit",
                 fields={

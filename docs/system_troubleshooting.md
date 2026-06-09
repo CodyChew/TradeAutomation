@@ -1,7 +1,7 @@
 # TradeAutomation System Troubleshooting Map
 
-Last updated: 2026-06-07 after LPFS minimum-safety resumption and Phase 1 live
-quote telemetry deploy completed for FTMO first and IC second.
+Last updated: 2026-06-09 after the LPFS active-position state/broker repair
+patch and docs follow-up.
 
 This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
@@ -76,6 +76,19 @@ not as evidence that the heartbeat is malformed.
 For broker status, `None` from MT5 `orders_get`, `positions_get`,
 `history_orders_get`, or `history_deals_get` is `ERROR/UNKNOWN`, never zero.
 Use strict read-only evidence exports before drawing conclusions.
+
+For active-position state/broker truth, status output exposes
+`state_not_in_broker`, `broker_not_in_state`,
+`active_position_state_broker_mismatch_count`, and dual-lane
+`position_comparison.status` / `position_comparison.mismatch_count`. Any
+nonzero mismatch means the lane is `AMBIGUOUS`. Stop and get reviewer
+inspection before further live operations, deploys, restarts, reconciliation,
+canaries, or broker-affecting actions.
+
+The prior Stage 5 safety profiles are retired/historical and must not be used
+for current live rollout gates. They contain archived C-01 active-position
+inventories and runtime hashes. Future live rollouts require a fresh active
+safety profile with current broker inventories and reviewed runtime hashes.
 
 For future Stage 5 pre-resumption packets, redirect stdout/stderr to separate
 packet files and record the explicit remote process exit code. Safe

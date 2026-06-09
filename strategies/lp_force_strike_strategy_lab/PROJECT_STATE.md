@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption and Phase 1
-live quote telemetry deploy.
+Last updated: 2026-06-09 ICT after the LPFS active-position state/broker
+repair patch and docs follow-up.
 
 ## Current Live-Ops State
 
@@ -33,6 +33,23 @@ done.
 Do not rerun reconciliation, run a canary, start a duplicate runner, manually
 modify broker orders or positions, or change strategy/risk/sizing/SL/TP/
 broker-send behavior without a separately approved operation.
+
+Active-position state/broker repair patch status: implemented offline and left
+unstaged for review. The patch requires full MT5 close-deal volume evidence
+before a broker-missing active position can be removed from local state, and it
+keeps unresolved or partial evidence as lifecycle/audit evidence only. Status
+output now exposes `state_not_in_broker`, `broker_not_in_state`,
+`active_position_state_broker_mismatch_count`, and dual-lane
+`position_comparison.status` / `position_comparison.mismatch_count`. Any
+state/broker active-position mismatch marks the lane `AMBIGUOUS`; stop and get
+reviewer inspection before live operations, deploys, restarts, reconciliation,
+canaries, or broker-affecting actions.
+
+The older Stage 5 safety profiles are retired/historical. They contain
+point-in-time C-01 active-position inventories and runtime hashes and must not
+be used for current live rollout gates. Any future live rollout needs a fresh
+active safety profile with current broker inventories and reviewed runtime
+hashes.
 
 The local branch `codex/lpfs-c01-live-safety-release` repairs direct MT5 UTC
 epoch handling, enforces recovery disabled, fails closed on unavailable broker

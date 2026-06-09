@@ -1,8 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption completed
-for FTMO first and IC second, and after the Phase 1 live quote telemetry
-separation deploy passed on both lanes.
+Last updated: 2026-06-09 ICT after the LPFS active-position state/broker
+repair patch and docs follow-up.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -56,6 +55,23 @@ file, and the JSONL journal before making operational decisions.
   deployed and running on both lanes. FTMO was resumed/deployed first and
   proved clean before IC was touched. The old strict Gate 1 V2 path is
   historical context, not the current operational blocker.
+- Active-position state/broker repair patch status: implemented offline and
+  left unstaged for review. It strengthens final-close proof so local active
+  state can remove a broker-missing position only after full MT5 close-deal
+  volume is proven, and status output now exposes active state/broker mismatch
+  fields. No VPS/MT5 access, broker mutation, runtime-state edit, deployment,
+  strategy/risk/sizing/SL/TP/broker-send change, reconciliation, or canary was
+  performed.
+- Prior Stage 5 safety profiles are retired/historical because their embedded
+  active-position inventories and runtime hashes were point-in-time C-01
+  rollout evidence. Do not use them for new live rollout gates. Any future live
+  rollout requires a freshly reviewed active safety profile with current broker
+  inventories and reviewed runtime hashes.
+- New status truth fields: `state_not_in_broker`, `broker_not_in_state`,
+  `active_position_state_broker_mismatch_count`, and dual-status
+  `position_comparison.status` / `position_comparison.mismatch_count`. Any
+  nonzero mismatch means the lane is `AMBIGUOUS`; stop and get reviewer
+  inspection before further live operations.
 - Current deployed runtime code SHA on both VPS lanes:
   `027e0afe932081713067dc24b2bc457cddf1041e`. This SHA contains the live
   quote telemetry separation patch. A later docs/status/handoff closeout

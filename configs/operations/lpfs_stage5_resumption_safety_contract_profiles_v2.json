@@ -3,6 +3,8 @@
     "stage5_ftmo_gate3_resumption_v1": {
       "expected_packet_result": "PASS",
       "gate": "stage5_ftmo_gate3_resumption",
+      "profile_status": "retired",
+      "profile_status_reason": "Historical Stage 5 C-01 resumption profile with archived active-position inventory; do not use for current live rollout gates.",
       "profile_version": 2,
       "required_steps": [
         "precheck",
@@ -20,10 +22,10 @@
         "post_bounded_status": {
           "bundle_kind": "hash_approved_bounded_status_v1",
           "contract_version": 2,
-          "expected_command_sha256": "49c78f26fb8821803aea805049f2b9e873cf4e3e5829404021bc8ac01d0919b5",
-          "expected_status_implementation_sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
+          "expected_command_sha256": "5b36082d9b9e6623e418330a8801de554540ed6a2fddf1f2bd3dcfeadd07210c",
+          "expected_status_implementation_sha256": "4399d844b092dcf636d3b00dcfe88fd3dcc45e591eb689d64c0c3b5417ac7480",
           "required_stdout_substrings": [
-            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=4399d844b092dcf636d3b00dcfe88fd3dcc45e591eb689d64c0c3b5417ac7480",
             "LPFS live status"
           ]
         },
@@ -131,11 +133,11 @@
                 ]
               },
               "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
-                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "normalized_sha256": "47ac8efe7406b021e03b86408eb1acadd071bc019e054642dbc23fca86808a85",
                 "raw_sha256_variants": [
-                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
-                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
-                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                  "0466b87c13ebd64d14da1505948912e4ba3727f0e67f2cc41515a49c15cc1780",
+                  "47ac8efe7406b021e03b86408eb1acadd071bc019e054642dbc23fca86808a85",
+                  "2bfbfd2576eba4dcb646d4646661822277af8ae069cd76b4d4bc531bf9a84670"
                 ]
               },
               "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
@@ -205,10 +207,10 @@
         "pre_bounded_status": {
           "bundle_kind": "hash_approved_bounded_status_v1",
           "contract_version": 2,
-          "expected_command_sha256": "ad5087482e1c3c2e264ea047a5f733df7666eba009373de74303ab92ffb2e112",
-          "expected_status_implementation_sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
+          "expected_command_sha256": "fa997f27f5b5959f5cb0b9a669ea4e73ee89fb3f63fd9e00ca022d6af028d4d9",
+          "expected_status_implementation_sha256": "4399d844b092dcf636d3b00dcfe88fd3dcc45e591eb689d64c0c3b5417ac7480",
           "required_stdout_substrings": [
-            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=4399d844b092dcf636d3b00dcfe88fd3dcc45e591eb689d64c0c3b5417ac7480",
             "LPFS live status"
           ]
         },
@@ -316,11 +318,11 @@
                 ]
               },
               "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
-                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "normalized_sha256": "47ac8efe7406b021e03b86408eb1acadd071bc019e054642dbc23fca86808a85",
                 "raw_sha256_variants": [
-                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
-                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
-                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                  "0466b87c13ebd64d14da1505948912e4ba3727f0e67f2cc41515a49c15cc1780",
+                  "47ac8efe7406b021e03b86408eb1acadd071bc019e054642dbc23fca86808a85",
+                  "2bfbfd2576eba4dcb646d4646661822277af8ae069cd76b4d4bc531bf9a84670"
                 ]
               },
               "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
@@ -386,6 +388,8 @@
     "stage5_gate1_dual_lane_contained_v2": {
       "expected_packet_result": "PASS",
       "gate": "stage5_gate1",
+      "profile_status": "retired",
+      "profile_status_reason": "Historical Stage 5 C-01 read-only profile with archived active-position inventory; do not use for current live rollout gates.",
       "profile_version": 2,
       "required_steps": [
         "FTMO/compact_containment",
@@ -403,10 +407,10 @@
         "FTMO/bounded_status": {
           "bundle_kind": "hash_approved_bounded_status_v1",
           "contract_version": 2,
-          "expected_command_sha256": "30b9b1f3fea9015880235cb9db09d17a3a92bf7eb931de71ba60d6bf02992af6",
-          "expected_status_implementation_sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
+          "expected_command_sha256": "3f5c5e75cac22538f6113758fd37d21b17559673955e65c36aa4be4d6e70e714",
+          "expected_status_implementation_sha256": "4399d844b092dcf636d3b00dcfe88fd3dcc45e591eb689d64c0c3b5417ac7480",
           "required_stdout_substrings": [
-            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=4399d844b092dcf636d3b00dcfe88fd3dcc45e591eb689d64c0c3b5417ac7480",
             "LPFS live status"
           ]
         },
@@ -446,11 +450,11 @@
                 ]
               },
               "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
-                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "normalized_sha256": "47ac8efe7406b021e03b86408eb1acadd071bc019e054642dbc23fca86808a85",
                 "raw_sha256_variants": [
-                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
-                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
-                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                  "0466b87c13ebd64d14da1505948912e4ba3727f0e67f2cc41515a49c15cc1780",
+                  "47ac8efe7406b021e03b86408eb1acadd071bc019e054642dbc23fca86808a85",
+                  "2bfbfd2576eba4dcb646d4646661822277af8ae069cd76b4d4bc531bf9a84670"
                 ]
               },
               "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
@@ -566,10 +570,10 @@
         "IC/bounded_status": {
           "bundle_kind": "hash_approved_bounded_status_v1",
           "contract_version": 2,
-          "expected_command_sha256": "88bb2929e1619722c7acd1387d2ea0c34bf82bed34381f188c6a925da41c0e1c",
-          "expected_status_implementation_sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
+          "expected_command_sha256": "58cc61d319e4c8b261ed1b180889e3929182119899b12cbf9aa53dc74c32639d",
+          "expected_status_implementation_sha256": "4399d844b092dcf636d3b00dcfe88fd3dcc45e591eb689d64c0c3b5417ac7480",
           "required_stdout_substrings": [
-            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=4399d844b092dcf636d3b00dcfe88fd3dcc45e591eb689d64c0c3b5417ac7480",
             "LPFS live status"
           ]
         },
@@ -609,11 +613,11 @@
                 ]
               },
               "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
-                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "normalized_sha256": "47ac8efe7406b021e03b86408eb1acadd071bc019e054642dbc23fca86808a85",
                 "raw_sha256_variants": [
-                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
-                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
-                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                  "0466b87c13ebd64d14da1505948912e4ba3727f0e67f2cc41515a49c15cc1780",
+                  "47ac8efe7406b021e03b86408eb1acadd071bc019e054642dbc23fca86808a85",
+                  "2bfbfd2576eba4dcb646d4646661822277af8ae069cd76b4d4bc531bf9a84670"
                 ]
               },
               "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
@@ -721,6 +725,8 @@
     "stage5_minimum_dual_lane_read_only_v1": {
       "expected_packet_result": "PASS",
       "gate": "stage5_minimum_read_only",
+      "profile_status": "retired",
+      "profile_status_reason": "Historical Stage 5 minimum read-only profile with archived active-position inventory; do not use for current live rollout gates.",
       "profile_version": 1,
       "required_steps": [
         "FTMO/compact_containment",
@@ -902,6 +908,8 @@
     "stage5_ic_gate3_resumption_v1": {
       "expected_packet_result": "PASS",
       "gate": "stage5_ic_gate3_resumption",
+      "profile_status": "retired",
+      "profile_status_reason": "Historical Stage 5 C-01 resumption profile with archived active-position inventory; do not use for current live rollout gates.",
       "profile_version": 2,
       "required_steps": [
         "precheck",
@@ -919,10 +927,10 @@
         "post_bounded_status": {
           "bundle_kind": "hash_approved_bounded_status_v1",
           "contract_version": 2,
-          "expected_command_sha256": "d182012ba68d4d8a8aa261ba139085e384ee71f341a9000d1933e596c3cc7dae",
-          "expected_status_implementation_sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
+          "expected_command_sha256": "b9dc296e8aaffe62a545832411fb15505a8608ed6cafc690a7a3064df4c6dd64",
+          "expected_status_implementation_sha256": "4399d844b092dcf636d3b00dcfe88fd3dcc45e591eb689d64c0c3b5417ac7480",
           "required_stdout_substrings": [
-            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=4399d844b092dcf636d3b00dcfe88fd3dcc45e591eb689d64c0c3b5417ac7480",
             "LPFS live status"
           ]
         },
@@ -1020,11 +1028,11 @@
                 ]
               },
               "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
-                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "normalized_sha256": "47ac8efe7406b021e03b86408eb1acadd071bc019e054642dbc23fca86808a85",
                 "raw_sha256_variants": [
-                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
-                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
-                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                  "0466b87c13ebd64d14da1505948912e4ba3727f0e67f2cc41515a49c15cc1780",
+                  "47ac8efe7406b021e03b86408eb1acadd071bc019e054642dbc23fca86808a85",
+                  "2bfbfd2576eba4dcb646d4646661822277af8ae069cd76b4d4bc531bf9a84670"
                 ]
               },
               "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {
@@ -1094,10 +1102,10 @@
         "pre_bounded_status": {
           "bundle_kind": "hash_approved_bounded_status_v1",
           "contract_version": 2,
-          "expected_command_sha256": "a1a1f9b9eeb4ad65ac4b79d38bdaccbc61ec2711b614885cde5d52d8a39fefdc",
-          "expected_status_implementation_sha256": "c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
+          "expected_command_sha256": "5a6984464360337f91843f4444365166cf61e1e0bef5fce50b7bdee4510a224f",
+          "expected_status_implementation_sha256": "4399d844b092dcf636d3b00dcfe88fd3dcc45e591eb689d64c0c3b5417ac7480",
           "required_stdout_substrings": [
-            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=c3c23e5a0be828c0324b3fba7a9a3497ef2e4e05ff8399116657aa6a11673345",
+            "LPFS_STATUS_IMPLEMENTATION_SHA256_VERIFIED=4399d844b092dcf636d3b00dcfe88fd3dcc45e591eb689d64c0c3b5417ac7480",
             "LPFS live status"
           ]
         },
@@ -1195,11 +1203,11 @@
                 ]
               },
               "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/live_executor.py": {
-                "normalized_sha256": "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
+                "normalized_sha256": "47ac8efe7406b021e03b86408eb1acadd071bc019e054642dbc23fca86808a85",
                 "raw_sha256_variants": [
-                  "902d40f5b13dcb91320f02e20f23ef14cd3c0f0934be129937a844c91574ed19",
-                  "eb5fa120b8dbe4f72fdcee9aaeb166e3d327dc9f9b4245e574f8f33b4566f3d9",
-                  "ebd83b268e815dada781d35b813b0c80b2248db84082995f8ec09dd939f55d9e"
+                  "0466b87c13ebd64d14da1505948912e4ba3727f0e67f2cc41515a49c15cc1780",
+                  "47ac8efe7406b021e03b86408eb1acadd071bc019e054642dbc23fca86808a85",
+                  "2bfbfd2576eba4dcb646d4646661822277af8ae069cd76b4d4bc531bf9a84670"
                 ]
               },
               "strategies/lp_force_strike_strategy_lab/src/lp_force_strike_strategy_lab/timestamp_semantics.py": {

@@ -65,6 +65,22 @@ function Get-JsonField {
     return $Default
 }
 
+function Convert-ToOptionalInt {
+    param([object]$Value)
+    try {
+        if ($null -eq $Value -or [string]::IsNullOrWhiteSpace("$Value")) {
+            return $null
+        }
+        $Integer = [int64]$Value
+        if ($Integer -eq 0) {
+            return $null
+        }
+        return $Integer
+    } catch {
+        return $null
+    }
+}
+
 function Write-FileMetadata {
     param(
         [string]$Prefix,
@@ -192,6 +208,11 @@ Write-Host ""
 Write-Host "state_path=$StatePath"
 if ($null -eq $State) {
     Write-Host "state=missing"
+    Write-Host "state_active_position_ids="
+    Write-Host "broker_active_position_ids=unavailable_single_lane_status"
+    Write-Host "state_not_in_broker=unavailable_single_lane_status"
+    Write-Host "broker_not_in_state=unavailable_single_lane_status"
+    Write-Host "active_position_state_broker_mismatch_count=unavailable_single_lane_status"
 } else {
     $StatePayload = $State
     if (($State.PSObject.Properties.Name -contains "state_schema_version") -and $State.state_schema_version -eq 2) {
@@ -206,6 +227,19 @@ if ($null -eq $State) {
     Write-Host "processed_signal_keys=$Processed"
     Write-Host "pending_orders=$Pending"
     Write-Host "active_positions=$Positions"
+    $StateActivePositionIds = @()
+    foreach ($Item in @($StatePayload.active_positions)) {
+        $PositionId = Convert-ToOptionalInt -Value $Item.position_id
+        if ($null -ne $PositionId) {
+            $StateActivePositionIds += $PositionId
+        }
+    }
+    $StateActivePositionIds = @($StateActivePositionIds | Sort-Object -Unique)
+    Write-Host "state_active_position_ids=$($StateActivePositionIds -join ',')"
+    Write-Host "broker_active_position_ids=unavailable_single_lane_status"
+    Write-Host "state_not_in_broker=unavailable_single_lane_status"
+    Write-Host "broker_not_in_state=unavailable_single_lane_status"
+    Write-Host "active_position_state_broker_mismatch_count=unavailable_single_lane_status"
 }
 
 Write-Host ""

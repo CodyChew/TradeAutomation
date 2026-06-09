@@ -3329,14 +3329,118 @@ def _exit_deal_summaries_for_position(
     *,
     snapshot: ValidatedBrokerSnapshot | None = None,
 ) -> tuple[LiveCloseDealSummary, ...]:
-    deals = _history_deals_for_position(mt5_module, active.position_id, config, snapshot=snapshot)
+    deals = _history_deals_for_close_lookup(mt5_module, active, config, snapshot=snapshot)
+    history_orders = snapshot.history_orders if snapshot is not None else ()
     summaries = [
         _close_deal_summary(mt5_module, deal, config)
         for deal in deals
         if _deal_is_exit(mt5_module, deal)
-        and int(getattr(deal, "position_id", active.position_id) or active.position_id) == active.position_id
+        and _deal_matches_tracked_position_close(
+            mt5_module,
+            deal,
+            active,
+            config,
+            history_orders=history_orders,
+        )
     ]
     return tuple(sorted(summaries, key=_close_deal_sort_key))
+
+
+def _history_deals_for_close_lookup(
+    mt5_module: Any,
+    active: LiveTrackedPosition,
+    config: LiveSendExecutorConfig,
+    *,
+    snapshot: ValidatedBrokerSnapshot | None = None,
+) -> tuple[Any, ...]:
+    return _history_deals_for_position(mt5_module, active.position_id, config, snapshot=snapshot)
+
+
+def _deal_matches_tracked_position_close(
+    mt5_module: Any,
+    deal: Any,
+    active: LiveTrackedPosition,
+    config: LiveSendExecutorConfig,
+    *,
+    history_orders: Sequence[Any] = (),
+) -> bool:
+    linked_position_id = _deal_linked_position_id(deal, history_orders)
+    if linked_position_id is not None:
+        return linked_position_id == active.position_id
+    return _fallback_close_deal_matches_active(mt5_module, deal, active, config, history_orders=history_orders)
+
+
+def _deal_linked_position_id(deal: Any, history_orders: Sequence[Any]) -> int | None:
+    linked = _optional_int(getattr(deal, "position_id", None))
+    if linked is not None:
+        return linked
+    order_ticket = _optional_int(getattr(deal, "order", None))
+    if order_ticket is None:
+        return None
+    for order in history_orders:
+        if int(getattr(order, "ticket", 0) or 0) != order_ticket:
+            continue
+        for attr in ("position_id", "position_by_id"):
+            linked = _optional_int(getattr(order, attr, None))
+            if linked is not None:
+                return linked
+    return None
+
+
+def _fallback_close_deal_matches_active(
+    mt5_module: Any,
+    deal: Any,
+    active: LiveTrackedPosition,
+    config: LiveSendExecutorConfig,
+    *,
+    history_orders: Sequence[Any] = (),
+) -> bool:
+    if str(getattr(deal, "symbol", "") or "").upper() != active.symbol.upper():
+        return False
+    if int(getattr(deal, "magic", 0) or 0) != int(active.magic):
+        return False
+    if not _deal_close_side_matches(mt5_module, deal, active):
+        return False
+    if not _deal_not_before_active_open(deal, active, config):
+        return False
+
+    order_ticket = _optional_int(getattr(deal, "order", None))
+    if order_ticket is not None:
+        for order in history_orders:
+            if int(getattr(order, "ticket", 0) or 0) != order_ticket:
+                continue
+            if str(getattr(order, "symbol", "") or "").upper() != active.symbol.upper():
+                return False
+            raw_magic = getattr(order, "magic", None)
+            order_magic = active.magic if raw_magic in (None, "") else int(raw_magic)
+            if int(order_magic) != int(active.magic):
+                return False
+            order_comment = str(getattr(order, "comment", "") or "")
+            if order_comment and active.comment and active.comment not in order_comment:
+                return False
+            return True
+
+    deal_comment = str(getattr(deal, "comment", "") or "")
+    return bool(active.comment and deal_comment and active.comment in deal_comment)
+
+
+def _deal_close_side_matches(mt5_module: Any, deal: Any, active: LiveTrackedPosition) -> bool:
+    fallback_type = getattr(mt5_module, "DEAL_TYPE_SELL", getattr(mt5_module, "ORDER_TYPE_SELL", 1))
+    if active.side == "short":
+        fallback_type = getattr(mt5_module, "DEAL_TYPE_BUY", getattr(mt5_module, "ORDER_TYPE_BUY", 0))
+    expected_type = int(fallback_type)
+    raw_type = getattr(deal, "type", None)
+    deal_type = expected_type if raw_type in (None, "") else int(raw_type)
+    return deal_type == expected_type
+
+
+def _deal_not_before_active_open(deal: Any, active: LiveTrackedPosition, config: LiveSendExecutorConfig) -> bool:
+    try:
+        deal_time = _as_utc_timestamp(_deal_time_utc(deal, config))
+        open_time = _as_utc_timestamp(_normalized_position_opened_time(active))
+    except Exception:
+        return False
+    return deal_time >= open_time
 
 
 def _close_deal_summary(mt5_module: Any, deal: Any, config: LiveSendExecutorConfig) -> LiveCloseDealSummary:
@@ -4988,10 +5092,6 @@ def _history_deals_for_position(
     *,
     snapshot: ValidatedBrokerSnapshot | None = None,
 ) -> tuple[Any, ...]:
-    if snapshot is not None:
-        return tuple(
-            deal for deal in snapshot.history_deals if int(getattr(deal, "position_id", 0) or 0) == int(position_id)
-        )
     try:
         direct = mt5_module.history_deals_get(position=position_id)
     except TypeError:
@@ -4999,7 +5099,11 @@ def _history_deals_for_position(
     if direct is None:
         raise BrokerSnapshotUnavailable(_broker_read_error(mt5_module, "history_deals_get", symbol=f"position={position_id}"))
     if direct is not ...:
-        return tuple(direct)
+        direct_deals = tuple(direct)
+        if direct_deals:
+            return direct_deals
+    if snapshot is not None:
+        return tuple(snapshot.history_deals)
     end = pd.Timestamp.now(tz="UTC")
     start = end - pd.Timedelta(days=config.history_lookback_days)
     fallback = mt5_module.history_deals_get(start.to_pydatetime(), end.to_pydatetime())
