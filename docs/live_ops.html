@@ -718,7 +718,7 @@
         <article class="ops-fact">
           <span>Data collection warning</span>
           <strong>frames_skipped</strong>
-          <p>If one symbol/timeframe candle fetch fails, that frame is skipped with a warning row and no signal/order work; the cycle is marked degraded and retries next cycle.</p>
+          <p>If one or more symbol/timeframe candle fetches fail, those frames are skipped with one aggregate warning row for the degraded cycle and no signal/order work for failed frames; healthy frames continue and the next cycle retries.</p>
         </article>
 
 

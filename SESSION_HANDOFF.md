@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-10 ICT after the LPFS active-position state/broker
-repair deploy closeout.
+Last updated: 2026-06-12 ICT after the LPFS transient market-data frame-skip
+deploy closeout.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -52,10 +52,11 @@ file, and the JSONL journal before making operational decisions.
 
 - Current owner-approved objective is complete: LPFS live data collection is
   running on both VPS lanes, Phase 1 live quote telemetry separation is
-  deployed on both lanes, and the active-position state/broker repair is
-  deployed on both lanes. FTMO was deployed first and proved clean before IC
-  was touched. The old strict Gate 1 V2 path is historical context, not the
-  current operational blocker.
+  deployed on both lanes, the active-position state/broker repair is deployed
+  on both lanes, and the transient market-data frame-skip patch is deployed on
+  both lanes. FTMO was deployed first and proved clean before IC was touched.
+  The old strict Gate 1 V2 path is historical context, not the current
+  operational blocker.
 - Active-position state/broker repair deployment closeout: exact deployed SHA
   on both VPS lanes is
   `45efa748423f20881507cda9d4f81e4afe617bde`. The patch strengthens
@@ -117,11 +118,27 @@ file, and the JSONL journal before making operational decisions.
   nonzero mismatch means the lane is `AMBIGUOUS`; stop and get reviewer
   inspection before further live operations.
 - Current deployed runtime code SHA on both VPS lanes:
-  `027e0afe932081713067dc24b2bc457cddf1041e`. This SHA contains the live
-  quote telemetry separation patch. A later docs/status/handoff closeout
-  commit may advance `main`; it does not change live runner behavior unless a
-  future commit touches runtime code and the runners are deliberately
-  restarted.
+  `905fe7e350095868649b26444b3cef7510d53e4c`. This SHA contains the
+  transient market-data frame-skip patch. If one symbol/timeframe candle
+  history fetch fails, the runner skips only that frame, continues healthy
+  frames, records degraded-cycle fields in `live_send_cycle_complete` and
+  heartbeat/status, and retries next cycle. Broker/account/order/position
+  failures remain fail-closed.
+- Market-data frame-skip deployment evidence:
+  `C:\TradeAutomationEvidence\lpfs_market_data_frame_skip_deploy\20260612_133553`.
+  Manifest SHA-256:
+  `21ea1596cf79476842f88d53aff88865dc01629d0e374cdbb86fd58161de6657`.
+  Final dual-status report:
+  `C:\TradeAutomationEvidence\lpfs_market_data_frame_skip_deploy\20260612_133553\final_dual_status.md`.
+  Final dual-status SHA-256:
+  `446698cc075c01b85782bc9710e05baf6d0b2ee35418eeda8f0116f70ec983cb`.
+  Final proof showed both lanes running on `905fe7e`, kill switches clear, one
+  logical runner path per lane, fresh heartbeat, broker OK, recovery disabled,
+  telemetry failures `0`, market-data fetch failures `0`, `frames_skipped=0`,
+  state/broker mismatch count `0`, FTMO pending orders `9` / active positions
+  `3`, and IC pending orders `9` / active positions `1`. No reconciliation,
+  canary, recovery enablement, manual broker mutation, strategy/risk/sizing/
+  SL/TP/broker-send/config change was performed.
 - Phase 1 live quote telemetry separation has been deployed after deliberate
   runner restarts on both lanes. Future live `market_snapshot` rows are routed
   to `lpfs_live_market_snapshots.jsonl` /

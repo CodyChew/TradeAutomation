@@ -3191,6 +3191,7 @@ def run_live_send_cycle(
     setups_blocked = 0
     market_data_fetch_failures = 0
     latest_market_data_fetch_error: str | None = None
+    market_data_failure_frames: list[dict[str, Any]] = []
     telemetry_write_failures = 0
     telemetry_retention_failures = 0
     latest_telemetry_write_error: str | None = None
@@ -3209,17 +3210,14 @@ def run_live_send_cycle(
                 frames_skipped += 1
                 market_data_fetch_failures += 1
                 latest_market_data_fetch_error = f"{type(exc).__name__}: {exc}"
-                append_audit_event(
-                    config.journal_path,
-                    "market_data_frame_fetch_failed",
-                    severity="warning",
-                    symbol=symbol,
-                    timeframe=timeframe,
-                    history_bars=int(config.history_bars),
-                    error_type=type(exc).__name__,
-                    error=str(exc),
-                    timestamp_semantics_version=MT5_EPOCH_UTC_V2,
-                    timestamp_provenance="system_utc",
+                market_data_failure_frames.append(
+                    {
+                        "symbol": symbol,
+                        "timeframe": timeframe,
+                        "history_bars": int(config.history_bars),
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    }
                 )
                 continue
             market = market_snapshot_from_mt5(mt5_module, symbol, broker_timezone=config.broker_timezone)
@@ -3258,6 +3256,24 @@ def run_live_send_cycle(
             "all_market_data_fetch_failed"
             if total_frames > 0 and frames_skipped >= total_frames
             else "partial_market_data_fetch_failure"
+        )
+        append_audit_event(
+            config.journal_path,
+            "market_data_frame_fetch_failures",
+            severity="warning",
+            failure_count=market_data_fetch_failures,
+            frames_skipped=frames_skipped,
+            frames_processed=frames_processed,
+            total_configured_frames=total_frames,
+            affected_frames=market_data_failure_frames,
+            affected_symbols=sorted({frame["symbol"] for frame in market_data_failure_frames}),
+            affected_timeframes=sorted({frame["timeframe"] for frame in market_data_failure_frames}),
+            latest_error=latest_market_data_fetch_error,
+            all_frames_failed=total_frames > 0 and frames_skipped >= total_frames,
+            cycle_degraded=True,
+            cycle_degraded_reason=cycle_degraded_reason,
+            timestamp_semantics_version=MT5_EPOCH_UTC_V2,
+            timestamp_provenance="system_utc",
         )
     return LiveCycleResult(
         state=current_state,
