@@ -3856,6 +3856,80 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(blocked.setups_blocked, 1)
             self.assertEqual(blocked.state.processed_signal_keys, ())
 
+    def test_run_live_send_cycle_skips_one_failed_market_data_frame(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir, timeframes=("H4", "H8"))
+            mt5 = FakeMT5()
+            original_copy_rates = mt5.copy_rates_from_pos
+            calls: list[tuple[str, str]] = []
+
+            def flaky_copy_rates(symbol: str, timeframe: int, start_pos: int, count: int):
+                if timeframe == mt5.TIMEFRAME_H4:
+                    return None
+                return original_copy_rates(symbol, timeframe, start_pos, count)
+
+            def provider(frame, symbol, timeframe, run_config):
+                calls.append((symbol, timeframe))
+                return []
+
+            mt5.copy_rates_from_pos = flaky_copy_rates  # type: ignore[method-assign]
+
+            result = run_live_send_cycle(mt5, config=config, state=LiveExecutorState(), setup_provider=provider)
+
+            self.assertEqual(result.frames_processed, 1)
+            self.assertEqual(result.frames_skipped, 1)
+            self.assertEqual(result.market_data_fetch_failures, 1)
+            self.assertTrue(result.cycle_degraded)
+            self.assertEqual(result.cycle_degraded_reason, "partial_market_data_fetch_failure")
+            self.assertIn("copy_rates_from_pos failed for EURUSD H4", result.latest_market_data_fetch_error or "")
+            self.assertEqual(calls, [("EURUSD", "H8")])
+            self.assertEqual(mt5.order_check_requests, [])
+            self.assertEqual(mt5.order_send_requests, [])
+
+            rows = _journal_rows(Path(config.journal_path))
+            failures = [row for row in rows if row["event"] == "market_data_frame_fetch_failed"]
+            self.assertEqual(len(failures), 1)
+            self.assertEqual(failures[0]["severity"], "warning")
+            self.assertEqual(failures[0]["symbol"], "EURUSD")
+            self.assertEqual(failures[0]["timeframe"], "H4")
+            self.assertEqual(failures[0]["history_bars"], config.history_bars)
+            self.assertEqual(failures[0]["error_type"], "RuntimeError")
+            self.assertIn("copy_rates_from_pos failed", failures[0]["error"])
+            self.assertEqual(failures[0]["timestamp_semantics_version"], live_module.MT5_EPOCH_UTC_V2)
+
+            telemetry_events = [row["event"] for row in _journal_rows(Path(config.market_snapshot_journal_path))]
+            self.assertEqual(telemetry_events, ["market_snapshot"])
+
+    def test_run_live_send_cycle_all_market_data_frames_failed_is_degraded_not_terminal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir, symbols=("EURUSD", "GBPUSD"), timeframes=("H4",))
+            mt5 = FakeMT5()
+            provider_calls: list[tuple[str, str]] = []
+
+            def no_rates(symbol: str, timeframe: int, start_pos: int, count: int):
+                return None
+
+            def provider(frame, symbol, timeframe, run_config):
+                provider_calls.append((symbol, timeframe))
+                return [_setup()]
+
+            mt5.copy_rates_from_pos = no_rates  # type: ignore[method-assign]
+
+            result = run_live_send_cycle(mt5, config=config, state=LiveExecutorState(), setup_provider=provider)
+
+            self.assertEqual(result.frames_processed, 0)
+            self.assertEqual(result.frames_skipped, 2)
+            self.assertEqual(result.market_data_fetch_failures, 2)
+            self.assertTrue(result.cycle_degraded)
+            self.assertEqual(result.cycle_degraded_reason, "all_market_data_fetch_failed")
+            self.assertEqual(provider_calls, [])
+            self.assertEqual(mt5.order_check_requests, [])
+            self.assertEqual(mt5.order_send_requests, [])
+            self.assertFalse(Path(config.market_snapshot_journal_path).exists())
+            rows = _journal_rows(Path(config.journal_path))
+            self.assertEqual([row["event"] for row in rows], ["market_data_frame_fetch_failed", "market_data_frame_fetch_failed"])
+            self.assertTrue(all(row["severity"] == "warning" for row in rows))
+
     def test_live_market_snapshot_telemetry_write_failure_is_audited_without_blocking_order(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             telemetry_path = Path(tmpdir) / "telemetry_is_directory.jsonl"

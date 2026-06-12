@@ -814,6 +814,7 @@ Get-CimInstance Win32_Process |
             ("Order removal", "Expiry / fill / broker removal", "The pending order is kept until it fills, reaches expiry and is cancelled, or MT5 shows it was removed/rejected."),
             ("NZDCHF example", "11.5% vs 10.0%", "With the patched policy, this means wait. A future cycle can place the order if spread improves before entry touch or expiry."),
             ("Cycle summary", "setups_blocked", "Spread-only waits are counted separately from real rejected setups in the live cycle audit row."),
+            ("Data collection warning", "frames_skipped", "If one symbol/timeframe candle fetch fails, that frame is skipped with a warning row and no signal/order work; the cycle is marked degraded and retries next cycle."),
             ("Evidence task", "Live gate attribution", "Before tuning the 10% gate, run scripts/summarize_lpfs_live_gate_attribution.py to measure detected setups, placed orders, spread waits, later placements, entry-touch skips, expiries, and whether blocks cluster around weekly open."),
         ])}
       </div>

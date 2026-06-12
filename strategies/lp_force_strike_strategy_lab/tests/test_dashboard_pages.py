@@ -251,6 +251,8 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Spread Policy", html)
         self.assertIn("Retryable WAITING", html)
         self.assertIn("setups_blocked", html)
+        self.assertIn("frames_skipped", html)
+        self.assertIn("cycle is marked degraded", html)
         self.assertIn("No spread auto-cancel", html)
         self.assertIn("Market recovery", html)
         self.assertIn("MARKET RECOVERY", html)

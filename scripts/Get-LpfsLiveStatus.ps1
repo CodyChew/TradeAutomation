@@ -267,6 +267,11 @@ $LastCycle = $null
 if ($null -ne $Heartbeat -and $Heartbeat.PSObject.Properties.Name -contains "last_cycle") {
     $LastCycle = $Heartbeat.last_cycle
 }
+Write-Host "market_data_frames_skipped=$(Get-JsonField -Object $LastCycle -Name 'frames_skipped' -Default '0')"
+Write-Host "market_data_fetch_failure_count=$(Get-JsonField -Object $LastCycle -Name 'market_data_fetch_failures' -Default '0')"
+Write-Host "cycle_degraded=$(Get-JsonField -Object $LastCycle -Name 'cycle_degraded' -Default 'False')"
+Write-Host "cycle_degraded_reason=$(Get-JsonField -Object $LastCycle -Name 'cycle_degraded_reason')"
+Write-Host "latest_market_data_fetch_error=$(Get-JsonField -Object $LastCycle -Name 'latest_market_data_fetch_error')"
 Write-Host "market_snapshot_telemetry_write_failure_count=$(Get-JsonField -Object $LastCycle -Name 'market_snapshot_telemetry_write_failures' -Default '0')"
 Write-Host "market_snapshot_telemetry_retention_failure_count=$(Get-JsonField -Object $LastCycle -Name 'market_snapshot_telemetry_retention_failures' -Default '0')"
 Write-Host "latest_market_snapshot_telemetry_write_error=$(Get-JsonField -Object $LastCycle -Name 'latest_market_snapshot_telemetry_write_error')"

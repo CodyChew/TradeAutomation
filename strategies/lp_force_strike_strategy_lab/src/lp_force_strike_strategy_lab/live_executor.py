@@ -524,9 +524,14 @@ class LiveCycleResult:
 
     state: LiveExecutorState
     frames_processed: int
+    frames_skipped: int
     orders_sent: int
     setups_rejected: int
     setups_blocked: int = 0
+    market_data_fetch_failures: int = 0
+    cycle_degraded: bool = False
+    cycle_degraded_reason: str | None = None
+    latest_market_data_fetch_error: str | None = None
     market_snapshot_journal_path: str | None = None
     market_snapshot_journal_max_bytes: int | None = None
     market_snapshot_telemetry_write_failures: int = 0
@@ -3180,16 +3185,43 @@ def run_live_send_cycle(
     current_state = reconcile_live_state(mt5_module, config=config, state=state, notifier=notifier)
     _save_live_state(config, current_state)
     frames_processed = 0
+    frames_skipped = 0
     orders_sent = 0
     setups_rejected = 0
     setups_blocked = 0
+    market_data_fetch_failures = 0
+    latest_market_data_fetch_error: str | None = None
     telemetry_write_failures = 0
     telemetry_retention_failures = 0
     latest_telemetry_write_error: str | None = None
     latest_telemetry_retention_error: str | None = None
     for symbol in config.symbols:
         for timeframe in config.timeframes:
-            frame = fetch_closed_candles(mt5_module, symbol=symbol, timeframe=timeframe, bars=config.history_bars, broker_timezone=config.broker_timezone)
+            try:
+                frame = fetch_closed_candles(
+                    mt5_module,
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    bars=config.history_bars,
+                    broker_timezone=config.broker_timezone,
+                )
+            except Exception as exc:
+                frames_skipped += 1
+                market_data_fetch_failures += 1
+                latest_market_data_fetch_error = f"{type(exc).__name__}: {exc}"
+                append_audit_event(
+                    config.journal_path,
+                    "market_data_frame_fetch_failed",
+                    severity="warning",
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    history_bars=int(config.history_bars),
+                    error_type=type(exc).__name__,
+                    error=str(exc),
+                    timestamp_semantics_version=MT5_EPOCH_UTC_V2,
+                    timestamp_provenance="system_utc",
+                )
+                continue
             market = market_snapshot_from_mt5(mt5_module, symbol, broker_timezone=config.broker_timezone)
             telemetry = append_market_snapshot_telemetry(config, symbol, timeframe, market)
             if telemetry.write_failed:
@@ -3218,12 +3250,26 @@ def run_live_send_cycle(
                 setups_rejected += 1 if result.status == "rejected" else 0
                 setups_blocked += 1 if result.status == "blocked" else 0
     _save_live_state(config, current_state)
+    total_frames = len(tuple(config.symbols)) * len(tuple(config.timeframes))
+    cycle_degraded = market_data_fetch_failures > 0
+    cycle_degraded_reason = None
+    if cycle_degraded:
+        cycle_degraded_reason = (
+            "all_market_data_fetch_failed"
+            if total_frames > 0 and frames_skipped >= total_frames
+            else "partial_market_data_fetch_failure"
+        )
     return LiveCycleResult(
         state=current_state,
         frames_processed=frames_processed,
+        frames_skipped=frames_skipped,
         orders_sent=orders_sent,
         setups_rejected=setups_rejected,
         setups_blocked=setups_blocked,
+        market_data_fetch_failures=market_data_fetch_failures,
+        cycle_degraded=cycle_degraded,
+        cycle_degraded_reason=cycle_degraded_reason,
+        latest_market_data_fetch_error=latest_market_data_fetch_error,
         market_snapshot_journal_path=config.market_snapshot_journal_path,
         market_snapshot_journal_max_bytes=config.market_snapshot_journal_max_bytes,
         market_snapshot_telemetry_write_failures=telemetry_write_failures,

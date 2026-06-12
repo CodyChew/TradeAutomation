@@ -149,6 +149,12 @@ def _config(tmpdir: str) -> LiveSendExecutorConfig:
     )
 
 
+def _read_jsonl(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
 def _active(**overrides) -> LiveTrackedPosition:
     values = {
         "signal_key": CANONICAL_KEY,
@@ -872,6 +878,10 @@ class C01LiveSafetyTests(unittest.TestCase):
         self.assertIn("orders_get=ERROR/UNKNOWN", script)
         self.assertIn("positions_get=ERROR/UNKNOWN", script)
         self.assertNotIn("orders = mt5.orders_get() or ()", script)
+        self.assertIn("market_data_frames_skipped=", script)
+        self.assertIn("market_data_fetch_failure_count=", script)
+        self.assertIn("cycle_degraded=", script)
+        self.assertIn("latest_market_data_fetch_error=", script)
 
     def test_status_tool_renders_reconciliation_and_error_heartbeats_without_cycle_counters(self) -> None:
         powershell = shutil.which("powershell.exe")
@@ -913,6 +923,29 @@ class C01LiveSafetyTests(unittest.TestCase):
                     },
                     ("heartbeat_status=error", "heartbeat_detail=broker snapshot unavailable"),
                 ),
+                (
+                    {
+                        "status": "running",
+                        "updated_at_utc": "2026-06-01T17:38:40+00:00",
+                        "pid": 3306,
+                        "last_cycle": {
+                            "frames_processed": 139,
+                            "frames_skipped": 1,
+                            "market_data_fetch_failures": 1,
+                            "cycle_degraded": True,
+                            "cycle_degraded_reason": "partial_market_data_fetch_failure",
+                            "latest_market_data_fetch_error": "RuntimeError: copy_rates_from_pos failed for AUDCHF H4.",
+                        },
+                    },
+                    (
+                        "heartbeat_status=running",
+                        "market_data_frames_skipped=1",
+                        "market_data_fetch_failure_count=1",
+                        "cycle_degraded=True",
+                        "cycle_degraded_reason=partial_market_data_fetch_failure",
+                        "latest_market_data_fetch_error=RuntimeError: copy_rates_from_pos failed for AUDCHF H4.",
+                    ),
+                ),
             ):
                 with self.subTest(status=payload["status"]):
                     heartbeat.write_text(json.dumps(payload), encoding="utf-8")
@@ -939,6 +972,64 @@ class C01LiveSafetyTests(unittest.TestCase):
                     for line in expected:
                         self.assertIn(line, result.stdout)
                     self.assertNotIn("heartbeat_completed_cycles=", result.stdout)
+
+    def test_runner_cycle_complete_and_heartbeat_include_market_data_degradation_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            heartbeat = Path(tmpdir) / "heartbeat.json"
+            fake_mt5 = SimpleNamespace(shutdown=mock.Mock())
+            fake_result = SimpleNamespace(
+                state=LiveExecutorState(),
+                frames_processed=139,
+                frames_skipped=1,
+                orders_sent=0,
+                setups_rejected=0,
+                setups_blocked=0,
+                market_data_fetch_failures=1,
+                cycle_degraded=True,
+                cycle_degraded_reason="partial_market_data_fetch_failure",
+                latest_market_data_fetch_error="RuntimeError: copy_rates_from_pos failed for AUDCHF H4.",
+                market_snapshot_journal_path=config.market_snapshot_journal_path,
+                market_snapshot_journal_max_bytes=config.market_snapshot_journal_max_bytes,
+                market_snapshot_telemetry_write_failures=0,
+                market_snapshot_telemetry_retention_failures=0,
+                latest_market_snapshot_telemetry_write_error=None,
+                latest_market_snapshot_telemetry_retention_error=None,
+            )
+            settings = SimpleNamespace(executor=config, local=SimpleNamespace())
+            with (
+                mock.patch.object(sys, "argv", ["runner", "--cycles", "1", "--heartbeat-path", str(heartbeat)]),
+                mock.patch.dict(sys.modules, {"MetaTrader5": fake_mt5}),
+                mock.patch.object(runner_module, "load_live_send_settings", return_value=settings),
+                mock.patch.object(runner_module, "validate_live_send_settings"),
+                mock.patch.object(runner_module, "telegram_notifier_from_settings", return_value=(None, None)),
+                mock.patch.object(runner_module, "initialize_mt5_session"),
+                mock.patch.object(runner_module, "_mt5_account_fields", return_value={}),
+                mock.patch.object(runner_module, "load_live_state", return_value=LiveExecutorState()),
+                mock.patch.object(runner_module, "run_live_send_cycle", return_value=fake_result),
+                mock.patch.object(runner_module, "_write_heartbeat", wraps=runner_module._write_heartbeat) as write_heartbeat,
+            ):
+                self.assertEqual(runner_module.main(), 0)
+
+            cycle_rows = [row for row in _read_jsonl(Path(config.journal_path)) if row["event"] == "live_send_cycle_complete"]
+            self.assertEqual(len(cycle_rows), 1)
+            self.assertEqual(cycle_rows[0]["frames_skipped"], 1)
+            self.assertEqual(cycle_rows[0]["market_data_fetch_failures"], 1)
+            self.assertTrue(cycle_rows[0]["cycle_degraded"])
+            self.assertEqual(cycle_rows[0]["cycle_degraded_reason"], "partial_market_data_fetch_failure")
+            self.assertIn("AUDCHF H4", cycle_rows[0]["latest_market_data_fetch_error"])
+
+            running_heartbeat_calls = [
+                call
+                for call in write_heartbeat.call_args_list
+                if call.kwargs.get("status") == "running" and isinstance(call.kwargs.get("last_cycle"), dict)
+            ]
+            self.assertEqual(len(running_heartbeat_calls), 1)
+            last_cycle = running_heartbeat_calls[0].kwargs["last_cycle"]
+            self.assertEqual(last_cycle["frames_skipped"], 1)
+            self.assertEqual(last_cycle["market_data_fetch_failures"], 1)
+            self.assertTrue(last_cycle["cycle_degraded"])
+            self.assertEqual(last_cycle["cycle_degraded_reason"], "partial_market_data_fetch_failure")
 
     def test_weekly_reader_understands_v1_and_v2_state(self) -> None:
         flat = {"pending_orders": [1], "active_positions": [1, 2], "processed_signal_keys": [1, 2, 3]}

@@ -716,6 +716,13 @@
 
 
         <article class="ops-fact">
+          <span>Data collection warning</span>
+          <strong>frames_skipped</strong>
+          <p>If one symbol/timeframe candle fetch fails, that frame is skipped with a warning row and no signal/order work; the cycle is marked degraded and retries next cycle.</p>
+        </article>
+
+
+        <article class="ops-fact">
           <span>Evidence task</span>
           <strong>Live gate attribution</strong>
           <p>Before tuning the 10% gate, run scripts/summarize_lpfs_live_gate_attribution.py to measure detected setups, placed orders, spread waits, later placements, entry-touch skips, expiries, and whether blocks cluster around weekly open.</p>
