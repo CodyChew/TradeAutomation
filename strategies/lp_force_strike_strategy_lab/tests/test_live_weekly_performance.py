@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import contextlib
+import csv
 import io
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -167,6 +169,344 @@ def _git_info(*, runtime_changed: bool = True) -> dict[str, object]:
 
 
 class LiveWeeklyPerformanceTests(unittest.TestCase):
+    def test_default_max_source_bytes_matches_snapshot_collector_convention(self) -> None:
+        self.assertEqual(weekly.DEFAULT_MAX_SOURCE_BYTES, 64 * 1024 * 1024)
+        self.assertEqual(
+            weekly.resolve_max_source_bytes(weekly.DEFAULT_MAX_SOURCE_BYTES, allow_full_scan=False),
+            64 * 1024 * 1024,
+        )
+
+    def test_full_scan_requires_explicit_allow_full_scan(self) -> None:
+        with self.assertRaisesRegex(ValueError, "--max-source-bytes"):
+            weekly.resolve_max_source_bytes(0, allow_full_scan=False)
+
+        self.assertIsNone(weekly.resolve_max_source_bytes(0, allow_full_scan=True))
+
+    def test_benchmark_paths_can_be_overridden_for_clean_worktrees(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            ftmo_path = tmp / "reviewed_ftmo_trades.csv"
+            ic_path = tmp / "reviewed_ic_trades.csv"
+            lanes = [
+                weekly.LaneConfig(
+                    name="FTMO",
+                    ssh_alias="ftmo-vps",
+                    journal_path="journal",
+                    state_path="state",
+                    benchmark_path=Path("missing-default-ftmo.csv"),
+                    benchmark_label="ftmo",
+                ),
+                weekly.LaneConfig(
+                    name="IC",
+                    ssh_alias="ic-vps",
+                    journal_path="journal",
+                    state_path="state",
+                    benchmark_path=Path("missing-default-ic.csv"),
+                    benchmark_label="ic",
+                ),
+            ]
+
+            configs = weekly.lane_configs_with_benchmark_paths(
+                ftmo_benchmark_path=ftmo_path,
+                ic_benchmark_path=ic_path,
+                lanes=lanes,
+            )
+
+        self.assertEqual(configs[0].benchmark_path, ftmo_path)
+        self.assertEqual(configs[1].benchmark_path, ic_path)
+        self.assertEqual(configs[0].journal_path, "journal")
+        self.assertEqual(configs[1].ssh_alias, "ic-vps")
+
+    def test_missing_benchmark_error_mentions_explicit_path_options(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            missing = Path(raw_tmp) / "missing.csv"
+            with self.assertRaisesRegex(FileNotFoundError, "--ftmo-benchmark-path.*--ic-benchmark-path"):
+                weekly.historical_weekly_benchmark(missing)
+
+    def test_main_uses_explicit_benchmark_path_overrides(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            ftmo_benchmark = tmp / "ftmo.csv"
+            ic_benchmark = tmp / "ic.csv"
+            _benchmark_csv(ftmo_benchmark)
+            _benchmark_csv(ic_benchmark)
+            default_lanes = [
+                weekly.LaneConfig(
+                    name="FTMO",
+                    ssh_alias="ftmo-vps",
+                    journal_path="journal",
+                    state_path="state",
+                    benchmark_path=Path("missing-default-ftmo.csv"),
+                    benchmark_label="ftmo",
+                ),
+                weekly.LaneConfig(
+                    name="IC",
+                    ssh_alias="ic-vps",
+                    journal_path="journal",
+                    state_path="state",
+                    benchmark_path=Path("missing-default-ic.csv"),
+                    benchmark_label="ic",
+                ),
+            ]
+            args = [
+                "build_lpfs_live_weekly_performance.py",
+                "--latest",
+                "--skip-git-fetch",
+                "--as-of-utc",
+                "2026-05-08T08:00:00Z",
+                "--report-root",
+                str(tmp / "reports"),
+                "--docs-output",
+                str(tmp / "docs" / "live_weekly_performance.html"),
+                "--ftmo-benchmark-path",
+                str(ftmo_benchmark),
+                "--ic-benchmark-path",
+                str(ic_benchmark),
+            ]
+            captured_configs: list[weekly.LaneConfig] = []
+
+            def fake_fetch(
+                config: weekly.LaneConfig,
+                *,
+                max_source_bytes: int | None,
+                week_start_sgt: pd.Timestamp,
+                week_end_sgt: pd.Timestamp,
+            ) -> weekly.LaneInput:
+                captured_configs.append(config)
+                return weekly.LaneInput(
+                    config=config,
+                    first_journal_row={"occurred_at_utc": "2026-04-30T19:48:13Z"},
+                    lifecycle_rows=[],
+                    state_payload={"pending_orders": [], "active_positions": [], "processed_signal_keys": []},
+                    vps_head=_repo_head(),
+                    fetch_metadata={"fetch_incomplete": True, "fetch_incomplete_reason": "fixture"},
+                )
+
+            with mock.patch.object(weekly, "DEFAULT_LANES", default_lanes), mock.patch.object(
+                weekly, "safe_fetch_lane_input", side_effect=fake_fetch
+            ), mock.patch.object(weekly, "collect_git_info", return_value=_git_info(runtime_changed=False)), mock.patch.object(
+                sys, "argv", args
+            ), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(weekly.main(), 0)
+
+        self.assertEqual([config.benchmark_path for config in captured_configs], [ftmo_benchmark, ic_benchmark])
+
+    def test_fetch_classifies_transport_matches_by_parsed_event_kind(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            benchmark = tmp / "benchmark.csv"
+            _benchmark_csv(benchmark)
+            config = weekly.LaneConfig(
+                name="FTMO",
+                ssh_alias="ftmo-vps",
+                journal_path="remote-journal",
+                state_path="remote-state",
+                benchmark_path=benchmark,
+                benchmark_label="fixture",
+            )
+            week_start, week_end = weekly.latest_sgt_week_window(weekly.parse_timestamp("2026-05-16T02:00:00Z"))
+            transport_rows = [
+                json.dumps({"event": "runner_started", "occurred_at_utc": "2026-05-03T21:00:00Z"}),
+                json.dumps(
+                    {
+                        "event": "operator_note",
+                        "occurred_at_utc": "2026-05-10T21:00:00Z",
+                        "message": "take_profit_hit appears in free text only",
+                    }
+                ),
+                json.dumps(
+                    _row(
+                        "take_profit_hit",
+                        "2026-05-11T22:00:00Z",
+                        signal_key="FTMO-TRADE-1",
+                        r_result=1.0,
+                        close_profit=100.0,
+                        closed_utc="2026-05-11T22:00:00Z",
+                    )
+                ),
+            ]
+
+            with mock.patch.object(
+                weekly,
+                "fetch_remote_lane_text",
+                return_value=(
+                    transport_rows[0],
+                    transport_rows,
+                    json.dumps({"pending_orders": [{"ticket": 1}], "active_positions": []}),
+                    _repo_head(),
+                    {
+                        "reached_source_start": True,
+                        "window_first_row_utc": "2026-05-03T21:00:00Z",
+                        "window_last_row_utc": "2026-05-11T22:00:00Z",
+                        "source_size_bytes": 123,
+                        "source_start_offset": 0,
+                        "source_end_offset": 123,
+                    },
+                ),
+            ):
+                lane = weekly.fetch_lane_input(
+                    config,
+                    max_source_bytes=weekly.DEFAULT_MAX_SOURCE_BYTES,
+                    week_start_sgt=week_start,
+                    week_end_sgt=week_end,
+                )
+
+        self.assertEqual([weekly.weekly_row_kind(row) for row in lane.lifecycle_rows], ["runner_started", "take_profit_hit"])
+        self.assertEqual(lane.fetch_metadata["transport_matched_lifecycle_rows"], 3)
+        self.assertEqual(lane.fetch_metadata["parsed_lifecycle_rows"], 2)
+        self.assertEqual(lane.fetch_metadata["lifecycle_rows_filtered_out"], 1)
+        self.assertFalse(lane.fetch_metadata["fetch_incomplete"])
+        self.assertEqual(weekly.live_state_counts(lane.state_payload)["pending_orders"], 1)
+        self.assertEqual(lane.vps_head, _repo_head())
+
+    def test_remote_fetch_script_uses_bounded_substring_transport_filter(self) -> None:
+        captured: dict[str, object] = {}
+
+        def fake_ssh(alias: str, script: str, *, timeout: int) -> str:
+            captured["alias"] = alias
+            captured["script"] = script
+            captured["timeout"] = timeout
+            return "\n".join(
+                [
+                    "---META---",
+                    json.dumps(
+                        {
+                            "reached_source_start": True,
+                            "source_size_bytes": 20,
+                            "source_start_offset": 0,
+                            "source_end_offset": 20,
+                            "window_first_row_utc": "2026-05-03T21:00:00Z",
+                            "window_last_row_utc": "2026-05-11T22:00:00Z",
+                        }
+                    ),
+                    "---FIRST---",
+                    '{"event":"runner_started","occurred_at_utc":"2026-05-03T21:00:00Z"}',
+                    "---WINDOW_FIRST---",
+                    '{"event":"runner_started","occurred_at_utc":"2026-05-03T21:00:00Z"}',
+                    "---WINDOW_LAST---",
+                    '{"event":"take_profit_hit","occurred_at_utc":"2026-05-11T22:00:00Z"}',
+                    "---LIFECYCLE---",
+                    '{"event":"take_profit_hit","occurred_at_utc":"2026-05-11T22:00:00Z"}',
+                    "---STATE---",
+                    '{"pending_orders":[],"active_positions":[]}',
+                    "---HEAD---",
+                    "abcdef",
+                ]
+            )
+
+        config = weekly.LaneConfig(
+            name="FTMO",
+            ssh_alias="ftmo-vps",
+            journal_path=r"C:\journal.jsonl",
+            state_path=r"C:\state.json",
+            benchmark_path=Path("unused.csv"),
+            benchmark_label="fixture",
+        )
+        with mock.patch.object(weekly, "ssh_powershell", side_effect=fake_ssh):
+            _, lifecycle, state_text, head, metadata = weekly.fetch_remote_lane_text(
+                config,
+                max_source_bytes=weekly.DEFAULT_MAX_SOURCE_BYTES,
+            )
+
+        script = str(captured["script"])
+        self.assertEqual(captured["alias"], "ftmo-vps")
+        self.assertIn(f"$maxSourceBytes = {weekly.DEFAULT_MAX_SOURCE_BYTES}", script)
+        self.assertIn("$line.Contains($pattern)", script)
+        self.assertIn("[System.IO.FileShare]::ReadWrite", script)
+        self.assertIn("$sourceStartOffset = $sourceSizeBefore - [Int64]$maxSourceBytes", script)
+        self.assertEqual(lifecycle, ['{"event":"take_profit_hit","occurred_at_utc":"2026-05-11T22:00:00Z"}'])
+        self.assertEqual(state_text, '{"pending_orders":[],"active_positions":[]}')
+        self.assertEqual(head, "abcdef")
+        self.assertTrue(metadata["reached_source_start"])
+
+    def test_remote_fetch_stops_at_captured_source_end_when_journal_grows(self) -> None:
+        if shutil.which("powershell") is None:
+            self.skipTest("PowerShell is required for the local remote-fetch script regression")
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            journal = tmp / "journal.jsonl"
+            state = tmp / "state.json"
+            journal.write_text(
+                "\n".join(
+                    [
+                        '{"event":"runner_started","occurred_at_utc":"2026-05-03T21:00:00Z"}',
+                        '{"event":"take_profit_hit","occurred_at_utc":"2026-05-11T22:00:00Z","event_key":"ORIGINAL"}',
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            state.write_text('{"pending_orders":[],"active_positions":[]}', encoding="utf-8")
+            appended = '{"event":"take_profit_hit","occurred_at_utc":"2030-01-01T00:00:00Z","event_key":"APPENDED"}'
+
+            def run_script_locally(alias: str, script: str, *, timeout: int) -> str:
+                self.assertEqual(alias, "local")
+                growth_script = script.replace(
+                    "$script:firstWindowLine = \"\"",
+                    f"Add-Content -LiteralPath $journal -Value '{appended}'\n$script:firstWindowLine = \"\"",
+                    1,
+                )
+                completed = subprocess.run(
+                    [
+                        "powershell",
+                        "-NoProfile",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-Command",
+                        "$script = [Console]::In.ReadToEnd(); Invoke-Expression $script",
+                    ],
+                    input=growth_script,
+                    text=True,
+                    capture_output=True,
+                    timeout=timeout,
+                    check=False,
+                )
+                if completed.returncode != 0:
+                    raise AssertionError(completed.stderr)
+                return completed.stdout
+
+            config = weekly.LaneConfig(
+                name="FTMO",
+                ssh_alias="local",
+                journal_path=str(journal),
+                state_path=str(state),
+                benchmark_path=Path("unused.csv"),
+                benchmark_label="fixture",
+                repo_root=str(WORKSPACE_ROOT),
+            )
+            with mock.patch.object(weekly, "ssh_powershell", side_effect=run_script_locally):
+                _, lifecycle, state_text, head, metadata = weekly.fetch_remote_lane_text(
+                    config,
+                    max_source_bytes=weekly.DEFAULT_MAX_SOURCE_BYTES,
+                )
+
+        payload = "\n".join(lifecycle)
+        self.assertIn("ORIGINAL", payload)
+        self.assertNotIn("APPENDED", payload)
+        self.assertNotIn("2030-01-01", payload)
+        self.assertEqual(json.loads(state_text)["pending_orders"], [])
+        self.assertEqual(head, _repo_head())
+        self.assertTrue(metadata["source_changed_during_collection"])
+        self.assertGreater(metadata["source_size_bytes_after"], metadata["source_size_bytes"])
+
+    def test_ssh_powershell_sends_full_script_over_stdin_with_short_bootstrap(self) -> None:
+        completed = subprocess.CompletedProcess(
+            args=["ssh"],
+            returncode=0,
+            stdout="ok",
+            stderr="",
+        )
+        with mock.patch.object(subprocess, "run", return_value=completed) as run:
+            output = weekly.ssh_powershell("ftmo-vps", "Write-Output 'ok'", timeout=12)
+
+        self.assertEqual(output, "ok")
+        args, kwargs = run.call_args
+        self.assertEqual(args[0][0:2], ["ssh", "ftmo-vps"])
+        self.assertIn("powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand", args[0][2])
+        self.assertEqual(kwargs["input"], "Write-Output 'ok'")
+        self.assertNotIn("Write-Output 'ok'", " ".join(args[0]))
+        self.assertLess(len(args[0][2]), 260)
+
     def test_weekend_uses_latest_completed_trading_week(self) -> None:
         start, end = weekly.latest_sgt_week_window(weekly.parse_timestamp("2026-05-16T02:00:00Z"))
 
@@ -212,6 +552,258 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         self.assertTrue(rows["IC"]["partial_week"])
         self.assertIn("portfolio_started_after_week_start", rows["IC"]["partial_reasons"])
         self.assertIn("journal_started_after_week_start", rows["IC"]["partial_reasons"])
+
+    def test_bounded_window_after_week_start_marks_lane_incomplete(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            as_of = weekly.parse_timestamp("2026-05-16T02:00:00Z")
+            lane = _lane_input(tmp, "FTMO", first_journal="2026-05-03T21:00:00Z", first_order="2026-05-04T21:00:00Z")
+            lane = weekly.LaneInput(
+                config=lane.config,
+                first_journal_row=None,
+                lifecycle_rows=[],
+                state_payload=lane.state_payload,
+                vps_head=lane.vps_head,
+                fetch_metadata={
+                    "fetch_incomplete": True,
+                    "week_coverage_proven": False,
+                    "reached_source_start": False,
+                    "window_first_row_utc": "2026-05-12T00:00:00Z",
+                    "first_live_metadata_unavailable": True,
+                },
+            )
+            result = weekly.build_weekly_report(
+                lane_inputs=[lane],
+                git_info=_git_info(runtime_changed=False),
+                as_of_utc=as_of,
+                report_root=tmp / "reports",
+                docs_output=tmp / "docs" / "live_weekly_performance.html",
+            )
+
+        row = result["weekly_summary"][0]
+        self.assertTrue(row["fetch_incomplete"])
+        self.assertIn("lane_fetch_incomplete", row["partial_reasons"])
+        self.assertFalse(row["analysis_eligible"])
+        self.assertEqual(row["performance_confidence"], "incomplete")
+        self.assertEqual(row["coverage_status"], "incomplete")
+        self.assertEqual(row["coverage_failure_reason"], "bounded_window_after_week_start")
+        self.assertEqual(row["closed_trades_display"], "incomplete")
+        self.assertIsNone(row["closed_trades"])
+        self.assertEqual(row["known_fetched_closed_trades"], 0)
+        self.assertEqual(row["completed_full_live_weeks"], 0)
+        flag = result["weekly_flags"][0]
+        self.assertEqual(flag["concern_status"], "review")
+        self.assertFalse(flag["analysis_eligible"])
+        self.assertEqual(flag["performance_confidence"], "incomplete")
+        self.assertIn("lane_fetch_incomplete", flag["evidence_caveats"])
+        html = weekly.build_dashboard_html(
+            result["weekly_summary"],
+            result["lane_breakdown"],
+            result["historical_benchmark"],
+            result["weekly_flags"],
+            result["live_week_history"],
+            result["consistency_flags"],
+            result["run_summary"],
+        )
+        self.assertIn(">incomplete<", html)
+
+    def test_incomplete_lane_with_fetched_closes_is_not_analysis_eligible(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            ftmo = _lane_input(
+                tmp,
+                "FTMO",
+                first_journal="2026-04-30T19:48:13Z",
+                first_order="2026-04-30T19:48:18Z",
+                close_r=1.25,
+            )
+            ftmo = weekly.LaneInput(
+                config=ftmo.config,
+                first_journal_row=ftmo.first_journal_row,
+                lifecycle_rows=ftmo.lifecycle_rows,
+                state_payload=ftmo.state_payload,
+                vps_head=ftmo.vps_head,
+                fetch_metadata={
+                    "fetch_incomplete": True,
+                    "week_coverage_proven": False,
+                    "reached_source_start": False,
+                    "window_first_row_utc": "2026-05-05T00:00:00Z",
+                },
+            )
+            ic = _lane_input(
+                tmp,
+                "IC",
+                first_journal="2026-04-30T19:48:13Z",
+                first_order="2026-04-30T19:48:18Z",
+                close_r=-0.50,
+            )
+            result = weekly.build_weekly_report(
+                lane_inputs=[ftmo, ic],
+                git_info=_git_info(runtime_changed=False),
+                as_of_utc=weekly.parse_timestamp("2026-05-08T08:00:00Z"),
+                report_root=tmp / "reports",
+                docs_output=tmp / "docs" / "live_weekly_performance.html",
+            )
+
+        rows = {row["lane"]: row for row in result["weekly_summary"]}
+        ftmo_row = rows["FTMO"]
+        combined = rows["COMBINED"]
+        self.assertFalse(ftmo_row["analysis_eligible"])
+        self.assertEqual(ftmo_row["performance_confidence"], "incomplete")
+        self.assertEqual(ftmo_row["coverage_status"], "incomplete")
+        self.assertEqual(ftmo_row["coverage_failure_reason"], "bounded_window_after_week_start")
+        self.assertEqual(ftmo_row["closed_trades_display"], "incomplete")
+        self.assertIsNone(ftmo_row["closed_trades"])
+        self.assertIsNone(ftmo_row["wins"])
+        self.assertIsNone(ftmo_row["losses"])
+        self.assertIsNone(ftmo_row["win_rate"])
+        self.assertIsNone(ftmo_row["net_r"])
+        self.assertIsNone(ftmo_row["net_pnl"])
+        self.assertIsNone(ftmo_row["profit_factor"])
+        self.assertEqual(ftmo_row["known_fetched_closed_trades"], 1)
+        self.assertAlmostEqual(ftmo_row["known_fetched_net_r"], 1.25)
+        self.assertAlmostEqual(ftmo_row["known_fetched_net_pnl"], 125.0)
+        self.assertFalse(combined["analysis_eligible"])
+        self.assertEqual(combined["closed_trades_display"], "incomplete")
+        self.assertIsNone(combined["closed_trades"])
+        self.assertIsNone(combined["net_r"])
+        self.assertIsNone(combined["win_rate"])
+        self.assertIsNone(combined["profit_factor"])
+        self.assertEqual(combined["coverage_failure_reason"], "combined_from_incomplete_lane")
+        self.assertEqual(combined["known_fetched_closed_trades"], 2)
+        self.assertAlmostEqual(combined["known_fetched_net_r"], 0.75)
+        self.assertNotIn("FTMO", {row["lane"] for row in result["lane_breakdown"]})
+        html = weekly.build_dashboard_html(
+            result["weekly_summary"],
+            result["lane_breakdown"],
+            result["historical_benchmark"],
+            result["weekly_flags"],
+            result["live_week_history"],
+            result["consistency_flags"],
+            result["run_summary"],
+        )
+        self.assertIn(">incomplete<", html)
+        self.assertIn("partial evidence", html)
+        self.assertIn("1 known fetched", html)
+        weekly.write_outputs(
+            output_dir=tmp / "out",
+            docs_output=tmp / "docs" / "weekly.html",
+            weekly_summary=result["weekly_summary"],
+            lane_breakdown=result["lane_breakdown"],
+            historical_benchmark=result["historical_benchmark"],
+            weekly_flags=result["weekly_flags"],
+            live_week_history=result["live_week_history"],
+            live_week_trade_details=result["live_week_trade_details"],
+            consistency_flags=result["consistency_flags"],
+            run_summary=result["run_summary"],
+        )
+        with (tmp / "out" / "weekly_summary.csv").open(newline="", encoding="utf-8") as handle:
+            csv_rows = {row["lane"]: row for row in csv.DictReader(handle)}
+        self.assertEqual(csv_rows["FTMO"]["analysis_eligible"], "false")
+        self.assertEqual(csv_rows["FTMO"]["closed_trades"], "")
+        self.assertEqual(csv_rows["FTMO"]["net_r"], "")
+        self.assertEqual(csv_rows["FTMO"]["known_fetched_closed_trades"], "1")
+        self.assertEqual(csv_rows["COMBINED"]["closed_trades"], "")
+
+    def test_combined_row_inherits_incomplete_lane_caveat(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            ftmo = _lane_input(tmp, "FTMO", first_journal="2026-05-03T21:00:00Z", first_order="2026-05-04T21:00:00Z")
+            ic = _lane_input(tmp, "IC", first_journal="2026-05-03T21:00:00Z", first_order="2026-05-04T21:00:00Z")
+            ic = weekly.LaneInput(
+                config=ic.config,
+                first_journal_row=None,
+                lifecycle_rows=[],
+                state_payload=ic.state_payload,
+                vps_head=ic.vps_head,
+                fetch_metadata={"fetch_incomplete": True, "first_live_metadata_unavailable": True},
+            )
+            result = weekly.build_weekly_report(
+                lane_inputs=[ftmo, ic],
+                git_info=_git_info(runtime_changed=False),
+                as_of_utc=weekly.parse_timestamp("2026-05-16T02:00:00Z"),
+                report_root=tmp / "reports",
+                docs_output=tmp / "docs" / "live_weekly_performance.html",
+            )
+
+        combined = next(row for row in result["weekly_summary"] if row["lane"] == "COMBINED")
+        self.assertTrue(combined["fetch_incomplete"])
+        self.assertIn("combined_from_incomplete_lane", combined["partial_reasons"])
+        self.assertFalse(combined["analysis_eligible"])
+        self.assertEqual(combined["coverage_failure_reason"], "combined_from_incomplete_lane")
+        self.assertIsNone(combined["closed_trades"])
+        self.assertIsNone(combined["net_r"])
+
+    def test_partial_and_unresolved_rows_are_caveats_not_closed_trades(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            lane = _lane_input(tmp, "FTMO", first_journal="2026-05-03T21:00:00Z", first_order="2026-05-04T21:00:00Z")
+            lane = weekly.LaneInput(
+                config=lane.config,
+                first_journal_row=lane.first_journal_row,
+                lifecycle_rows=[
+                    _row("runner_started", "2026-05-03T21:00:00Z", signal_key=""),
+                    {"event": "position_partially_closed", "occurred_at_utc": "2026-05-11T22:00:00Z"},
+                    {"event": "active_position_final_close_unresolved", "occurred_at_utc": "2026-05-12T22:00:00Z"},
+                ],
+                state_payload=lane.state_payload,
+                vps_head=lane.vps_head,
+                fetch_metadata={"reached_source_start": True, "fetch_incomplete": False},
+            )
+            result = weekly.build_weekly_report(
+                lane_inputs=[lane],
+                git_info=_git_info(runtime_changed=False),
+                as_of_utc=weekly.parse_timestamp("2026-05-16T02:00:00Z"),
+                report_root=tmp / "reports",
+                docs_output=tmp / "docs" / "live_weekly_performance.html",
+            )
+
+        row = result["weekly_summary"][0]
+        self.assertEqual(row["closed_trades"], 0)
+        self.assertIn("position_partially_closed:1", row["lifecycle_evidence_caveats"])
+        self.assertIn("active_position_final_close_unresolved:1", row["lifecycle_evidence_caveats"])
+        self.assertIn("position_partially_closed:1", result["weekly_flags"][0]["evidence_caveats"])
+
+    def test_long_fetch_errors_are_preserved_in_packet_and_shortened_on_dashboard(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            lane = _lane_input(tmp, "FTMO", first_journal="2026-05-03T21:00:00Z", first_order="2026-05-04T21:00:00Z")
+            full_error = "ssh timeout " + ("EncodedCommand ABCDEF " * 80)
+            lane = weekly.LaneInput(
+                config=lane.config,
+                first_journal_row=None,
+                lifecycle_rows=[],
+                state_payload={"fetch_error": full_error},
+                vps_head="fetch_error",
+                fetch_metadata={"fetch_error": full_error, "fetch_incomplete": True, "first_live_metadata_unavailable": True},
+            )
+            result = weekly.build_weekly_report(
+                lane_inputs=[lane],
+                git_info=_git_info(runtime_changed=False),
+                as_of_utc=weekly.parse_timestamp("2026-05-16T02:00:00Z"),
+                report_root=tmp / "reports",
+                docs_output=tmp / "docs" / "live_weekly_performance.html",
+            )
+            html = weekly.build_dashboard_html(
+                result["weekly_summary"],
+                result["lane_breakdown"],
+                result["historical_benchmark"],
+                result["weekly_flags"],
+                result["live_week_history"],
+                result["consistency_flags"],
+                result["run_summary"],
+            )
+
+        self.assertEqual(result["weekly_summary"][0]["fetch_error"], full_error)
+        self.assertEqual(result["run_summary"]["lanes"][0]["fetch_metadata"]["fetch_error"], full_error)
+        self.assertIn("ssh timeout", html)
+        self.assertNotIn("EncodedCommand ABCDEF " * 20, html)
+
+        timeout_error = "Command '['ssh', 'lane', 'powershell -EncodedCommand ABC']' timed out after 420 seconds"
+        self.assertEqual(weekly.short_error(timeout_error), "SSH/PowerShell fetch timed out after 420 seconds")
+        negative_timeout = "Command '['ssh', 'lane', 'powershell -EncodedCommand ABC']' timed out after -105 seconds"
+        self.assertEqual(weekly.short_error(negative_timeout), "SSH/PowerShell fetch timed out")
+
 
     def test_live_week_history_excludes_partial_first_week_from_consistency(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:

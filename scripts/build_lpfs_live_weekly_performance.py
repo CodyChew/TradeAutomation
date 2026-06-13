@@ -14,10 +14,11 @@ import csv
 import hashlib
 import html
 import json
+import re
 import subprocess
 import sys
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
@@ -42,10 +43,12 @@ from lp_force_strike_strategy_lab.live_trade_summary import (  # noqa: E402
     LPFSLiveClosedTrade,
     build_closed_trade_summaries,
 )
+from lpfs_journal_snapshot import DEFAULT_MAX_SOURCE_BYTES  # noqa: E402
 
 
 DEFAULT_REPORT_ROOT = REPO_ROOT / "reports" / "live_ops" / "lpfs_weekly_performance"
 DEFAULT_DOCS_OUTPUT = REPO_ROOT / "docs" / "live_weekly_performance.html"
+STDIN_POWERSHELL_BOOTSTRAP = "$script = [Console]::In.ReadToEnd(); Invoke-Expression $script"
 DEFAULT_FTMO_TRADES = (
     REPO_ROOT
     / "reports"
@@ -85,7 +88,25 @@ JOURNAL_EVENT_KEYWORDS = (
     "stop_loss_hit",
     "position_closed",
     "setup_rejected",
+    "position_partially_closed",
+    "active_position_partial_close_unresolved",
+    "active_position_final_close_unresolved",
 )
+WEEKLY_EVENT_KINDS = {
+    "runner_started",
+    "order_sent",
+    "order_adopted",
+    "position_opened",
+    "take_profit_hit",
+    "stop_loss_hit",
+    "position_closed",
+    "setup_rejected",
+}
+WEEKLY_CAVEAT_EVENT_KINDS = {
+    "position_partially_closed",
+    "active_position_partial_close_unresolved",
+    "active_position_final_close_unresolved",
+}
 RETRYABLE_STATUSES = {
     "spread_too_wide",
     "market_recovery_not_better",
@@ -101,6 +122,15 @@ RUNTIME_PATHS = [
     "shared/backtest_engine_lab/src",
 ]
 LANE_DISPLAY_ORDER = ("FTMO", "IC")
+INELIGIBLE_PRIMARY_FIELDS = (
+    "closed_trades",
+    "wins",
+    "losses",
+    "win_rate",
+    "net_r",
+    "net_pnl",
+    "profit_factor",
+)
 
 
 @dataclass(frozen=True)
@@ -158,9 +188,40 @@ def main() -> int:
     parser.add_argument("--report-root", default=str(DEFAULT_REPORT_ROOT))
     parser.add_argument("--docs-output", default=str(DEFAULT_DOCS_OUTPUT))
     parser.add_argument("--skip-git-fetch", action="store_true", help="Do not refresh origin/main before version checks.")
+    parser.add_argument(
+        "--max-source-bytes",
+        type=int,
+        default=DEFAULT_MAX_SOURCE_BYTES,
+        help=f"Maximum lifecycle journal suffix bytes to scan per lane. Defaults to {DEFAULT_MAX_SOURCE_BYTES}.",
+    )
+    parser.add_argument(
+        "--allow-full-scan",
+        action="store_true",
+        help="Explicitly approve an unbounded active lifecycle journal scan.",
+    )
+    parser.add_argument(
+        "--ftmo-benchmark-path",
+        default=None,
+        help=(
+            "Override the FTMO backtest trade CSV. Use this when running from a clean worktree "
+            "where ignored benchmark artifacts live outside the repository checkout."
+        ),
+    )
+    parser.add_argument(
+        "--ic-benchmark-path",
+        default=None,
+        help=(
+            "Override the IC backtest trade CSV. Use this when running from a clean worktree "
+            "where ignored benchmark artifacts live outside the repository checkout."
+        ),
+    )
     args = parser.parse_args()
 
     as_of_utc = parse_timestamp(args.as_of_utc) if args.as_of_utc else pd.Timestamp.now(tz="UTC")
+    try:
+        max_source_bytes = resolve_max_source_bytes(args.max_source_bytes, allow_full_scan=args.allow_full_scan)
+    except ValueError as exc:
+        parser.error(str(exc))
     report_root = Path(args.report_root)
     docs_output = Path(args.docs_output)
 
@@ -168,7 +229,20 @@ def main() -> int:
         run_command(["git", "fetch", "--quiet", "origin"], check=False)
 
     git_info = collect_git_info(as_of_utc=as_of_utc)
-    lane_inputs = [safe_fetch_lane_input(config) for config in DEFAULT_LANES]
+    week_start_sgt, week_end_sgt = latest_sgt_week_window(as_of_utc)
+    lane_configs = lane_configs_with_benchmark_paths(
+        ftmo_benchmark_path=args.ftmo_benchmark_path,
+        ic_benchmark_path=args.ic_benchmark_path,
+    )
+    lane_inputs = [
+        safe_fetch_lane_input(
+            config,
+            max_source_bytes=max_source_bytes,
+            week_start_sgt=week_start_sgt,
+            week_end_sgt=week_end_sgt,
+        )
+        for config in lane_configs
+    ]
     result = build_weekly_report(
         lane_inputs=lane_inputs,
         git_info=git_info,
@@ -200,26 +274,89 @@ def main() -> int:
     return 0
 
 
-def fetch_lane_input(config: LaneConfig) -> LaneInput:
-    first_line, lifecycle_lines, state_text, vps_head, fetch_metadata = fetch_remote_lane_text(config)
+def resolve_max_source_bytes(max_source_bytes: int, *, allow_full_scan: bool) -> int | None:
+    if allow_full_scan:
+        return None
+    if max_source_bytes <= 0:
+        raise ValueError("--max-source-bytes must be positive unless --allow-full-scan is set")
+    return max_source_bytes
+
+
+def lane_configs_with_benchmark_paths(
+    *,
+    ftmo_benchmark_path: str | Path | None = None,
+    ic_benchmark_path: str | Path | None = None,
+    lanes: Sequence[LaneConfig] | None = None,
+) -> list[LaneConfig]:
+    """Return lane configs with optional explicit benchmark artifact paths.
+
+    The default benchmark CSVs are intentionally historical report artifacts and
+    may be ignored in clean worktrees. Explicit paths keep the weekly report
+    reproducible without changing live evidence collection.
+    """
+    overrides = {
+        "FTMO": Path(ftmo_benchmark_path) if ftmo_benchmark_path else None,
+        "IC": Path(ic_benchmark_path) if ic_benchmark_path else None,
+    }
+    lane_source = DEFAULT_LANES if lanes is None else lanes
+    return [
+        replace(config, benchmark_path=overrides.get(config.name) or config.benchmark_path)
+        for config in lane_source
+    ]
+
+
+def fetch_lane_input(
+    config: LaneConfig,
+    *,
+    max_source_bytes: int | None,
+    week_start_sgt: pd.Timestamp,
+    week_end_sgt: pd.Timestamp,
+) -> LaneInput:
+    first_line, lifecycle_lines, state_text, vps_head, fetch_metadata = fetch_remote_lane_text(
+        config,
+        max_source_bytes=max_source_bytes,
+    )
     first_row = parse_json_line(first_line)
     lifecycle_rows: list[dict[str, Any]] = []
     lifecycle_parse_errors = 0
+    lifecycle_rows_filtered_out = 0
     for line in lifecycle_lines:
         row = parse_json_line(line)
         if row is None:
             lifecycle_parse_errors += 1
             continue
-        lifecycle_rows.append(row)
+        if is_weekly_lifecycle_row(row):
+            lifecycle_rows.append(row)
+        else:
+            lifecycle_rows_filtered_out += 1
     state_payload = parse_json_line(state_text)
     state_parse_error = bool(state_text.strip()) and state_payload is None
+    first_window_utc = safe_parse_timestamp(fetch_metadata.get("window_first_row_utc"))
+    week_start_utc = week_start_sgt.tz_convert("UTC")
+    week_coverage_proven = bool(fetch_metadata.get("reached_source_start")) or (
+        first_window_utc is not None and first_window_utc <= week_start_utc
+    )
+    first_live_metadata_unavailable = not bool(fetch_metadata.get("reached_source_start"))
     metadata = {
         **fetch_metadata,
-        "matched_lifecycle_rows": len(lifecycle_lines),
+        "max_source_bytes": max_source_bytes,
+        "requested_week_start_sgt": week_start_sgt.isoformat(),
+        "requested_week_end_sgt": week_end_sgt.isoformat(),
+        "requested_week_start_utc": week_start_utc.isoformat(),
+        "requested_week_end_utc": week_end_sgt.tz_convert("UTC").isoformat(),
+        "transport_matched_lifecycle_rows": len(lifecycle_lines),
         "parsed_lifecycle_rows": len(lifecycle_rows),
+        "lifecycle_rows_filtered_out": lifecycle_rows_filtered_out,
         "lifecycle_parse_errors": lifecycle_parse_errors,
         "state_parse_error": state_parse_error,
+        "first_fetched_event_utc": first_event_timestamp(lifecycle_rows),
+        "last_fetched_event_utc": last_event_timestamp(lifecycle_rows),
+        "week_coverage_proven": week_coverage_proven,
+        "fetch_incomplete": not week_coverage_proven,
+        "first_live_metadata_unavailable": first_live_metadata_unavailable,
     }
+    if first_live_metadata_unavailable:
+        first_row = None
     return LaneInput(
         config=config,
         first_journal_row=first_row,
@@ -230,75 +367,191 @@ def fetch_lane_input(config: LaneConfig) -> LaneInput:
     )
 
 
-def safe_fetch_lane_input(config: LaneConfig) -> LaneInput:
+def safe_fetch_lane_input(
+    config: LaneConfig,
+    *,
+    max_source_bytes: int | None,
+    week_start_sgt: pd.Timestamp,
+    week_end_sgt: pd.Timestamp,
+) -> LaneInput:
     try:
-        return fetch_lane_input(config)
+        return fetch_lane_input(
+            config,
+            max_source_bytes=max_source_bytes,
+            week_start_sgt=week_start_sgt,
+            week_end_sgt=week_end_sgt,
+        )
     except Exception as exc:  # pragma: no cover - exercised only when VPS access is unavailable.
+        fetch_error = str(exc)
         return LaneInput(
             config=config,
             first_journal_row=None,
             lifecycle_rows=[],
-            state_payload={"fetch_error": str(exc)},
+            state_payload={"fetch_error": fetch_error},
             vps_head="fetch_error",
-            fetch_metadata={"fetch_error": str(exc)},
+            fetch_metadata={
+                "fetch_error": fetch_error,
+                "fetch_error_short": short_error(fetch_error),
+                "fetch_incomplete": True,
+                "first_live_metadata_unavailable": True,
+                "max_source_bytes": max_source_bytes,
+                "requested_week_start_sgt": week_start_sgt.isoformat(),
+                "requested_week_end_sgt": week_end_sgt.isoformat(),
+            },
         )
 
 
-def fetch_remote_lane_text(config: LaneConfig) -> tuple[str, list[str], str, str, dict[str, Any]]:
+def fetch_remote_lane_text(
+    config: LaneConfig,
+    *,
+    max_source_bytes: int | None,
+) -> tuple[str, list[str], str, str, dict[str, Any]]:
     patterns = "@(" + ",".join(f"'{keyword}'" for keyword in JOURNAL_EVENT_KEYWORDS) + ")"
+    max_bytes_literal = "$null" if max_source_bytes is None else str(int(max_source_bytes))
+    scan_mode = "full" if max_source_bytes is None else "bounded_suffix"
     script = f"""
 $ErrorActionPreference = 'Stop'
 $journal = '{config.journal_path}'
 $state = '{config.state_path}'
 $repo = '{config.repo_root}'
 $patterns = {patterns}
+$maxSourceBytes = {max_bytes_literal}
+$scanMode = '{scan_mode}'
 Write-Output '---META---'
 $journalItem = Get-Item -LiteralPath $journal
-[ordered]@{{
-  journal_path = $journal
-  journal_size_bytes = $journalItem.Length
-  journal_last_write_utc = $journalItem.LastWriteTimeUtc.ToString('o')
-  event_keywords = $patterns
-}} | ConvertTo-Json -Compress
-function New-SharedTextReader([string]$Path) {{
-  $stream = [System.IO.FileStream]::new(
-    $Path,
+$beforeItem = Get-Item -LiteralPath $journal
+$sourceSizeBefore = [Int64]$beforeItem.Length
+$sourceStartOffset = [Int64]0
+if ($null -ne $maxSourceBytes -and $sourceSizeBefore -gt $maxSourceBytes) {{
+  $sourceStartOffset = $sourceSizeBefore - [Int64]$maxSourceBytes
+}}
+$sourceEndOffset = $sourceSizeBefore
+$endsWithNewline = $true
+if ($sourceEndOffset -gt 0) {{
+  $newlineStream = [System.IO.FileStream]::new(
+    $journal,
     [System.IO.FileMode]::Open,
     [System.IO.FileAccess]::Read,
     [System.IO.FileShare]::ReadWrite
   )
-  [System.IO.StreamReader]::new($stream)
-}}
-Write-Output '---FIRST---'
-$reader = New-SharedTextReader $journal
-try {{
-  $firstLine = $reader.ReadLine()
-  if ($null -ne $firstLine) {{
-    Write-Output $firstLine
+  try {{
+    [void]$newlineStream.Seek($sourceEndOffset - 1, [System.IO.SeekOrigin]::Begin)
+    $endsWithNewline = ($newlineStream.ReadByte() -eq 10)
+  }} finally {{
+    $newlineStream.Close()
   }}
-}} finally {{
-  $reader.Close()
 }}
-Write-Output '---LIFECYCLE---'
-$reader = New-SharedTextReader $journal
-try {{
-  while (($line = $reader.ReadLine()) -ne $null) {{
-    foreach ($pattern in $patterns) {{
-      if ($line.Contains($pattern)) {{
-        Write-Output $line
-        break
-      }}
+$script:firstWindowLine = ""
+$script:lastWindowLine = ""
+$script:matched = New-Object 'System.Collections.Generic.List[string]'
+$processLine = {{
+  param([string]$rawLine)
+  $line = $rawLine.TrimEnd("`r")
+  if ([string]::IsNullOrWhiteSpace($line)) {{ return }}
+  if ($script:firstWindowLine -eq "") {{
+    $script:firstWindowLine = $line
+  }}
+  $script:lastWindowLine = $line
+  foreach ($pattern in $patterns) {{
+    if ($line.Contains($pattern)) {{
+      [void]$script:matched.Add($line)
+      break
     }}
   }}
+}}
+$stream = [System.IO.FileStream]::new(
+  $journal,
+  [System.IO.FileMode]::Open,
+  [System.IO.FileAccess]::Read,
+  [System.IO.FileShare]::ReadWrite
+)
+try {{
+  [void]$stream.Seek($sourceStartOffset, [System.IO.SeekOrigin]::Begin)
+  $bytesToRead = [Int64]($sourceEndOffset - $sourceStartOffset)
+  if ($bytesToRead -gt [Int64][Int32]::MaxValue) {{
+    throw "Requested lifecycle read window is too large to materialize safely: $bytesToRead bytes"
+  }}
+  $bytes = New-Object byte[] ([Int32]$bytesToRead)
+  $totalRead = 0
+  while ($totalRead -lt $bytes.Length) {{
+    $read = $stream.Read($bytes, $totalRead, $bytes.Length - $totalRead)
+    if ($read -le 0) {{
+      break
+    }}
+    $totalRead += $read
+  }}
+  $text = [System.Text.Encoding]::UTF8.GetString($bytes, 0, $totalRead)
+  if ($sourceStartOffset -gt 0) {{
+    $firstNewline = $text.IndexOf("`n")
+    if ($firstNewline -ge 0) {{
+      $text = $text.Substring($firstNewline + 1)
+    }} else {{
+      $text = ""
+    }}
+  }}
+  if (-not $endsWithNewline) {{
+    $lastNewline = $text.LastIndexOf("`n")
+    if ($lastNewline -ge 0) {{
+      $text = $text.Substring(0, $lastNewline + 1)
+    }} else {{
+      $text = ""
+    }}
+  }}
+  foreach ($line in ($text -split "`n")) {{
+    & $processLine $line
+  }}
 }} finally {{
-  $reader.Close()
+  $stream.Close()
+}}
+$afterItem = Get-Item -LiteralPath $journal
+$sourceChanged = ($sourceSizeBefore -ne [Int64]$afterItem.Length) -or ($beforeItem.LastWriteTimeUtc.ToString('o') -ne $afterItem.LastWriteTimeUtc.ToString('o'))
+[ordered]@{{
+  journal_path = $journal
+  journal_size_bytes = $sourceSizeBefore
+  journal_last_write_utc = $beforeItem.LastWriteTimeUtc.ToString('o')
+  event_keywords = $patterns
+  scan_mode = $scanMode
+  max_source_bytes = $maxSourceBytes
+  source_size_bytes = $sourceSizeBefore
+  source_start_offset = $sourceStartOffset
+  source_end_offset = $sourceEndOffset
+  reached_source_start = ($sourceStartOffset -eq 0)
+  source_size_bytes_after = [Int64]$afterItem.Length
+  source_last_write_utc_after = $afterItem.LastWriteTimeUtc.ToString('o')
+  source_changed_during_collection = $sourceChanged
+}} | ConvertTo-Json -Compress
+Write-Output '---FIRST---'
+if ($sourceStartOffset -eq 0 -and $script:firstWindowLine -ne "") {{
+  Write-Output $script:firstWindowLine
+}}
+Write-Output '---WINDOW_FIRST---'
+if ($script:firstWindowLine -ne "") {{
+  Write-Output $script:firstWindowLine
+}}
+Write-Output '---WINDOW_LAST---'
+if ($script:lastWindowLine -ne "") {{
+  Write-Output $script:lastWindowLine
+}}
+Write-Output '---LIFECYCLE---'
+foreach ($line in $script:matched) {{
+  Write-Output $line
 }}
 Write-Output '---STATE---'
-$reader = New-SharedTextReader $state
+$stateStream = [System.IO.FileStream]::new(
+  $state,
+  [System.IO.FileMode]::Open,
+  [System.IO.FileAccess]::Read,
+  [System.IO.FileShare]::ReadWrite
+)
 try {{
-  Write-Output $reader.ReadToEnd()
+  $stateReader = [System.IO.StreamReader]::new($stateStream)
+  try {{
+    Write-Output $stateReader.ReadToEnd()
+  }} finally {{
+    $stateReader.Close()
+  }}
 }} finally {{
-  $reader.Close()
+  $stateStream.Close()
 }}
 Write-Output '---HEAD---'
 git -C $repo rev-parse HEAD
@@ -308,13 +561,13 @@ git -C $repo rev-parse HEAD
     current: str | None = None
     for line in raw.splitlines():
         marker = line.strip()
-        if marker in {"---META---", "---FIRST---", "---LIFECYCLE---", "---STATE---", "---HEAD---"}:
+        if marker in {"---META---", "---FIRST---", "---WINDOW_FIRST---", "---WINDOW_LAST---", "---LIFECYCLE---", "---STATE---", "---HEAD---"}:
             current = marker.strip("-")
             continue
         if current in {"META", "STATE"}:
             sections[current].append(line)
             continue
-        if current in {"FIRST", "LIFECYCLE"} and line.strip().startswith("{"):
+        if current in {"FIRST", "WINDOW_FIRST", "WINDOW_LAST", "LIFECYCLE"} and line.strip().startswith("{"):
             sections[current].append(line)
             continue
         if current == "HEAD" and line.strip():
@@ -324,6 +577,12 @@ git -C $repo rev-parse HEAD
     state = "\n".join(sections.get("STATE", [])).strip()
     head = next((line.strip() for line in sections.get("HEAD", []) if line.strip() and not line.startswith("#<")), "")
     metadata = parse_json_line("\n".join(sections.get("META", [])).strip()) or {}
+    window_first = parse_json_line(first_json_line(sections.get("WINDOW_FIRST", [])))
+    window_last = parse_json_line(first_json_line(sections.get("WINDOW_LAST", [])))
+    if window_first is not None:
+        metadata["window_first_row_utc"] = event_time(window_first)
+    if window_last is not None:
+        metadata["window_last_row_utc"] = event_time(window_last)
     return first, lifecycle, state, head, metadata
 
 
@@ -331,11 +590,95 @@ def first_json_line(lines: Sequence[str]) -> str:
     return next((line for line in lines if line.strip().startswith("{")), "")
 
 
+def weekly_row_kind(row: dict[str, Any]) -> str:
+    event = row.get("notification_event") or {}
+    return str(event.get("kind") or row.get("event") or "")
+
+
+def is_weekly_lifecycle_row(row: dict[str, Any]) -> bool:
+    return weekly_row_kind(row) in WEEKLY_EVENT_KINDS or weekly_row_kind(row) in WEEKLY_CAVEAT_EVENT_KINDS
+
+
+def first_event_timestamp(rows: Sequence[dict[str, Any]]) -> str:
+    for row in rows:
+        occurred = safe_event_time(row)
+        if occurred:
+            return occurred
+    return ""
+
+
+def last_event_timestamp(rows: Sequence[dict[str, Any]]) -> str:
+    for row in reversed(rows):
+        occurred = safe_event_time(row)
+        if occurred:
+            return occurred
+    return ""
+
+
+def safe_event_time(row: dict[str, Any] | None) -> str:
+    try:
+        return event_time(row) or ""
+    except Exception:
+        return ""
+
+
+def safe_parse_timestamp(value: Any) -> pd.Timestamp | None:
+    if not value:
+        return None
+
+
+def coverage_failure_reason(fetch_error: str, metadata: dict[str, Any], *, combined: bool = False) -> str:
+    if combined:
+        return "combined_from_incomplete_lane"
+    if fetch_error:
+        return "fetch_error"
+    if metadata.get("fetch_incomplete") and not metadata.get("week_coverage_proven"):
+        return "bounded_window_after_week_start"
+    if metadata.get("fetch_incomplete"):
+        return "coverage_not_proven"
+    return ""
+
+
+def apply_validity_contract(
+    row: dict[str, Any],
+    *,
+    analysis_eligible: bool,
+    coverage_failure: str = "",
+) -> dict[str, Any]:
+    known_closed = int(row.get("closed_trades") or 0)
+    known_net_r = float(row.get("net_r") or 0.0)
+    known_net_pnl = float(row.get("net_pnl") or 0.0)
+    row["analysis_eligible"] = analysis_eligible
+    row["performance_confidence"] = "complete" if analysis_eligible else "incomplete"
+    row["coverage_status"] = "complete" if analysis_eligible else "incomplete"
+    row["coverage_failure_reason"] = "" if analysis_eligible else coverage_failure
+    row["closed_trades_display"] = str(known_closed) if analysis_eligible else "incomplete"
+    row["known_fetched_closed_trades"] = known_closed
+    row["known_fetched_net_r"] = known_net_r
+    row["known_fetched_net_pnl"] = known_net_pnl
+    if not analysis_eligible:
+        for field in INELIGIBLE_PRIMARY_FIELDS:
+            row[field] = None
+        for field in ("worst_symbol", "worst_timeframe", "worst_side"):
+            if field in row:
+                row[field] = "incomplete"
+    return row
+
+
+def is_analysis_eligible(row: dict[str, Any]) -> bool:
+    return bool(row.get("analysis_eligible", not bool(row.get("fetch_incomplete"))))
+    try:
+        return parse_timestamp(str(value))
+    except Exception:
+        return None
+
+
 def ssh_powershell(alias: str, script: str, *, timeout: int) -> str:
-    encoded = base64.b64encode(script.encode("utf-16le")).decode("ascii")
+    encoded_bootstrap = base64.b64encode(STDIN_POWERSHELL_BOOTSTRAP.encode("utf-16le")).decode("ascii")
     return run_command(
-        ["ssh", alias, f"powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand {encoded}"],
+        ["ssh", alias, f"powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand {encoded_bootstrap}"],
         timeout=timeout,
+        input_text=script,
     )
 
 
@@ -385,7 +728,8 @@ def build_weekly_report(
             }
         )
         flag_rows.append({"lane": lane_input.config.name, **flag})
-        breakdown_rows.extend(lane_breakdown_rows(lane_input.config.name, lane_summary["trades"]))
+        if is_analysis_eligible(lane_summary):
+            breakdown_rows.extend(lane_breakdown_rows(lane_input.config.name, lane_summary["trades"]))
         fingerprint_payload["lanes"].append(
             {
                 "lane": lane_input.config.name,
@@ -417,8 +761,18 @@ def build_weekly_report(
             {
                 "lane": row["lane"],
                 "status": row["concern_status"],
-                "closed_trades": row["closed_trades"],
-                "net_r": row["net_r"],
+                "analysis_eligible": row.get("analysis_eligible"),
+                "performance_confidence": row.get("performance_confidence"),
+                "coverage_status": row.get("coverage_status"),
+                "coverage_failure_reason": row.get("coverage_failure_reason"),
+                "closed_trades": row.get("closed_trades"),
+                "closed_trades_display": row.get("closed_trades_display"),
+                "known_fetched_closed_trades": row.get("known_fetched_closed_trades"),
+                "known_fetched_net_r": row.get("known_fetched_net_r"),
+                "known_fetched_net_pnl": row.get("known_fetched_net_pnl"),
+                "fetch_incomplete": row.get("fetch_incomplete", False),
+                "net_r": row.get("net_r"),
+                "net_pnl": row.get("net_pnl"),
                 "partial_week": row["partial_week"],
                 "completed_full_live_weeks": row.get("completed_full_live_weeks", 0),
                 "fetch_metadata": next(
@@ -459,7 +813,10 @@ def summarize_lane_week(
     trades = build_closed_trade_summaries(events)
     week_trades = select_trades_for_sgt_week(trades, week_start_sgt, week_end_sgt)
     start_info = lane_start_info(lane_input.first_journal_row, events, trades)
+    if lane_input.fetch_metadata.get("first_live_metadata_unavailable"):
+        start_info = empty_start_info()
     wait_counts = setup_wait_counts(events, week_start_sgt, week_end_sgt)
+    caveats = lifecycle_evidence_caveats(events, week_start_sgt, week_end_sgt)
     state_counts = live_state_counts(lane_input.state_payload)
     net_r_values = [float(trade.r_result or 0.0) for trade in week_trades]
     pnl_values = [float(trade.close_profit or 0.0) for trade in week_trades if trade.close_profit is not None]
@@ -482,7 +839,8 @@ def summarize_lane_week(
         str(git_info.get("latest_runtime_commit_full")), lane_input.vps_head
     )
     runtime_changed = bool(git_info.get("runtime_commits_in_window"))
-    fetch_error = str(lane_input.state_payload.get("fetch_error") or "")
+    fetch_error = str(lane_input.state_payload.get("fetch_error") or lane_input.fetch_metadata.get("fetch_error") or "")
+    fetch_incomplete = bool(fetch_error or lane_input.fetch_metadata.get("fetch_incomplete"))
 
     row = {
         "lane": lane_input.config.name,
@@ -495,6 +853,7 @@ def summarize_lane_week(
         "first_closed_trade_utc": start_info.get("first_closed_trade_utc"),
         "partial_week": bool(partial_reasons),
         "partial_reasons": ";".join(partial_reasons),
+        "fetch_incomplete": fetch_incomplete,
         "vps_head": lane_input.vps_head,
         "fetch_error": fetch_error,
         "local_head": git_info.get("local_head"),
@@ -520,9 +879,27 @@ def summarize_lane_week(
         "pending_orders": state_counts["pending_orders"],
         "active_positions": state_counts["active_positions"],
         "processed_signal_keys": state_counts["processed_signal_keys"],
+        "lifecycle_evidence_caveats": ";".join(caveats) if caveats else "",
         "trades": week_trades,
     }
-    return row
+    if fetch_incomplete and "lane_fetch_incomplete" not in partial_reasons:
+        partial_reasons.append("lane_fetch_incomplete")
+        row["partial_week"] = True
+        row["partial_reasons"] = ";".join(partial_reasons)
+    return apply_validity_contract(
+        row,
+        analysis_eligible=not fetch_incomplete,
+        coverage_failure=coverage_failure_reason(fetch_error, lane_input.fetch_metadata),
+    )
+
+
+def empty_start_info() -> dict[str, str | None]:
+    return {
+        "first_journal_utc": None,
+        "first_runner_utc": None,
+        "first_order_utc": None,
+        "first_closed_trade_utc": None,
+    }
 
 
 def lane_start_info(
@@ -551,6 +928,25 @@ def first_event_time(rows: Sequence[dict[str, Any]], kind: str) -> str | None:
         if event.get("kind") == kind:
             return event_time(row)
     return None
+
+
+def lifecycle_evidence_caveats(
+    rows: Sequence[dict[str, Any]],
+    week_start_sgt: pd.Timestamp,
+    week_end_sgt: pd.Timestamp,
+) -> list[str]:
+    counts: Counter[str] = Counter()
+    for row in rows:
+        kind = weekly_row_kind(row)
+        if kind not in WEEKLY_CAVEAT_EVENT_KINDS:
+            continue
+        occurred = safe_event_time(row)
+        if not occurred:
+            continue
+        occurred_sgt = parse_timestamp(occurred).tz_convert(SGT)
+        if week_start_sgt <= occurred_sgt < week_end_sgt:
+            counts[kind] += 1
+    return [f"{kind}:{count}" for kind, count in sorted(counts.items())]
 
 
 def event_time(row: dict[str, Any] | None) -> str | None:
@@ -663,6 +1059,8 @@ def live_week_history_rows(
     events = lane_input.lifecycle_rows
     trades = build_closed_trade_summaries(events)
     start_info = lane_start_info(lane_input.first_journal_row, events, trades)
+    if lane_input.fetch_metadata.get("first_live_metadata_unavailable"):
+        start_info = empty_start_info()
     first_live_utc = first_live_timestamp(start_info)
     if first_live_utc is None:
         return [], []
@@ -672,7 +1070,8 @@ def live_week_history_rows(
     first_order_sgt = parse_timestamp(start_info["first_order_utc"]).tz_convert(SGT) if start_info.get("first_order_utc") else None
     first_journal_sgt = parse_timestamp(start_info["first_journal_utc"]).tz_convert(SGT) if start_info.get("first_journal_utc") else None
     now_sgt = as_of_utc.tz_convert(SGT)
-    fetch_error = str(lane_input.state_payload.get("fetch_error") or "")
+    fetch_error = str(lane_input.state_payload.get("fetch_error") or lane_input.fetch_metadata.get("fetch_error") or "")
+    fetch_incomplete = bool(fetch_error or lane_input.fetch_metadata.get("fetch_incomplete"))
 
     history_rows: list[dict[str, Any]] = []
     trade_rows: list[dict[str, Any]] = []
@@ -688,7 +1087,7 @@ def live_week_history_rows(
             partial_reasons.append("portfolio_started_after_week_start")
         if first_journal_sgt is not None and first_journal_sgt > week_start_sgt:
             partial_reasons.append("journal_started_after_week_start")
-        if fetch_error:
+        if fetch_incomplete:
             partial_reasons.append("lane_fetch_incomplete")
 
         values = [float(trade.r_result or 0.0) for trade in week_trades]
@@ -698,11 +1097,15 @@ def live_week_history_rows(
         gross_win = sum(value for value in values if value > 0)
         gross_loss = abs(sum(value for value in values if value < 0))
         net_r = sum(values)
-        percentile = historical_percentile(net_r, benchmark.get("weekly_r_values") or [])
-        performance_status, performance_reasons, percentile_band_value = classify_performance(net_r, benchmark)
+        if fetch_incomplete:
+            percentile = None
+            performance_status, performance_reasons, percentile_band_value = "review", ["lane_fetch_incomplete"], "incomplete"
+        else:
+            percentile = historical_percentile(net_r, benchmark.get("weekly_r_values") or [])
+            performance_status, performance_reasons, percentile_band_value = classify_performance(net_r, benchmark)
         partial_week = bool(partial_reasons)
         completed_full_week = not partial_week and week_end_sgt <= now_sgt
-        included_in_consistency = completed_full_week and not fetch_error
+        included_in_consistency = completed_full_week and not fetch_incomplete
         if included_in_consistency:
             completed_full_count += 1
 
@@ -728,6 +1131,11 @@ def live_week_history_rows(
             "performance_status": performance_status,
             "performance_reasons": ";".join(performance_reasons),
         }
+        apply_validity_contract(
+            row,
+            analysis_eligible=not fetch_incomplete,
+            coverage_failure=coverage_failure_reason(fetch_error, lane_input.fetch_metadata),
+        )
         history_rows.append(row)
 
         for trade in week_trades:
@@ -865,6 +1273,14 @@ def pivot_live_week_history(history_rows: Sequence[dict[str, Any]]) -> list[list
 def compact_lane_week_cells(row: dict[str, Any] | None) -> list[Any]:
     if row is None:
         return [muted_cell("n/a"), "n/a", "n/a", "n/a", "n/a"]
+    if not is_analysis_eligible(row):
+        return [
+            status_cell(row.get("performance_status")),
+            "n/a",
+            "n/a",
+            str(row.get("closed_trades_display") or "incomplete"),
+            "n/a",
+        ]
     return [
         status_cell(row.get("performance_status")),
         fmt_r(row.get("net_r")),
@@ -940,19 +1356,24 @@ def combined_summary_row(
     rows = [row for row in weekly_rows if row["lane"] != "COMBINED"]
     if not rows:
         return None
-    closed = sum(int(row["closed_trades"]) for row in rows)
-    wins = sum(int(row["wins"]) for row in rows)
-    losses = sum(int(row["losses"]) for row in rows)
+    analysis_eligible = all(is_analysis_eligible(row) for row in rows)
+    closed = sum(int(row.get("known_fetched_closed_trades") or 0) for row in rows)
+    wins = sum(int(row.get("wins") or 0) for row in rows if is_analysis_eligible(row))
+    losses = sum(int(row.get("losses") or 0) for row in rows if is_analysis_eligible(row))
+    known_net_r = sum(float(row.get("known_fetched_net_r") or 0.0) for row in rows)
+    known_net_pnl = sum(float(row.get("known_fetched_net_pnl") or 0.0) for row in rows)
     gross_win = 0.0
     gross_loss = 0.0
     for row in rows:
+        if not is_analysis_eligible(row):
+            continue
         for trade in row.get("trades", []):
             value = float(trade.r_result or 0.0)
             if value > 0:
                 gross_win += value
             elif value < 0:
                 gross_loss += abs(value)
-    return {
+    row = {
         "lane": "COMBINED",
         "week_start_sgt": week_start_sgt.isoformat(),
         "week_end_sgt": week_end_sgt.isoformat(),
@@ -962,7 +1383,8 @@ def combined_summary_row(
         "first_order_utc": "",
         "first_closed_trade_utc": "",
         "partial_week": any(bool(row["partial_week"]) for row in rows),
-        "partial_reasons": "combined_from_lane_statuses",
+        "partial_reasons": combined_partial_reasons(rows),
+        "fetch_incomplete": any(bool(row.get("fetch_incomplete")) for row in rows),
         "completed_full_live_weeks": min(int(row.get("completed_full_live_weeks") or 0) for row in rows),
         "latest_week_complete": all(bool(row.get("latest_week_complete")) for row in rows),
         "vps_head": "",
@@ -976,8 +1398,8 @@ def combined_summary_row(
         "wins": wins,
         "losses": losses,
         "win_rate": safe_ratio(wins, closed),
-        "net_r": sum(float(row["net_r"]) for row in rows),
-        "net_pnl": sum(float(row["net_pnl"]) for row in rows),
+        "net_r": known_net_r,
+        "net_pnl": known_net_pnl,
         "profit_factor": None if gross_loss == 0 else gross_win / gross_loss,
         "worst_symbol": "see lane rows",
         "worst_timeframe": "see lane rows",
@@ -990,10 +1412,32 @@ def combined_summary_row(
         "pending_orders": sum(int(row["pending_orders"]) for row in rows),
         "active_positions": sum(int(row["active_positions"]) for row in rows),
         "processed_signal_keys": sum(int(row["processed_signal_keys"]) for row in rows),
+        "lifecycle_evidence_caveats": ";".join(
+            str(row.get("lifecycle_evidence_caveats") or "") for row in rows if row.get("lifecycle_evidence_caveats")
+        ),
     }
+    return apply_validity_contract(
+        row,
+        analysis_eligible=analysis_eligible,
+        coverage_failure=coverage_failure_reason("", {}, combined=not analysis_eligible),
+    )
+
+
+def combined_partial_reasons(rows: Sequence[dict[str, Any]]) -> str:
+    reasons = ["combined_from_lane_statuses"]
+    if any(bool(row.get("fetch_incomplete")) for row in rows):
+        reasons.append("combined_from_incomplete_lane")
+    return ";".join(reasons)
 
 
 def historical_weekly_benchmark(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        raise FileNotFoundError(
+            "Benchmark trade CSV not found: "
+            f"{path}. If this is a clean worktree without ignored report artifacts, "
+            "pass --ftmo-benchmark-path and --ic-benchmark-path pointing at the reviewed "
+            "commission-adjusted backtest trade CSVs."
+        )
     data = pd.read_csv(path)
     if "separation_variant_id" in data.columns:
         data = data[data["separation_variant_id"] == "exclude_lp_pivot_inside_fs"].copy()
@@ -1027,10 +1471,18 @@ def historical_weekly_benchmark(path: Path) -> dict[str, Any]:
 def classify_week(row: dict[str, Any], benchmark: dict[str, Any]) -> dict[str, Any]:
     if row["lane"] == "COMBINED":
         return {"concern_status": "watch", "concern_reasons": "combined_view"}
-    net_r = float(row.get("net_r") or 0.0)
-    performance_status, performance_reasons, band = classify_performance(net_r, benchmark)
-    status = performance_status
-    reasons: list[str] = list(performance_reasons)
+    analysis_eligible = is_analysis_eligible(row)
+    net_r = None if not analysis_eligible else float(row.get("net_r") or 0.0)
+    if not analysis_eligible:
+        status = "review"
+        reasons = ["lane_fetch_incomplete"]
+        band = "incomplete"
+        percentile = None
+    else:
+        performance_status, performance_reasons, band = classify_performance(float(net_r), benchmark)
+        status = performance_status
+        reasons = list(performance_reasons)
+        percentile = historical_percentile(float(net_r), benchmark.get("weekly_r_values") or [])
     evidence_caveats: list[str] = []
     if row.get("partial_week"):
         status = "watch" if status == "normal" else status
@@ -1042,9 +1494,13 @@ def classify_week(row: dict[str, Any], benchmark: dict[str, Any]) -> dict[str, A
     if row.get("fetch_error"):
         status = "review"
         evidence_caveats.append("lane_fetch_incomplete")
-    if concentration_risk(row):
+    if row.get("fetch_incomplete") and "lane_fetch_incomplete" not in evidence_caveats:
+        status = "review"
+        evidence_caveats.append("lane_fetch_incomplete")
+    if row.get("lifecycle_evidence_caveats"):
+        evidence_caveats.append(str(row["lifecycle_evidence_caveats"]))
+    if analysis_eligible and concentration_risk(row):
         evidence_caveats.append("loss_concentration")
-    percentile = historical_percentile(net_r, benchmark.get("weekly_r_values") or [])
     row["concern_status"] = status
     row["concern_reasons"] = ";".join(reasons)
     row["evidence_caveats"] = ";".join(evidence_caveats) if evidence_caveats else "none"
@@ -1055,6 +1511,13 @@ def classify_week(row: dict[str, Any], benchmark: dict[str, Any]) -> dict[str, A
         "concern_reasons": row["concern_reasons"],
         "evidence_caveats": row["evidence_caveats"],
         "net_r": net_r,
+        "analysis_eligible": analysis_eligible,
+        "performance_confidence": row.get("performance_confidence"),
+        "coverage_status": row.get("coverage_status"),
+        "coverage_failure_reason": row.get("coverage_failure_reason"),
+        "known_fetched_closed_trades": row.get("known_fetched_closed_trades"),
+        "known_fetched_net_r": row.get("known_fetched_net_r"),
+        "known_fetched_net_pnl": row.get("known_fetched_net_pnl"),
         "p10_week_r": benchmark.get("p10_week_r"),
         "p05_week_r": benchmark.get("p05_week_r"),
         "historical_percentile": row["historical_percentile"],
@@ -1159,11 +1622,14 @@ def build_dashboard_html(
     for row in lane_rows:
         flag = flags.get(row["lane"], {})
         benchmark = benchmarks.get(row["lane"], {})
+        eligible = is_analysis_eligible(row)
+        closed_note = f"{fmt_int(row['closed_trades'])} closed" if eligible else "incomplete"
+        performance_note = fmt_r(row["net_r"]) if eligible else f"partial evidence: {known_fetched_text(row)}"
         kpis.append(
             [
                 row["lane"],
                 str(flag.get("concern_status", row.get("concern_status", "watch"))).upper(),
-                f"{fmt_r(row['net_r'])} | {fmt_int(row['closed_trades'])} closed | {full_week_text(row.get('completed_full_live_weeks'))}",
+                f"{performance_note} | {closed_note} | {full_week_text(row.get('completed_full_live_weeks'))}",
             ]
         )
     summary_table = [
@@ -1180,11 +1646,16 @@ def build_dashboard_html(
             short_text(row.get("local_head")),
             short_text(row.get("origin_head")),
             short_text(row.get("vps_head")),
-            row["fetch_error"],
+            short_error(row["fetch_error"]),
             (str(row.get("latest_runtime_commit") or "").split() or [""])[0],
             str(row["runtime_synced"]),
             str(row["runtime_changed_in_week"]),
-            fmt_int(row["closed_trades"]),
+            str(row.get("analysis_eligible")),
+            row.get("performance_confidence"),
+            row.get("coverage_status"),
+            row.get("coverage_failure_reason"),
+            closed_trade_text(row),
+            known_fetched_text(row),
             fmt_r(row["net_r"]),
             fmt_money(row["net_pnl"]),
             pct(row["win_rate"]),
@@ -1219,7 +1690,12 @@ def build_dashboard_html(
             status_cell(row["concern_status"]),
             row["concern_reasons"],
             row.get("evidence_caveats", "none"),
+            str(row.get("analysis_eligible")),
+            row.get("performance_confidence"),
+            row.get("coverage_status"),
+            row.get("coverage_failure_reason"),
             fmt_r(row["net_r"]),
+            known_fetched_text(row),
             percentile_text(row.get("historical_percentile")),
             row["historical_percentile_band"],
             fmt_r(row["p10_week_r"]),
@@ -1259,10 +1735,17 @@ def build_dashboard_html(
     ]
     combined_note = ""
     if combined:
-        combined_note = (
-            f"<p class=\"callout\">Combined live view: {fmt_int(combined['closed_trades'])} closed trades, "
-            f"{fmt_r(combined['net_r'])}, {fmt_money(combined['net_pnl'])}. This is not benchmarked because FTMO and IC use different broker feeds and account sizing.</p>"
-        )
+        if combined.get("fetch_incomplete"):
+            combined_note = (
+                "<p class=\"callout warning\">Combined live view is incomplete because at least one lane "
+                "does not prove full weekly coverage. Known fetched partial evidence is "
+                f"{escape(known_fetched_text(combined))}, but it is not a valid combined weekly result.</p>"
+            )
+        else:
+            combined_note = (
+                f"<p class=\"callout\">Combined live view: {fmt_int(combined['closed_trades'])} closed trades, "
+                f"{fmt_r(combined['net_r'])}, {fmt_money(combined['net_pnl'])}. This is not benchmarked because FTMO and IC use different broker feeds and account sizing.</p>"
+            )
     rows_html = "".join(
         f'<div class="kpi"><span>{escape(label)}</span><strong>{escape(value)}</strong><small>{escape(note)}</small></div>'
         for label, value, note in kpis
@@ -1299,12 +1782,12 @@ def build_dashboard_html(
       <p class="note">Latest dashboard window: <strong>{escape(run_summary.get('week_window_label'))}</strong>. It is marked complete after the Friday 21:00 UTC market close. Runtime changes and partial starts are evidence-quality caveats, while percentile status is measured against each lane's V22 weekly distribution.</p>
       <div class="kpis">{rows_html}</div>
       {combined_note}
-      {table_html(["Lane", "Status", "Performance reasons", "Evidence caveats", "Net R", "Historical percentile", "Band", "p10", "p5"], flag_table)}
+      {table_html(["Lane", "Status", "Performance reasons", "Evidence caveats", "Eligible", "Confidence", "Coverage", "Coverage reason", "Net R", "Known fetched evidence", "Historical percentile", "Band", "p10", "p5"], flag_table)}
     </section>
     <section id="summary">
       <h2>Live Weekly Summary</h2>
       <p>Portfolio starts are detected from the first journal row and first live order. Runtime synced means the VPS contains the latest local strategy/runtime commit even if local docs/reporting commits are ahead.</p>
-      {table_html(["Lane", "Partial", "Partial reasons", "Completed full weeks", "Latest complete", "First journal (SGT)", "First runner (SGT)", "First order (SGT)", "First closed (SGT)", "Local HEAD", "Origin HEAD", "VPS commit", "Fetch error", "Latest runtime", "Runtime synced", "Runtime changed", "Closed", "Net R", "Net PnL", "Win rate", "PF", "Worst symbol", "Worst TF", "Worst side", "Retry waits", "True rejects", "Pending", "Active"], summary_table)}
+      {table_html(["Lane", "Partial", "Partial reasons", "Completed full weeks", "Latest complete", "First journal (SGT)", "First runner (SGT)", "First order (SGT)", "First closed (SGT)", "Local HEAD", "Origin HEAD", "VPS commit", "Fetch error", "Latest runtime", "Runtime synced", "Runtime changed", "Eligible", "Confidence", "Coverage", "Coverage reason", "Closed", "Known fetched evidence", "Net R", "Net PnL", "Win rate", "PF", "Worst symbol", "Worst TF", "Worst side", "Retry waits", "True rejects", "Pending", "Active"], summary_table)}
     </section>
     <section id="consistency">
       <h2>Consistency Check</h2>
@@ -1329,7 +1812,7 @@ def build_dashboard_html(
     <section id="workflow">
       <h2>Manual Refresh Workflow</h2>
       <p class="callout">Default command: <code>.\\venv\\Scripts\\python.exe scripts\\build_lpfs_live_weekly_performance.py --latest</code></p>
-      <p>The script reads over SSH, fingerprints the inputs, and prints <code>already up to date</code> without rewriting files when the latest report already matches current journals, state, benchmarks, and git heads. Use <code>--force</code> only when intentionally regenerating the same evidence.</p>
+      <p>The script reads a bounded lifecycle suffix over SSH by default, fingerprints the inputs, and prints <code>already up to date</code> without rewriting files when the latest report already matches current journals, state, benchmarks, and git heads. Use <code>--max-source-bytes</code> to increase the bounded read if coverage is incomplete; unbounded historical scans require explicit <code>--allow-full-scan</code>. Clean worktrees without ignored benchmark CSV artifacts should pass reviewed paths with <code>--ftmo-benchmark-path</code> and <code>--ic-benchmark-path</code>.</p>
       <p>Generated at <code>{escape(fmt_timestamp_sgt(run_summary['generated_at_utc']))}</code>. Report packet: <code>{escape(_display_path(run_summary['output_dir']))}</code>.</p>
     </section>
     {metric_glossary_html()}
@@ -1476,8 +1959,22 @@ def parse_timestamp(value: Any) -> pd.Timestamp:
     return timestamp.tz_convert("UTC")
 
 
-def run_command(command: Sequence[str], *, timeout: int = 120, check: bool = True) -> str:
-    result = subprocess.run(command, cwd=REPO_ROOT, text=True, capture_output=True, timeout=timeout, check=False)
+def run_command(
+    command: Sequence[str],
+    *,
+    timeout: int = 120,
+    check: bool = True,
+    input_text: str | None = None,
+) -> str:
+    result = subprocess.run(
+        command,
+        cwd=REPO_ROOT,
+        text=True,
+        input=input_text,
+        capture_output=True,
+        timeout=timeout,
+        check=False,
+    )
     if check and result.returncode != 0:
         raise RuntimeError(f"command failed: {' '.join(command)}\n{result.stderr}")
     return result.stdout.strip()
@@ -1574,6 +2071,20 @@ def fmt_int(value: Any) -> str:
     return str(int(value))
 
 
+def closed_trade_text(row: dict[str, Any]) -> str:
+    if not is_analysis_eligible(row):
+        return str(row.get("closed_trades_display") or "incomplete")
+    return fmt_int(row.get("closed_trades"))
+
+
+def known_fetched_text(row: dict[str, Any]) -> str:
+    return (
+        f"{fmt_int(row.get('known_fetched_closed_trades'))} known fetched, "
+        f"{fmt_r(row.get('known_fetched_net_r'))}, "
+        f"{fmt_money(row.get('known_fetched_net_pnl'))}"
+    )
+
+
 def full_week_text(value: Any) -> str:
     count = int(value or 0)
     noun = "week" if count == 1 else "weeks"
@@ -1583,12 +2094,29 @@ def full_week_text(value: Any) -> str:
 def win_loss_text(row: dict[str, Any] | None) -> str:
     if row is None:
         return "n/a"
+    if not is_analysis_eligible(row):
+        return "n/a"
     return f"{fmt_int(row.get('wins'))}/{fmt_int(row.get('losses'))}"
 
 
 def short_text(value: Any, length: int = 7) -> str:
     text = "" if value is None else str(value)
     return text[:length]
+
+
+def short_error(value: Any, length: int = 220) -> str:
+    text = " ".join(("" if value is None else str(value)).split())
+    timeout = re.search(r"timed out after (-?[0-9.]+) seconds", text)
+    if timeout:
+        seconds = timeout.group(1)
+        if seconds.startswith("-"):
+            return "SSH/PowerShell fetch timed out"
+        return f"SSH/PowerShell fetch timed out after {seconds} seconds"
+    if "The command line is too long" in text:
+        return "SSH/PowerShell fetch command line was too long"
+    if len(text) <= length:
+        return text
+    return text[: length - 3] + "..."
 
 
 if __name__ == "__main__":
