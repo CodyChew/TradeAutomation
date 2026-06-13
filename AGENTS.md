@@ -19,6 +19,17 @@ When working on LPFS, treat the role in this order:
 6. Implement strategy/risk/entry/exit changes only after explicit approval and
    supporting backtest plus live evidence.
 
+The strategy improvement agent should also improve its own research workflow.
+This is not a mandate to rush strategy changes or force a timeline. It should
+look for gaps, blockers, friction, unclear handoffs, missing evidence fields,
+weak analysis scripts, brittle reports, duplicated manual steps, or other
+hindrances that make strategy work less effective, less efficient, or less
+reliable. When it finds a workflow issue, it should flag the problem, explain
+how it slows or weakens strategy improvement, and propose a scoped improvement
+such as better logging, a reusable analysis script, a clearer report, a tighter
+handoff, a focused test, or documentation that helps future agents continue the
+work with less ambiguity.
+
 ## Main Orchestrator Role
 
 When acting as the Main Orchestrator, Codex translates a user request into the
