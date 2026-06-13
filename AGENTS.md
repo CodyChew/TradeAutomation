@@ -121,14 +121,22 @@ acceptance criteria for a future fix.
 
 At the start of a new session, inspect these before making LPFS changes:
 
+- `AGENTS.md`
 - `SESSION_HANDOFF.md`
 - `strategies/lp_force_strike_strategy_lab/START_HERE.md`
 - `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md`
 - `docs/system_troubleshooting.md`
+- `docs/codex_worktree_workflow.md`
 - Relevant runbook or design doc for the requested task.
 
 Use `main` as the authoritative branch unless the user explicitly names another
 branch for review or archaeology.
+
+Before editing, confirm the active checkout with `git rev-parse --show-toplevel`,
+`git status --short --branch`, `git worktree list`, and
+`git ls-files AGENTS.md`. Files can exist in one Git worktree but not another,
+so do not assume a Codex worktree, detached checkout, or stale branch has the
+same instructions as `origin/main`.
 
 ## Live Operations Safety
 

@@ -8,6 +8,9 @@ Start a new handover or Codex session with `SESSION_HANDOFF.md`, then
 `strategies/lp_force_strike_strategy_lab/START_HERE.md` and
 `docs/system_troubleshooting.md`. For the next Majority Flush research lane,
 read `strategies/majority_flush_strategy_lab/START_HERE.md`.
+For Codex branch and worktree hygiene, read
+`docs/codex_worktree_workflow.md` and confirm `AGENTS.md` is present in the
+active checkout before editing.
 
 ## Structure
 
