@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import csv
+import base64
 import io
 import json
 import shutil
@@ -169,11 +170,13 @@ def _git_info(*, runtime_changed: bool = True) -> dict[str, object]:
 
 
 class LiveWeeklyPerformanceTests(unittest.TestCase):
-    def test_default_max_source_bytes_matches_snapshot_collector_convention(self) -> None:
-        self.assertEqual(weekly.DEFAULT_MAX_SOURCE_BYTES, 64 * 1024 * 1024)
+    def test_default_max_source_bytes_documents_weekly_and_snapshot_conventions(self) -> None:
+        self.assertEqual(weekly.SNAPSHOT_DEFAULT_MAX_SOURCE_BYTES, 64 * 1024 * 1024)
+        self.assertEqual(weekly.DEFAULT_WEEKLY_MAX_SOURCE_BYTES, 128 * 1024 * 1024)
+        self.assertEqual(weekly.DEFAULT_FETCH_TIMEOUT_SECONDS, 900)
         self.assertEqual(
-            weekly.resolve_max_source_bytes(weekly.DEFAULT_MAX_SOURCE_BYTES, allow_full_scan=False),
-            64 * 1024 * 1024,
+            weekly.resolve_max_source_bytes(weekly.DEFAULT_WEEKLY_MAX_SOURCE_BYTES, allow_full_scan=False),
+            128 * 1024 * 1024,
         )
 
     def test_full_scan_requires_explicit_allow_full_scan(self) -> None:
@@ -264,15 +267,20 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
                 str(ic_benchmark),
             ]
             captured_configs: list[weekly.LaneConfig] = []
+            captured_max_source_bytes: list[int | None] = []
+            captured_fetch_timeouts: list[int] = []
 
             def fake_fetch(
                 config: weekly.LaneConfig,
                 *,
                 max_source_bytes: int | None,
+                fetch_timeout_seconds: int,
                 week_start_sgt: pd.Timestamp,
                 week_end_sgt: pd.Timestamp,
             ) -> weekly.LaneInput:
                 captured_configs.append(config)
+                captured_max_source_bytes.append(max_source_bytes)
+                captured_fetch_timeouts.append(fetch_timeout_seconds)
                 return weekly.LaneInput(
                     config=config,
                     first_journal_row={"occurred_at_utc": "2026-04-30T19:48:13Z"},
@@ -290,6 +298,8 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
                 self.assertEqual(weekly.main(), 0)
 
         self.assertEqual([config.benchmark_path for config in captured_configs], [ftmo_benchmark, ic_benchmark])
+        self.assertEqual(captured_max_source_bytes, [weekly.DEFAULT_WEEKLY_MAX_SOURCE_BYTES, weekly.DEFAULT_WEEKLY_MAX_SOURCE_BYTES])
+        self.assertEqual(captured_fetch_timeouts, [weekly.DEFAULT_FETCH_TIMEOUT_SECONDS, weekly.DEFAULT_FETCH_TIMEOUT_SECONDS])
 
     def test_fetch_classifies_transport_matches_by_parsed_event_kind(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
@@ -346,7 +356,7 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
             ):
                 lane = weekly.fetch_lane_input(
                     config,
-                    max_source_bytes=weekly.DEFAULT_MAX_SOURCE_BYTES,
+                    max_source_bytes=weekly.DEFAULT_WEEKLY_MAX_SOURCE_BYTES,
                     week_start_sgt=week_start,
                     week_end_sgt=week_end,
                 )
@@ -359,12 +369,53 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         self.assertEqual(weekly.live_state_counts(lane.state_payload)["pending_orders"], 1)
         self.assertEqual(lane.vps_head, _repo_head())
 
+    def test_bounded_window_before_week_start_proves_week_coverage(self) -> None:
+        config = weekly.LaneConfig(
+            name="FTMO",
+            ssh_alias="ftmo-vps",
+            journal_path="remote-journal",
+            state_path="remote-state",
+            benchmark_path=Path("unused.csv"),
+            benchmark_label="fixture",
+        )
+        week_start, week_end = weekly.latest_sgt_week_window(weekly.parse_timestamp("2026-06-13T02:00:00Z"))
+        with mock.patch.object(
+            weekly,
+            "fetch_remote_lane_text",
+            return_value=(
+                "",
+                [json.dumps({"event": "take_profit_hit", "occurred_at_utc": "2026-06-10T12:00:00Z"})],
+                '{"pending_orders":[],"active_positions":[]}',
+                _repo_head(),
+                {
+                    "reached_source_start": False,
+                    "window_first_row_utc": "2026-06-01T00:00:00Z",
+                    "window_last_row_utc": "2026-06-13T01:00:00Z",
+                    "source_size_bytes": 900,
+                    "source_start_offset": 100,
+                    "source_end_offset": 900,
+                },
+            ),
+        ):
+            lane = weekly.fetch_lane_input(
+                config,
+                max_source_bytes=weekly.DEFAULT_WEEKLY_MAX_SOURCE_BYTES,
+                week_start_sgt=week_start,
+                week_end_sgt=week_end,
+            )
+
+        self.assertFalse(lane.fetch_metadata["reached_source_start"])
+        self.assertTrue(lane.fetch_metadata["week_coverage_proven"])
+        self.assertFalse(lane.fetch_metadata["fetch_incomplete"])
+
     def test_remote_fetch_script_uses_bounded_substring_transport_filter(self) -> None:
         captured: dict[str, object] = {}
 
-        def fake_ssh(alias: str, script: str, *, timeout: int) -> str:
+        def fake_ssh(alias: str, python_exe: str, script: str, payload_b64: str, *, timeout: int) -> str:
             captured["alias"] = alias
+            captured["python_exe"] = python_exe
             captured["script"] = script
+            captured["payload"] = json.loads(base64.b64decode(payload_b64).decode("utf-8"))
             captured["timeout"] = timeout
             return "\n".join(
                 [
@@ -402,18 +453,24 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
             benchmark_path=Path("unused.csv"),
             benchmark_label="fixture",
         )
-        with mock.patch.object(weekly, "ssh_powershell", side_effect=fake_ssh):
+        with mock.patch.object(weekly, "ssh_remote_python", side_effect=fake_ssh):
             _, lifecycle, state_text, head, metadata = weekly.fetch_remote_lane_text(
                 config,
-                max_source_bytes=weekly.DEFAULT_MAX_SOURCE_BYTES,
+                max_source_bytes=weekly.DEFAULT_WEEKLY_MAX_SOURCE_BYTES,
             )
 
         script = str(captured["script"])
         self.assertEqual(captured["alias"], "ftmo-vps")
-        self.assertIn(f"$maxSourceBytes = {weekly.DEFAULT_MAX_SOURCE_BYTES}", script)
-        self.assertIn("$line.Contains($pattern)", script)
-        self.assertIn("[System.IO.FileShare]::ReadWrite", script)
-        self.assertIn("$sourceStartOffset = $sourceSizeBefore - [Int64]$maxSourceBytes", script)
+        self.assertEqual(captured["python_exe"], r"C:\TradeAutomation\venv\Scripts\python.exe")
+        self.assertEqual(captured["timeout"], weekly.DEFAULT_FETCH_TIMEOUT_SECONDS)
+        self.assertIn("base64.b64decode", script)
+        self.assertIn("CreateFileW", script)
+        self.assertIn("file_share_write", script)
+        self.assertEqual(captured["payload"]["scan_mode"], "bounded_suffix")
+        self.assertEqual(captured["payload"]["max_source_bytes"], weekly.DEFAULT_WEEKLY_MAX_SOURCE_BYTES)
+        self.assertIn("with open_shared_read_binary(journal) as handle:", script)
+        self.assertIn("if pattern in line:", script)
+        self.assertNotIn("New-Object byte[] ([Int32]$bytesToRead)", script)
         self.assertEqual(lifecycle, ['{"event":"take_profit_hit","occurred_at_utc":"2026-05-11T22:00:00Z"}'])
         self.assertEqual(state_text, '{"pending_orders":[],"active_positions":[]}')
         self.assertEqual(head, "abcdef")
@@ -439,22 +496,15 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
             state.write_text('{"pending_orders":[],"active_positions":[]}', encoding="utf-8")
             appended = '{"event":"take_profit_hit","occurred_at_utc":"2030-01-01T00:00:00Z","event_key":"APPENDED"}'
 
-            def run_script_locally(alias: str, script: str, *, timeout: int) -> str:
+            def run_script_locally(alias: str, python_exe: str, script: str, payload_b64: str, *, timeout: int) -> str:
                 self.assertEqual(alias, "local")
                 growth_script = script.replace(
-                    "$script:firstWindowLine = \"\"",
-                    f"Add-Content -LiteralPath $journal -Value '{appended}'\n$script:firstWindowLine = \"\"",
+                    "before = os.stat(journal)",
+                    f"before = os.stat(journal)\nwith open({str(journal)!r}, 'ab') as _growth: _growth.write(({appended!r} + '\\n').encode('utf-8'))",
                     1,
                 )
                 completed = subprocess.run(
-                    [
-                        "powershell",
-                        "-NoProfile",
-                        "-ExecutionPolicy",
-                        "Bypass",
-                        "-Command",
-                        "$script = [Console]::In.ReadToEnd(); Invoke-Expression $script",
-                    ],
+                    [sys.executable, "-", payload_b64],
                     input=growth_script,
                     text=True,
                     capture_output=True,
@@ -474,10 +524,10 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
                 benchmark_label="fixture",
                 repo_root=str(WORKSPACE_ROOT),
             )
-            with mock.patch.object(weekly, "ssh_powershell", side_effect=run_script_locally):
+            with mock.patch.object(weekly, "ssh_remote_python", side_effect=run_script_locally):
                 _, lifecycle, state_text, head, metadata = weekly.fetch_remote_lane_text(
                     config,
-                    max_source_bytes=weekly.DEFAULT_MAX_SOURCE_BYTES,
+                    max_source_bytes=weekly.DEFAULT_WEEKLY_MAX_SOURCE_BYTES,
                 )
 
         payload = "\n".join(lifecycle)

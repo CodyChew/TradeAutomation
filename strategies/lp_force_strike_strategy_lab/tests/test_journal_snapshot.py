@@ -308,7 +308,8 @@ class JournalSnapshotTests(unittest.TestCase):
         weekly = (WORKSPACE_ROOT / "scripts" / "build_lpfs_live_weekly_performance.py").read_text(encoding="utf-8")
         status = (WORKSPACE_ROOT / "scripts" / "Get-LpfsLiveStatus.ps1").read_text(encoding="utf-8")
 
-        self.assertIn("[System.IO.FileShare]::ReadWrite", weekly)
+        self.assertIn("CreateFileW", weekly)
+        self.assertIn("file_share_write", weekly)
         self.assertIn("Get-Content -LiteralPath $JournalPath -Tail $JournalLines", status)
         self.assertIn("Get-Content -LiteralPath $LatestLog.FullName -Tail $LogLines", status)
 

@@ -43,12 +43,14 @@ from lp_force_strike_strategy_lab.live_trade_summary import (  # noqa: E402
     LPFSLiveClosedTrade,
     build_closed_trade_summaries,
 )
-from lpfs_journal_snapshot import DEFAULT_MAX_SOURCE_BYTES  # noqa: E402
+from lpfs_journal_snapshot import DEFAULT_MAX_SOURCE_BYTES as SNAPSHOT_DEFAULT_MAX_SOURCE_BYTES  # noqa: E402
 
 
 DEFAULT_REPORT_ROOT = REPO_ROOT / "reports" / "live_ops" / "lpfs_weekly_performance"
 DEFAULT_DOCS_OUTPUT = REPO_ROOT / "docs" / "live_weekly_performance.html"
 STDIN_POWERSHELL_BOOTSTRAP = "$script = [Console]::In.ReadToEnd(); Invoke-Expression $script"
+DEFAULT_WEEKLY_MAX_SOURCE_BYTES = 128 * 1024 * 1024
+DEFAULT_FETCH_TIMEOUT_SECONDS = 900
 DEFAULT_FTMO_TRADES = (
     REPO_ROOT
     / "reports"
@@ -191,8 +193,14 @@ def main() -> int:
     parser.add_argument(
         "--max-source-bytes",
         type=int,
-        default=DEFAULT_MAX_SOURCE_BYTES,
-        help=f"Maximum lifecycle journal suffix bytes to scan per lane. Defaults to {DEFAULT_MAX_SOURCE_BYTES}.",
+        default=DEFAULT_WEEKLY_MAX_SOURCE_BYTES,
+        help=f"Maximum lifecycle journal suffix bytes to scan per lane. Defaults to {DEFAULT_WEEKLY_MAX_SOURCE_BYTES}.",
+    )
+    parser.add_argument(
+        "--fetch-timeout-seconds",
+        type=int,
+        default=DEFAULT_FETCH_TIMEOUT_SECONDS,
+        help=f"SSH/PowerShell timeout per lane fetch. Defaults to {DEFAULT_FETCH_TIMEOUT_SECONDS}.",
     )
     parser.add_argument(
         "--allow-full-scan",
@@ -222,6 +230,8 @@ def main() -> int:
         max_source_bytes = resolve_max_source_bytes(args.max_source_bytes, allow_full_scan=args.allow_full_scan)
     except ValueError as exc:
         parser.error(str(exc))
+    if args.fetch_timeout_seconds <= 0:
+        parser.error("--fetch-timeout-seconds must be positive")
     report_root = Path(args.report_root)
     docs_output = Path(args.docs_output)
 
@@ -238,6 +248,7 @@ def main() -> int:
         safe_fetch_lane_input(
             config,
             max_source_bytes=max_source_bytes,
+            fetch_timeout_seconds=args.fetch_timeout_seconds,
             week_start_sgt=week_start_sgt,
             week_end_sgt=week_end_sgt,
         )
@@ -309,12 +320,14 @@ def fetch_lane_input(
     config: LaneConfig,
     *,
     max_source_bytes: int | None,
+    fetch_timeout_seconds: int = DEFAULT_FETCH_TIMEOUT_SECONDS,
     week_start_sgt: pd.Timestamp,
     week_end_sgt: pd.Timestamp,
 ) -> LaneInput:
     first_line, lifecycle_lines, state_text, vps_head, fetch_metadata = fetch_remote_lane_text(
         config,
         max_source_bytes=max_source_bytes,
+        timeout_seconds=fetch_timeout_seconds,
     )
     first_row = parse_json_line(first_line)
     lifecycle_rows: list[dict[str, Any]] = []
@@ -371,6 +384,7 @@ def safe_fetch_lane_input(
     config: LaneConfig,
     *,
     max_source_bytes: int | None,
+    fetch_timeout_seconds: int = DEFAULT_FETCH_TIMEOUT_SECONDS,
     week_start_sgt: pd.Timestamp,
     week_end_sgt: pd.Timestamp,
 ) -> LaneInput:
@@ -378,6 +392,7 @@ def safe_fetch_lane_input(
         return fetch_lane_input(
             config,
             max_source_bytes=max_source_bytes,
+            fetch_timeout_seconds=fetch_timeout_seconds,
             week_start_sgt=week_start_sgt,
             week_end_sgt=week_end_sgt,
         )
@@ -405,158 +420,190 @@ def fetch_remote_lane_text(
     config: LaneConfig,
     *,
     max_source_bytes: int | None,
+    timeout_seconds: int = DEFAULT_FETCH_TIMEOUT_SECONDS,
 ) -> tuple[str, list[str], str, str, dict[str, Any]]:
-    patterns = "@(" + ",".join(f"'{keyword}'" for keyword in JOURNAL_EVENT_KEYWORDS) + ")"
-    max_bytes_literal = "$null" if max_source_bytes is None else str(int(max_source_bytes))
-    scan_mode = "full" if max_source_bytes is None else "bounded_suffix"
-    script = f"""
-$ErrorActionPreference = 'Stop'
-$journal = '{config.journal_path}'
-$state = '{config.state_path}'
-$repo = '{config.repo_root}'
-$patterns = {patterns}
-$maxSourceBytes = {max_bytes_literal}
-$scanMode = '{scan_mode}'
-Write-Output '---META---'
-$journalItem = Get-Item -LiteralPath $journal
-$beforeItem = Get-Item -LiteralPath $journal
-$sourceSizeBefore = [Int64]$beforeItem.Length
-$sourceStartOffset = [Int64]0
-if ($null -ne $maxSourceBytes -and $sourceSizeBefore -gt $maxSourceBytes) {{
-  $sourceStartOffset = $sourceSizeBefore - [Int64]$maxSourceBytes
-}}
-$sourceEndOffset = $sourceSizeBefore
-$endsWithNewline = $true
-if ($sourceEndOffset -gt 0) {{
-  $newlineStream = [System.IO.FileStream]::new(
-    $journal,
-    [System.IO.FileMode]::Open,
-    [System.IO.FileAccess]::Read,
-    [System.IO.FileShare]::ReadWrite
-  )
-  try {{
-    [void]$newlineStream.Seek($sourceEndOffset - 1, [System.IO.SeekOrigin]::Begin)
-    $endsWithNewline = ($newlineStream.ReadByte() -eq 10)
-  }} finally {{
-    $newlineStream.Close()
-  }}
-}}
-$script:firstWindowLine = ""
-$script:lastWindowLine = ""
-$script:matched = New-Object 'System.Collections.Generic.List[string]'
-$processLine = {{
-  param([string]$rawLine)
-  $line = $rawLine.TrimEnd("`r")
-  if ([string]::IsNullOrWhiteSpace($line)) {{ return }}
-  if ($script:firstWindowLine -eq "") {{
-    $script:firstWindowLine = $line
-  }}
-  $script:lastWindowLine = $line
-  foreach ($pattern in $patterns) {{
-    if ($line.Contains($pattern)) {{
-      [void]$script:matched.Add($line)
-      break
-    }}
-  }}
-}}
-$stream = [System.IO.FileStream]::new(
-  $journal,
-  [System.IO.FileMode]::Open,
-  [System.IO.FileAccess]::Read,
-  [System.IO.FileShare]::ReadWrite
+    payload = {
+        "journal_path": config.journal_path,
+        "state_path": config.state_path,
+        "repo_root": config.repo_root,
+        "event_keywords": list(JOURNAL_EVENT_KEYWORDS),
+        "max_source_bytes": None if max_source_bytes is None else int(max_source_bytes),
+        "scan_mode": "full" if max_source_bytes is None else "bounded_suffix",
+    }
+    payload_json = json.dumps(payload, separators=(",", ":"))
+    payload_b64 = base64.b64encode(payload_json.encode("utf-8")).decode("ascii")
+    remote_python = r'''
+import base64
+import json
+import os
+import subprocess
+import sys
+from datetime import datetime, timezone
+
+
+def iso_utc(timestamp: float) -> str:
+    return datetime.fromtimestamp(timestamp, timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def open_shared_read_binary(path: str):
+    if os.name != "nt":
+        return open(path, "rb")
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    generic_read = 0x80000000
+    file_share_read = 0x00000001
+    file_share_write = 0x00000002
+    file_share_delete = 0x00000004
+    open_existing = 3
+    file_attribute_normal = 0x00000080
+    invalid_handle_value = ctypes.c_void_p(-1).value
+    create_file = ctypes.windll.kernel32.CreateFileW
+    create_file.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    create_file.restype = wintypes.HANDLE
+    handle = create_file(
+        path,
+        generic_read,
+        file_share_read | file_share_write | file_share_delete,
+        None,
+        open_existing,
+        file_attribute_normal,
+        None,
+    )
+    if handle == invalid_handle_value:
+        raise OSError(ctypes.get_last_error(), f"shared read failed for {path}")
+    return os.fdopen(msvcrt.open_osfhandle(handle, os.O_RDONLY), "rb")
+
+
+payload = json.loads(base64.b64decode(sys.argv[1]).decode("utf-8"))
+journal = payload["journal_path"]
+state = payload["state_path"]
+repo = payload["repo_root"]
+patterns = [str(item).encode("utf-8") for item in payload["event_keywords"]]
+max_source_bytes = payload.get("max_source_bytes")
+scan_mode = payload["scan_mode"]
+
+before = os.stat(journal)
+source_size_before = int(before.st_size)
+source_start_offset = 0
+if max_source_bytes is not None and source_size_before > int(max_source_bytes):
+    source_start_offset = source_size_before - int(max_source_bytes)
+source_end_offset = source_size_before
+
+ends_with_newline = True
+if source_end_offset > 0:
+    with open_shared_read_binary(journal) as handle:
+        handle.seek(source_end_offset - 1)
+        ends_with_newline = handle.read(1) == b"\n"
+
+first_window_line = [""]
+last_window_line = [""]
+matched = []
+
+
+def process_line(raw_line: bytes) -> None:
+    line = raw_line.rstrip(b"\r")
+    if not line.strip():
+        return
+    text = line.decode("utf-8", "replace")
+    if not first_window_line[0]:
+        first_window_line[0] = text
+    last_window_line[0] = text
+    for pattern in patterns:
+        if pattern in line:
+            matched.append(text)
+            break
+
+
+with open_shared_read_binary(journal) as handle:
+    handle.seek(source_start_offset)
+    remaining = source_end_offset - source_start_offset
+    pending = b""
+    discard_leading_partial_line = source_start_offset > 0
+    while remaining > 0:
+        chunk = handle.read(min(1024 * 1024, remaining))
+        if not chunk:
+            break
+        remaining -= len(chunk)
+        block = pending + chunk
+        parts = block.split(b"\n")
+        pending = parts.pop()
+        for raw_line in parts:
+            if discard_leading_partial_line:
+                discard_leading_partial_line = False
+                continue
+            process_line(raw_line)
+    if ends_with_newline and pending and not discard_leading_partial_line:
+        process_line(pending)
+
+after = os.stat(journal)
+metadata = {
+    "journal_path": journal,
+    "journal_size_bytes": source_size_before,
+    "journal_last_write_utc": iso_utc(before.st_mtime),
+    "event_keywords": payload["event_keywords"],
+    "scan_mode": scan_mode,
+    "max_source_bytes": max_source_bytes,
+    "source_size_bytes": source_size_before,
+    "source_start_offset": source_start_offset,
+    "source_end_offset": source_end_offset,
+    "reached_source_start": source_start_offset == 0,
+    "source_size_bytes_after": int(after.st_size),
+    "source_last_write_utc_after": iso_utc(after.st_mtime),
+    "source_changed_during_collection": (
+        source_size_before != int(after.st_size) or int(before.st_mtime_ns) != int(after.st_mtime_ns)
+    ),
+}
+
+print("---META---")
+print(json.dumps(metadata, separators=(",", ":")))
+print("---FIRST---")
+if source_start_offset == 0 and first_window_line[0]:
+    print(first_window_line[0])
+print("---WINDOW_FIRST---")
+if first_window_line[0]:
+    print(first_window_line[0])
+print("---WINDOW_LAST---")
+if last_window_line[0]:
+    print(last_window_line[0])
+print("---LIFECYCLE---")
+for line in matched:
+    print(line)
+print("---STATE---")
+with open_shared_read_binary(state) as handle:
+    state_text = handle.read().decode("utf-8", "replace")
+if state_text:
+    print(state_text.rstrip("\n"))
+print("---HEAD---")
+head = subprocess.run(
+    ["git", "-C", repo, "rev-parse", "HEAD"],
+    text=True,
+    capture_output=True,
+    timeout=30,
+    check=False,
 )
-try {{
-  [void]$stream.Seek($sourceStartOffset, [System.IO.SeekOrigin]::Begin)
-  $bytesToRead = [Int64]($sourceEndOffset - $sourceStartOffset)
-  if ($bytesToRead -gt [Int64][Int32]::MaxValue) {{
-    throw "Requested lifecycle read window is too large to materialize safely: $bytesToRead bytes"
-  }}
-  $bytes = New-Object byte[] ([Int32]$bytesToRead)
-  $totalRead = 0
-  while ($totalRead -lt $bytes.Length) {{
-    $read = $stream.Read($bytes, $totalRead, $bytes.Length - $totalRead)
-    if ($read -le 0) {{
-      break
-    }}
-    $totalRead += $read
-  }}
-  $text = [System.Text.Encoding]::UTF8.GetString($bytes, 0, $totalRead)
-  if ($sourceStartOffset -gt 0) {{
-    $firstNewline = $text.IndexOf("`n")
-    if ($firstNewline -ge 0) {{
-      $text = $text.Substring($firstNewline + 1)
-    }} else {{
-      $text = ""
-    }}
-  }}
-  if (-not $endsWithNewline) {{
-    $lastNewline = $text.LastIndexOf("`n")
-    if ($lastNewline -ge 0) {{
-      $text = $text.Substring(0, $lastNewline + 1)
-    }} else {{
-      $text = ""
-    }}
-  }}
-  foreach ($line in ($text -split "`n")) {{
-    & $processLine $line
-  }}
-}} finally {{
-  $stream.Close()
-}}
-$afterItem = Get-Item -LiteralPath $journal
-$sourceChanged = ($sourceSizeBefore -ne [Int64]$afterItem.Length) -or ($beforeItem.LastWriteTimeUtc.ToString('o') -ne $afterItem.LastWriteTimeUtc.ToString('o'))
-[ordered]@{{
-  journal_path = $journal
-  journal_size_bytes = $sourceSizeBefore
-  journal_last_write_utc = $beforeItem.LastWriteTimeUtc.ToString('o')
-  event_keywords = $patterns
-  scan_mode = $scanMode
-  max_source_bytes = $maxSourceBytes
-  source_size_bytes = $sourceSizeBefore
-  source_start_offset = $sourceStartOffset
-  source_end_offset = $sourceEndOffset
-  reached_source_start = ($sourceStartOffset -eq 0)
-  source_size_bytes_after = [Int64]$afterItem.Length
-  source_last_write_utc_after = $afterItem.LastWriteTimeUtc.ToString('o')
-  source_changed_during_collection = $sourceChanged
-}} | ConvertTo-Json -Compress
-Write-Output '---FIRST---'
-if ($sourceStartOffset -eq 0 -and $script:firstWindowLine -ne "") {{
-  Write-Output $script:firstWindowLine
-}}
-Write-Output '---WINDOW_FIRST---'
-if ($script:firstWindowLine -ne "") {{
-  Write-Output $script:firstWindowLine
-}}
-Write-Output '---WINDOW_LAST---'
-if ($script:lastWindowLine -ne "") {{
-  Write-Output $script:lastWindowLine
-}}
-Write-Output '---LIFECYCLE---'
-foreach ($line in $script:matched) {{
-  Write-Output $line
-}}
-Write-Output '---STATE---'
-$stateStream = [System.IO.FileStream]::new(
-  $state,
-  [System.IO.FileMode]::Open,
-  [System.IO.FileAccess]::Read,
-  [System.IO.FileShare]::ReadWrite
-)
-try {{
-  $stateReader = [System.IO.StreamReader]::new($stateStream)
-  try {{
-    Write-Output $stateReader.ReadToEnd()
-  }} finally {{
-    $stateReader.Close()
-  }}
-}} finally {{
-  $stateStream.Close()
-}}
-Write-Output '---HEAD---'
-git -C $repo rev-parse HEAD
-"""
-    raw = ssh_powershell(config.ssh_alias, script, timeout=420)
+if head.returncode == 0:
+    print(head.stdout.strip())
+else:
+    print("git_error")
+'''
+    remote_python_exe = rf"{config.repo_root}\venv\Scripts\python.exe"
+    raw = ssh_remote_python(
+        config.ssh_alias,
+        remote_python_exe,
+        remote_python,
+        payload_b64,
+        timeout=timeout_seconds,
+    )
     sections: dict[str, list[str]] = defaultdict(list)
     current: str | None = None
     for line in raw.splitlines():
@@ -625,6 +672,10 @@ def safe_event_time(row: dict[str, Any] | None) -> str:
 def safe_parse_timestamp(value: Any) -> pd.Timestamp | None:
     if not value:
         return None
+    try:
+        return parse_timestamp(str(value))
+    except Exception:
+        return None
 
 
 def coverage_failure_reason(fetch_error: str, metadata: dict[str, Any], *, combined: bool = False) -> str:
@@ -667,16 +718,20 @@ def apply_validity_contract(
 
 def is_analysis_eligible(row: dict[str, Any]) -> bool:
     return bool(row.get("analysis_eligible", not bool(row.get("fetch_incomplete"))))
-    try:
-        return parse_timestamp(str(value))
-    except Exception:
-        return None
 
 
 def ssh_powershell(alias: str, script: str, *, timeout: int) -> str:
     encoded_bootstrap = base64.b64encode(STDIN_POWERSHELL_BOOTSTRAP.encode("utf-16le")).decode("ascii")
     return run_command(
         ["ssh", alias, f"powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand {encoded_bootstrap}"],
+        timeout=timeout,
+        input_text=script,
+    )
+
+
+def ssh_remote_python(alias: str, python_exe: str, script: str, payload_b64: str, *, timeout: int) -> str:
+    return run_command(
+        ["ssh", alias, f"{python_exe} - {payload_b64}"],
         timeout=timeout,
         input_text=script,
     )
@@ -1812,7 +1867,7 @@ def build_dashboard_html(
     <section id="workflow">
       <h2>Manual Refresh Workflow</h2>
       <p class="callout">Default command: <code>.\\venv\\Scripts\\python.exe scripts\\build_lpfs_live_weekly_performance.py --latest</code></p>
-      <p>The script reads a bounded lifecycle suffix over SSH by default, fingerprints the inputs, and prints <code>already up to date</code> without rewriting files when the latest report already matches current journals, state, benchmarks, and git heads. Use <code>--max-source-bytes</code> to increase the bounded read if coverage is incomplete; unbounded historical scans require explicit <code>--allow-full-scan</code>. Clean worktrees without ignored benchmark CSV artifacts should pass reviewed paths with <code>--ftmo-benchmark-path</code> and <code>--ic-benchmark-path</code>.</p>
+      <p>The script reads a bounded lifecycle suffix over SSH by default, fingerprints the inputs, and prints <code>already up to date</code> without rewriting files when the latest report already matches current journals, state, benchmarks, and git heads. The weekly default is <code>128 MiB</code> per lane with a <code>900</code>-second lane fetch timeout; the generic snapshot collector remains at <code>64 MiB</code>. Use <code>--max-source-bytes</code> to adjust the bounded read if coverage is incomplete; unbounded historical scans require explicit <code>--allow-full-scan</code>. Clean worktrees without ignored benchmark CSV artifacts should pass reviewed paths with <code>--ftmo-benchmark-path</code> and <code>--ic-benchmark-path</code>.</p>
       <p>Generated at <code>{escape(fmt_timestamp_sgt(run_summary['generated_at_utc']))}</code>. Report packet: <code>{escape(_display_path(run_summary['output_dir']))}</code>.</p>
     </section>
     {metric_glossary_html()}
