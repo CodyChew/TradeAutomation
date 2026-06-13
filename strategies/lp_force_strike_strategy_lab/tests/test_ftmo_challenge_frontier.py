@@ -15,12 +15,35 @@ if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
 from run_lpfs_ftmo_challenge_frontier import (  # noqa: E402
+    RiskProfile,
+    challenge_window_outcomes,
     classify_limit,
     daily_loss_stress,
     frontier_risk_profiles,
     spread_gate_pass,
     write_outputs,
 )
+
+
+def _test_profile() -> RiskProfile:
+    return RiskProfile(lower_risk_pct=1.0, middle_risk_pct=1.0, w1_risk_pct=1.0)
+
+
+def _trade_frame(rows: list[dict[str, object]]) -> pd.DataFrame:
+    data = pd.DataFrame(rows)
+    data["symbol"] = data.get("symbol", "EURUSD")
+    data["timeframe"] = data.get("timeframe", "H4")
+    data["entry_time_utc"] = pd.to_datetime(data["entry_time_utc"], utc=True)
+    data["exit_time_utc"] = pd.to_datetime(data["exit_time_utc"], utc=True)
+    return data
+
+
+def _window_row(windows: pd.DataFrame, *, target_type: str, start_utc: str) -> dict[str, object]:
+    start = pd.Timestamp(start_utc).tz_convert("UTC").isoformat()
+    rows = windows[(windows["target_type"] == target_type) & (windows["start_utc"] == start)]
+    if rows.empty:
+        raise AssertionError(f"No {target_type} window found for {start}")
+    return rows.iloc[0].to_dict()
 
 
 class FTMOChallengeFrontierTests(unittest.TestCase):
@@ -62,6 +85,69 @@ class FTMOChallengeFrontierTests(unittest.TestCase):
         self.assertTrue(spread_gate_pass(0.10, max_spread_risk_fraction=0.10))
         self.assertFalse(spread_gate_pass(0.10001, max_spread_risk_fraction=0.10))
         self.assertFalse(spread_gate_pass(None, max_spread_risk_fraction=0.10))
+
+    def test_challenge_window_ignores_target_hit_after_window_end(self) -> None:
+        trades = _trade_frame(
+            [
+                {
+                    "entry_time_utc": "2026-01-01T00:00:00Z",
+                    "exit_time_utc": "2026-01-03T00:00:00Z",
+                    "net_r": 10.0,
+                }
+            ]
+        )
+
+        windows = challenge_window_outcomes(trades, [_test_profile()], max_window_days=1, start_frequency="1D")
+        row = _window_row(windows, target_type="challenge", start_utc="2026-01-01T00:00:00Z")
+
+        self.assertEqual(row["outcome"], "unresolved")
+        self.assertIsNone(row["days_to_outcome"])
+
+    def test_challenge_window_days_to_outcome_start_from_window_start(self) -> None:
+        trades = _trade_frame(
+            [
+                {
+                    "entry_time_utc": "2026-01-01T00:00:00Z",
+                    "exit_time_utc": "2026-01-01T01:00:00Z",
+                    "net_r": 0.0,
+                },
+                {
+                    "entry_time_utc": "2026-01-15T00:00:00Z",
+                    "exit_time_utc": "2026-01-16T00:00:00Z",
+                    "net_r": 10.0,
+                },
+            ]
+        )
+
+        windows = challenge_window_outcomes(trades, [_test_profile()], max_window_days=30, start_frequency="7D")
+        row = _window_row(windows, target_type="challenge", start_utc="2026-01-08T00:00:00Z")
+
+        self.assertEqual(row["outcome"], "hit_target")
+        self.assertAlmostEqual(float(row["days_to_outcome"]), 8.0)
+
+    def test_challenge_window_includes_start_and_excludes_end_boundary(self) -> None:
+        trades = _trade_frame(
+            [
+                {
+                    "entry_time_utc": "2026-01-01T00:00:00Z",
+                    "exit_time_utc": "2026-01-01T12:00:00Z",
+                    "net_r": 5.0,
+                },
+                {
+                    "entry_time_utc": "2026-01-02T00:00:00Z",
+                    "exit_time_utc": "2026-01-02T12:00:00Z",
+                    "net_r": 10.0,
+                },
+            ]
+        )
+
+        windows = challenge_window_outcomes(trades, [_test_profile()], max_window_days=1, start_frequency="1D")
+        verification = _window_row(windows, target_type="verification", start_utc="2026-01-01T00:00:00Z")
+        challenge = _window_row(windows, target_type="challenge", start_utc="2026-01-01T00:00:00Z")
+
+        self.assertEqual(verification["outcome"], "hit_target")
+        self.assertAlmostEqual(float(verification["days_to_outcome"]), 0.5)
+        self.assertEqual(challenge["outcome"], "unresolved")
 
     def test_report_writes_deterministic_csv_content(self) -> None:
         frontier = pd.DataFrame(

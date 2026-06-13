@@ -640,9 +640,9 @@ def challenge_window_outcomes(
             for start in starts:
                 end = start + pd.Timedelta(days=max_window_days)
                 start_pos = int(entry_index.searchsorted(start, side="left"))
-                end_pos = int(entry_index.searchsorted(end, side="right"))
+                end_pos = int(entry_index.searchsorted(end, side="left"))
                 window = data.iloc[start_pos:end_pos].copy()
-                outcome = _evaluate_challenge_window(window, target_pct=target_pct)
+                outcome = _evaluate_challenge_window(window, target_pct=target_pct, start_utc=start, end_utc=end)
                 rows.append(
                     {
                         "profile_id": profile.profile_id,
@@ -657,16 +657,27 @@ def challenge_window_outcomes(
     return pd.DataFrame(rows)
 
 
-def _evaluate_challenge_window(trades: pd.DataFrame, *, target_pct: float) -> dict[str, Any]:
+def _evaluate_challenge_window(
+    trades: pd.DataFrame,
+    *,
+    target_pct: float,
+    start_utc: pd.Timestamp,
+    end_utc: pd.Timestamp,
+) -> dict[str, Any]:
     if trades.empty:
         return {"outcome": "unresolved", "days_to_outcome": None, "max_daily_stress_pct": 0.0, "min_reserved_equity_pct": 0.0}
+    start = pd.Timestamp(start_utc).tz_convert("UTC")
+    end = pd.Timestamp(end_utc).tz_convert("UTC")
     curve = risk_reserved_event_curve(trades)
+    curve["time_utc"] = pd.to_datetime(curve["time_utc"], utc=True)
+    curve = curve[(curve["time_utc"] >= start) & (curve["time_utc"] < end)].copy()
+    if curve.empty:
+        return {"outcome": "unresolved", "days_to_outcome": None, "max_daily_stress_pct": 0.0, "min_reserved_equity_pct": 0.0}
     curve["daily_stress_at_event_pct"] = (
         curve["day_start_realized_pct"].astype(float) - curve["equity_reserved_pct"].astype(float)
     ).clip(lower=0.0)
     max_daily = float(curve["daily_stress_at_event_pct"].max()) if not curve.empty else 0.0
     min_reserved = float(curve["equity_reserved_pct"].min()) if not curve.empty else 0.0
-    first_time = pd.to_datetime(curve["time_utc"], utc=True).min()
     events: list[tuple[pd.Timestamp, int, str]] = []
     daily_fail = curve[curve["daily_stress_at_event_pct"] >= MAX_DAILY_LOSS_PCT]
     if not daily_fail.empty:
@@ -681,7 +692,7 @@ def _evaluate_challenge_window(trades: pd.DataFrame, *, target_pct: float) -> di
         event_time, _priority, outcome = sorted(events, key=lambda item: (item[0], item[1]))[0]
         return {
             "outcome": outcome,
-            "days_to_outcome": (event_time - first_time).total_seconds() / 86400.0,
+            "days_to_outcome": (event_time - start).total_seconds() / 86400.0,
             "max_daily_stress_pct": max_daily,
             "min_reserved_equity_pct": min_reserved,
         }
@@ -875,7 +886,7 @@ def build_html_report(
 
     <section id="challenge-windows" aria-labelledby="challenge-windows-title">
       <h2 id="challenge-windows-title">Rolling Challenge Windows</h2>
-      <p class="callout">Windows start weekly and run for up to 365 days. Targets require closed balance to reach 10% for Challenge or 5% for Verification with no open risk at that event.</p>
+      <p class="callout">Windows start weekly and run for up to 365 days. Targets require closed balance to reach 10% for Challenge or 5% for Verification with no open risk at that event. Only events inside the window are counted, and days to outcome are measured from the window start.</p>
       {_table(
           ["Profile", "Target", "Hit Rate", "Hit", "Daily Loss Fail", "Max Loss Fail", "Unresolved", "Median Days"],
           _challenge_table_rows(windows, candidates),
