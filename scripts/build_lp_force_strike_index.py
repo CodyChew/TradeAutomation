@@ -157,7 +157,7 @@ def _ftmo_challenge_profiles_card() -> str:
     <section id="ftmo-challenge-profiles" class="card featured">
       <div class="status status-active">FTMO profiles</div>
       <h2>FTMO Challenge Profiles</h2>
-      <p>Research-only frontier for a fresh FTMO 100k 2-Step account, including finer LPFS risk buckets, FTMO daily/max loss stress, spread-gate overlay, and realistic weekly/monthly income ranges.</p>
+      <p>Research-only frontier for a fresh FTMO 100k 2-Step account, including finer LPFS risk buckets, FTMO daily/max loss stress, spread-gate overlay, and corrected rolling challenge-window accounting.</p>
       <div class="facts">
         <div class="fact"><span>Fresh profile</span><strong>0.20 / 0.20 / 0.65</strong></div>
         <div class="fact"><span>Boundary</span><strong>No live config changes</strong></div>

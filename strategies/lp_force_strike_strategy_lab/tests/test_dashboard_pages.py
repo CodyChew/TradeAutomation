@@ -168,6 +168,8 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("H4/H8 0.2% / H12/D1 0.2% / W1 0.65%", html)
         self.assertIn("Aggressive / Funded", html)
         self.assertIn("H4/H8 0.2% / H12/D1 0.25% / W1 0.55%", html)
+        self.assertIn("Only events inside the window are counted", html)
+        self.assertIn("460</td><td>0</td><td>0</td><td>62</td><td>136.6", html)
         self.assertIn("Spread Gate Overlay", html)
         self.assertIn("No live configs, VPS runtime state, journals, orders, or scheduled tasks were touched.", html)
         self.assertNotIn("<script", lower_html)
