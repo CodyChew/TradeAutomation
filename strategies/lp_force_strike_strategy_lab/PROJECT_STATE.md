@@ -1,18 +1,31 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-06-10 ICT after the LPFS active-position state/broker
-repair deploy closeout.
+Last updated: 2026-06-12 ICT after the LPFS transient market-data frame-skip
+deploy closeout.
 
 ## Current Live-Ops State
 
 Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
 Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. Phase 1
-telemetry separation and the active-position state/broker repair have both
-been deployed sequentially with FTMO first and IC second. Accepted final proof
-records both tasks running, kill switches clear, recovery disabled, telemetry
-failures `0`, and active state/broker mismatch count `0`. Use
-`scripts\Get-LpfsDualVpsStatus.ps1` for current process, heartbeat, config,
-and broker truth before any live maintenance.
+telemetry separation, the active-position state/broker repair, and the
+transient market-data frame-skip patch have all been deployed sequentially with
+FTMO first and IC second. Accepted final frame-skip proof records both tasks
+running on runtime SHA `905fe7e350095868649b26444b3cef7510d53e4c`, kill
+switches clear, recovery disabled, telemetry failures `0`, market-data fetch
+failures `0`, `frames_skipped=0`, and active state/broker mismatch count `0`.
+Use `scripts\Get-LpfsDualVpsStatus.ps1` for current process, heartbeat,
+config, and broker truth before any live maintenance.
+
+Transient market-data frame-skip deploy evidence:
+`C:\TradeAutomationEvidence\lpfs_market_data_frame_skip_deploy\20260612_133553`;
+manifest SHA-256
+`21ea1596cf79476842f88d53aff88865dc01629d0e374cdbb86fd58161de6657`;
+final dual-status SHA-256
+`446698cc075c01b85782bc9710e05baf6d0b2ee35418eeda8f0116f70ec983cb`. The
+patch degrades a cycle only for failed symbol/timeframe candle history fetches
+and continues healthy frames. Broker/account/order/position failures remain
+fail-closed. No reconciliation, canary, recovery enablement, manual broker
+mutation, strategy/risk/sizing/SL/TP/broker-send/config change was performed.
 
 Active-position state/broker repair is deployed on both VPS lanes at exact SHA
 `45efa748423f20881507cda9d4f81e4afe617bde`.

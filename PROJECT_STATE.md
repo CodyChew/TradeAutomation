@@ -1,20 +1,36 @@
 # TradeAutomation Project State
 
-Last updated: 2026-06-04 ICT after the accepted LPFS C-01 FTMO Stage 5 Gate 3
-`STOPPED` result.
+Last updated: 2026-06-12 ICT after the LPFS transient market-data frame-skip
+deploy closeout.
 
 ## Immediate LPFS Safety State
 
-Read `docs/lpfs_c01_live_safety_release.md` before any LPFS operation. Both
-VPS machines remain powered on but intentionally paused: kill switches active,
-`LPFS_Live` and `LPFS_IC_Live` disabled, runner process count `0`, and zero
-LPFS broker pending orders. FTMO has `3` active positions and IC has `2`;
-leave them untouched and supervised broker-side.
+Read `AGENTS.md`, `SESSION_HANDOFF.md`, and
+`docs/lpfs_c01_live_safety_release.md` before any LPFS operation. LPFS live
+data collection is running on both VPS lanes. The current deployed runtime code
+SHA on both lanes is `905fe7e350095868649b26444b3cef7510d53e4c`, containing
+the transient market-data frame-skip patch. Final proof showed both lanes
+running with kill switches clear, one logical runner path per lane, fresh
+heartbeats, broker OK, recovery disabled, telemetry failures `0`,
+market-data fetch failures `0`, `frames_skipped=0`, and active state/broker
+mismatch count `0`.
 
-No VPS deploy, reconcile-only execution, canary, runner restart, task
-enablement, watchdog resumption, state rewrite, journal rewrite, or broker
-exposure edit is approved yet. The local C-01 branch is a live-safety repair,
-not a strategy change.
+Final market-data frame-skip evidence:
+`C:\TradeAutomationEvidence\lpfs_market_data_frame_skip_deploy\20260612_133553`.
+Manifest SHA-256:
+`21ea1596cf79476842f88d53aff88865dc01629d0e374cdbb86fd58161de6657`.
+Final dual-status SHA-256:
+`446698cc075c01b85782bc9710e05baf6d0b2ee35418eeda8f0116f70ec983cb`.
+Final broker exposure in that packet was FTMO `9` pending orders / `3` active
+positions and IC `9` pending orders / `1` active position. Treat all broker
+counts as historical packet facts only; capture a fresh dual-VPS status packet
+before future live operations.
+
+No reconciliation, canary, recovery enablement, manual broker mutation,
+strategy/risk/sizing/SL/TP/broker-send/config change was performed during the
+frame-skip deploy. Do not run reconciliation, run a canary, start a duplicate
+runner, manually mutate broker exposure, or change strategy behavior without a
+separately approved operation.
 
 FTMO Stage 5 Gate 3 is accepted as `STOPPED` and must not be retried. Read
 `docs/lpfs_stage5_gate3_retry_plan.md`. Authoritative ignored packet:
@@ -40,7 +56,9 @@ Local C-01 verification passed after reviewer follow-up on 2026-06-01 ICT:
 focused tests `164`, full LPFS tests `392`, strict core coverage `6396`
 statements plus `2190` branches
 at `100.00%`, generated live-ops regeneration stable, and `git diff --check`
-clean. Production remains intentionally paused pending reviewed deployment.
+clean. This is historical release verification; Stage 5 later resumed both
+lanes and subsequent telemetry, active-position repair, and frame-skip deploys
+superseded the paused-state evidence.
 
 ## Purpose
 
@@ -65,20 +83,14 @@ source of truth for strategy research and live execution work.
   `Administrator` desktop login.
 - The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
   SSH key entries were removed from both VPSes.
-- Latest verified dual-VPS live check from this PC was on 2026-05-31 22:05 ICT
-  after the watchdog lock-contention hardening rollout: FTMO and IC both had
-  scheduled tasks `Running`, `task_multiple_instances=IgnoreNew`, running
-  parent/child Python runner shape, fresh `running` heartbeats, kill switches
-  clear, MT5 connected and trade allowed, disk status OK, and journals actively
-  appending rows. Both VPS repo checkouts were at the active runtime-hardening
-  commit `3657323`. The captured packet is
-  `reports/live_ops/lpfs_dual_vps_status_20260531_220518.md`. FTMO remained
-  at `live_send.risk_bucket_scale=0.05`, `max_open_risk_pct=0.65`, with `2`
-  strategy pending orders and `3` active strategy positions. IC showed
-  `live_send.risk_bucket_scale=1`, `max_risk_pct_per_trade=0.75`,
-  `max_open_risk_pct=6`, with `1` strategy pending order and `3` active
-  strategy positions. Treat those counts as a historical snapshot only; capture
-  a fresh packet before future live operations.
+- Latest verified dual-VPS deployment evidence from this PC is the 2026-06-12
+  market-data frame-skip closeout packet under
+  `C:\TradeAutomationEvidence\lpfs_market_data_frame_skip_deploy\20260612_133553`.
+  It showed both lanes running on `905fe7e`, kill switches clear, broker OK,
+  recovery disabled, telemetry failures `0`, market-data fetch failures `0`,
+  `frames_skipped=0`, and active state/broker mismatch count `0`. Treat those
+  counts as a historical snapshot only; capture a fresh packet before future
+  live operations.
 - Live sizing policy epochs are tracked in `configs/live_policy_ledger.csv`.
   That ledger is the handoff source for distinguishing strategy performance
   from risk-policy changes. It records FTMO scale `0.05`, historical IC scale
@@ -118,36 +130,39 @@ source of truth for strategy research and live execution work.
 
 ## Read This First In A New Codex Session
 
-1. `SESSION_HANDOFF.md` for the latest operational snapshot.
-2. `PROJECT_STATE.md` for the overall workspace state.
-3. `docs/system_troubleshooting.md` before troubleshooting existing live
+1. `AGENTS.md` for role boundaries and repo workflow expectations.
+2. `SESSION_HANDOFF.md` for the latest operational snapshot.
+3. `PROJECT_STATE.md` for the overall workspace state.
+4. `docs/codex_worktree_workflow.md` before editing from a Codex or linked
+   Git worktree.
+5. `docs/system_troubleshooting.md` before troubleshooting existing live
    runners, MT5 behavior, datasets, dashboards, or generated reports.
-4. `strategies/lp_force_strike_strategy_lab/START_HERE.md` for the LPFS
+6. `strategies/lp_force_strike_strategy_lab/START_HERE.md` for the LPFS
    first-read path, environment boundaries, and resume prompts.
-5. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for the current
+7. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for the current
    LP + Force Strike strategy research.
-6. `strategies/majority_flush_strategy_lab/START_HERE.md` before continuing the
+8. `strategies/majority_flush_strategy_lab/START_HERE.md` before continuing the
    Majority Flush strategy research lane.
-7. `docs/strategy.html` for the current V13 mechanics + V15 risk-bucket guide.
-8. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+9. `docs/strategy.html` for the current V13 mechanics + V15 risk-bucket guide.
+10. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before continuing execution work.
-9. `configs/live_policy_ledger.csv` before interpreting live performance across
+11. `configs/live_policy_ledger.csv` before interpreting live performance across
    FTMO/IC sizing-policy epochs or changing live risk settings.
-10. `docs/lpfs_diagnostic_logging.md` before changing LPFS diagnostic journals,
+12. `docs/lpfs_diagnostic_logging.md` before changing LPFS diagnostic journals,
    trade-diagnostic reports, or live-vs-backtest analysis fields.
-11. `docs/phase2_production_hardening.md` before operating watchdogs,
+13. `docs/phase2_production_hardening.md` before operating watchdogs,
    kill-switch controls, heartbeat, status checks, or Task Scheduler setup.
-12. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+14. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
-13. `docs/lpfs_icmarkets_vps_runbook.md` before IC VPS maintenance.
-14. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+15. `docs/lpfs_icmarkets_vps_runbook.md` before IC VPS maintenance.
+16. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-15. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+17. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native MQL5 EA or Strategy Tester work.
-16. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
+18. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
    performance checkpoint.
-17. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
-18. `concepts/lp_levels_lab/PROJECT_STATE.md` and
+19. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
+20. `concepts/lp_levels_lab/PROJECT_STATE.md` and
    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
    concept behavior.
 

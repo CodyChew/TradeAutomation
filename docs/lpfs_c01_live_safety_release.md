@@ -1,7 +1,7 @@
 # LPFS C-01 Live-Safety Release
 
-Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption and Phase 1
-live quote telemetry deploy completed for FTMO first and IC second.
+Last updated: 2026-06-12 ICT after adding the latest runtime-status pointer
+following the transient market-data frame-skip deploy.
 
 ## Current Objective
 
@@ -13,12 +13,22 @@ settings, timeframe mix, or strategy heuristics.
 
 This is a live-safety release, not a strategy-improvement release.
 
-## Current Running State
+Current live truth has advanced beyond the original C-01 resumption packets.
+After C-01 resumption and Phase 1 telemetry separation, the active-position
+state/broker repair and transient market-data frame-skip patch were deployed.
+The latest accepted runtime SHA in `SESSION_HANDOFF.md` is
+`905fe7e350095868649b26444b3cef7510d53e4c`. Use `SESSION_HANDOFF.md`,
+`strategies/lp_force_strike_strategy_lab/START_HERE.md`, and a fresh
+`scripts\Get-LpfsDualVpsStatus.ps1` packet for current process, heartbeat,
+config, and broker truth.
+
+## C-01 Resumption State
 
 LPFS live data collection resumed on 2026-06-07 ICT. FTMO was resumed first
 and proved clean before IC was touched. Phase 1 live quote telemetry
 separation was then deployed sequentially, again FTMO first and IC only after
-FTMO proof was clean. Both lanes now run runtime code SHA:
+FTMO proof was clean. At that C-01 resumption boundary, both lanes ran runtime
+code SHA:
 
 ```text
 027e0afe932081713067dc24b2bc457cddf1041e

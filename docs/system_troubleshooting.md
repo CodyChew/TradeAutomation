@@ -1,26 +1,29 @@
 # TradeAutomation System Troubleshooting Map
 
-Last updated: 2026-06-10 after the LPFS active-position state/broker repair
-deploy closeout.
+Last updated: 2026-06-12 after the LPFS transient market-data frame-skip deploy
+closeout.
 
 This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
 live trading state.
 
-## C-01 Containment
+## Current LPFS Safety Boundary
 
 Read `lpfs_c01_live_safety_release.md` first. LPFS minimum-safety resumption
-completed on 2026-06-07 ICT, Phase 1 live quote telemetry separation was
-deployed after deliberate FTMO and IC runner restarts, and the
-active-position state/broker repair is deployed on both VPS lanes from runtime
-code SHA `45efa748423f20881507cda9d4f81e4afe617bde`. Both VPS lanes are
-running with kill switches clear: FTMO `LPFS_Live` and IC `LPFS_IC_Live`.
-FTMO was resumed first and proved clean before IC was touched. Skip canaries
-by default. Do not run reconcile-only mode, a live canary, or manual broker
-order/position changes unless a separate operator-approved step authorizes it.
+completed on 2026-06-07 ICT, Phase 1 live quote telemetry separation, the
+active-position state/broker repair, and the transient market-data frame-skip
+patch are deployed on both VPS lanes. The current deployed runtime code SHA is
+`905fe7e350095868649b26444b3cef7510d53e4c`. Both VPS lanes are running with
+kill switches clear: FTMO `LPFS_Live` and IC `LPFS_IC_Live`. FTMO was resumed
+and deployed first, and IC was touched only after FTMO proof was clean. Skip
+canaries by default. Do not run reconcile-only mode, a live canary, or manual
+broker order/position changes unless a separate operator-approved step
+authorizes it.
 
 Authoritative final packets:
 
+- Active-position state/broker repair runtime SHA:
+  `45efa748423f20881507cda9d4f81e4afe617bde`
 - FTMO:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_resume_minimal_20260607_102235`,
   current manifest SHA-256 in `manifest.sha256.txt`
@@ -50,15 +53,21 @@ Authoritative final packets:
   `C:\CodexWorktrees\TradeAutomation-lpfs-c01-forward-fix\reports\live_ops\lpfs_dual_vps_status_20260609_234530.md`,
   manifest SHA-256
   `f7f4eed83c711b2c22e21c62bc5569c866c9f7963974e60b795c6d05309930e4`
+- Market-data frame-skip deploy:
+  `C:\TradeAutomationEvidence\lpfs_market_data_frame_skip_deploy\20260612_133553`,
+  manifest SHA-256
+  `21ea1596cf79476842f88d53aff88865dc01629d0e374cdbb86fd58161de6657`,
+  final dual-status SHA-256
+  `446698cc075c01b85782bc9710e05baf6d0b2ee35418eeda8f0116f70ec983cb`
 
-Final proof showed one logical runner path per lane, fresh running heartbeats,
-MT5 identity and reads `OK`, recovery disabled, primary lifecycle journals
-growing without new live `market_snapshot` rows, separated market snapshot
-telemetry journals existing/growing, telemetry write/retention failures `0`,
-and active state/broker mismatch count `0` on both lanes. Final broker
-exposure after the active-position repair deploy was FTMO `3` pending LPFS
-orders and `2` active positions, and IC `2` pending LPFS orders and `1` active
-position, each matching that lane's fresh pre-deploy broker baseline.
+Final market-data frame-skip proof showed one logical runner path per lane,
+fresh running heartbeats, MT5 identity and reads `OK`, recovery disabled,
+telemetry failures `0`, market-data fetch failures `0`, `frames_skipped=0`,
+and active state/broker mismatch count `0` on both lanes. Final broker exposure
+in that packet was FTMO `9` pending LPFS orders and `3` active positions, and
+IC `9` pending LPFS orders and `1` active position. Treat broker counts as
+historical packet facts only; capture a fresh dual-VPS status packet before
+future live operations.
 
 IC close repair evidence: during the active-position repair deploy the runner
 emitted broker-proven `stop_loss_hit` rows for stale local active positions

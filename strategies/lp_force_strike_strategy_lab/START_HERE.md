@@ -1,6 +1,6 @@
 # LPFS Start Here
 
-Last updated: 2026-06-10 ICT after LPFS active-position state/broker repair
+Last updated: 2026-06-12 ICT after the LPFS transient market-data frame-skip
 deploy closeout.
 
 This is the canonical first-read file for future AI agents taking over the
@@ -13,12 +13,23 @@ operational decisions.
 - Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO
   `LPFS_Live` was resumed first and IC `LPFS_IC_Live` was resumed only after
   FTMO post-start evidence was clean. A later active-position state/broker
-  repair deploy is now the accepted operating boundary: both tasks are running,
-  kill switches are clear, recovery is disabled, telemetry failures are `0`,
-  pending LPFS broker orders match the fresh broker baselines (FTMO `3`, IC
-  `2`), active positions match the fresh broker baselines (FTMO `2`, IC `1`),
-  and active state/broker mismatch count is `0`. Use the dual VPS status packet
+  repair deploy and the transient market-data frame-skip deploy are now the
+  accepted operating boundary. Both tasks are running, kill switches are clear,
+  recovery is disabled, telemetry failures are `0`, market-data fetch failures
+  were `0`, `frames_skipped=0`, and active state/broker mismatch count is `0`
+  in the accepted final frame-skip packet. Use a fresh dual VPS status packet
   for current process, heartbeat, config, and broker truth.
+- Transient market-data frame-skip patch is deployed on both VPS lanes at
+  runtime SHA `905fe7e350095868649b26444b3cef7510d53e4c`. If one
+  symbol/timeframe candle history fetch fails, the runner skips only that
+  frame, continues healthy frames, records degraded-cycle fields in
+  `live_send_cycle_complete` and heartbeat/status, and retries next cycle.
+  Broker/account/order/position failures remain fail-closed. Final evidence:
+  `C:\TradeAutomationEvidence\lpfs_market_data_frame_skip_deploy\20260612_133553`;
+  manifest SHA-256
+  `21ea1596cf79476842f88d53aff88865dc01629d0e374cdbb86fd58161de6657`;
+  final dual-status SHA-256
+  `446698cc075c01b85782bc9710e05baf6d0b2ee35418eeda8f0116f70ec983cb`.
 - Active-position state/broker repair is deployed on both VPS lanes at runtime
   SHA `45efa748423f20881507cda9d4f81e4afe617bde`. FTMO PASS packet:
   `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ftmo_v3`
@@ -205,33 +216,36 @@ operational decisions.
 
 ## Read Order
 
-1. `SESSION_HANDOFF.md` for the latest operational snapshot.
-2. This file for the LPFS recovery map and environment boundaries.
-3. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for detailed
+1. `AGENTS.md` for role boundaries and repo workflow expectations.
+2. `SESSION_HANDOFF.md` for the latest operational snapshot.
+3. This file for the LPFS recovery map and environment boundaries.
+4. `docs/codex_worktree_workflow.md` before editing from a Codex or linked
+   Git worktree.
+5. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for detailed
    strategy history and current live/research assumptions.
-4. `docs/strategy.html` for the current strategy contract.
-5. `docs/live_ops.html` for live-run behavior, gates, reconciliation, status,
+6. `docs/strategy.html` for the current strategy contract.
+7. `docs/live_ops.html` for live-run behavior, gates, reconciliation, status,
    and operator commands.
-6. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
+8. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
    performance checkpoint and backtest-distribution comparison.
-7. `configs/live_policy_ledger.csv` before interpreting live performance across
+9. `configs/live_policy_ledger.csv` before interpreting live performance across
    FTMO/IC sizing-policy epochs or changing live risk settings.
-8. `docs/lpfs_diagnostic_logging.md` before changing LPFS journal diagnostic
+10. `docs/lpfs_diagnostic_logging.md` before changing LPFS journal diagnostic
    fields, trade diagnostic reports, or live-vs-backtest comparison logic.
-9. `docs/lpfs_strategy_iteration_context.md` before continuing the current
+11. `docs/lpfs_strategy_iteration_context.md` before continuing the current
    evidence-gated strategy-iteration workflow or handing the task to a fresh
    Codex chat.
-10. `docs/lpfs_lightsail_vps_runbook.md` before any VPS maintenance or remote
+12. `docs/lpfs_lightsail_vps_runbook.md` before any VPS maintenance or remote
    access work.
-11. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+13. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
    IC Markets production runner.
-12. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+14. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before changing execution or notification code.
-13. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+15. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-14. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+16. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
    buckets or income expectations.
-15. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+17. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native MQL5 EA or Strategy Tester work.
 
 ## Source-Of-Truth Matrix

@@ -9,43 +9,46 @@ file, and the JSONL journal before making operational decisions.
 
 ## Read First
 
-1. `SESSION_HANDOFF.md` for this latest operational snapshot.
-2. `docs/lpfs_c01_live_safety_release.md` before any LPFS operation, then
+1. `AGENTS.md` for role boundaries and repo workflow expectations.
+2. `SESSION_HANDOFF.md` for this latest operational snapshot.
+3. `docs/codex_worktree_workflow.md` before editing from a Codex or linked
+   Git worktree.
+4. `docs/lpfs_c01_live_safety_release.md` before any LPFS operation, then
    `docs/lpfs_stage5_gate3_retry_plan.md` before any Stage 5 work.
-3. `PROJECT_STATE.md` for workspace context.
-4. `docs/system_troubleshooting.md` before troubleshooting live runners, MT5,
+5. `PROJECT_STATE.md` for workspace context.
+6. `docs/system_troubleshooting.md` before troubleshooting live runners, MT5,
    datasets, dashboards, or generated reports.
-5. `strategies/lp_force_strike_strategy_lab/START_HERE.md` for the LPFS
+7. `strategies/lp_force_strike_strategy_lab/START_HERE.md` for the LPFS
    first-read path, source-of-truth map, environment boundaries, and resume
    prompts.
-6. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for LPFS detail.
-7. `strategies/majority_flush_strategy_lab/START_HERE.md` before continuing the
+8. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` for LPFS detail.
+9. `strategies/majority_flush_strategy_lab/START_HERE.md` before continuing the
    Majority Flush strategy research lane.
-8. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+10. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before touching execution code.
-9. `configs/live_policy_ledger.csv` before interpreting live performance across
+11. `configs/live_policy_ledger.csv` before interpreting live performance across
    FTMO/IC sizing-policy epochs or changing live risk settings.
-10. `docs/lpfs_diagnostic_logging.md` before changing LPFS journals,
+12. `docs/lpfs_diagnostic_logging.md` before changing LPFS journals,
    diagnostic reports, or live-vs-backtest analysis fields.
-11. `docs/lpfs_strategy_iteration_context.md` for the current evidence-gated
+13. `docs/lpfs_strategy_iteration_context.md` for the current evidence-gated
    strategy-iteration objective, scope, workflow, blockers, and fresh-chat
    handoff.
-12. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
-13. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
+14. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
+15. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
    performance monitor, live start timestamps, version context, and
    backtest-distribution comparison.
-14. `docs/phase2_production_hardening.md` before operating the watchdog, kill
+16. `docs/phase2_production_hardening.md` before operating the watchdog, kill
    switch, heartbeat, status command, or Task Scheduler setup.
-15. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+17. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
    deployment, or maintenance.
-16. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+18. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
    IC Markets production runner.
-17. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+19. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
    account or broker feed.
-18. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+20. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
    buckets or income expectations. It is linked from the dashboard top
    navigation and the Home page FTMO Profiles section.
-19. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+21. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native EA or Strategy Tester work.
 
 ## AI Agent Continuity Rules
@@ -200,9 +203,9 @@ file, and the JSONL journal before making operational decisions.
   broker-send, reconciliation, runtime-state, journal, broker artifact, or
   historical-data cleanup change was made in the repo closeout. No manual
   broker order/position mutation was performed.
-- Final closeout publication SHA: after this docs/status/handoff-only closeout
-  is pushed, read `git rev-parse origin/main` from the repo. This file cannot
-  embed the immutable SHA of the same commit without changing that SHA.
+- Publication SHA note: historical closeout entries cannot embed the immutable
+  SHA of their own commit without changing that SHA. For the current published
+  repo state, read `git rev-parse origin/main` from the active repo.
 - FTMO final running evidence packet:
   `C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_resume_minimal_20260607_102235`.
   Use the packet's `manifest.sha256.txt` sidecar for the current
