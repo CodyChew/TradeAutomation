@@ -196,6 +196,12 @@ For documentation reviews, classify findings as blocker, important, or cleanup.
 Report findings first, then missing docs, duplicate or conflicting docs,
 recommended source-of-truth updates, and any areas not inspected.
 
+The Documentation And Workflow Agent may directly implement confirmed,
+scoped docs-only fixes when the correction is clear from repository evidence
+and does not change live operations, strategy behavior, configs, tests, or
+generated artifacts incorrectly. For ambiguous, broad, live-sensitive, or
+source-of-truth disputes, report findings and ask before editing.
+
 ## Repo Auditor Role
 
 When acting as the Repo Auditor, Codex proactively inspects the whole
