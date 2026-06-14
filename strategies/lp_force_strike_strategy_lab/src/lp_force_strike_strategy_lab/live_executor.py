@@ -3196,6 +3196,22 @@ def run_live_send_cycle(
     telemetry_retention_failures = 0
     latest_telemetry_write_error: str | None = None
     latest_telemetry_retention_error: str | None = None
+
+    def record_market_data_failure(symbol: str, timeframe: str, exc: Exception) -> None:
+        nonlocal frames_skipped, market_data_fetch_failures, latest_market_data_fetch_error
+        frames_skipped += 1
+        market_data_fetch_failures += 1
+        latest_market_data_fetch_error = f"{type(exc).__name__}: {exc}"
+        market_data_failure_frames.append(
+            {
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "history_bars": int(config.history_bars),
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+            }
+        )
+
     for symbol in config.symbols:
         for timeframe in config.timeframes:
             try:
@@ -3207,20 +3223,13 @@ def run_live_send_cycle(
                     broker_timezone=config.broker_timezone,
                 )
             except Exception as exc:
-                frames_skipped += 1
-                market_data_fetch_failures += 1
-                latest_market_data_fetch_error = f"{type(exc).__name__}: {exc}"
-                market_data_failure_frames.append(
-                    {
-                        "symbol": symbol,
-                        "timeframe": timeframe,
-                        "history_bars": int(config.history_bars),
-                        "error_type": type(exc).__name__,
-                        "error": str(exc),
-                    }
-                )
+                record_market_data_failure(symbol, timeframe, exc)
                 continue
-            market = market_snapshot_from_mt5(mt5_module, symbol, broker_timezone=config.broker_timezone)
+            try:
+                market = market_snapshot_from_mt5(mt5_module, symbol, broker_timezone=config.broker_timezone)
+            except Exception as exc:
+                record_market_data_failure(symbol, timeframe, exc)
+                continue
             telemetry = append_market_snapshot_telemetry(config, symbol, timeframe, market)
             if telemetry.write_failed:
                 telemetry_write_failures += 1

@@ -3996,6 +3996,123 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(rows[0]["affected_timeframes"], ["H4"])
             self.assertEqual(len(rows[0]["affected_frames"]), 2)
 
+    def test_run_live_send_cycle_skips_quote_tick_unavailable_frame(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            mt5.tick = None
+            provider_calls: list[tuple[str, str]] = []
+
+            def provider(frame, symbol, timeframe, run_config):
+                provider_calls.append((symbol, timeframe))
+                return [_setup()]
+
+            result = run_live_send_cycle(mt5, config=config, state=LiveExecutorState(), setup_provider=provider)
+
+            self.assertEqual(result.frames_processed, 0)
+            self.assertEqual(result.frames_skipped, 1)
+            self.assertEqual(result.market_data_fetch_failures, 1)
+            self.assertTrue(result.cycle_degraded)
+            self.assertEqual(result.cycle_degraded_reason, "all_market_data_fetch_failed")
+            self.assertIn("MT5 quote unavailable for EURUSD", result.latest_market_data_fetch_error or "")
+            self.assertEqual(provider_calls, [])
+            self.assertEqual(mt5.order_check_requests, [])
+            self.assertEqual(mt5.order_send_requests, [])
+            self.assertFalse(Path(config.market_snapshot_journal_path).exists())
+
+            rows = _journal_rows(Path(config.journal_path))
+            self.assertEqual([row["event"] for row in rows], ["market_data_frame_fetch_failures"])
+            self.assertEqual(rows[0]["severity"], "warning")
+            self.assertEqual(rows[0]["failure_count"], 1)
+            self.assertEqual(rows[0]["frames_skipped"], 1)
+            self.assertEqual(rows[0]["frames_processed"], 0)
+            self.assertEqual(rows[0]["total_configured_frames"], 1)
+            self.assertTrue(rows[0]["all_frames_failed"])
+            self.assertEqual(rows[0]["cycle_degraded_reason"], "all_market_data_fetch_failed")
+            self.assertEqual(rows[0]["affected_symbols"], ["EURUSD"])
+            self.assertEqual(rows[0]["affected_timeframes"], ["H4"])
+            self.assertEqual(len(rows[0]["affected_frames"]), 1)
+            self.assertEqual(rows[0]["affected_frames"][0]["symbol"], "EURUSD")
+            self.assertEqual(rows[0]["affected_frames"][0]["timeframe"], "H4")
+            self.assertEqual(rows[0]["affected_frames"][0]["history_bars"], config.history_bars)
+            self.assertEqual(rows[0]["affected_frames"][0]["error_type"], "RuntimeError")
+            self.assertIn("MT5 quote unavailable for EURUSD", rows[0]["affected_frames"][0]["error"])
+            self.assertIn("MT5 quote unavailable for EURUSD", rows[0]["latest_error"])
+
+    def test_run_live_send_cycle_skips_quote_info_unavailable_frame(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            mt5.info = None
+            provider_calls: list[tuple[str, str]] = []
+
+            def provider(frame, symbol, timeframe, run_config):
+                provider_calls.append((symbol, timeframe))
+                return [_setup()]
+
+            result = run_live_send_cycle(mt5, config=config, state=LiveExecutorState(), setup_provider=provider)
+
+            self.assertEqual(result.frames_processed, 0)
+            self.assertEqual(result.frames_skipped, 1)
+            self.assertEqual(result.market_data_fetch_failures, 1)
+            self.assertEqual(result.cycle_degraded_reason, "all_market_data_fetch_failed")
+            self.assertEqual(provider_calls, [])
+            self.assertEqual(mt5.order_check_requests, [])
+            self.assertEqual(mt5.order_send_requests, [])
+            self.assertFalse(Path(config.market_snapshot_journal_path).exists())
+            rows = _journal_rows(Path(config.journal_path))
+            self.assertEqual([row["event"] for row in rows], ["market_data_frame_fetch_failures"])
+            self.assertIn("MT5 quote unavailable for EURUSD", rows[0]["latest_error"])
+
+    def test_run_live_send_cycle_quote_failure_does_not_abort_healthy_frames(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir, symbols=("EURUSD", "GBPUSD"), timeframes=("H4",))
+            mt5 = FakeMT5()
+            original_tick = mt5.symbol_info_tick
+            provider_calls: list[tuple[str, str]] = []
+
+            def flaky_tick(symbol: str):
+                if symbol == "EURUSD":
+                    return None
+                return original_tick(symbol)
+
+            def provider(frame, symbol, timeframe, run_config):
+                provider_calls.append((symbol, timeframe))
+                return []
+
+            mt5.symbol_info_tick = flaky_tick  # type: ignore[method-assign]
+
+            result = run_live_send_cycle(mt5, config=config, state=LiveExecutorState(), setup_provider=provider)
+
+            self.assertEqual(result.frames_processed, 1)
+            self.assertEqual(result.frames_skipped, 1)
+            self.assertEqual(result.market_data_fetch_failures, 1)
+            self.assertTrue(result.cycle_degraded)
+            self.assertEqual(result.cycle_degraded_reason, "partial_market_data_fetch_failure")
+            self.assertEqual(provider_calls, [("GBPUSD", "H4")])
+            self.assertEqual(mt5.order_check_requests, [])
+            self.assertEqual(mt5.order_send_requests, [])
+
+            rows = _journal_rows(Path(config.journal_path))
+            failures = [row for row in rows if row["event"] == "market_data_frame_fetch_failures"]
+            self.assertEqual(len(failures), 1)
+            self.assertEqual(failures[0]["failure_count"], 1)
+            self.assertEqual(failures[0]["frames_skipped"], 1)
+            self.assertEqual(failures[0]["frames_processed"], 1)
+            self.assertFalse(failures[0]["all_frames_failed"])
+            self.assertEqual(failures[0]["cycle_degraded_reason"], "partial_market_data_fetch_failure")
+            self.assertEqual(failures[0]["affected_symbols"], ["EURUSD"])
+            self.assertEqual(failures[0]["affected_timeframes"], ["H4"])
+            self.assertEqual(
+                [(frame["symbol"], frame["timeframe"]) for frame in failures[0]["affected_frames"]],
+                [("EURUSD", "H4")],
+            )
+            self.assertIn("MT5 quote unavailable for EURUSD", failures[0]["latest_error"])
+
+            telemetry_rows = _journal_rows(Path(config.market_snapshot_journal_path))
+            self.assertEqual([row["event"] for row in telemetry_rows], ["market_snapshot"])
+            self.assertEqual(telemetry_rows[0]["symbol"], "GBPUSD")
+
     def test_live_market_snapshot_telemetry_write_failure_is_audited_without_blocking_order(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             telemetry_path = Path(tmpdir) / "telemetry_is_directory.jsonl"
