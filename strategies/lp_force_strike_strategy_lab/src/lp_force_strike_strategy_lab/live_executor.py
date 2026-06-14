@@ -2680,7 +2680,41 @@ def process_trade_setup_live_send(
         checked_state = _record_event_once(config, checked_state, notifier, f"order_check_failed:{signal_key}", event)
         return LiveSetupResult(state=checked_state, signal_key=signal_key, status="order_check_failed", order_check=order_check)
 
-    final_market = market_snapshot_from_mt5(mt5_module, setup.symbol, broker_timezone=config.broker_timezone)
+    try:
+        final_market = market_snapshot_from_mt5(mt5_module, setup.symbol, broker_timezone=config.broker_timezone)
+    except Exception as exc:
+        event = _rejection_event(
+            "final_quote_unavailable_before_send",
+            "Could not refresh executable quote immediately before order_send.",
+            signal_key,
+            {
+                "signal_key": signal_key,
+                "symbol": setup.symbol,
+                "timeframe": setup.timeframe,
+                "side": setup.side,
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+                "order_check_retcode": order_check.retcode,
+                "order_check_comment": order_check.comment,
+            },
+        )
+        event = _with_event_diagnostics(
+            event,
+            decision_diagnostics,
+            market=first_market,
+            spread_gate=pre_spread,
+            execution={
+                "stage": "final_quote_unavailable_before_send",
+                "execution_path": "pending_limit",
+                "order_check_retcode": order_check.retcode,
+                "order_check_comment": order_check.comment,
+                "quote_error_type": type(exc).__name__,
+                "quote_error": str(exc),
+            },
+        )
+        retry_state = _without_processed_key(checked_state, signal_key)
+        retry_state = _record_event_once(config, retry_state, notifier, f"setup_blocked:{signal_key}:final_quote_unavailable", event)
+        return LiveSetupResult(state=retry_state, signal_key=signal_key, status="blocked", order_check=order_check)
     final_spread = dynamic_spread_gate(
         setup,
         symbol_spec,

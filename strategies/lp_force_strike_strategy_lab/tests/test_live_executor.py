@@ -1764,6 +1764,100 @@ class LiveExecutorTests(unittest.TestCase):
             )
             self.assertEqual(retried_after_operator_fix.status, "order_sent")
 
+    def test_process_live_setup_blocks_retryably_when_final_quote_tick_unavailable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            first_market = MT5MarketSnapshot(bid=1.1018, ask=1.1020, time_utc="2026-01-01T04:00:00Z")
+            mt5.tick = None
+
+            result = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=config,
+                state=LiveExecutorState(),
+                market=first_market,
+            )
+
+            self.assertEqual(result.status, "blocked")
+            self.assertIsNotNone(result.order_check)
+            self.assertEqual(len(mt5.order_check_requests), 1)
+            self.assertEqual(mt5.order_send_requests, [])
+            self.assertNotIn(result.signal_key, result.state.processed_signal_keys)
+            self.assertIn(result.signal_key, result.state.order_checked_signal_keys)
+            self.assertIn(f"setup_blocked:{result.signal_key}:final_quote_unavailable", result.state.notified_event_keys)
+
+            rows = _journal_rows(Path(config.journal_path))
+            self.assertEqual(rows[-1]["event"], "setup_rejected")
+            self.assertEqual(rows[-1]["event_key"], f"setup_blocked:{result.signal_key}:final_quote_unavailable")
+            notification = rows[-1]["notification_event"]
+            self.assertEqual(notification["kind"], "setup_rejected")
+            self.assertEqual(notification["severity"], "warning")
+            self.assertEqual(notification["status"], "final_quote_unavailable_before_send")
+            fields = notification["fields"]
+            self.assertEqual(fields["signal_key"], result.signal_key)
+            self.assertEqual(fields["symbol"], "EURUSD")
+            self.assertEqual(fields["timeframe"], "H4")
+            self.assertEqual(fields["side"], "long")
+            self.assertEqual(fields["error_type"], "RuntimeError")
+            self.assertIn("MT5 quote unavailable for EURUSD", fields["error"])
+            self.assertEqual(fields["order_check_retcode"], mt5.TRADE_RETCODE_DONE)
+            diagnostics = fields["diagnostics"]
+            self.assertEqual(diagnostics["execution"]["stage"], "final_quote_unavailable_before_send")
+            self.assertEqual(diagnostics["execution"]["execution_path"], "pending_limit")
+            self.assertEqual(diagnostics["execution"]["quote_error_type"], "RuntimeError")
+
+            mt5.tick = SimpleNamespace(
+                bid=1.1018,
+                ask=1.1020,
+                time_msc=int(pd.Timestamp("2026-01-01T04:03:00Z").timestamp() * 1000),
+                time=0,
+            )
+            retried = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=_config(tmpdir, journal_path=str(Path(tmpdir) / "final_quote_retry.jsonl")),
+                state=result.state,
+                market=first_market,
+            )
+            self.assertEqual(retried.status, "order_sent")
+            self.assertEqual(len(mt5.order_check_requests), 2)
+            self.assertEqual(len(mt5.order_send_requests), 1)
+
+    def test_process_live_setup_blocks_retryably_when_final_quote_info_unavailable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+            original_symbol_info = mt5.symbol_info
+            calls = 0
+
+            def flaky_symbol_info(symbol: str):
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    return original_symbol_info(symbol)
+                return None
+
+            mt5.symbol_info = flaky_symbol_info  # type: ignore[method-assign]
+
+            result = process_trade_setup_live_send(
+                mt5,
+                _setup(),
+                config=config,
+                state=LiveExecutorState(),
+                market=MT5MarketSnapshot(bid=1.1018, ask=1.1020, time_utc="2026-01-01T04:00:00Z"),
+            )
+
+            self.assertEqual(result.status, "blocked")
+            self.assertEqual(len(mt5.order_check_requests), 1)
+            self.assertEqual(mt5.order_send_requests, [])
+            self.assertNotIn(result.signal_key, result.state.processed_signal_keys)
+            self.assertIn(result.signal_key, result.state.order_checked_signal_keys)
+            rows = _journal_rows(Path(config.journal_path))
+            notification = rows[-1]["notification_event"]
+            self.assertEqual(notification["status"], "final_quote_unavailable_before_send")
+            self.assertIn("MT5 quote unavailable for EURUSD", notification["fields"]["error"])
+
     def test_process_live_setup_market_recovery_sends_market_order_and_tracks_position(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             config = _config(tmpdir)
