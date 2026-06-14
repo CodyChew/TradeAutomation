@@ -24,7 +24,9 @@ Final dual-status report:
 final dual-status SHA-256
 `2e997f7e84c1691316ba1e46737ba68691b0a3bdd22c611988f4a687c4259aab`.
 
-Active-position state/broker repair historical proof packet:
+Active-position state/broker repair historical runtime SHA:
+`45efa748423f20881507cda9d4f81e4afe617bde`.
+Historical proof packet:
 `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ic_v3`,
 manifest SHA-256
 `cd51fb720477de10cb6295f60198bab402717ea1b0253efda6eec94a2027729a`.
@@ -563,9 +565,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\TradeAutomation\scri
 If the task is already running: do not start a new instance. Configure Task
 Scheduler with `MultipleInstances=IgnoreNew`.
 
-`LPFS_IC_Live` is installed but remains disabled under containment. Refresh
-both lanes through approved read-only Stage 5 pre-resumption evidence before
-either watchdog restart. Do not replace it or start a second manual runner
+`LPFS_IC_Live` is installed and the latest accepted operating boundary has it
+running with kill switch clear. Treat a fresh dual-VPS status packet as current
+truth before maintenance. Do not replace it or start a second manual runner
 while the scheduled task is active. Use `Get-LpfsDualVpsStatus.ps1`, the
 gate-attribution report, or the IC status command above before maintenance.
 
