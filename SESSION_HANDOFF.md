@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-14 ICT after the LPFS weekly strategy-review automation
-context refresh.
+Last updated: 2026-06-15 ICT after the LPFS RA-002/RA-003 live robustness
+deploy and deployment-proof workflow cleanup.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -54,12 +54,33 @@ file, and the JSONL journal before making operational decisions.
 ## AI Agent Continuity Rules
 
 - Current owner-approved objective is complete: LPFS live data collection is
-  running on both VPS lanes, Phase 1 live quote telemetry separation is
-  deployed on both lanes, the active-position state/broker repair is deployed
-  on both lanes, and the transient market-data frame-skip patch is deployed on
-  both lanes. FTMO was deployed first and proved clean before IC was touched.
-  The old strict Gate 1 V2 path is historical context, not the current
-  operational blocker.
+  running on both VPS lanes. The latest deployed runtime code SHA on both VPS
+  lanes is `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. It includes the
+  RA-002 final pre-send quote-unavailable block, the RA-003 Stage 5 contract
+  pin refresh, Phase 1 live quote telemetry separation, the active-position
+  state/broker repair, and the transient market-data frame-skip patch. FTMO
+  was deployed first and proved clean before IC was touched. The old strict
+  Gate 1 V2 path is historical context, not the current operational blocker.
+- RA-002/RA-003 deployment evidence packet:
+  `C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_ra002_ra003_deploy_20260615_001507`.
+  Manual manifest SHA-256:
+  `892523e60613e868ceba84d161aecf5ab8a02a2f22b8b701d9e7026f87b60a72`.
+  Final dual-status report:
+  `C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_dual_vps_status_20260615_002910.md`.
+  Final dual-status SHA-256:
+  `2e997f7e84c1691316ba1e46737ba68691b0a3bdd22c611988f4a687c4259aab`.
+  Final proof showed both VPS checkouts at `6c4ecb1`, scheduled tasks
+  running, kill switches clear, fresh running heartbeats, MT5 broker status
+  `OK`, recovery disabled, telemetry failures `0`, market-data fetch failures
+  `0`, and active state/broker mismatch count `0` on both lanes. Broker
+  exposure in that final packet was FTMO `9` pending LPFS orders / `3` active
+  positions and IC `8` pending LPFS orders / `1` active position.
+- Deployment-proof workflow note: do not build automation that assumes
+  `scripts/Get-LpfsLiveStatus.ps1` emits `LPFS_SNAPSHOT_JSON`. The
+  single-lane script is a pasteable status snapshot with a different output
+  shape. Use `scripts/Get-LpfsDualVpsStatus.ps1` for the structured dual-lane
+  snapshot, or add a tested explicit single-lane structured mode before using
+  single-lane status output in deployment automation.
 - Current weekly strategy-review automation is active as a thread heartbeat.
   It reads `AGENTS.md`, this handoff, LPFS first-read docs, and `docs/live_ops.html`;
   collects read-only evidence into ignored `reports/live_ops` packets; uses only
@@ -145,12 +166,15 @@ file, and the JSONL journal before making operational decisions.
   nonzero mismatch means the lane is `AMBIGUOUS`; stop and get reviewer
   inspection before further live operations.
 - Current deployed runtime code SHA on both VPS lanes:
-  `905fe7e350095868649b26444b3cef7510d53e4c`. This SHA contains the
-  transient market-data frame-skip patch. If one symbol/timeframe candle
-  history fetch fails, the runner skips only that frame, continues healthy
-  frames, records degraded-cycle fields in `live_send_cycle_complete` and
-  heartbeat/status, and retries next cycle. Broker/account/order/position
-  failures remain fail-closed.
+  `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. This SHA contains the RA-002
+  final pre-send quote-unavailable block, RA-003 Stage 5 contract pin refresh,
+  and the earlier transient market-data frame-skip patch. If the final
+  pre-send quote refresh fails after `order_check`, the setup is blocked
+  retryably with lifecycle evidence and no `order_send`. If one
+  symbol/timeframe candle history fetch fails, the runner skips only that
+  frame, continues healthy frames, records degraded-cycle fields in
+  `live_send_cycle_complete` and heartbeat/status, and retries next cycle.
+  Broker/account/order/position failures remain fail-closed.
 - Market-data frame-skip deployment evidence:
   `C:\TradeAutomationEvidence\lpfs_market_data_frame_skip_deploy\20260612_133553`.
   Manifest SHA-256:

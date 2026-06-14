@@ -5,18 +5,26 @@
 Read `lpfs_c01_live_safety_release.md` before using this runbook. Stage 5
 minimum-safety resumption completed on 2026-06-07 ICT: FTMO was resumed first
 and IC was resumed only after FTMO post-start evidence was clean. Accepted
-current operating proof is now the later active-position state/broker repair
-deploy: both tasks running, kill switches clear, recovery disabled, telemetry
-failures `0`, active state/broker mismatch count `0`, FTMO `3` pending LPFS
-orders plus `2` active positions, and IC `2` pending LPFS orders plus `1`
-active position. Pending orders are healthy only when they match the fresh
-broker baseline or are fully journal-explained; do not require zero pending
-orders for a running lane. Keep `live_send.market_recovery_mode="disabled"`.
-Phase 1 live quote telemetry separation is also deployed on IC from runtime
-SHA `027e0afe932081713067dc24b2bc457cddf1041e`; `LPFS_IC_Live` was
-deliberately restarted and left running after proof passed.
-Active-position state/broker repair is deployed on IC from runtime SHA
-`45efa748423f20881507cda9d4f81e4afe617bde`; accepted proof packet:
+current operating proof is the 2026-06-15 RA-002/RA-003 robustness deploy at
+runtime SHA `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. Both tasks were
+running, kill switches clear, recovery disabled, telemetry failures `0`,
+market-data fetch failures `0`, active state/broker mismatch count `0`, FTMO
+`9` pending LPFS orders / `3` active positions, and IC `8` pending LPFS orders
+/ `1` active position. Pending orders are healthy only when they match the
+fresh broker baseline or are fully journal-explained; do not require zero
+pending orders for a running lane. Keep
+`live_send.market_recovery_mode="disabled"`.
+
+RA-002/RA-003 deploy evidence:
+`C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_ra002_ra003_deploy_20260615_001507`;
+manual manifest SHA-256
+`892523e60613e868ceba84d161aecf5ab8a02a2f22b8b701d9e7026f87b60a72`.
+Final dual-status report:
+`C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_dual_vps_status_20260615_002910.md`;
+final dual-status SHA-256
+`2e997f7e84c1691316ba1e46737ba68691b0a3bdd22c611988f4a687c4259aab`.
+
+Active-position state/broker repair historical proof packet:
 `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ic_v3`,
 manifest SHA-256
 `cd51fb720477de10cb6295f60198bab402717ea1b0253efda6eec94a2027729a`.
@@ -364,6 +372,11 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -File C:\TradeAut
 .\scripts\Get-LpfsDualVpsStatus.ps1 -JournalLines 20 -LogLines 40
 .\venv\Scripts\python scripts\summarize_lpfs_live_gate_attribution.py --ssh-journal "FTMO=lpfs-vps:C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl" --ssh-journal "IC=lpfs-ic-vps:C:\TradeAutomationRuntimeIC\data\live\lpfs_ic_live_journal.jsonl" --tail-lines 200000 --detail-limit 60 --output reports\live_ops\lpfs_gate_attribution_latest.md
 ```
+
+`Get-LpfsLiveStatus.ps1` is a human-readable single-lane snapshot. Do not
+write deployment automation that expects it to emit `LPFS_SNAPSHOT_JSON`; use
+`Get-LpfsDualVpsStatus.ps1` for the structured dual-lane proof packet, or add
+a tested explicit single-lane structured mode first.
 
 `summarize_lpfs_live_gate_attribution.py` uses a shared-read stream and bounds
 returned rows by default, but it still streams the full journal source before

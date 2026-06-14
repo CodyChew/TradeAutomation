@@ -4,17 +4,21 @@
 
 Read `lpfs_c01_live_safety_release.md` before using any start, pause, or
 resume command in this document. Stage 5 minimum-safety resumption completed
-on 2026-06-07 ICT: FTMO was resumed first, IC second, both tasks were accepted
-as running, kill switches were clear, pending broker orders were `0`, and
-active positions were unchanged. `live_send.market_recovery_mode="disabled"`
-remains mandatory.
+on 2026-06-07 ICT: FTMO was resumed first, IC second. The latest accepted
+operating boundary is the 2026-06-15 RA-002/RA-003 robustness deploy at
+runtime SHA `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`: both tasks were
+accepted as running, kill switches were clear, recovery disabled, telemetry
+failures `0`, market-data fetch failures `0`, and active state/broker mismatch
+count `0`. Final broker exposure in that packet was FTMO `9` pending LPFS
+orders / `3` active positions and IC `8` pending LPFS orders / `1` active
+position. `live_send.market_recovery_mode="disabled"` remains mandatory.
 
 Do not start duplicate runners, run reconciliation, run a canary, or manually
 modify broker orders or positions. For current truth, run the dual VPS status
 packet and inspect MT5 broker state, heartbeat, and journal evidence.
 
-Last updated: 2026-05-08 after documenting rollover spread / broker-feed
-divergence observations and live gate-attribution guidance.
+Last updated: 2026-06-15 after updating the live-ops boundary for the
+RA-002/RA-003 robustness deploy.
 
 This is the operations layer for LP + Force Strike live execution. It does not
 change signal rules, risk buckets, spread gates, stop/target geometry, order

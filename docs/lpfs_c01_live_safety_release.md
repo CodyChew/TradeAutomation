@@ -1,7 +1,7 @@
 # LPFS C-01 Live-Safety Release
 
-Last updated: 2026-06-12 ICT after adding the latest runtime-status pointer
-following the transient market-data frame-skip deploy.
+Last updated: 2026-06-15 ICT after updating the latest runtime-status pointer
+following the RA-002/RA-003 robustness deploy.
 
 ## Current Objective
 
@@ -15,9 +15,10 @@ This is a live-safety release, not a strategy-improvement release.
 
 Current live truth has advanced beyond the original C-01 resumption packets.
 After C-01 resumption and Phase 1 telemetry separation, the active-position
-state/broker repair and transient market-data frame-skip patch were deployed.
-The latest accepted runtime SHA in `SESSION_HANDOFF.md` is
-`905fe7e350095868649b26444b3cef7510d53e4c`. Use `SESSION_HANDOFF.md`,
+state/broker repair, transient market-data frame-skip patch, and RA-002/RA-003
+robustness deploy were completed. The latest accepted runtime SHA in
+`SESSION_HANDOFF.md` is
+`6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. Use `SESSION_HANDOFF.md`,
 `strategies/lp_force_strike_strategy_lab/START_HERE.md`, and a fresh
 `scripts\Get-LpfsDualVpsStatus.ps1` packet for current process, heartbeat,
 config, and broker truth.

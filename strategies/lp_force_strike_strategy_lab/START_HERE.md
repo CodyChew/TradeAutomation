@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-06-14 ICT after the LPFS weekly strategy-review automation
-context refresh.
+Last updated: 2026-06-15 ICT after the LPFS RA-002/RA-003 live robustness
+deploy and deployment-proof workflow cleanup.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -12,15 +12,29 @@ operational decisions.
 
 - Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO
   `LPFS_Live` was resumed first and IC `LPFS_IC_Live` was resumed only after
-  FTMO post-start evidence was clean. A later active-position state/broker
-  repair deploy and the transient market-data frame-skip deploy are now the
-  accepted operating boundary. Both tasks are running, kill switches are clear,
-  recovery is disabled, telemetry failures are `0`, market-data fetch failures
-  were `0`, `frames_skipped=0`, and active state/broker mismatch count is `0`
-  in the accepted final frame-skip packet. Use a fresh dual VPS status packet
-  for current process, heartbeat, config, and broker truth.
+  FTMO post-start evidence was clean. The latest accepted operating boundary is
+  the 2026-06-15 RA-002/RA-003 robustness deploy at runtime SHA
+  `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. Both tasks are running, kill
+  switches are clear, recovery is disabled, telemetry failures are `0`,
+  market-data fetch failures are `0`, and active state/broker mismatch count is
+  `0` in the final dual-status packet. Use a fresh dual VPS status packet for
+  current process, heartbeat, config, and broker truth.
+- RA-002/RA-003 deploy evidence:
+  `C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_ra002_ra003_deploy_20260615_001507`;
+  manual manifest SHA-256
+  `892523e60613e868ceba84d161aecf5ab8a02a2f22b8b701d9e7026f87b60a72`;
+  final dual-status report
+  `C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_dual_vps_status_20260615_002910.md`;
+  final dual-status SHA-256
+  `2e997f7e84c1691316ba1e46737ba68691b0a3bdd22c611988f4a687c4259aab`.
+  Final proof showed FTMO `9` pending LPFS orders / `3` active positions and
+  IC `8` pending LPFS orders / `1` active position, with broker status `OK`
+  and mismatch count `0` on both lanes. No reconciliation, canary, recovery
+  enablement, manual broker mutation, config change, strategy/risk/sizing/
+  SL/TP change, or broker-send expansion was performed.
 - Transient market-data frame-skip patch is deployed on both VPS lanes at
-  runtime SHA `905fe7e350095868649b26444b3cef7510d53e4c`. If one
+  runtime SHA `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490` through the latest
+  RA-002/RA-003 deploy. If one
   symbol/timeframe candle history fetch fails, the runner skips only that
   frame, continues healthy frames, records degraded-cycle fields in
   `live_send_cycle_complete` and heartbeat/status, and retries next cycle.
@@ -284,11 +298,10 @@ operational decisions.
 - IC production checkout/runtime/task:
   `lpfs-ic-vps` / `EC2AMAZ-DT73P0T` / `100.98.12.113`,
   `C:\TradeAutomation`, `C:\TradeAutomationRuntimeIC`, `LPFS_IC_Live`.
-- Direct SSH access to both VPS aliases is verified. After this documentation
-  refresh, both VPS checkouts were clean on `main...origin/main`, and
-  `Get-LpfsDualVpsStatus.ps1` wrote
-  `reports/live_ops/lpfs_dual_vps_status_20260511_005949.md` from this PC on
-  2026-05-11.
+- Historical direct SSH access to both VPS aliases was verified from this PC on
+  2026-05-11. At that checkpoint both VPS checkouts were clean on
+  `main...origin/main`, and `Get-LpfsDualVpsStatus.ps1` wrote
+  `reports/live_ops/lpfs_dual_vps_status_20260511_005949.md`.
 - The old local PC `cy-desktop` has been removed from Tailscale, old-PC SSH
   key entries were removed from both VPSes, and the public Lightsail RDP rule
   has been removed. Tailscale SSH and RDP remain verified from this PC.

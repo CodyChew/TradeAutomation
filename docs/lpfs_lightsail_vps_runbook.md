@@ -5,20 +5,22 @@
 Read `lpfs_c01_live_safety_release.md` before using this runbook. Stage 5
 minimum-safety resumption completed on 2026-06-07 ICT: FTMO `LPFS_Live` was
 resumed first and IC `LPFS_IC_Live` was resumed only after FTMO post-start
-evidence was clean. Accepted final proof recorded both tasks running, kill
-switches clear, pending broker orders `0`, and unchanged active-position
-inventories. `live_send.market_recovery_mode="disabled"` remains mandatory.
-Phase 1 live quote telemetry separation is also deployed on FTMO from runtime
-SHA `027e0afe932081713067dc24b2bc457cddf1041e`; `LPFS_Live` was deliberately
-restarted and left running after proof passed.
+evidence was clean. The latest accepted operating boundary is the 2026-06-15
+RA-002/RA-003 robustness deploy at runtime SHA
+`6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. Final proof recorded both tasks
+running, kill switches clear, recovery disabled, telemetry failures `0`,
+market-data fetch failures `0`, active state/broker mismatch count `0`, FTMO
+`9` pending LPFS orders / `3` active positions, and IC `8` pending LPFS orders
+/ `1` active position. `live_send.market_recovery_mode="disabled"` remains
+mandatory.
 
 Do not start a duplicate runner, run reconciliation, run a canary, or manually
 modify broker orders or positions. Before any maintenance, run
 `scripts\Get-LpfsDualVpsStatus.ps1` and use MT5 broker state, heartbeat, and
 journal evidence as current truth.
 
-Last updated: 2026-06-07 after the Phase 1 live quote telemetry deploy
-completed on FTMO and IC.
+Last updated: 2026-06-15 after the RA-002/RA-003 robustness deploy completed
+on FTMO and IC.
 
 This runbook moves the existing Python + MT5 live runner to Amazon Lightsail
 without rewriting strategy logic. The exact strategy behavior remains owned by
@@ -31,8 +33,8 @@ The live production environment is the Amazon Lightsail Windows VPS, not the
 local OneDrive workspace.
 
 - VPS repo path: `C:\TradeAutomation`.
-- VPS repo status: FTMO Phase 1 telemetry deploy proof showed clean
-  `main...origin/main` at `027e0afe932081713067dc24b2bc457cddf1041e`.
+- VPS repo status: RA-002/RA-003 final proof showed clean `main...origin/main`
+  at `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`.
 - VPS runtime root: `C:\TradeAutomationRuntime`.
 - VPS scheduled task: `LPFS_Live`.
 - VPS startup alert task: `LPFS_FTMO_Startup_Alert`.
@@ -44,7 +46,26 @@ should be performed from the VPS first. The local repo remains the development
 workspace unless changes are explicitly pushed/pulled to the VPS and
 `LPFS_Live` is intentionally restarted.
 
-Latest Phase 1 telemetry deploy proof:
+Latest RA-002/RA-003 robustness deploy proof:
+
+- packet:
+  `C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_ra002_ra003_deploy_20260615_001507`
+- manual manifest SHA-256:
+  `892523e60613e868ceba84d161aecf5ab8a02a2f22b8b701d9e7026f87b60a72`
+- final dual-status report:
+  `C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_dual_vps_status_20260615_002910.md`
+- final dual-status SHA-256:
+  `2e997f7e84c1691316ba1e46737ba68691b0a3bdd22c611988f4a687c4259aab`
+- task: `LPFS_Live` running, kill switch clear, one logical runner/watchdog
+  path, fresh heartbeat, recovery disabled
+- broker exposure: pending LPFS orders `9`; three active FTMO positions
+- telemetry health: write failures `0`; retention failures `0`; market-data
+  fetch failures `0`; active state/broker mismatch count `0`
+- non-actions: no reconciliation, canary, recovery enablement, manual broker
+  mutation, config change, strategy/risk/sizing/SL/TP change, or broker-send
+  expansion
+
+Historical Phase 1 telemetry deploy proof:
 
 - packet:
   `C:\TradeAutomationEvidence\lpfs_phase1_telemetry\ftmo_task_repair_retry_20260607_201146`
@@ -795,6 +816,11 @@ When asking Codex to inspect the live process, paste:
 ```powershell
 .\scripts\Get-LpfsLiveStatus.ps1 -RuntimeRoot C:\TradeAutomationRuntime -JournalLines 30 -LogLines 60
 ```
+
+`Get-LpfsLiveStatus.ps1` is a human-readable single-lane snapshot. Do not
+write deployment automation that expects it to emit `LPFS_SNAPSHOT_JSON`; use
+`Get-LpfsDualVpsStatus.ps1` for the structured dual-lane proof packet, or add
+a tested explicit single-lane structured mode first.
 
 Also include screenshots from MT5 open orders/positions if the question is
 about broker truth. Telegram alone is not broker truth.

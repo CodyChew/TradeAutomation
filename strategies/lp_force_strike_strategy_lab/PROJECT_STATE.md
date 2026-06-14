@@ -1,20 +1,36 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-06-14 ICT after the LPFS weekly strategy-review automation
-context refresh.
+Last updated: 2026-06-15 ICT after the LPFS RA-002/RA-003 live robustness
+deploy and deployment-proof workflow cleanup.
 
 ## Current Live-Ops State
 
 Read `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
 Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. Phase 1
 telemetry separation, the active-position state/broker repair, and the
-transient market-data frame-skip patch have all been deployed sequentially with
-FTMO first and IC second. Accepted final frame-skip proof records both tasks
-running on runtime SHA `905fe7e350095868649b26444b3cef7510d53e4c`, kill
+transient market-data frame-skip patch remain deployed. The latest accepted
+operating boundary is the 2026-06-15 RA-002/RA-003 robustness deploy, performed
+sequentially with FTMO first and IC second. Final proof records both tasks
+running on runtime SHA `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`, kill
 switches clear, recovery disabled, telemetry failures `0`, market-data fetch
-failures `0`, `frames_skipped=0`, and active state/broker mismatch count `0`.
+failures `0`, and active state/broker mismatch count `0`.
 Use `scripts\Get-LpfsDualVpsStatus.ps1` for current process, heartbeat,
 config, and broker truth before any live maintenance.
+
+RA-002/RA-003 deploy evidence:
+`C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_ra002_ra003_deploy_20260615_001507`;
+manual manifest SHA-256
+`892523e60613e868ceba84d161aecf5ab8a02a2f22b8b701d9e7026f87b60a72`.
+Final dual-status report:
+`C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_dual_vps_status_20260615_002910.md`;
+final dual-status SHA-256
+`2e997f7e84c1691316ba1e46737ba68691b0a3bdd22c611988f4a687c4259aab`.
+RA-002 blocks final pre-send quote refresh failures retryably after
+`order_check` and before `order_send`, preserving checked-state evidence while
+re-arming the processed key. RA-003 refreshes the Stage 5 profile/contract pins
+for current read-only status artifacts. No reconciliation, canary, recovery
+enablement, manual broker mutation, config change, strategy/risk/sizing/SL/TP
+change, or broker-send expansion was performed.
 
 Transient market-data frame-skip deploy evidence:
 `C:\TradeAutomationEvidence\lpfs_market_data_frame_skip_deploy\20260612_133553`;

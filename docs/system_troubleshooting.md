@@ -1,7 +1,7 @@
 # TradeAutomation System Troubleshooting Map
 
-Last updated: 2026-06-12 after the LPFS transient market-data frame-skip deploy
-closeout.
+Last updated: 2026-06-15 after the LPFS RA-002/RA-003 live robustness deploy
+and deployment-proof workflow cleanup.
 
 This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
@@ -13,7 +13,9 @@ Read `lpfs_c01_live_safety_release.md` first. LPFS minimum-safety resumption
 completed on 2026-06-07 ICT, Phase 1 live quote telemetry separation, the
 active-position state/broker repair, and the transient market-data frame-skip
 patch are deployed on both VPS lanes. The current deployed runtime code SHA is
-`905fe7e350095868649b26444b3cef7510d53e4c`. Both VPS lanes are running with
+`6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`; it also includes the RA-002 final
+pre-send quote-unavailable block and the RA-003 Stage 5 contract pin refresh.
+Both VPS lanes are running with
 kill switches clear: FTMO `LPFS_Live` and IC `LPFS_IC_Live`. FTMO was resumed
 and deployed first, and IC was touched only after FTMO proof was clean. Skip
 canaries by default. Do not run reconcile-only mode, a live canary, or manual
@@ -59,15 +61,22 @@ Authoritative final packets:
   `21ea1596cf79476842f88d53aff88865dc01629d0e374cdbb86fd58161de6657`,
   final dual-status SHA-256
   `446698cc075c01b85782bc9710e05baf6d0b2ee35418eeda8f0116f70ec983cb`
+- RA-002/RA-003 robustness deploy:
+  `C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_ra002_ra003_deploy_20260615_001507`,
+  manual manifest SHA-256
+  `892523e60613e868ceba84d161aecf5ab8a02a2f22b8b701d9e7026f87b60a72`,
+  final dual-status report
+  `C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_dual_vps_status_20260615_002910.md`,
+  final dual-status SHA-256
+  `2e997f7e84c1691316ba1e46737ba68691b0a3bdd22c611988f4a687c4259aab`
 
-Final market-data frame-skip proof showed one logical runner path per lane,
-fresh running heartbeats, MT5 identity and reads `OK`, recovery disabled,
-telemetry failures `0`, market-data fetch failures `0`, `frames_skipped=0`,
-and active state/broker mismatch count `0` on both lanes. Final broker exposure
-in that packet was FTMO `9` pending LPFS orders and `3` active positions, and
-IC `9` pending LPFS orders and `1` active position. Treat broker counts as
-historical packet facts only; capture a fresh dual-VPS status packet before
-future live operations.
+Final RA-002/RA-003 proof showed one logical runner path per lane, fresh
+running heartbeats, MT5 identity and reads `OK`, recovery disabled, telemetry
+failures `0`, market-data fetch failures `0`, and active state/broker mismatch
+count `0` on both lanes. Final broker exposure in that packet was FTMO `9`
+pending LPFS orders and `3` active positions, and IC `8` pending LPFS orders
+and `1` active position. Treat broker counts as historical packet facts only;
+capture a fresh dual-VPS status packet before future live operations.
 
 IC close repair evidence: during the active-position repair deploy the runner
 emitted broker-proven `stop_loss_hit` rows for stale local active positions
@@ -144,6 +153,13 @@ Do not use ad hoc verification commands before a Stage 5 mutation. Capture
 `<step>.exit_code.txt`, then run
 `scripts/verify_lpfs_structured_command.py`. It fails closed on missing,
 malformed, nonzero, unsafe-stderr, or ambiguous-output bundles.
+
+Status-output contract for deployment automation: do not assume
+`scripts/Get-LpfsLiveStatus.ps1` emits `LPFS_SNAPSHOT_JSON`. The single-lane
+script is a pasteable status snapshot with a different output shape. Use
+`scripts/Get-LpfsDualVpsStatus.ps1` when automation needs the structured
+dual-lane proof packet, or add a tested explicit single-lane structured mode
+before consuming single-lane status output programmatically.
 
 ## First Boundary Check
 

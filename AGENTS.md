@@ -313,6 +313,11 @@ For approved live deployments:
 - Verify repo SHA, config hash, task state, runner/watchdog shape, heartbeat,
   MT5 reads, pending orders, active positions, state/broker mismatch count,
   telemetry failures, and relevant journal deltas.
+- Do not assume `scripts/Get-LpfsLiveStatus.ps1` emits
+  `LPFS_SNAPSHOT_JSON`; use `scripts/Get-LpfsDualVpsStatus.ps1` for the
+  structured dual-lane proof packet, or add a tested explicit single-lane
+  structured mode before consuming single-lane status output in deployment
+  automation.
 - Stop and re-contain the affected lane on ambiguity, duplicate runner, MT5
   `ERROR/UNKNOWN`, unexplained broker exposure, active-position drift, stale
   heartbeat, telemetry failure, or recovery mode drift.
