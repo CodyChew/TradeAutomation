@@ -420,9 +420,10 @@ change production rules. Continue collecting enriched diagnostics, investigate
 whether the loss is concentrated by timeframe, symbol, side, session/weekday,
 setup geometry, spread/execution quality, recovery path, or recent market
 regime, and require FTMO/IC confluence plus recent/full backtest support before
-any heuristic candidate. The next reporting/tooling improvement is to make the
-weekly report consume bounded/local lifecycle snapshots so FTMO does not time
-out and produce an incomplete dashboard row.
+any heuristic candidate. The next reporting/tooling improvement is to preserve
+and extend the hardened weekly strategy-review path: use eligible packets for
+strategy conclusions, and fall back to bounded/local lifecycle evidence when
+remote fetch coverage is incomplete.
 
 Future PnL backtests should load candles through
 `../../shared/market_data_lab` so this strategy uses the same broker data and
@@ -2237,10 +2238,12 @@ explicit ignored local config; dry-run remains order-check only.
 ## 2026-05-26 Diagnostic Reporting Iteration Policy
 
 The current LPFS strategy-review goal is evidence collection and offline
-analysis, not a live heuristic change. H8 was discussed only as an example; it
-is not a selected change candidate. Any future timeframe-specific heuristic
-must be evidence-gated with FTMO/IC confluence, recent-window support, and
-full-history backtest guardrails.
+analysis, not a live heuristic change. At the 2026-05-26 checkpoint H8 was only
+an example, but the 2026-06-14 eligible weekly strategy-review packet moved H8
+to a watch item after cross-lane weakness. H8 is still not a selected change
+candidate. Any future timeframe-specific heuristic must be evidence-gated with
+FTMO/IC confluence, recent-window support, and full-history backtest
+guardrails.
 
 The local diagnostic report builder now owns the analysis workflow:
 

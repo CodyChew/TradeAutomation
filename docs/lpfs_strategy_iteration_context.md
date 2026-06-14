@@ -339,9 +339,11 @@ surface hypotheses and evidence quality.
   to justify offline cause-attribution research now.
 - Production diagnostic rows are only useful after enough real lifecycle and
   close events accumulate.
-- The 2026-05-30 generated weekly dashboard hit an FTMO fetch timeout, so the
-  FTMO weekly result must be read from the local lifecycle-snapshot review
-  until the weekly report path supports bounded/local lifecycle input.
+- The 2026-05-30 generated weekly dashboard hit an FTMO fetch timeout, so that
+  historical FTMO weekly result must be read from the local lifecycle-snapshot
+  review. The current weekly strategy-review path has since been hardened with
+  bounded fetches and explicit `analysis_eligible` / `coverage_status` fields;
+  use the latest eligible packet for current weekly evidence.
 - True 10-year tick-level Bid/Ask/order-book data is not available from the
   current IC terminal; candle data and M1 spread fields are available.
 - The current diagnostic report supports offline indicator/regime analysis, but
@@ -401,8 +403,10 @@ handoff.
 9. Watch H8 specifically because the latest eligible 2026-06-14 weekly
    strategy-review packet showed cross-lane H8 weakness, but do not change H8
    rules unless repeated eligible evidence and recent/full backtests support it.
-10. Improve weekly reporting so it can use bounded/local lifecycle snapshots
-   and does not produce incomplete FTMO rows after a remote fetch timeout.
+10. Preserve and extend the hardened weekly strategy-review path: use eligible
+   packets where `analysis_eligible=true` and `coverage_status=complete`, and
+   use bounded/local lifecycle evidence when remote fetch coverage is
+   incomplete.
 11. Add offline policy-ledger enrichment so future diagnostic reports derive a
    stable `policy_id` and comparison groups from lane plus lifecycle timestamp.
 12. If evidence thresholds are met, create a separate research plan for one
