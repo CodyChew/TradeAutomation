@@ -57,6 +57,18 @@ after the owner has approved publication to the canonical branch. For live
 trading, runtime, broker, scheduler, VPS, recovery, or journal behavior, use a
 contained branch and preserve verification evidence before merge.
 
+## Parallel Codex And Subagent Work
+
+Use review, audit, verifier, and documentation subagents as read-only by
+default. A write-capable subagent needs an explicit disjoint file ownership
+boundary from other writers or its own worktree. The main thread owns
+integration, final verification, commits, pushes, and deployment decisions.
+
+Do not run shared coverage gates in parallel inside the same checkout.
+`scripts/run_core_coverage.py` uses shared `.coverage*` files in the repo root,
+so run it only after subagents, parallel shell jobs, and other coverage/test
+jobs in the same worktree are quiet.
+
 ## Removing Stale Worktrees
 
 Before removing or discarding a worktree:

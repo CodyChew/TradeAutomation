@@ -26,6 +26,13 @@ Generated dashboards, local data, local reports, and one-off research runners
 are outside the strict 100% core gate. If a runner grows reusable behavior, move
 that behavior into a core package and cover it there.
 
+## Coverage Gate Serialization
+
+`scripts/run_core_coverage.py` writes and combines `.coverage*` files in the
+repo root. Run it serially in a checkout. Do not run it concurrently with
+subagents, parallel shells, or other coverage/test jobs in the same worktree
+because a competing coverage run can leave the combined report incomplete.
+
 The Windows watchdog has local subprocess coverage in
 `strategies/lp_force_strike_strategy_lab/tests/test_live_runner.py`. It uses a
 temporary runtime root and fake `.cmd` child to verify terminal/restart exit-code
@@ -37,6 +44,19 @@ the Python branch-coverage gate. The tracked fixture at
 the EA source must stay tester-only by default, and `docs/ea_migration.html`
 must state whether MetaEditor compile and Strategy Tester smoke checks have
 passed.
+
+## Operator Documentation Contract
+
+After editing first-read, handoff, runbook, operator-facing, or generated-doc
+source files, run:
+
+```powershell
+.\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_dashboard_pages
+```
+
+That test protects the Stage 5/resumption markers, active-position repair and
+Phase 1 SHA references, mismatch context, generated dashboard links, and stale
+current-state wording that can mislead future deployment or review work.
 
 ## Trading Rule Invariants
 

@@ -58,7 +58,10 @@ Orchestrator responsibilities:
    parallel exploration, or context isolation matters.
 6. For subagent-style prompts, state how to divide the work, whether Codex
    should wait for all agents before continuing, and what summary or output
-   each agent should return.
+   each agent should return. Review, audit, verification, and documentation
+   subagents should be read-only by default. Write-capable subagents require
+   explicit disjoint file scopes or separate worktrees. The main thread owns
+   integration, final verification, commits, pushes, and deployment decisions.
 7. If no current role fits, tell the user there is a team gap and propose a new
    role with name, purpose, scope, boundaries, overlap check, and verification
    expectations.
@@ -471,6 +474,25 @@ git diff --check
 For PowerShell script changes, run parse checks on the changed scripts. For
 generated docs, regenerate from the source builder and verify the output is
 intentional.
+
+After editing first-read, handoff, runbook, operator-facing, or generated-doc
+source files such as `SESSION_HANDOFF.md`, `START_HERE.md`,
+`PROJECT_STATE.md`, `docs/system_troubleshooting.md`, VPS runbooks, or
+dashboard builders, run:
+
+```powershell
+.\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_dashboard_pages
+```
+
+For closeout workflows, the final Repo Auditor pass must run after all code
+edits, docs updates, deployment-proof capture, and verification. Do not treat
+an earlier audit as final if any tracked file changes afterward.
+
+Run shared coverage gates serially in a checkout. Do not run
+`scripts/run_core_coverage.py` concurrently with subagents, parallel shells, or
+other coverage/test jobs in the same worktree because coverage uses shared
+`.coverage*` files in the repo root and concurrent runs can produce incomplete
+combined reports.
 
 Before publishing, do a scope audit that explicitly confirms no unrelated
 strategy, risk, sizing, SL/TP, broker-send, config, scheduler, watchdog,
