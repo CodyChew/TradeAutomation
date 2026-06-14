@@ -1,6 +1,6 @@
 # LPFS Strategy Iteration Context
 
-Last updated: 2026-06-07 ICT after LPFS minimum-safety resumption.
+Last updated: 2026-06-14 ICT after weekly strategy-review automation refresh.
 
 This is the durable handoff for the current LPFS diagnostic reporting and
 strategy-iteration work. A new Codex chat should be able to read this file,
@@ -10,27 +10,27 @@ without needing prior conversation history.
 ## Current Objective
 
 Make LPFS strategy iteration evidence-based without changing live trading
-behavior. The immediate prerequisite is the C-01 live-safety release documented
-in `docs/lpfs_c01_live_safety_release.md`: historical production MT5 epochs
-were shifted through `Europe/Helsinki`, so production-derived analysis must use
-immutable normalized evidence. After that repair, run offline first-month cause
-attribution from enriched live trade diagnostics, compare FTMO and IC together,
-and produce defensible future strategy-change candidates only after enough
-evidence exists.
+behavior. Production-derived analysis must use trustworthy journals, broker
+facts, status evidence, and normalized C-01 timestamp evidence where historical
+timestamp paths are involved. Weekly automation now provides the routine
+read-only checkpoint; deeper indicator-tagging and backtest research should
+start only when eligible weekly evidence shows repeated cross-lane weakness.
 
 The current work is reporting/context only. It is not a live strategy change,
 not a live deployment, and not approval to change entries, exits, risk,
 timeframe selection, spread gates, recovery behavior, or broker execution.
 
-H8 was discussed as an example. H8 is not a selected change candidate unless
-future diagnostics prove a persistent cross-lane issue.
+H8 was discussed as an example and is now a watch item after the latest
+complete weekly packet showed cross-lane weakness. It is not a selected change
+candidate unless future diagnostics prove a persistent cross-lane issue and
+recent-window plus long-backtest evidence supports a specific action.
 
 Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO and IC
-live data collection are running again, recovery remains disabled, and final
-proof recorded zero pending broker orders plus unchanged active-position
-inventories. Before strategy analysis, refresh current status from the dual
-VPS status packet and use normalized C-01 evidence for production-derived
-historical timestamps.
+live data collection are running again, recovery remains disabled, and later
+deployments added telemetry separation, active-position repair, and transient
+market-data frame-skip handling. Before strategy analysis, refresh current
+status from the dual VPS status packet and use normalized C-01 evidence for
+production-derived historical timestamps.
 
 ## Current Project State
 
@@ -49,18 +49,23 @@ historical timestamps.
   explicitly using the ledger activation boundary `2026-05-30T17:14:27Z` and
   the flattened diagnostic scale field.
 - The latest completed weekly checkpoint is
+  `reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`.
+  Both lanes are `analysis_eligible=true` with complete coverage. FTMO had
+  15 closed trades, `+2.84R`, 9 wins / 6 losses, PF `1.46`, historical band
+  `p54.2`; IC had 14 closed trades, `-2.61R`, 6 wins / 8 losses, PF `0.70`,
+  historical band `p17.8`; combined was 29 closed trades and `+0.24R`.
+- Current confluence watch item: H8 was weak on both lanes in the latest
+  complete weekly checkpoint (`FTMO -2.18R`, `IC -3.14R`). Treat this as a
+  watch item only. If it repeats across future eligible weekly packets, start
+  offline indicator-tagging and recent-window backtest research before
+  proposing any live heuristic.
+- Historical 2026-05-30 weekly checkpoint:
   `reports/live_ops/lpfs_weekly_performance/20260530_150637`. Its generated
-  dashboard has an FTMO fetch-timeout caveat, so the authoritative FTMO
-  checkpoint read is the supplemental local-snapshot review at
+  dashboard had an FTMO fetch-timeout caveat, so the authoritative FTMO
+  checkpoint read was the supplemental local-snapshot review at
   `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`.
-- 2026-05-30 latest completed week, 2026-05-25 05:00 SGT to 2026-05-30
-  05:00 SGT: FTMO had 13 closed trades, `-0.56R`, 6 wins / 7 losses, PF
-  `0.92`, historical percentile `p32.4`; IC had 16 closed trades, `-3.63R`,
-  7 wins / 9 losses, PF `0.67`, historical percentile `p12.5`.
-- This was mixed rather than a clean cross-lane failure: FTMO was acceptable
-  and IC was weak/watch but still above p10. Current confluence is H4 weakness
-  (`-4.37R` combined over 17 trades), while H8 was not weak this week
-  (`+0.14R` combined over 8 trades).
+  That week was mixed rather than a clean cross-lane failure: FTMO was
+  acceptable and IC was weak/watch but still above p10.
 - FTMO previously had three completed weeks below p30, and IC had two
   completed weeks below p30. The 2026-05-30 weekly checkpoint alone does not
   justify a live strategy change, but the first-month monthly view escalates
@@ -84,6 +89,18 @@ historical timestamps.
   `diagnostic_schema_version`; all 29 are from the latest week, but only 16
   have full setup geometry, spread gate, order retcode, and backtest join
   fields.
+- Weekly automation is part of the diagnostic workflow. It should collect or
+  inspect read-only report/status packets, reject incomplete evidence using
+  `analysis_eligible=false` or `coverage_status=incomplete`, and post a concise
+  Telegram summary only when existing ignored local configs expose credentials.
+  Telegram is informational only and is not broker truth.
+- Offline indicator research should compute tags at signal time during
+  analysis, not inside the live runner loop by default. Candidate tags include
+  RSI, MACD or momentum, EMA relationship/slope, ATR percentile, candle
+  body/range/wick structure, tick-volume percentile where available,
+  spread-risk, session/hour, weekday, and broker lane. Store raw or large
+  analysis evidence in ignored report packets with manifests; commit only
+  scripts, tests, docs, schemas, and small sanitized summaries.
 
 ## Approved Scope
 
@@ -120,15 +137,17 @@ Intentional LPFS diagnostic/reporting/context files changed in this work:
 - `PROJECT_STATE.md`
 - `SESSION_HANDOFF.md`
 - `docs/live_weekly_performance.html`
+- `reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`
 - `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`
 - `docs/lpfs_monthly_evidence_20260530.md`
 - `strategies/lp_force_strike_strategy_lab/START_HERE.md`
 - `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md`
 
 Current local worktree may contain uncommitted documentation/report artifacts
-from the 2026-05-30 checkpoint. Run `git status --short` before staging and do
-not stage, revert, or mix unrelated files into an LPFS diagnostic/reporting
-commit unless separately reviewed.
+from the 2026-06-14 weekly strategy-review checkpoint and the historical
+2026-05-30 checkpoint. Run `git status --short` before staging and do not
+stage, revert, or mix unrelated files into an LPFS diagnostic/reporting commit
+unless separately reviewed.
 
 ## Files To Inspect First
 
@@ -379,9 +398,9 @@ handoff.
    the diagnostic report.
 8. Review `timeframe_confluence.csv` and `backtest_comparison.csv` for
    cross-lane, recent-window, and timeframe-normalized signals.
-9. Watch H4 specifically because the 2026-05-30 checkpoint showed cross-lane
-   H4 weakness, but do not change H4 rules unless repeated enriched evidence
-   and recent/full backtests support it.
+9. Watch H8 specifically because the latest eligible 2026-06-14 weekly
+   strategy-review packet showed cross-lane H8 weakness, but do not change H8
+   rules unless repeated eligible evidence and recent/full backtests support it.
 10. Improve weekly reporting so it can use bounded/local lifecycle snapshots
    and does not produce incomplete FTMO rows after a remote fetch timeout.
 11. Add offline policy-ledger enrichment so future diagnostic reports derive a

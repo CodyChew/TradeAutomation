@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-06-12 ICT after the LPFS transient market-data frame-skip
-deploy closeout.
+Last updated: 2026-06-14 ICT after the LPFS weekly strategy-review automation
+context refresh.
 
 ## Current Live-Ops State
 
@@ -212,10 +212,14 @@ patterns. It now has these layers:
 - native EA migration: isolated MQL5 Strategy Tester-only scaffold under
   `../../mql5/lpfs_ea`, with Python parity fixtures and a local MetaEditor
   compile helper. It is not production live execution.
-- weekly live monitoring: read-only FTMO/IC latest-week performance dashboard
-  at `../../docs/live_weekly_performance.html`, with timestamped packets under
-  `../../reports/live_ops/lpfs_weekly_performance`. It is not yet a
-  week-over-week trend chart.
+- weekly live monitoring and strategy review: read-only FTMO/IC latest-week
+  performance dashboard at `../../docs/live_weekly_performance.html`, with
+  timestamped packets under
+  `../../reports/live_ops/lpfs_weekly_strategy_review` and historical packets
+  under `../../reports/live_ops/lpfs_weekly_performance`. Use only rows where
+  `analysis_eligible=true` and `coverage_status=complete` for strategy review.
+  Repeated cross-lane weakness triggers offline research, not an immediate live
+  patch.
 - diagnostic logging/reporting: additive versioned `diagnostics` payloads on
   sparse signal/order/recovery/fill/close/block rows, documented at
   `../../docs/lpfs_diagnostic_logging.md`, plus local report builder
@@ -322,6 +326,34 @@ compared with recent 3/6/12 month benchmark windows, checked against the
 10-year commission-adjusted FTMO and IC backtests, and a separate
 strategy-change plan is approved.
 
+## 2026-06-14 Weekly Strategy-Review Checkpoint
+
+Latest complete weekly strategy-review packet:
+
+- dashboard: `../../docs/live_weekly_performance.html`;
+- packet:
+  `../../reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`;
+- status packet:
+  `../../reports/live_ops/lpfs_dual_vps_status_20260614_015721.md`;
+- completed week: 2026-06-08 05:00 SGT to 2026-06-13 05:00 SGT;
+- FTMO: `15` closed trades, `+2.84R`, 9 wins / 6 losses, PF `1.46`,
+  historical band `p54.2`, `analysis_eligible=true`,
+  `coverage_status=complete`;
+- IC: `14` closed trades, `-2.61R`, 6 wins / 8 losses, PF `0.70`,
+  historical band `p17.8`, `analysis_eligible=true`,
+  `coverage_status=complete`;
+- combined: `29` closed trades, `+0.24R`, PF `1.02`.
+
+Confluence read:
+
+- The latest eligible weekly review is not a clean strategy failure.
+- H8 is the current cross-lane watch item: FTMO H8 `-2.18R` over 4 trades and
+  IC H8 `-3.14R` over 3 trades.
+- This is not a live change candidate from one weekly packet. If repeated
+  eligible packets show comparable H8 weakness, start offline indicator-tagging
+  and recent-window plus long-backtest research before proposing any live
+  heuristic.
+
 ## 2026-05-30 Weekly Evidence Checkpoint
 
 Latest checkpoint artifacts:
@@ -359,9 +391,9 @@ Latest completed week, 2026-05-25 05:00 SGT to 2026-05-30 05:00 SGT:
 Confluence read:
 
 - Weekly performance diverged: FTMO acceptable, IC weak.
-- Current cross-lane weak bucket is H4: FTMO H4 `-0.66R` over 7 trades and IC
-  H4 `-3.72R` over 10 trades, combined `-4.37R` over 17 trades.
-- H8 was not weak this week: FTMO H8 `+0.08R` over 4 trades and IC H8
+- At this checkpoint, the cross-lane weak bucket was H4: FTMO H4 `-0.66R` over
+  7 trades and IC H4 `-3.72R` over 10 trades, combined `-4.37R` over 17 trades.
+- H8 was not weak at this checkpoint: FTMO H8 `+0.08R` over 4 trades and IC H8
   `+0.06R` over 4 trades.
 - D1 was weak but too sparse: combined `-2.00R` over 2 trades.
 - Session, weekday, spread-risk, risk-ATR, RSI/momentum, and setup-geometry

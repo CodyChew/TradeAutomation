@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-06-12 ICT after the LPFS transient market-data frame-skip
-deploy closeout.
+Last updated: 2026-06-14 ICT after the LPFS weekly strategy-review automation
+context refresh.
 
 ## Immediate LPFS Safety State
 
@@ -101,12 +101,15 @@ source of truth for strategy research and live execution work.
   report does not yet assign ledger `policy_id` or automatically group results
   by sizing-policy epoch. Segment IC rows explicitly around
   `2026-05-30T17:14:27Z` until that reporting enhancement is added.
-- Latest LPFS weekly checkpoint artifacts are
-  `reports/live_ops/lpfs_weekly_performance/20260530_150637` and
-  `reports/live_ops/lpfs_trade_diagnostics/20260530_153500`. The generated
-  weekly dashboard has an FTMO fetch-timeout caveat, so use
-  `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`
-  for the authoritative 2026-05-30 FTMO/IC performance read.
+- Latest LPFS weekly strategy-review checkpoint is
+  `reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`,
+  with status packet `reports/live_ops/lpfs_dual_vps_status_20260614_015721.md`.
+  Both lanes are `analysis_eligible=true` with `coverage_status=complete`.
+  FTMO had `15` closed trades, `+2.84R`, PF `1.46`, historical band `p54.2`;
+  IC had `14` closed trades, `-2.61R`, PF `0.70`, historical band `p17.8`;
+  combined was `29` closes, `+0.24R`, PF `1.02`. H8 is the current cross-lane
+  watch item from that packet (`FTMO -2.18R`, `IC -3.14R`), not a live
+  strategy-change candidate.
 - The first-month monthly review is `docs/lpfs_monthly_evidence_20260530.md`.
   It escalates LPFS from passive monitoring to offline cause-attribution
   investigation: FTMO May 2026 live closed trades are `-15.09R` at monthly
@@ -204,32 +207,32 @@ tracked TradeAutomation structure above plus ignored local artifacts such as
 
 ## LPFS Live Performance And Reporting Safety
 
-The latest Saturday LPFS weekly evidence checkpoint is:
+The latest Saturday LPFS weekly strategy-review checkpoint is:
 
 - dashboard: `docs/live_weekly_performance.html`;
-- weekly report packet:
-  `reports/live_ops/lpfs_weekly_performance/20260530_150637`;
-- authoritative local snapshot review:
-  `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`;
-- diagnostic comparison packet:
-  `reports/live_ops/lpfs_trade_diagnostics/20260530_153500`;
-- completed week: 2026-05-25 05:00 SGT to 2026-05-30 05:00 SGT;
-- FTMO: `13` closed trades, `-0.5616R`, percentile `32.4`, PF `0.9199`;
-- IC: `16` closed trades, `-3.6258R`, percentile `12.5`, PF `0.6652`;
-- final operations packet:
-  `reports/live_ops/lpfs_dual_vps_status_20260530_224231.md`.
+- weekly strategy-review packet:
+  `reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`;
+- status packet:
+  `reports/live_ops/lpfs_dual_vps_status_20260614_015721.md`;
+- completed week: 2026-06-08 05:00 SGT to 2026-06-13 05:00 SGT;
+- FTMO: `15` closed trades, `+2.84R`, historical band `p54.2`, PF `1.46`,
+  `analysis_eligible=true`, `coverage_status=complete`;
+- IC: `14` closed trades, `-2.61R`, historical band `p17.8`, PF `0.70`,
+  `analysis_eligible=true`, `coverage_status=complete`;
+- combined: `29` closed trades, `+0.24R`, PF `1.02`.
 
-Important caveat: the generated weekly dashboard packet has a FTMO remote-fetch
-timeout. Do not use the dashboard's FTMO row as authoritative for the
-2026-05-30 checkpoint. The local snapshot review above is the authoritative
-source for the latest FTMO metrics. The IC row in the dashboard was collected
-successfully.
+Interpretation: the latest eligible weekly review is not a clean strategy
+failure, but H8 is now the current cross-lane watch item (`FTMO -2.18R`,
+`IC -3.14R`). A single weak eligible week is a watch item only. Repeated
+cross-lane weakness across future eligible weekly packets should trigger a
+scoped offline indicator-tagging and backtest research pass, not an immediate
+live strategy patch.
 
-Interpretation: the latest week was mixed, not a clean cross-lane failure.
-FTMO was acceptable/normal variance at p32.4. IC was weak and remains on watch
-at p12.5, but it was not a p10/p5 event. H4 was the current shared weak bucket
-for the latest week; H8 was flat/slightly positive and is not a current change
-candidate from this checkpoint.
+Historical caveat: the 2026-05-30 weekly packet
+`reports/live_ops/lpfs_weekly_performance/20260530_150637` had a generated
+dashboard FTMO remote-fetch timeout. Use
+`reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`
+for that historical FTMO/IC checkpoint.
 
 Monthly interpretation: the first live month is a stronger concern than the
 latest weekly p10/p5 labels alone. Using the accepted V22 separated,

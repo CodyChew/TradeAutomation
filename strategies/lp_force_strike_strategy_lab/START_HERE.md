@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-06-12 ICT after the LPFS transient market-data frame-skip
-deploy closeout.
+Last updated: 2026-06-14 ICT after the LPFS weekly strategy-review automation
+context refresh.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -156,15 +156,17 @@ operational decisions.
   H4/H8 `0.20%`, H12/D1 `0.20%`, W1 `0.65%` as the fresh 100k Challenge
   profile and H4/H8 `0.20%`, H12/D1 `0.25%`, W1 `0.55%` as the
   aggressive/funded profile. This did not change live config or VPS runtime.
-- Weekly performance state: latest packet
-  `reports/live_ops/lpfs_weekly_performance/20260530_150637` covers the
-  completed week from 2026-05-25 05:00 SGT to 2026-05-30 05:00 SGT, but the
-  generated dashboard has an FTMO fetch-timeout caveat. Use
-  `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`
-  for the authoritative checkpoint read. FTMO was `-0.56R` at p32.4; IC was
-  `-3.63R` at p12.5. H4 was the current cross-lane weak bucket, while H8 was
-  not weak this week. This weekly view alone does not approve a live strategy
-  change.
+- Weekly strategy-review state: latest eligible packet
+  `reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`
+  covers 2026-06-08 05:00 SGT to 2026-06-13 05:00 SGT. Both lanes are
+  `analysis_eligible=true` with `coverage_status=complete`. FTMO had `15`
+  closed trades, `+2.84R`, PF `1.46`, historical band `p54.2`; IC had `14`
+  closed trades, `-2.61R`, PF `0.70`, historical band `p17.8`; combined was
+  `29` closes, `+0.24R`, PF `1.02`. H8 is now the current cross-lane watch
+  item from this packet (`FTMO -2.18R`, `IC -3.14R`). This is not a live
+  strategy-change candidate unless future eligible weekly packets repeat the
+  weakness and offline indicator-tagging plus recent-window/long-backtest
+  research supports a specific action.
 - First-month monthly evidence state: review
   `docs/lpfs_monthly_evidence_20260530.md`.
   Against the accepted V22 separated commission-adjusted monthly backtest
@@ -263,7 +265,7 @@ operational decisions.
 | IC account validation | `docs/account_validation.html`, `docs/lpfs_new_mt5_account_validation.md`, and `config.lpfs_new_mt5_account.example.json` | Local-only validation and smoke testing; do not touch VPS live account. |
 | IC production setup | `docs/lpfs_icmarkets_vps_runbook.md`, `config.lpfs_icmarkets_raw_spread.example.json`, and `scripts/Get-LpfsDualVpsStatus.ps1` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
 | FTMO challenge sizing | `docs/ftmo_challenge_profiles.html` and `reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959` | Research-only frontier; do not change FTMO live validation config without a separate deployment decision. |
-| Weekly live performance | `docs/live_weekly_performance.html` and `reports/live_ops/lpfs_weekly_performance/` | Latest-week monitor only; use report packets for historical checkpoints until a trend view is built. |
+| Weekly live performance and strategy review | `docs/live_weekly_performance.html`, `reports/live_ops/lpfs_weekly_strategy_review/`, and `reports/live_ops/lpfs_weekly_performance/` | Use only rows where `analysis_eligible=true` and `coverage_status=complete`; repeated cross-lane weakness triggers offline research, not an immediate live patch. |
 | Per-trade live diagnostics and strategy-iteration workflow | `docs/lpfs_diagnostic_logging.md`, `docs/lpfs_strategy_iteration_context.md`, LPFS journal `diagnostics` payloads, and `reports/live_ops/lpfs_trade_diagnostics/` | Additive/offline reporting only; use for live-vs-backtest analysis before proposing heuristic changes. |
 | Rollover/spread-wait and Bid/Ask fills | `docs/live_ops.html`, `docs/mt5_execution_contract.md`, `SESSION_HANDOFF.md`, and live JSONL journals | Treat Telegram/chart visuals as alerts only; verify MT5 Bid/Ask ticks, order history, journal rows, spread snapshots, and both VPS lanes before concluding a bug. |
 | Native EA migration | `docs/ea_migration.html`, `mql5/lpfs_ea/README.md`, and `mql5/lpfs_ea/Experts/LPFS/LPFS_EA.mq5` | Tester-only v1; do not attach to production live charts. |
@@ -379,5 +381,5 @@ Use one of these prompts to restart cleanly:
 - IC VPS audit: `Read START_HERE.md and docs/lpfs_icmarkets_vps_runbook.md, then run Get-LpfsDualVpsStatus.ps1 and verify LPFS_Live and LPFS_IC_Live from MT5/runtime state before making operational changes.`
 - EA migration: `Read START_HERE.md, docs/ea_migration.html, and mql5/lpfs_ea/README.md, then continue native MQL5 tester-only work without touching VPS runtime, live configs, live journals, or broker orders.`
 - Rollover/spread/Bid-Ask audit: `Read START_HERE.md, SESSION_HANDOFF.md, docs/live_ops.html, and docs/mt5_execution_contract.md, then use MT5 history/ticks, both VPS journals, and gate-attribution reports before deciding whether a rollover spread or fill-timing event needs code or ops changes.`
-- Diagnostic performance analysis: `Read START_HERE.md, docs/lpfs_strategy_iteration_context.md, docs/lpfs_diagnostic_logging.md, and docs/live_weekly_performance.html, then build or inspect lpfs_trade_diagnostics reports before proposing any LPFS heuristic change.`
+- Diagnostic performance analysis: `Read START_HERE.md, docs/lpfs_strategy_iteration_context.md, docs/lpfs_diagnostic_logging.md, and docs/live_weekly_performance.html, then inspect the latest eligible weekly strategy-review packet and build or inspect lpfs_trade_diagnostics reports before proposing any LPFS heuristic change.`
 - FTMO challenge sizing: `Read START_HERE.md, SESSION_HANDOFF.md, and docs/ftmo_challenge_profiles.html, then inspect the latest lpfs_ftmo_challenge_frontier report before proposing any FTMO risk bucket or max-open-risk change.`

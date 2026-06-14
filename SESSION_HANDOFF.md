@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-12 ICT after the LPFS transient market-data frame-skip
-deploy closeout.
+Last updated: 2026-06-14 ICT after the LPFS weekly strategy-review automation
+context refresh.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -60,6 +60,30 @@ file, and the JSONL journal before making operational decisions.
   both lanes. FTMO was deployed first and proved clean before IC was touched.
   The old strict Gate 1 V2 path is historical context, not the current
   operational blocker.
+- Current weekly strategy-review automation is active as a thread heartbeat.
+  It reads `AGENTS.md`, this handoff, LPFS first-read docs, and `docs/live_ops.html`;
+  collects read-only evidence into ignored `reports/live_ops` packets; uses only
+  weekly rows where `analysis_eligible=true` and `coverage_status=complete`;
+  and posts a concise Telegram summary when existing ignored local Telegram
+  configs are available. Telegram posting is informational only and must not be
+  treated as broker truth.
+- Latest read-only weekly review packet:
+  `reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`.
+  Latest status packet:
+  `reports/live_ops/lpfs_dual_vps_status_20260614_015721.md`. Both FTMO and IC
+  weekly rows were analysis eligible. FTMO: `15` closes, `+2.84R`, win rate
+  `60.0%`, PF `1.46`, historical band `p54.2`. IC: `14` closes, `-2.61R`,
+  win rate `42.9%`, PF `0.70`, historical band `p17.8`. Combined:
+  `29` closes, `+0.24R`, PF `1.02`.
+- Current strategy watch item: H8 was weak on both lanes in the latest complete
+  weekly packet (`FTMO -2.18R`, `IC -3.14R`). This is a watch item only, not a
+  live strategy-change candidate. If repeated in future eligible weekly packets,
+  the strategy agent should initiate an offline indicator-tagging research pass
+  using signal-time candle features such as RSI, MACD/momentum, EMA context,
+  ATR percentile, candle structure, tick-volume where available, session/hour,
+  weekday, spread-risk, and FTMO/IC confluence. Do not add those indicators to
+  the live runner loop unless a separately approved strategy patch is supported
+  by recent-window and long-backtest evidence.
 - Active-position state/broker repair deployment closeout: exact deployed SHA
   on both VPS lanes is
   `45efa748423f20881507cda9d4f81e4afe617bde`. The patch strengthens
@@ -572,22 +596,22 @@ file, and the JSONL journal before making operational decisions.
   offline reporting only. Use copied journals, benchmark trade CSVs, and local
   candle datasets to add session/hour/weekday, setup buckets, recent 3/6/12
   month windows, candle RSI/momentum/ATR/volume/spread regimes, and FTMO/IC
-  confluence views. Do not add these calculations to the live runner loop.
-  H8 is not a selected change candidate; it remains an example unless enriched
-  evidence proves a persistent cross-lane issue.
+  confluence views. Do not add these calculations to the live runner loop. At
+  that checkpoint, H8 was not a selected change candidate; later 2026-06-14
+  weekly strategy-review evidence moved H8 to a watch item only.
 - 2026-05-30 weekly evidence checkpoint: the generated weekly dashboard wrote
   `reports/live_ops/lpfs_weekly_performance/20260530_150637` and refreshed
   `docs/live_weekly_performance.html`, but the FTMO row has a fetch-timeout
   caveat and must not be used as the FTMO performance source. Use the
   supplemental local-snapshot review at
   `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`.
-  Latest week, 2026-05-25 05:00 SGT to 2026-05-30 05:00 SGT: FTMO was
-  acceptable at 13 closed trades, `-0.56R`, PF `0.92`, p32.4; IC was weak/watch
-  at 16 closed trades, `-3.63R`, PF `0.67`, p12.5. Weekly performance diverged
-  by lane. Current cross-lane weakness is H4 (`-4.37R` over 17 combined
-  trades), while H8 was not weak this week (`+0.14R` over 8 combined trades).
-  No live strategy change is approved; keep collecting and investigate H4 only
-  if the weakness repeats or crosses evidence thresholds.
+  At that historical 2026-05-25 05:00 SGT to 2026-05-30 05:00 SGT checkpoint,
+  FTMO was acceptable at 13 closed trades, `-0.56R`, PF `0.92`, p32.4; IC was
+  weak/watch at 16 closed trades, `-3.63R`, PF `0.67`, p12.5. Weekly
+  performance diverged by lane. That checkpoint's cross-lane weakness was H4
+  (`-4.37R` over 17 combined trades), while H8 was not weak then (`+0.14R` over
+  8 combined trades). No live strategy change is approved; current watch-item
+  guidance is the 2026-06-14 H8 note near the top of this handoff.
 - 2026-05-30 first-month monthly evidence review:
   `docs/lpfs_monthly_evidence_20260530.md`.
   Against the accepted V22 separated commission-adjusted monthly backtest

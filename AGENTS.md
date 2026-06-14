@@ -376,6 +376,20 @@ Follow this workflow:
    support, FTMO/IC confluence where comparable, and no unacceptable
    long-backtest degradation.
 
+Repeated weak cohorts should trigger offline enrichment before live rule
+changes. Compute candle-derived tags at signal time during analysis, not in the
+live runner loop by default. Candidate tags include RSI, MACD or momentum,
+EMA/price relationship, EMA slope, ATR percentile, candle body/range/wick
+shape, tick-volume percentile where available, spread-risk, session/hour, and
+weekday. Treat those tags as explanatory features first; promote one to a live
+filter only after FTMO/IC evidence, recent-window backtests, and long-backtest
+guardrails support it.
+
+Weekly automation should act as a trigger for this workflow. A single weak
+cohort is a watch item. Repeated cross-lane weakness across eligible weekly
+packets should lead to a scoped offline indicator-tagging and backtest research
+pass, not an immediate strategy patch.
+
 ## Data Collection Requirements For Strategy Improvement
 
 Live journaling is part of the strategy-improvement system. For each strategy
@@ -400,6 +414,9 @@ The evidence stream should preserve enough information to analyze:
 - Cross-lane comparability: FTMO and IC magic/comment families, account/server
   identity, broker feed differences, sizing differences, and matched signal
   keys where comparable.
+- Offline indicator research: signal-time candle features, indicator values,
+  regime buckets, and derived tags should be generated in ignored analysis
+  packets with manifests before being considered for live strategy logic.
 
 If these fields are missing, hard to join, unsafe to collect, or too expensive
 to collect, document the gap before recommending a strategy change. Add
