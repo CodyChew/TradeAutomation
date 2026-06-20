@@ -1,48 +1,41 @@
 # TradeAutomation Project State
 
-Last updated: 2026-06-14 ICT after the LPFS weekly strategy-review automation
-context refresh.
+Last updated: 2026-06-20 ICT after the LPFS weekly account-outcome reporting
+and first-read state cleanup.
 
 ## Immediate LPFS Safety State
 
 Read `AGENTS.md`, `SESSION_HANDOFF.md`, and
 `docs/lpfs_c01_live_safety_release.md` before any LPFS operation. LPFS live
 data collection is running on both VPS lanes. The current deployed runtime code
-SHA on both lanes is `905fe7e350095868649b26444b3cef7510d53e4c`, containing
-the transient market-data frame-skip patch. Final proof showed both lanes
-running with kill switches clear, one logical runner path per lane, fresh
-heartbeats, broker OK, recovery disabled, telemetry failures `0`,
-market-data fetch failures `0`, `frames_skipped=0`, and active state/broker
-mismatch count `0`.
+SHA on both lanes is `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. It includes
+the RA-002 final pre-send quote-unavailable block, RA-003 Stage 5 contract pin
+refresh, Phase 1 live quote telemetry separation, active-position
+state/broker repair, and transient market-data frame-skip handling.
 
-Final market-data frame-skip evidence:
-`C:\TradeAutomationEvidence\lpfs_market_data_frame_skip_deploy\20260612_133553`.
-Manifest SHA-256:
-`21ea1596cf79476842f88d53aff88865dc01629d0e374cdbb86fd58161de6657`.
+Latest same-day status packet:
+`reports/live_ops/lpfs_weekly_strategy_review/20260620_134803/status/lpfs_dual_vps_status_20260620_134911.md`.
+That packet showed both lanes `RUNNING`, kill switches clear, one logical
+runner path per lane, fresh heartbeats, broker status `OK`, recovery disabled,
+telemetry failures `0`, market-data fetch failures `0`, and active
+state/broker mismatch count `0`. Broker exposure in that packet was FTMO `10`
+pending LPFS orders / `4` active positions and IC `9` pending LPFS orders / `4`
+active positions. Treat those counts as historical packet facts only; capture a
+fresh dual-VPS status packet before future live operations.
+
+Latest RA-002/RA-003 deployment evidence:
+`C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_ra002_ra003_deploy_20260615_001507`.
+Manual manifest SHA-256:
+`892523e60613e868ceba84d161aecf5ab8a02a2f22b8b701d9e7026f87b60a72`.
 Final dual-status SHA-256:
-`446698cc075c01b85782bc9710e05baf6d0b2ee35418eeda8f0116f70ec983cb`.
-Final broker exposure in that packet was FTMO `9` pending orders / `3` active
-positions and IC `9` pending orders / `1` active position. Treat all broker
-counts as historical packet facts only; capture a fresh dual-VPS status packet
-before future live operations.
+`2e997f7e84c1691316ba1e46737ba68691b0a3bdd22c611988f4a687c4259aab`.
 
 No reconciliation, canary, recovery enablement, manual broker mutation,
 strategy/risk/sizing/SL/TP/broker-send/config change was performed during the
-frame-skip deploy. Do not run reconciliation, run a canary, start a duplicate
-runner, manually mutate broker exposure, or change strategy behavior without a
-separately approved operation.
-
-FTMO Stage 5 Gate 3 is accepted as `STOPPED` and must not be retried. Read
-`docs/lpfs_stage5_gate3_retry_plan.md`. Authoritative ignored packet:
-`C:\TradeAutomationEvidence\lpfs_c01_stage5\ftmo_gate3_20260604_100840`;
-manifest SHA-256:
-`85df11692de17e3d35b986dafee1ce729a15b822b8ce0f3c3ccea367eb27318e`.
-Fallback containment refreshed the FTMO kill-switch content and invoked task
-disablement while the task was already disabled. No enable/start,
-kill-switch clear, IC access, reconciliation, canary, pull, or broker mutation
-occurred. The previous Gate 1 evidence is stale. The next operational gate,
-after offline verifier review, is fresh dual-lane Gate 1 read-only evidence
-and another stop for review.
+latest robustness deployment. Do not run reconciliation, run a canary, start a
+duplicate runner, manually mutate broker exposure, or change strategy behavior
+without a separately approved operation. The old strict Stage 5 Gate 1/Gate 3
+path is historical context, not the current operational blocker.
 
 The immutable C-01 normalizer now explicitly classifies every historical
 `*_utc` leaf, rebuilds both `T` and space-separated embedded event signal keys,
@@ -83,14 +76,14 @@ source of truth for strategy research and live execution work.
   `Administrator` desktop login.
 - The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
   SSH key entries were removed from both VPSes.
-- Latest verified dual-VPS deployment evidence from this PC is the 2026-06-12
-  market-data frame-skip closeout packet under
-  `C:\TradeAutomationEvidence\lpfs_market_data_frame_skip_deploy\20260612_133553`.
-  It showed both lanes running on `905fe7e`, kill switches clear, broker OK,
-  recovery disabled, telemetry failures `0`, market-data fetch failures `0`,
-  `frames_skipped=0`, and active state/broker mismatch count `0`. Treat those
-  counts as a historical snapshot only; capture a fresh packet before future
-  live operations.
+- Latest verified dual-VPS operating evidence from this PC is the 2026-06-20
+  weekly-review status packet under
+  `reports/live_ops/lpfs_weekly_strategy_review/20260620_134803/status/lpfs_dual_vps_status_20260620_134911.md`.
+  It showed both lanes running on runtime SHA `6c4ecb1`, kill switches clear,
+  broker OK, recovery disabled, telemetry failures `0`, market-data fetch
+  failures `0`, and active state/broker mismatch count `0`. Treat those counts
+  as a historical snapshot only; capture a fresh packet before future live
+  operations.
 - Live sizing policy epochs are tracked in `configs/live_policy_ledger.csv`.
   That ledger is the handoff source for distinguishing strategy performance
   from risk-policy changes. It records FTMO scale `0.05`, historical IC scale
@@ -102,14 +95,19 @@ source of truth for strategy research and live execution work.
   by sizing-policy epoch. Segment IC rows explicitly around
   `2026-05-30T17:14:27Z` until that reporting enhancement is added.
 - Latest LPFS weekly strategy-review checkpoint is
-  `reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`,
-  with status packet `reports/live_ops/lpfs_dual_vps_status_20260614_015721.md`.
+  `reports/live_ops/lpfs_weekly_strategy_review/20260620_080205_account_outcome/weekly/20260620_010214`,
+  with status packet
+  `reports/live_ops/lpfs_weekly_strategy_review/20260620_134803/status/lpfs_dual_vps_status_20260620_134911.md`.
   Both lanes are `analysis_eligible=true` with `coverage_status=complete`.
-  FTMO had `15` closed trades, `+2.84R`, PF `1.46`, historical band `p54.2`;
-  IC had `14` closed trades, `-2.61R`, PF `0.70`, historical band `p17.8`;
-  combined was `29` closes, `+0.24R`, PF `1.02`. H8 is the current cross-lane
-  watch item from that packet (`FTMO -2.18R`, `IC -3.14R`), not a live
-  strategy-change candidate.
+  FTMO had `20` closed trades, `+1.87R`, broker PnL `-4.39`, PF `1.20`,
+  historical band `p45.4`; IC had `20` closed trades, `+2.03R`, broker PnL
+  `+1.27`, PF `1.23`, historical band `p44.1`; combined was `40` closes,
+  `+3.90R`, broker PnL `-3.12`, PF `1.21`. H4 and `NZDUSD` are current
+  cross-lane watch items, and positive strategy R with negative broker PnL is a
+  separate account-outcome/allocation watch item. This is not a live
+  strategy-change candidate unless future eligible weekly packets repeat the
+  weakness and offline attribution, indicator-tagging, and recent-window plus
+  long-backtest research support a specific action.
 - The first-month monthly review is `docs/lpfs_monthly_evidence_20260530.md`.
   It escalates LPFS from passive monitoring to offline cause-attribution
   investigation: FTMO May 2026 live closed trades are `-15.09R` at monthly
@@ -211,22 +209,23 @@ The latest Saturday LPFS weekly strategy-review checkpoint is:
 
 - dashboard: `docs/live_weekly_performance.html`;
 - weekly strategy-review packet:
-  `reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`;
+  `reports/live_ops/lpfs_weekly_strategy_review/20260620_080205_account_outcome/weekly/20260620_010214`;
 - status packet:
-  `reports/live_ops/lpfs_dual_vps_status_20260614_015721.md`;
-- completed week: 2026-06-08 05:00 SGT to 2026-06-13 05:00 SGT;
-- FTMO: `15` closed trades, `+2.84R`, historical band `p54.2`, PF `1.46`,
-  `analysis_eligible=true`, `coverage_status=complete`;
-- IC: `14` closed trades, `-2.61R`, historical band `p17.8`, PF `0.70`,
-  `analysis_eligible=true`, `coverage_status=complete`;
-- combined: `29` closed trades, `+0.24R`, PF `1.02`.
+  `reports/live_ops/lpfs_weekly_strategy_review/20260620_134803/status/lpfs_dual_vps_status_20260620_134911.md`;
+- completed week: 2026-06-15 05:00 SGT to 2026-06-20 05:00 SGT;
+- FTMO: `20` closed trades, `+1.87R`, broker PnL `-4.39`, historical band
+  `p45.4`, PF `1.20`, `analysis_eligible=true`, `coverage_status=complete`;
+- IC: `20` closed trades, `+2.03R`, broker PnL `+1.27`, historical band
+  `p44.1`, PF `1.23`, `analysis_eligible=true`, `coverage_status=complete`;
+- combined: `40` closed trades, `+3.90R`, broker PnL `-3.12`, PF `1.21`.
 
 Interpretation: the latest eligible weekly review is not a clean strategy
-failure, but H8 is now the current cross-lane watch item (`FTMO -2.18R`,
-`IC -3.14R`). A single weak eligible week is a watch item only. Repeated
-cross-lane weakness across future eligible weekly packets should trigger a
-scoped offline indicator-tagging and backtest research pass, not an immediate
-live strategy patch.
+failure. H4 and `NZDUSD` are current cross-lane watch items, and positive R
+with negative broker PnL is an account-outcome/allocation watch item. A single
+eligible week is a watch item only. Repeated cross-lane weakness or repeated
+R/PnL divergence across future eligible weekly packets should trigger a scoped
+offline attribution, indicator-tagging, and backtest research pass, not an
+immediate live strategy patch.
 
 Historical caveat: the 2026-05-30 weekly packet
 `reports/live_ops/lpfs_weekly_performance/20260530_150637` had a generated

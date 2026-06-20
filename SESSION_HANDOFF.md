@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-15 ICT after the LPFS RA-002/RA-003 live robustness
-deploy and deployment-proof workflow cleanup.
+Last updated: 2026-06-20 ICT after the LPFS weekly account-outcome reporting
+and first-read state cleanup.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state

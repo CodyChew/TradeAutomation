@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-06-15 ICT after the LPFS RA-002/RA-003 live robustness
-deploy and deployment-proof workflow cleanup.
+Last updated: 2026-06-20 ICT after the LPFS weekly account-outcome reporting
+and first-read state cleanup.
 
 ## Current Live-Ops State
 

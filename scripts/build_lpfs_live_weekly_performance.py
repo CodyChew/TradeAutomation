@@ -134,6 +134,7 @@ INELIGIBLE_PRIMARY_FIELDS = (
     "profit_factor",
 )
 ACCOUNT_OUTCOME_EPSILON = 1e-9
+CONSISTENCY_HISTORY_UNAVAILABLE_REASON = "first_live_metadata_unavailable_bounded_fetch"
 
 
 @dataclass(frozen=True)
@@ -809,9 +810,15 @@ def build_weekly_report(
     for lane_input in lane_inputs:
         benchmark = historical_weekly_benchmark(lane_input.config.benchmark_path)
         history, trade_details = live_week_history_rows(lane_input, benchmark, as_of_utc)
-        consistency = consistency_flag_row(lane_input.config.name, history)
+        consistency = consistency_flag_row(
+            lane_input.config.name,
+            history,
+            unavailable_reason=consistency_history_unavailable_reason(lane_input),
+        )
         lane_summary = summarize_lane_week(lane_input, week_start_sgt, week_end_sgt, as_of_utc, git_info)
         lane_summary["completed_full_live_weeks"] = consistency["completed_full_weeks"]
+        lane_summary["consistency_history_status"] = consistency["consistency_history_status"]
+        lane_summary["consistency_history_reason"] = consistency["consistency_history_reason"]
         lane_summary["latest_week_complete"] = not bool(lane_summary["partial_week"])
         flag = classify_week(lane_summary, benchmark)
         weekly_rows.append(lane_summary)
@@ -873,6 +880,8 @@ def build_weekly_report(
                 "net_pnl": row.get("net_pnl"),
                 "partial_week": row["partial_week"],
                 "completed_full_live_weeks": row.get("completed_full_live_weeks", 0),
+                "consistency_history_status": row.get("consistency_history_status"),
+                "consistency_history_reason": row.get("consistency_history_reason"),
                 "fetch_metadata": next(
                     (lane.fetch_metadata for lane in lane_inputs if lane.config.name == row["lane"]),
                     {},
@@ -1149,6 +1158,15 @@ def lane_breakdown_rows(lane: str, trades: Sequence[LPFSLiveClosedTrade]) -> lis
     return rows
 
 
+def consistency_history_unavailable_reason(lane_input: LaneInput) -> str:
+    metadata = lane_input.fetch_metadata or {}
+    if metadata.get("fetch_error") or metadata.get("fetch_incomplete"):
+        return "lane_fetch_incomplete"
+    if metadata.get("first_live_metadata_unavailable"):
+        return CONSISTENCY_HISTORY_UNAVAILABLE_REASON
+    return ""
+
+
 def live_week_history_rows(
     lane_input: LaneInput,
     benchmark: dict[str, Any],
@@ -1299,7 +1317,29 @@ def classify_performance(net_r: float, benchmark: dict[str, Any]) -> tuple[str, 
     return "normal", ["inside_expected_weekly_range"], "" if percentile is None else percentile_band(percentile)
 
 
-def consistency_flag_row(lane: str, history_rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
+def consistency_flag_row(
+    lane: str,
+    history_rows: Sequence[dict[str, Any]],
+    *,
+    unavailable_reason: str = "",
+) -> dict[str, Any]:
+    if unavailable_reason:
+        return {
+            "lane": lane,
+            "consistency_status": "unavailable",
+            "consistency_reasons": unavailable_reason,
+            "consistency_history_status": "unavailable",
+            "consistency_history_reason": unavailable_reason,
+            "completed_full_weeks": "",
+            "latest_completed_week": "",
+            "latest_completed_net_r": "",
+            "latest_completed_percentile": "",
+            "p10_streak": "",
+            "p05_streak": "",
+            "last4_completed_weeks": "",
+            "last4_below_p10": "",
+            "last4_below_p05": "",
+        }
     eligible = [
         row
         for row in sorted(history_rows, key=lambda item: str(item["week_start_sgt"]))
@@ -1333,6 +1373,8 @@ def consistency_flag_row(lane: str, history_rows: Sequence[dict[str, Any]]) -> d
         "lane": lane,
         "consistency_status": status,
         "consistency_reasons": ";".join(reasons),
+        "consistency_history_status": "complete",
+        "consistency_history_reason": "",
         "completed_full_weeks": len(eligible),
         "latest_completed_week": latest.get("week_label", ""),
         "latest_completed_net_r": latest.get("net_r", ""),
@@ -1483,7 +1525,13 @@ def combined_summary_row(
         "partial_week": any(bool(row["partial_week"]) for row in rows),
         "partial_reasons": combined_partial_reasons(rows),
         "fetch_incomplete": any(bool(row.get("fetch_incomplete")) for row in rows),
-        "completed_full_live_weeks": min(int(row.get("completed_full_live_weeks") or 0) for row in rows),
+        "consistency_history_status": (
+            "unavailable"
+            if any(str(row.get("consistency_history_status") or "") == "unavailable" for row in rows)
+            else "complete"
+        ),
+        "consistency_history_reason": combined_consistency_history_reason(rows),
+        "completed_full_live_weeks": combined_completed_full_live_weeks(rows),
         "latest_week_complete": all(bool(row.get("latest_week_complete")) for row in rows),
         "vps_head": "",
         "fetch_error": ";".join(str(row.get("fetch_error") or "") for row in rows if row.get("fetch_error")),
@@ -1526,6 +1574,26 @@ def combined_partial_reasons(rows: Sequence[dict[str, Any]]) -> str:
     if any(bool(row.get("fetch_incomplete")) for row in rows):
         reasons.append("combined_from_incomplete_lane")
     return ";".join(reasons)
+
+
+def combined_consistency_history_reason(rows: Sequence[dict[str, Any]]) -> str:
+    reasons = sorted(
+        {
+            str(row.get("consistency_history_reason") or "")
+            for row in rows
+            if str(row.get("consistency_history_status") or "") == "unavailable"
+            and row.get("consistency_history_reason")
+        }
+    )
+    if not reasons:
+        return ""
+    return "combined_from_unavailable_lane_history:" + ",".join(reasons)
+
+
+def combined_completed_full_live_weeks(rows: Sequence[dict[str, Any]]) -> int | str:
+    if any(str(row.get("consistency_history_status") or "") == "unavailable" for row in rows):
+        return ""
+    return min(int(row.get("completed_full_live_weeks") or 0) for row in rows)
 
 
 def historical_weekly_benchmark(path: Path) -> dict[str, Any]:
@@ -1740,7 +1808,7 @@ def build_dashboard_html(
             [
                 row["lane"],
                 str(flag.get("concern_status", row.get("concern_status", "watch"))).upper(),
-                f"{performance_note} | {account_note} | {closed_note} | {full_week_text(row.get('completed_full_live_weeks'))}",
+                f"{performance_note} | {account_note} | {closed_note} | {full_week_text(row)}",
             ]
         )
     summary_table = [
@@ -1748,7 +1816,7 @@ def build_dashboard_html(
             row["lane"],
             str(row["partial_week"]),
             row["partial_reasons"],
-            fmt_int(row.get("completed_full_live_weeks")),
+            full_week_count_text(row),
             str(row.get("latest_week_complete")),
             fmt_timestamp_sgt(row.get("first_journal_utc")),
             fmt_timestamp_sgt(row.get("first_runner_utc")),
@@ -1772,6 +1840,8 @@ def build_dashboard_html(
             row.get("account_outcome_status"),
             row.get("r_pnl_alignment"),
             row.get("account_outcome_caveat"),
+            row.get("consistency_history_status"),
+            row.get("consistency_history_reason"),
             pct(row["win_rate"]),
             pf(row["profit_factor"]),
             row["worst_symbol"],
@@ -1825,14 +1895,14 @@ def build_dashboard_html(
             row["lane"],
             status_cell(row["consistency_status"]),
             row["consistency_reasons"],
-            fmt_int(row["completed_full_weeks"]),
+            consistency_completed_week_text(row),
             row["latest_completed_week"],
             fmt_r(row["latest_completed_net_r"]),
             percentile_text(row.get("latest_completed_percentile")),
-            fmt_int(row["p10_streak"]),
-            fmt_int(row["p05_streak"]),
-            fmt_int(row["last4_below_p10"]),
-            fmt_int(row["last4_below_p05"]),
+            consistency_metric_text(row, "p10_streak"),
+            consistency_metric_text(row, "p05_streak"),
+            consistency_metric_text(row, "last4_below_p10"),
+            consistency_metric_text(row, "last4_below_p05"),
         ]
         for row in consistency_flags
     ]
@@ -1908,11 +1978,11 @@ def build_dashboard_html(
     <section id="summary">
       <h2>Live Weekly Summary</h2>
       <p>Portfolio starts are detected from the first journal row and first live order. Runtime synced means the VPS contains the latest local strategy/runtime commit even if local docs/reporting commits are ahead.</p>
-      {table_html(["Lane", "Partial", "Partial reasons", "Completed full weeks", "Latest complete", "First journal (SGT)", "First runner (SGT)", "First order (SGT)", "First closed (SGT)", "Local HEAD", "Origin HEAD", "VPS commit", "Fetch error", "Latest runtime", "Runtime synced", "Runtime changed", "Eligible", "Confidence", "Coverage", "Coverage reason", "Closed", "Known fetched evidence", "Net R", "Net PnL", "Account outcome", "R/PnL alignment", "Account caveat", "Win rate", "PF", "Worst symbol", "Worst TF", "Worst side", "Retry waits", "True rejects", "Pending", "Active"], summary_table)}
+      {table_html(["Lane", "Partial", "Partial reasons", "Completed full weeks", "Latest complete", "First journal (SGT)", "First runner (SGT)", "First order (SGT)", "First closed (SGT)", "Local HEAD", "Origin HEAD", "VPS commit", "Fetch error", "Latest runtime", "Runtime synced", "Runtime changed", "Eligible", "Confidence", "Coverage", "Coverage reason", "Closed", "Known fetched evidence", "Net R", "Net PnL", "Account outcome", "R/PnL alignment", "Account caveat", "Consistency history", "Consistency history reason", "Win rate", "PF", "Worst symbol", "Worst TF", "Worst side", "Retry waits", "True rejects", "Pending", "Active"], summary_table)}
     </section>
     <section id="consistency">
       <h2>Consistency Check</h2>
-      <p>Consistency flags ignore partial first weeks and use only completed full live weeks. Watch means repeated p10 underperformance; Review means repeated p5 or broad p10 underperformance.</p>
+      <p>Consistency flags ignore partial first weeks and use only completed full live weeks. Watch means repeated p10 underperformance; Review means repeated p5 or broad p10 underperformance. When bounded current-week evidence does not include first-live/source-start metadata, historical consistency is marked unavailable rather than treated as zero completed weeks.</p>
       {table_html(["Lane", "Status", "Reasons", "Completed full weeks", "Latest completed week", "Latest net R", "Latest percentile", "p10 streak", "p5 streak", "Last 4 <=p10", "Last 4 <=p5"], consistency_table)}
     </section>
     <section id="comparison">
@@ -2222,8 +2292,28 @@ def account_outcome_text(row: dict[str, Any]) -> str:
     return "account outcome n/a"
 
 
-def full_week_text(value: Any) -> str:
-    count = int(value or 0)
+def full_week_count_text(row: dict[str, Any]) -> str:
+    if str(row.get("consistency_history_status") or "") == "unavailable":
+        return "unavailable"
+    return fmt_int(row.get("completed_full_live_weeks"))
+
+
+def consistency_completed_week_text(row: dict[str, Any]) -> str:
+    if str(row.get("consistency_history_status") or "") == "unavailable":
+        return "unavailable"
+    return fmt_int(row.get("completed_full_weeks"))
+
+
+def consistency_metric_text(row: dict[str, Any], key: str) -> str:
+    if str(row.get("consistency_history_status") or "") == "unavailable":
+        return "n/a"
+    return fmt_int(row.get(key))
+
+
+def full_week_text(row: dict[str, Any]) -> str:
+    if str(row.get("consistency_history_status") or "") == "unavailable":
+        return "history unavailable"
+    count = int(row.get("completed_full_live_weeks") or 0)
     noun = "week" if count == 1 else "weeks"
     return f"{count} full {noun}"
 

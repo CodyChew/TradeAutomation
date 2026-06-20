@@ -640,7 +640,9 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         self.assertEqual(row["closed_trades_display"], "incomplete")
         self.assertIsNone(row["closed_trades"])
         self.assertEqual(row["known_fetched_closed_trades"], 0)
-        self.assertEqual(row["completed_full_live_weeks"], 0)
+        self.assertEqual(row["completed_full_live_weeks"], "")
+        self.assertEqual(row["consistency_history_status"], "unavailable")
+        self.assertEqual(row["consistency_history_reason"], "lane_fetch_incomplete")
         flag = result["weekly_flags"][0]
         self.assertEqual(flag["concern_status"], "review")
         self.assertFalse(flag["analysis_eligible"])
@@ -656,6 +658,62 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
             result["run_summary"],
         )
         self.assertIn(">incomplete<", html)
+
+    def test_complete_bounded_week_with_missing_first_live_metadata_marks_consistency_unavailable(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            lane = _lane_input(tmp, "FTMO", first_journal="2026-05-03T21:00:00Z", first_order="2026-05-04T21:00:00Z")
+            lane = weekly.LaneInput(
+                config=lane.config,
+                first_journal_row=None,
+                lifecycle_rows=lane.lifecycle_rows,
+                state_payload=lane.state_payload,
+                vps_head=lane.vps_head,
+                fetch_metadata={
+                    "fetch_incomplete": False,
+                    "week_coverage_proven": True,
+                    "reached_source_start": False,
+                    "first_live_metadata_unavailable": True,
+                    "window_first_row_utc": "2026-05-03T21:00:00Z",
+                },
+            )
+            result = weekly.build_weekly_report(
+                lane_inputs=[lane],
+                git_info=_git_info(runtime_changed=False),
+                as_of_utc=weekly.parse_timestamp("2026-05-09T00:00:00Z"),
+                report_root=tmp / "reports",
+                docs_output=tmp / "docs" / "live_weekly_performance.html",
+            )
+
+        row = result["weekly_summary"][0]
+        self.assertTrue(row["analysis_eligible"])
+        self.assertEqual(row["coverage_status"], "complete")
+        self.assertEqual(row["closed_trades"], 1)
+        self.assertEqual(row["consistency_history_status"], "unavailable")
+        self.assertEqual(
+            row["consistency_history_reason"],
+            weekly.CONSISTENCY_HISTORY_UNAVAILABLE_REASON,
+        )
+        self.assertEqual(row["completed_full_live_weeks"], "")
+
+        flag = result["consistency_flags"][0]
+        self.assertEqual(flag["consistency_status"], "unavailable")
+        self.assertEqual(flag["completed_full_weeks"], "")
+        self.assertEqual(flag["consistency_reasons"], weekly.CONSISTENCY_HISTORY_UNAVAILABLE_REASON)
+        self.assertEqual(result["run_summary"]["lanes"][0]["consistency_history_status"], "unavailable")
+
+        html = weekly.build_dashboard_html(
+            result["weekly_summary"],
+            result["lane_breakdown"],
+            result["historical_benchmark"],
+            result["weekly_flags"],
+            result["live_week_history"],
+            result["consistency_flags"],
+            result["run_summary"],
+        )
+        self.assertIn("history unavailable", html)
+        self.assertIn("first_live_metadata_unavailable_bounded_fetch", html)
+        self.assertNotIn("no_completed_full_live_weeks", html)
 
     def test_incomplete_lane_with_fetched_closes_is_not_analysis_eligible(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:

@@ -481,6 +481,26 @@ For PowerShell script changes, run parse checks on the changed scripts. For
 generated docs, regenerate from the source builder and verify the output is
 intentional.
 
+For any patch that changes current live status, deployed runtime SHA, weekly
+evidence, watch items, dashboard interpretation, strategy-review context, or
+first-read handoff state, run a first-read drift audit before publishing. Check
+at least `AGENTS.md`, root `PROJECT_STATE.md`, `SESSION_HANDOFF.md`,
+`strategies/lp_force_strike_strategy_lab/START_HERE.md`,
+`strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md`,
+`docs/lpfs_strategy_iteration_context.md`, and the relevant generated
+dashboard plus source builder. The audit should look for current-looking stale
+claims outside the edited file set, not only contradictions in files already
+touched.
+
+For generated reporting/dashboard changes, verify adjacent interpretation
+fields as well as the newly changed field. At minimum check
+`analysis_eligible`, `coverage_status`, `performance_confidence`, account
+outcome caveats, consistency-history status, first-live metadata, packet paths,
+watch items, and stale/error text handling. Bounded current-week evidence must
+not be rendered as proof of historical consistency; if first-live/source-start
+metadata is unavailable, report consistency history as unavailable rather than
+as zero completed weeks.
+
 After editing first-read, handoff, runbook, operator-facing, or generated-doc
 source files such as `SESSION_HANDOFF.md`, `START_HERE.md`,
 `PROJECT_STATE.md`, `docs/system_troubleshooting.md`, VPS runbooks, or
