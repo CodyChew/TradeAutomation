@@ -755,6 +755,83 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         self.assertEqual(csv_rows["FTMO"]["known_fetched_closed_trades"], "1")
         self.assertEqual(csv_rows["COMBINED"]["closed_trades"], "")
 
+    def test_positive_r_negative_broker_pnl_is_account_outcome_watch(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            ftmo_base = _lane_input(
+                tmp,
+                "FTMO",
+                first_journal="2026-05-04T00:00:00Z",
+                first_order="2026-05-04T00:05:00Z",
+            )
+            ftmo = weekly.LaneInput(
+                config=ftmo_base.config,
+                first_journal_row={"occurred_at_utc": "2026-05-04T00:00:00Z"},
+                lifecycle_rows=[
+                    _row("runner_started", "2026-05-04T00:00:00Z", signal_key=""),
+                    *_closed_trade_rows(
+                        signal_key="FTMO-R-PNL-DIVERGENCE",
+                        symbol="CADCHF",
+                        timeframe="W1",
+                        side="LONG",
+                        order_time="2026-05-04T00:05:00Z",
+                        close_time="2026-05-06T21:00:00Z",
+                        r_result=1.25,
+                        profit=-25.0,
+                        ticket=101,
+                        position_id=1001,
+                    ),
+                ],
+                state_payload={"pending_orders": [], "active_positions": [], "processed_signal_keys": ["a"]},
+                vps_head=_repo_head(),
+                fetch_metadata={"reached_source_start": True, "fetch_incomplete": False},
+            )
+            ic = _lane_input(
+                tmp,
+                "IC",
+                first_journal="2026-05-04T00:00:00Z",
+                first_order="2026-05-04T00:05:00Z",
+                close_r=0.75,
+            )
+            result = weekly.build_weekly_report(
+                lane_inputs=[ftmo, ic],
+                git_info=_git_info(runtime_changed=False),
+                as_of_utc=weekly.parse_timestamp("2026-05-08T08:00:00Z"),
+                report_root=tmp / "reports",
+                docs_output=tmp / "docs" / "live_weekly_performance.html",
+            )
+
+        rows = {row["lane"]: row for row in result["weekly_summary"]}
+        ftmo_row = rows["FTMO"]
+        self.assertTrue(ftmo_row["analysis_eligible"])
+        self.assertAlmostEqual(ftmo_row["net_r"], 1.25)
+        self.assertAlmostEqual(ftmo_row["net_pnl"], -25.0)
+        self.assertEqual(ftmo_row["account_outcome_status"], "pnl_negative")
+        self.assertEqual(ftmo_row["r_pnl_alignment"], "r_positive_pnl_negative")
+        self.assertEqual(ftmo_row["account_outcome_caveat"], "strategy_r_positive_broker_pnl_negative")
+
+        ftmo_flag = next(row for row in result["weekly_flags"] if row["lane"] == "FTMO")
+        self.assertEqual(ftmo_flag["concern_status"], "watch")
+        self.assertIn("strategy_r_positive_broker_pnl_negative", ftmo_flag["concern_reasons"])
+        self.assertIn("strategy_r_positive_broker_pnl_negative", ftmo_flag["evidence_caveats"])
+
+        combined = rows["COMBINED"]
+        self.assertTrue(combined["analysis_eligible"])
+        self.assertEqual(combined["account_outcome_status"], "pnl_positive")
+        self.assertEqual(combined["r_pnl_alignment"], "r_positive_pnl_positive")
+
+        html = weekly.build_dashboard_html(
+            result["weekly_summary"],
+            result["lane_breakdown"],
+            result["historical_benchmark"],
+            result["weekly_flags"],
+            result["live_week_history"],
+            result["consistency_flags"],
+            result["run_summary"],
+        )
+        self.assertIn("positive R but negative broker PnL", html)
+        self.assertIn("R/PnL alignment", html)
+
     def test_combined_row_inherits_incomplete_lane_caveat(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
             tmp = Path(raw_tmp)

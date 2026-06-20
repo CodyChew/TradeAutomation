@@ -171,16 +171,18 @@ operational decisions.
   profile and H4/H8 `0.20%`, H12/D1 `0.25%`, W1 `0.55%` as the
   aggressive/funded profile. This did not change live config or VPS runtime.
 - Weekly strategy-review state: latest eligible packet
-  `reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`
-  covers 2026-06-08 05:00 SGT to 2026-06-13 05:00 SGT. Both lanes are
-  `analysis_eligible=true` with `coverage_status=complete`. FTMO had `15`
-  closed trades, `+2.84R`, PF `1.46`, historical band `p54.2`; IC had `14`
-  closed trades, `-2.61R`, PF `0.70`, historical band `p17.8`; combined was
-  `29` closes, `+0.24R`, PF `1.02`. H8 is now the current cross-lane watch
-  item from this packet (`FTMO -2.18R`, `IC -3.14R`). This is not a live
-  strategy-change candidate unless future eligible weekly packets repeat the
-  weakness and offline indicator-tagging plus recent-window/long-backtest
-  research supports a specific action.
+  `reports/live_ops/lpfs_weekly_strategy_review/20260620_080205_account_outcome/weekly/20260620_010214`
+  covers 2026-06-15 05:00 SGT to 2026-06-20 05:00 SGT. Both lanes are
+  `analysis_eligible=true` with `coverage_status=complete`. FTMO had `20`
+  closed trades, `+1.87R`, broker PnL `-4.39`, PF `1.20`, historical band
+  `p45.4`; IC had `20` closed trades, `+2.03R`, broker PnL `+1.27`, PF
+  `1.23`, historical band `p44.1`; combined was `40` closes, `+3.90R`,
+  broker PnL `-3.12`, PF `1.21`. H4 and `NZDUSD` are current cross-lane watch
+  items, and positive R with negative broker PnL is an account-outcome/
+  allocation watch item. This is not a live strategy-change candidate unless
+  future eligible weekly packets repeat the weakness and offline attribution,
+  indicator-tagging, and recent-window/long-backtest research support a
+  specific action.
 - First-month monthly evidence state: review
   `docs/lpfs_monthly_evidence_20260530.md`.
   Against the accepted V22 separated commission-adjusted monthly backtest

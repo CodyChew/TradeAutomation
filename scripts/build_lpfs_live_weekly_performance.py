@@ -133,6 +133,7 @@ INELIGIBLE_PRIMARY_FIELDS = (
     "net_pnl",
     "profit_factor",
 )
+ACCOUNT_OUTCOME_EPSILON = 1e-9
 
 
 @dataclass(frozen=True)
@@ -713,11 +714,53 @@ def apply_validity_contract(
         for field in ("worst_symbol", "worst_timeframe", "worst_side"):
             if field in row:
                 row[field] = "incomplete"
+    apply_account_outcome_contract(row)
     return row
 
 
 def is_analysis_eligible(row: dict[str, Any]) -> bool:
     return bool(row.get("analysis_eligible", not bool(row.get("fetch_incomplete"))))
+
+
+def _signed_bucket(value: float | None) -> str:
+    if value is None:
+        return "unknown"
+    if value > ACCOUNT_OUTCOME_EPSILON:
+        return "positive"
+    if value < -ACCOUNT_OUTCOME_EPSILON:
+        return "negative"
+    return "flat"
+
+
+def apply_account_outcome_contract(row: dict[str, Any]) -> dict[str, Any]:
+    """Classify broker-PnL/account outcome separately from R-based edge."""
+
+    if not is_analysis_eligible(row):
+        row["account_outcome_status"] = "incomplete"
+        row["r_pnl_alignment"] = "incomplete"
+        row["account_outcome_caveat"] = "incomplete"
+        return row
+
+    closed = int(row.get("closed_trades") or 0)
+    if closed <= 0:
+        row["account_outcome_status"] = "no_closed_trades"
+        row["r_pnl_alignment"] = "no_closed_trades"
+        row["account_outcome_caveat"] = "none"
+        return row
+
+    net_r = float(row.get("net_r") or 0.0)
+    net_pnl = float(row.get("net_pnl") or 0.0)
+    r_bucket = _signed_bucket(net_r)
+    pnl_bucket = _signed_bucket(net_pnl)
+    row["account_outcome_status"] = f"pnl_{pnl_bucket}"
+    row["r_pnl_alignment"] = f"r_{r_bucket}_pnl_{pnl_bucket}"
+    if r_bucket == "positive" and pnl_bucket == "negative":
+        row["account_outcome_caveat"] = "strategy_r_positive_broker_pnl_negative"
+    elif r_bucket == "negative" and pnl_bucket == "positive":
+        row["account_outcome_caveat"] = "strategy_r_negative_broker_pnl_positive"
+    else:
+        row["account_outcome_caveat"] = "none"
+    return row
 
 
 def ssh_powershell(alias: str, script: str, *, timeout: int) -> str:
@@ -1556,6 +1599,11 @@ def classify_week(row: dict[str, Any], benchmark: dict[str, Any]) -> dict[str, A
         evidence_caveats.append(str(row["lifecycle_evidence_caveats"]))
     if analysis_eligible and concentration_risk(row):
         evidence_caveats.append("loss_concentration")
+    account_caveat = str(row.get("account_outcome_caveat") or "none")
+    if analysis_eligible and account_caveat != "none":
+        status = "watch" if status == "normal" else status
+        reasons.append(account_caveat)
+        evidence_caveats.append(account_caveat)
     row["concern_status"] = status
     row["concern_reasons"] = ";".join(reasons)
     row["evidence_caveats"] = ";".join(evidence_caveats) if evidence_caveats else "none"
@@ -1570,6 +1618,9 @@ def classify_week(row: dict[str, Any], benchmark: dict[str, Any]) -> dict[str, A
         "performance_confidence": row.get("performance_confidence"),
         "coverage_status": row.get("coverage_status"),
         "coverage_failure_reason": row.get("coverage_failure_reason"),
+        "account_outcome_status": row.get("account_outcome_status"),
+        "r_pnl_alignment": row.get("r_pnl_alignment"),
+        "account_outcome_caveat": row.get("account_outcome_caveat"),
         "known_fetched_closed_trades": row.get("known_fetched_closed_trades"),
         "known_fetched_net_r": row.get("known_fetched_net_r"),
         "known_fetched_net_pnl": row.get("known_fetched_net_pnl"),
@@ -1679,12 +1730,17 @@ def build_dashboard_html(
         benchmark = benchmarks.get(row["lane"], {})
         eligible = is_analysis_eligible(row)
         closed_note = f"{fmt_int(row['closed_trades'])} closed" if eligible else "incomplete"
-        performance_note = fmt_r(row["net_r"]) if eligible else f"partial evidence: {known_fetched_text(row)}"
+        performance_note = (
+            f"{fmt_r(row['net_r'])} | broker PnL {fmt_money(row['net_pnl'])}"
+            if eligible
+            else f"partial evidence: {known_fetched_text(row)}"
+        )
+        account_note = account_outcome_text(row)
         kpis.append(
             [
                 row["lane"],
                 str(flag.get("concern_status", row.get("concern_status", "watch"))).upper(),
-                f"{performance_note} | {closed_note} | {full_week_text(row.get('completed_full_live_weeks'))}",
+                f"{performance_note} | {account_note} | {closed_note} | {full_week_text(row.get('completed_full_live_weeks'))}",
             ]
         )
     summary_table = [
@@ -1713,6 +1769,9 @@ def build_dashboard_html(
             known_fetched_text(row),
             fmt_r(row["net_r"]),
             fmt_money(row["net_pnl"]),
+            row.get("account_outcome_status"),
+            row.get("r_pnl_alignment"),
+            row.get("account_outcome_caveat"),
             pct(row["win_rate"]),
             pf(row["profit_factor"]),
             row["worst_symbol"],
@@ -1749,6 +1808,9 @@ def build_dashboard_html(
             row.get("performance_confidence"),
             row.get("coverage_status"),
             row.get("coverage_failure_reason"),
+            row.get("account_outcome_status"),
+            row.get("r_pnl_alignment"),
+            row.get("account_outcome_caveat"),
             fmt_r(row["net_r"]),
             known_fetched_text(row),
             percentile_text(row.get("historical_percentile")),
@@ -1797,9 +1859,13 @@ def build_dashboard_html(
                 f"{escape(known_fetched_text(combined))}, but it is not a valid combined weekly result.</p>"
             )
         else:
+            account_note = ""
+            if combined.get("account_outcome_caveat") not in ("", None, "none"):
+                account_note = f" Account outcome caveat: {escape(account_outcome_text(combined))}."
             combined_note = (
                 f"<p class=\"callout\">Combined live view: {fmt_int(combined['closed_trades'])} closed trades, "
-                f"{fmt_r(combined['net_r'])}, {fmt_money(combined['net_pnl'])}. This is not benchmarked because FTMO and IC use different broker feeds and account sizing.</p>"
+                f"{fmt_r(combined['net_r'])}, broker PnL {fmt_money(combined['net_pnl'])}.{account_note} "
+                "This is not benchmarked because FTMO and IC use different broker feeds and account sizing.</p>"
             )
     rows_html = "".join(
         f'<div class="kpi"><span>{escape(label)}</span><strong>{escape(value)}</strong><small>{escape(note)}</small></div>'
@@ -1834,15 +1900,15 @@ def build_dashboard_html(
   <main>
     <section id="status">
       <h2>Cause For Concern</h2>
-      <p class="note">Latest dashboard window: <strong>{escape(run_summary.get('week_window_label'))}</strong>. It is marked complete after the Friday 21:00 UTC market close. Runtime changes and partial starts are evidence-quality caveats, while percentile status is measured against each lane's V22 weekly distribution.</p>
+      <p class="note">Latest dashboard window: <strong>{escape(run_summary.get('week_window_label'))}</strong>. It is marked complete after the Friday 21:00 UTC market close. Runtime changes and partial starts are evidence-quality caveats, while percentile status is measured against each lane's V22 weekly R distribution. Broker PnL is shown separately as account-outcome evidence and can trigger a watch caveat when it diverges from positive R.</p>
       <div class="kpis">{rows_html}</div>
       {combined_note}
-      {table_html(["Lane", "Status", "Performance reasons", "Evidence caveats", "Eligible", "Confidence", "Coverage", "Coverage reason", "Net R", "Known fetched evidence", "Historical percentile", "Band", "p10", "p5"], flag_table)}
+      {table_html(["Lane", "Status", "Performance reasons", "Evidence caveats", "Eligible", "Confidence", "Coverage", "Coverage reason", "Account outcome", "R/PnL alignment", "Account caveat", "Net R", "Known fetched evidence", "Historical percentile", "Band", "p10", "p5"], flag_table)}
     </section>
     <section id="summary">
       <h2>Live Weekly Summary</h2>
       <p>Portfolio starts are detected from the first journal row and first live order. Runtime synced means the VPS contains the latest local strategy/runtime commit even if local docs/reporting commits are ahead.</p>
-      {table_html(["Lane", "Partial", "Partial reasons", "Completed full weeks", "Latest complete", "First journal (SGT)", "First runner (SGT)", "First order (SGT)", "First closed (SGT)", "Local HEAD", "Origin HEAD", "VPS commit", "Fetch error", "Latest runtime", "Runtime synced", "Runtime changed", "Eligible", "Confidence", "Coverage", "Coverage reason", "Closed", "Known fetched evidence", "Net R", "Net PnL", "Win rate", "PF", "Worst symbol", "Worst TF", "Worst side", "Retry waits", "True rejects", "Pending", "Active"], summary_table)}
+      {table_html(["Lane", "Partial", "Partial reasons", "Completed full weeks", "Latest complete", "First journal (SGT)", "First runner (SGT)", "First order (SGT)", "First closed (SGT)", "Local HEAD", "Origin HEAD", "VPS commit", "Fetch error", "Latest runtime", "Runtime synced", "Runtime changed", "Eligible", "Confidence", "Coverage", "Coverage reason", "Closed", "Known fetched evidence", "Net R", "Net PnL", "Account outcome", "R/PnL alignment", "Account caveat", "Win rate", "PF", "Worst symbol", "Worst TF", "Worst side", "Retry waits", "True rejects", "Pending", "Active"], summary_table)}
     </section>
     <section id="consistency">
       <h2>Consistency Check</h2>
@@ -2138,6 +2204,22 @@ def known_fetched_text(row: dict[str, Any]) -> str:
         f"{fmt_r(row.get('known_fetched_net_r'))}, "
         f"{fmt_money(row.get('known_fetched_net_pnl'))}"
     )
+
+
+def account_outcome_text(row: dict[str, Any]) -> str:
+    caveat = str(row.get("account_outcome_caveat") or "none")
+    if caveat == "strategy_r_positive_broker_pnl_negative":
+        return "positive R but negative broker PnL"
+    if caveat == "strategy_r_negative_broker_pnl_positive":
+        return "negative R but positive broker PnL"
+    status = str(row.get("account_outcome_status") or "")
+    if status == "incomplete":
+        return "account outcome incomplete"
+    if status == "no_closed_trades":
+        return "no closed trades"
+    if status.startswith("pnl_"):
+        return status.replace("_", " ")
+    return "account outcome n/a"
 
 
 def full_week_text(value: Any) -> str:

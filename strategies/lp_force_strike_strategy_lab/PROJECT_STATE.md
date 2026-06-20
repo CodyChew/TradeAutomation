@@ -342,33 +342,38 @@ compared with recent 3/6/12 month benchmark windows, checked against the
 10-year commission-adjusted FTMO and IC backtests, and a separate
 strategy-change plan is approved.
 
-## 2026-06-14 Weekly Strategy-Review Checkpoint
+## 2026-06-20 Weekly Strategy-Review Checkpoint
 
 Latest complete weekly strategy-review packet:
 
 - dashboard: `../../docs/live_weekly_performance.html`;
 - packet:
-  `../../reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`;
+  `../../reports/live_ops/lpfs_weekly_strategy_review/20260620_080205_account_outcome/weekly/20260620_010214`;
 - status packet:
-  `../../reports/live_ops/lpfs_dual_vps_status_20260614_015721.md`;
-- completed week: 2026-06-08 05:00 SGT to 2026-06-13 05:00 SGT;
-- FTMO: `15` closed trades, `+2.84R`, 9 wins / 6 losses, PF `1.46`,
-  historical band `p54.2`, `analysis_eligible=true`,
+  `../../reports/live_ops/lpfs_weekly_strategy_review/20260620_134803/status/lpfs_dual_vps_status_20260620_134911.md`;
+- completed week: 2026-06-15 05:00 SGT to 2026-06-20 05:00 SGT;
+- FTMO: `20` closed trades, `+1.87R`, broker PnL `-4.39`, 11 wins / 9
+  losses, PF `1.20`, historical band `p45.4`, `analysis_eligible=true`,
   `coverage_status=complete`;
-- IC: `14` closed trades, `-2.61R`, 6 wins / 8 losses, PF `0.70`,
-  historical band `p17.8`, `analysis_eligible=true`,
+- IC: `20` closed trades, `+2.03R`, broker PnL `+1.27`, 11 wins / 9 losses,
+  PF `1.23`, historical band `p44.1`, `analysis_eligible=true`,
   `coverage_status=complete`;
-- combined: `29` closed trades, `+0.24R`, PF `1.02`.
+- combined: `40` closed trades, `+3.90R`, broker PnL `-3.12`, PF `1.21`.
 
 Confluence read:
 
 - The latest eligible weekly review is not a clean strategy failure.
-- H8 is the current cross-lane watch item: FTMO H8 `-2.18R` over 4 trades and
-  IC H8 `-3.14R` over 3 trades.
+- H4 is a current cross-lane watch item: FTMO H4 `-1.01R` over 9 trades and
+  IC H4 `-3.00R` over 11 trades.
+- `NZDUSD` is a current cross-lane watch item: `-2.01R` on both lanes.
+- Positive strategy R with negative broker PnL is a separate account-outcome/
+  allocation watch item. R percentile remains strategy-shape evidence; broker
+  PnL is account-currency outcome affected by sizing, pip value, broker costs,
+  feed, and policy epoch.
 - This is not a live change candidate from one weekly packet. If repeated
-  eligible packets show comparable H8 weakness, start offline indicator-tagging
-  and recent-window plus long-backtest research before proposing any live
-  heuristic.
+  eligible packets show comparable weakness or repeated R/PnL divergence,
+  start offline attribution, indicator-tagging, and recent-window plus
+  long-backtest research before proposing any live heuristic.
 
 ## 2026-05-30 Weekly Evidence Checkpoint
 

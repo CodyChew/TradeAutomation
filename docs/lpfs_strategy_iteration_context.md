@@ -1,6 +1,6 @@
 # LPFS Strategy Iteration Context
 
-Last updated: 2026-06-14 ICT after weekly strategy-review automation refresh.
+Last updated: 2026-06-20 ICT after weekly strategy-review automation refresh.
 
 This is the durable handoff for the current LPFS diagnostic reporting and
 strategy-iteration work. A new Codex chat should be able to read this file,
@@ -20,10 +20,12 @@ The current work is reporting/context only. It is not a live strategy change,
 not a live deployment, and not approval to change entries, exits, risk,
 timeframe selection, spread gates, recovery behavior, or broker execution.
 
-H8 was discussed as an example and is now a watch item after the latest
-complete weekly packet showed cross-lane weakness. It is not a selected change
-candidate unless future diagnostics prove a persistent cross-lane issue and
-recent-window plus long-backtest evidence supports a specific action.
+H8 was a prior watch item after the 2026-06-14 weekly packet. The current
+2026-06-20 complete weekly packet moved the live watch set to H4, `NZDUSD`,
+and positive-R/negative-broker-PnL account-outcome divergence. These are watch
+items only, not selected change candidates unless future eligible diagnostics
+prove persistent cross-lane weakness and recent-window plus long-backtest
+evidence supports a specific action.
 
 Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO and IC
 live data collection are running again, recovery remains disabled, and later
@@ -49,15 +51,17 @@ production-derived historical timestamps.
   explicitly using the ledger activation boundary `2026-05-30T17:14:27Z` and
   the flattened diagnostic scale field.
 - The latest completed weekly checkpoint is
-  `reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`.
+  `reports/live_ops/lpfs_weekly_strategy_review/20260620_080205_account_outcome/weekly/20260620_010214`.
   Both lanes are `analysis_eligible=true` with complete coverage. FTMO had
-  15 closed trades, `+2.84R`, 9 wins / 6 losses, PF `1.46`, historical band
-  `p54.2`; IC had 14 closed trades, `-2.61R`, 6 wins / 8 losses, PF `0.70`,
-  historical band `p17.8`; combined was 29 closed trades and `+0.24R`.
-- Current confluence watch item: H8 was weak on both lanes in the latest
-  complete weekly checkpoint (`FTMO -2.18R`, `IC -3.14R`). Treat this as a
-  watch item only. If it repeats across future eligible weekly packets, start
-  offline indicator-tagging and recent-window backtest research before
+  20 closed trades, `+1.87R`, broker PnL `-4.39`, 11 wins / 9 losses, PF
+  `1.20`, historical band `p45.4`; IC had 20 closed trades, `+2.03R`, broker
+  PnL `+1.27`, 11 wins / 9 losses, PF `1.23`, historical band `p44.1`;
+  combined was 40 closed trades, `+3.90R`, and broker PnL `-3.12`.
+- Current confluence watch items: H4 was weak on both lanes (`FTMO -1.01R`,
+  `IC -3.00R`) and `NZDUSD` was `-2.01R` on both lanes. Positive strategy R
+  with negative broker PnL is a separate account-outcome/allocation watch item.
+  Treat these as watch items only. If they repeat across future eligible weekly
+  packets, start offline attribution and indicator-tagging research before
   proposing any live heuristic.
 - Historical 2026-05-30 weekly checkpoint:
   `reports/live_ops/lpfs_weekly_performance/20260530_150637`. Its generated
@@ -400,9 +404,10 @@ handoff.
    the diagnostic report.
 8. Review `timeframe_confluence.csv` and `backtest_comparison.csv` for
    cross-lane, recent-window, and timeframe-normalized signals.
-9. Watch H8 specifically because the latest eligible 2026-06-14 weekly
-   strategy-review packet showed cross-lane H8 weakness, but do not change H8
-   rules unless repeated eligible evidence and recent/full backtests support it.
+9. Watch the current 2026-06-20 set: H4 and `NZDUSD` cross-lane weakness plus
+   positive-R/negative-broker-PnL account-outcome divergence. Do not change
+   rules unless repeated eligible evidence and recent/full backtests support a
+   scoped candidate.
 10. Preserve and extend the hardened weekly strategy-review path: use eligible
    packets where `analysis_eligible=true` and `coverage_status=complete`, and
    use bounded/local lifecycle evidence when remote fetch coverage is

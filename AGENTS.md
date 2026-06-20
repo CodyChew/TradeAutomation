@@ -371,16 +371,22 @@ Follow this workflow:
    lane.
 4. Compare FTMO and IC. Treat a one-lane issue first as broker/feed/execution
    divergence unless comparable trades show the same directional weakness.
-5. Compare live evidence with recent backtest windows first, especially 3, 6,
+5. Separate strategy-shape evidence from account outcome. Weekly net R,
+   profit factor, and percentile are normalized strategy metrics; broker PnL is
+   the realized account-currency outcome and can diverge because of sizing,
+   symbol pip value, commission/swap, broker feed, and risk-policy epoch. A
+   repeated positive-R/negative-PnL pattern is an account-outcome or allocation
+   research candidate, not automatically an entry-edge defect.
+6. Compare live evidence with recent backtest windows first, especially 3, 6,
    and 12 months, then use the 10-year backtest as a robustness guardrail.
-6. Use timeframe-normalized views so sparse higher timeframes are not drowned
+7. Use timeframe-normalized views so sparse higher timeframes are not drowned
    by lower-timeframe trade counts.
-7. Separate sample variance from a real edge problem. State the sample size,
+8. Separate sample variance from a real edge problem. State the sample size,
    comparable setup count, and uncertainty before recommending action.
-8. Prefer small, reversible candidate changes that can be tested cleanly:
+9. Prefer small, reversible candidate changes that can be tested cleanly:
    filters, entry timing, setup-age/risk-distance rules, spread/session rules,
    exit handling, exposure limits, or regime-aware handling.
-9. Do not deploy any strategy change without explicit approval, recent-window
+10. Do not deploy any strategy change without explicit approval, recent-window
    support, FTMO/IC confluence where comparable, and no unacceptable
    long-backtest degradation.
 
