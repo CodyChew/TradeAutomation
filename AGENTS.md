@@ -86,9 +86,10 @@ switches unless the user explicitly approves that operational scope.
 Use `docs/change_gate.md` before implementing material changes. Material
 changes include live/deployment changes, broker/MT5/order behavior,
 strategy/risk/sizing changes, journal/report/dashboard evidence changes,
-generated artifact changes, and docs/process changes that alter workflow,
-role-routing, live-safety wording, current-state claims, or evidence
-interpretation.
+research data/backtest/transaction-cost infrastructure changes, native MQL5 EA
+or Strategy Tester changes, generated artifact changes, and docs/process
+changes that alter workflow, role-routing, live-safety wording, current-state
+claims, or evidence interpretation.
 
 Material changes move through:
 

@@ -49,10 +49,13 @@ stop condition is triggered.
 ## Review Artifact
 
 Every material change needs a visible gate record before implementation. Use a
-dated `docs/reviews/` artifact for complex or durable decisions, a PR body when
-the change is reviewed through GitHub, a deployment evidence packet for live
-operations, or the changed process doc itself for a scoped docs-only workflow
-update requested by the user.
+dated `docs/reviews/` artifact for local review, a PR body when the change is
+reviewed through GitHub, or a deployment evidence packet for live operations.
+Future material process, role-routing, or change-gate edits should not rely on
+the changed policy file alone as the gate record.
+
+For non-material typo, formatting, or broken-link cleanup, the final response
+or commit message can be enough when it states why the change is non-material.
 
 The record should include:
 
@@ -81,7 +84,9 @@ verifiers, evidence, and stop conditions.
 | Live/deployment changes | Deployments, VPS pulls, task restarts, watchdog changes, kill-switch handling, runtime SHA changes, status packets used for deployment decisions | Reliability Reviewer; Independent Issue Verifier when an issue, fix, or production impact claim is involved; Documentation and Workflow Agent for runbook/handoff accuracy; explicit user approval | Kill-switch-first plan; FTMO proof before IC; fresh dual-lane status; repo/config/task/runner/heartbeat/MT5/order/position/mismatch/telemetry proof; evidence packet with commands, stdout, stderr, exit codes, manifest, hashes, and scope audit |
 | Broker/MT5/order behavior | `order_check`, `order_send`, duplicate prevention, reconciliation, pending-order lifecycle, fills, close proof, magic/comment family, symbol specs, spread/slippage/session assumptions | Independent Issue Verifier before fix truth or production impact is accepted; Reliability Reviewer before deployability; LPFS Strategy Improvement Agent if strategy evidence or rule shape is affected; explicit user approval for live broker operations | Repository path trace; focused executor/reconciliation tests; MT5/broker fact packet when live exposure matters; no manual broker mutation unless separately approved; scope audit for strategy/risk/sizing/SL/TP/broker-send boundaries |
 | Strategy/risk/sizing changes | Entry/exit filters, stop or target rules, risk buckets, exposure limits, account allocation, timeframe mix, market recovery, live heuristic promotion | LPFS Strategy Improvement Agent as Lead Owner; Independent Issue Verifier for live issue/data truth; Reliability Reviewer for live-safety deployment; Documentation and Workflow Agent for evidence sufficiency; explicit user approval | FTMO and IC confluence where comparable; recent 3/6/12 month support; 10-year backtest guardrail; sample-size and uncertainty statement; no production change without approved implementation and verification plan |
+| Research data, backtest, and transaction-cost infrastructure | `shared/market_data_lab`, `shared/backtest_engine_lab`, dataset manifests/fingerprints/configs, candle aggregation, simulator behavior, replay behavior, spread/commission/swap/slippage/cost assumptions, transaction-cost reports | LPFS Strategy Improvement Agent when results support strategy conclusions; Documentation and Workflow Agent for evidence sufficiency and source-of-truth routing; Independent Issue Verifier when data validity, issue truth, broker comparability, or production impact is claimed; Reliability Reviewer when the output supports live deployment or live-safety decisions; Repo Auditor for shared infrastructure drift | Dataset fingerprint or data-quality gate as applicable; focused simulator/data tests; `scripts/run_core_coverage.py` when shared core behavior changes; report manifests and exact input configs; broker-fact citations for cost assumptions; explicit statement that generated research output is not live approval |
 | Journal/report/dashboard evidence changes | Lifecycle journal fields, diagnostics payloads, heartbeat/status fields, weekly review logic, live ops reports, dashboard interpretation, evidence packet parsing | Documentation and Workflow Agent; Independent Issue Verifier when data classification, issue truth, or production impact is claimed; Reliability Reviewer when live status, deployment readiness, or broker safety interpretation changes; Repo Auditor for broader source-of-truth drift | Backward-compatible schema plan; safe shared-read or bounded-snapshot collection for live files; focused report/dashboard tests; adjacent interpretation field check; first-read drift audit when current-state claims change |
+| Native MQL5 EA and Strategy Tester work | `mql5/lpfs_ea`, MetaEditor compile helpers, parity fixtures, Strategy Tester smoke runs, EA inputs, tester-only guards, EA dashboards/docs | LPFS Strategy Improvement Agent when strategy parity or rule behavior is involved; Independent Issue Verifier for parity, bug, or production-impact claims; Reliability Reviewer for any live attach, demo/live deployment, broker-order path, or live-safety boundary; Documentation and Workflow Agent for EA boundary docs; explicit user approval before any non-tester execution | Python remains canonical until separately approved; compile and static/parity tests as applicable; Strategy Tester smoke evidence; tester-only/live-disabled guard verification; no FTMO/IC live chart attach, VPS/runtime/config/journal/broker change, or EA live-route promotion without a separate approved plan |
 | Docs/process changes | `AGENTS.md`, first-read docs, runbooks, workflow docs, role-routing rules, change-gate policy, handoff wording | Documentation and Workflow Agent as Lead Owner and workflow-audit owner; Repo Auditor for onboarding/source-of-truth checks; Reliability Reviewer if operator-facing live-safety instructions change; Independent Issue Verifier if issue truth or production impact is asserted | Repo-evidence-backed wording; no runtime/code/config/generated changes unless separately scoped; first-read drift audit for current-looking claims; dashboard pages test when required by `AGENTS.md`; `git diff --check` |
 | Generated artifact changes | Dashboard HTML, generated report pages, generated docs, static index pages, derived summaries | Documentation and Workflow Agent or relevant builder owner; Repo Auditor for generated-artifact hygiene; Reliability Reviewer when generated output affects live status/deployment interpretation; Independent Issue Verifier when issue truth/data classification changes | Update source builder before generated output; regenerate intentionally; verify adjacent fields such as eligibility, coverage, confidence, stale/error text, packet paths, and source-start metadata; run focused builder/dashboard tests |
 
@@ -106,9 +111,16 @@ Pause before implementation when any of these are true:
 - a strategy/risk/sizing change lacks explicit approval, comparable FTMO/IC
   evidence where available, recent-window support, or acceptable long-backtest
   guardrails;
+- a research data, backtest, or transaction-cost change lacks reproducible
+  inputs, dataset/data-quality checks, simulator tests, or broker-fact support
+  for cost assumptions;
 - a journal/report/dashboard change would read active production journals
   unsafely, rewrite append-only evidence, count unresolved audit rows as closed
   trades, or treat bounded current-week evidence as historical consistency;
+- a native MQL5 EA change weakens tester-only/live-disabled boundaries, skips
+  parity or compile evidence where applicable, or could touch FTMO/IC live
+  charts, VPS runtime, live configs, journals, broker orders, or positions
+  without a separately approved plan;
 - a generated artifact change edits output without the source builder or skips
   adjacent interpretation checks;
 - tests, packet verification, or a documented no-test reason are missing;
