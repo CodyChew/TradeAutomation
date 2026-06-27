@@ -234,7 +234,9 @@ operational decisions.
 
 ## Read Order
 
-1. `AGENTS.md` for role boundaries and repo workflow expectations.
+1. `AGENTS.md` for role boundaries and repo workflow expectations, and
+   `docs/change_gate.md` before material live/deployment, broker, strategy,
+   risk, evidence, generated-artifact, or process changes.
 2. `SESSION_HANDOFF.md` for the latest operational snapshot.
 3. This file for the LPFS recovery map and environment boundaries.
 4. `docs/codex_worktree_workflow.md` before editing from a Codex or linked

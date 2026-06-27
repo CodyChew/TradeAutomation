@@ -57,6 +57,11 @@ after the owner has approved publication to the canonical branch. For live
 trading, runtime, broker, scheduler, VPS, recovery, or journal behavior, use a
 contained branch and preserve verification evidence before merge.
 
+Before implementing material changes, use `docs/change_gate.md` to classify the
+change type, required reviewers/verifiers, stop conditions, and verification.
+The worktree choice does not replace the change gate; it only controls where
+the approved work is performed.
+
 ## Parallel Codex And Subagent Work
 
 Use review, audit, verifier, and documentation subagents as read-only by

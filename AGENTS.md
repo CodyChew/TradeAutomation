@@ -81,6 +81,32 @@ the workflow coherent. It must not access VPS, MT5, Task Scheduler, live
 runtime state, production journals, broker orders, broker positions, or kill
 switches unless the user explicitly approves that operational scope.
 
+## Change Gate Policy
+
+Use `docs/change_gate.md` before implementing material changes. Material
+changes include live/deployment changes, broker/MT5/order behavior,
+strategy/risk/sizing changes, journal/report/dashboard evidence changes,
+generated artifact changes, and docs/process changes that alter workflow,
+role-routing, live-safety wording, current-state claims, or evidence
+interpretation.
+
+Material changes move through:
+
+```text
+proposed -> role-reviewed -> implemented -> verified
+```
+
+The Main Orchestrator may classify and route the work, but it does not approve
+its own material changes. Use the change gate to identify Lead Owner,
+Reviewers, Verifiers, role provenance, required evidence, stop conditions, and
+verification before implementation. If a change touches multiple categories,
+use the union of required reviewers, verifiers, evidence, and stop conditions.
+
+Non-material changes are limited to typo fixes, formatting-only edits,
+broken-link fixes, or wording that does not change behavior, policy, scope,
+current-state claims, live-safety claims, strategy claims, evidence
+interpretation, generated output, or role routing.
+
 ## Reliability Reviewer Role
 
 When acting as the reliability, maintainability, verification, and robustness
@@ -205,6 +231,10 @@ Documentation and workflow priorities:
 7. Preserve role boundaries: live execution safety still belongs to the
    Reliability Reviewer, and issue truth plus production impact still belong
    to the Independent Issue Verifier.
+8. Own TradeAutomation workflow-audit duties for process, role-routing,
+   provenance, first-read drift, and change-gate checks. This is not approval
+   authority for live deployment, strategy changes, issue truth, or production
+   safety.
 
 For documentation reviews, classify findings as blocker, important, or cleanup.
 Report findings first, then missing docs, duplicate or conflicting docs,
@@ -277,6 +307,8 @@ At the start of a new session, inspect these before making LPFS changes:
 - `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md`
 - `docs/system_troubleshooting.md`
 - `docs/codex_worktree_workflow.md`
+- `docs/change_gate.md` before material live/deployment, broker, strategy,
+  risk, evidence, generated-artifact, or process changes.
 - Relevant runbook or design doc for the requested task.
 
 Use `main` as the authoritative branch unless the user explicitly names another
