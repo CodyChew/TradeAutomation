@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
+import json
 from collections import defaultdict
 from pathlib import Path
 import sys
@@ -80,6 +82,15 @@ def main() -> int:
     )
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
     parser.add_argument("--as-of-utc", default=None)
+    parser.add_argument(
+        "--exclude-window",
+        action="append",
+        default=[],
+        help=(
+            "Exclude live rows from strategy analysis for an operationally distorted UTC window. "
+            "Use REASON=start,end or start,end. Rows are preserved with exclusion fields."
+        ),
+    )
     args = parser.parse_args()
 
     if not args.journal:
@@ -93,22 +104,28 @@ def main() -> int:
     output_dir = Path(args.output_root) / as_of.strftime("%Y%m%d_%H%M%S")
     output_dir.mkdir(parents=True, exist_ok=True)
     candle_roots = _candle_roots(args.candle_root)
+    exclusion_windows = _parse_exclusion_windows(args.exclude_window)
 
     live_rows: list[dict[str, Any]] = []
+    journal_specs: list[tuple[str, Path]] = []
     for raw in args.journal:
         lane, path = _split_label(raw)
+        journal_specs.append((lane or Path(path).stem, Path(path)))
         events = load_live_journal_events(path)
         live_rows.extend(closed_trade_diagnostic_rows(events, lane=lane or Path(path).stem))
     live_rows = _enrich_rows(live_rows, as_of_utc=as_of, candle_roots=candle_roots)
+    _apply_exclusion_windows(live_rows, exclusion_windows)
 
     benchmark_specs = args.benchmark_trades or [
         f"FTMO={DEFAULT_FTMO_TRADES}",
         f"IC={DEFAULT_IC_TRADES}",
     ]
     benchmark_rows: list[dict[str, Any]] = []
+    benchmark_file_specs: list[tuple[str, Path]] = []
     for raw in benchmark_specs:
         lane, path = _split_label(raw)
         path_obj = Path(path)
+        benchmark_file_specs.append((lane or path_obj.stem, path_obj))
         if path_obj.exists():
             benchmark_rows.extend(_load_backtest_rows(path_obj, lane=lane or path_obj.stem))
     benchmark_rows = _enrich_rows(benchmark_rows, as_of_utc=as_of, candle_roots=candle_roots)
@@ -117,21 +134,47 @@ def main() -> int:
     benchmark_csv = output_dir / "backtest_diagnostics.csv"
     comparison_csv = output_dir / "backtest_comparison.csv"
     confluence_csv = output_dir / "timeframe_confluence.csv"
+    candidates_csv = output_dir / "research_candidates.csv"
     summary_md = output_dir / "summary.md"
+    manifest_json = output_dir / "manifest.json"
     _write_csv(diagnostic_csv, live_rows)
     _write_csv(benchmark_csv, benchmark_rows)
     comparison_rows = _comparison_rows(live_rows, benchmark_rows)
     _write_csv(comparison_csv, comparison_rows)
     confluence_rows = _timeframe_confluence_rows(live_rows, benchmark_rows)
     _write_csv(confluence_csv, confluence_rows)
-    summary_md.write_text(_render_summary(live_rows, comparison_rows, confluence_rows, as_of), encoding="utf-8")
+    candidate_rows = _research_candidate_rows(live_rows, benchmark_rows)
+    _write_csv(candidates_csv, candidate_rows)
+    summary_md.write_text(_render_summary(live_rows, comparison_rows, confluence_rows, candidate_rows, as_of), encoding="utf-8")
+    manifest_json.write_text(
+        json.dumps(
+            _manifest(
+                as_of_utc=as_of,
+                output_dir=output_dir,
+                journal_specs=journal_specs,
+                benchmark_specs=benchmark_file_specs,
+                candle_roots=candle_roots,
+                exclusion_windows=exclusion_windows,
+                outputs=[diagnostic_csv, benchmark_csv, comparison_csv, confluence_csv, candidates_csv, summary_md],
+                live_rows=live_rows,
+                benchmark_rows=benchmark_rows,
+                candidate_rows=candidate_rows,
+            ),
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
     print(f"trade_diagnostics_report={output_dir}")
     print(f"closed_trade_diagnostics={diagnostic_csv}")
     print(f"backtest_diagnostics={benchmark_csv}")
     print(f"backtest_comparison={comparison_csv}")
     print(f"timeframe_confluence={confluence_csv}")
+    print(f"research_candidates={candidates_csv}")
     print(f"summary={summary_md}")
+    print(f"manifest={manifest_json}")
     return 0
 
 
@@ -140,6 +183,57 @@ def _split_label(raw: str) -> tuple[str, str]:
         return "", raw
     label, value = raw.split("=", 1)
     return label.strip(), value.strip()
+
+
+def _parse_exclusion_windows(raw_windows: Sequence[str]) -> list[dict[str, Any]]:
+    windows: list[dict[str, Any]] = []
+    for raw in raw_windows:
+        reason, value = _split_label(raw)
+        if not value:
+            value = reason
+            reason = "operator_excluded_window"
+        parts = [part.strip() for part in value.split(",", 1)]
+        if len(parts) != 2 or not parts[0] or not parts[1]:
+            raise ValueError(f"Invalid --exclude-window {raw!r}; expected REASON=start,end or start,end.")
+        start = _required_utc_timestamp(parts[0], label="exclude window start")
+        end = _required_utc_timestamp(parts[1], label="exclude window end")
+        if end <= start:
+            raise ValueError(f"Invalid --exclude-window {raw!r}; end must be after start.")
+        windows.append(
+            {
+                "reason": reason or "operator_excluded_window",
+                "start_utc": start,
+                "end_utc": end,
+            }
+        )
+    return windows
+
+
+def _required_utc_timestamp(value: str, *, label: str) -> pd.Timestamp:
+    try:
+        timestamp = pd.Timestamp(value)
+    except Exception as exc:
+        raise ValueError(f"Invalid {label}: {value!r}.") from exc
+    if pd.isna(timestamp):
+        raise ValueError(f"Invalid {label}: {value!r}.")
+    return timestamp.tz_localize("UTC") if timestamp.tzinfo is None else timestamp.tz_convert("UTC")
+
+
+def _apply_exclusion_windows(rows: Sequence[dict[str, Any]], windows: Sequence[dict[str, Any]]) -> None:
+    for row in rows:
+        row["excluded_from_strategy_analysis"] = False
+        result_time = _result_timestamp(row)
+        if result_time is None:
+            continue
+        for window in windows:
+            start = window["start_utc"]
+            end = window["end_utc"]
+            if start <= result_time < end:
+                row["excluded_from_strategy_analysis"] = True
+                row["strategy_analysis_exclusion_reason"] = window["reason"]
+                row["strategy_analysis_exclusion_start_utc"] = start.isoformat()
+                row["strategy_analysis_exclusion_end_utc"] = end.isoformat()
+                break
 
 
 def _candle_roots(raw_roots: Sequence[str]) -> dict[str, Path]:
@@ -338,6 +432,9 @@ def _comparison_rows(live_rows: Sequence[dict[str, Any]], benchmark_rows: Sequen
         ("lane", "timeframe", "candle_atr_regime_252"),
         ("lane", "timeframe", "candle_rsi_regime"),
         ("lane", "timeframe", "candle_momentum_3_regime"),
+        ("lane", "timeframe", "candle_macd_histogram_regime"),
+        ("lane", "timeframe", "candle_close_vs_ema_20"),
+        ("lane", "timeframe", "candle_ema_20_slope_regime"),
         ("lane", "timeframe", "candle_tick_volume_regime_252"),
         ("lane", "timeframe", "candle_spread_regime_252"),
         ("lane", "timeframe", "spread_risk_bucket"),
@@ -360,6 +457,63 @@ def _comparison_rows(live_rows: Sequence[dict[str, Any]], benchmark_rows: Sequen
                 row["avg_r_delta_live_minus_backtest"] = _delta(live.get("avg_r"), benchmark.get("avg_r"))
                 rows.append(row)
     return rows
+
+
+def _research_candidate_rows(live_rows: Sequence[dict[str, Any]], benchmark_rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    group_sets = [
+        ("timeframe",),
+        ("symbol",),
+        ("side",),
+        ("symbol", "timeframe"),
+        ("timeframe", "side"),
+        ("symbol", "side"),
+        ("symbol", "timeframe", "side"),
+        ("timeframe", "analysis_session_utc"),
+        ("timeframe", "analysis_weekday_utc"),
+        ("timeframe", "risk_atr_bucket"),
+        ("timeframe", "bars_from_lp_break_bucket"),
+        ("timeframe", "setup_age_bars_bucket"),
+        ("timeframe", "candle_rsi_regime"),
+        ("timeframe", "candle_momentum_3_regime"),
+        ("timeframe", "candle_macd_histogram_regime"),
+        ("timeframe", "candle_close_vs_ema_20"),
+        ("timeframe", "candle_ema_20_slope_regime"),
+        ("timeframe", "candle_atr_regime_252"),
+        ("timeframe", "candle_tick_volume_regime_252"),
+        ("timeframe", "candle_spread_regime_252"),
+    ]
+    for window in ("all", "last_3m", "last_6m", "last_12m"):
+        live_window = _filter_recent_window(live_rows, window)
+        benchmark_window = _filter_recent_window(benchmark_rows, window)
+        for group_by in group_sets:
+            keys = sorted({_group_key(row, group_by) for row in live_window if _complete_group_key(row, group_by)})
+            for key in keys:
+                ftmo_live = _stats_for_key(live_window, group_by, key, lane="FTMO")
+                ic_live = _stats_for_key(live_window, group_by, key, lane="IC")
+                combined_live = _stats_for_key(live_window, group_by, key, lane=None)
+                benchmark = _stats_for_key(benchmark_window, group_by, key, lane=None)
+                if not combined_live:
+                    continue
+                row: dict[str, Any] = {
+                    "comparison_window": window,
+                    "group_by": "|".join(group_by),
+                }
+                row.update({column: value for column, value in zip(group_by, key)})
+                row.update(_prefix("ftmo_live", ftmo_live))
+                row.update(_prefix("ic_live", ic_live))
+                row.update(_prefix("combined_live", combined_live))
+                row.update(_prefix("backtest", benchmark))
+                row["ftmo_avg_r_delta_live_minus_backtest"] = _delta(ftmo_live.get("avg_r"), benchmark.get("avg_r"))
+                row["ic_avg_r_delta_live_minus_backtest"] = _delta(ic_live.get("avg_r"), benchmark.get("avg_r"))
+                row["combined_avg_r_delta_live_minus_backtest"] = _delta(combined_live.get("avg_r"), benchmark.get("avg_r"))
+                row["evidence_min_investigate_trades"] = _min_investigate_trades(str(row.get("timeframe") or ""))
+                row["evidence_min_candidate_trades"] = _min_candidate_trades(str(row.get("timeframe") or ""))
+                row["lane_confluence_status"] = _lane_confluence_status(ftmo_live, ic_live)
+                row["research_priority"] = _candidate_research_priority(row)
+                row["candidate_direction"] = _candidate_direction(row)
+                rows.append(row)
+    return sorted(rows, key=_candidate_sort_key)
 
 
 def _group_result_stats(rows: Sequence[dict[str, Any]], group_by: Sequence[str]) -> dict[tuple[Any, ...], dict[str, Any]]:
@@ -393,6 +547,7 @@ def _group_result_stats(rows: Sequence[dict[str, Any]], group_by: Sequence[str])
 
 
 def _filter_recent_window(rows: Sequence[dict[str, Any]], window: str) -> list[dict[str, Any]]:
+    rows = [row for row in rows if row.get("excluded_from_strategy_analysis") is not True]
     if window == "all":
         return list(rows)
     return [row for row in rows if row.get(f"recent_{window}") is True]
@@ -454,6 +609,29 @@ def _single_group_stats(rows: Sequence[dict[str, Any]], predicate: Any) -> dict[
     return _stats([value for value in values if value is not None])
 
 
+def _stats_for_key(
+    rows: Sequence[dict[str, Any]],
+    group_by: Sequence[str],
+    key: tuple[Any, ...],
+    *,
+    lane: str | None,
+) -> dict[str, Any]:
+    return _single_group_stats(
+        rows,
+        lambda item, group_by=group_by, key=key, lane=lane: _group_key(item, group_by) == key
+        and (lane is None or _lane_key(item.get("lane")) == lane),
+    )
+
+
+def _group_key(row: dict[str, Any], group_by: Sequence[str]) -> tuple[str, ...]:
+    return tuple(str(row.get(column) or "").upper() for column in group_by)
+
+
+def _complete_group_key(row: dict[str, Any], group_by: Sequence[str]) -> bool:
+    key = _group_key(row, group_by)
+    return bool(key) and all(part != "" for part in key)
+
+
 def _stats(values: Sequence[float]) -> dict[str, Any]:
     if not values:
         return {}
@@ -472,6 +650,70 @@ def _stats(values: Sequence[float]) -> dict[str, Any]:
     }
 
 
+def _lane_confluence_status(ftmo: dict[str, Any], ic: dict[str, Any]) -> str:
+    ftmo_trades = int(_first_float(ftmo.get("trades")) or 0)
+    ic_trades = int(_first_float(ic.get("trades")) or 0)
+    if ftmo_trades <= 0 or ic_trades <= 0:
+        return "single_lane_or_missing_live_data"
+    ftmo_avg = _first_float(ftmo.get("avg_r"))
+    ic_avg = _first_float(ic.get("avg_r"))
+    if ftmo_avg is None or ic_avg is None:
+        return "insufficient_live_result_data"
+    if ftmo_avg < 0 and ic_avg < 0:
+        return "both_lanes_weak"
+    if ftmo_avg > 0 and ic_avg > 0:
+        return "both_lanes_strong"
+    return "mixed_lanes"
+
+
+def _candidate_research_priority(row: dict[str, Any]) -> str:
+    live_trades = int(_first_float(row.get("combined_live_trades")) or 0)
+    min_investigate = int(_first_float(row.get("evidence_min_investigate_trades")) or 0)
+    min_candidate = int(_first_float(row.get("evidence_min_candidate_trades")) or 0)
+    confluence = str(row.get("lane_confluence_status") or "")
+    combined_avg = _first_float(row.get("combined_live_avg_r"))
+    if live_trades <= 0 or combined_avg is None:
+        return "no_live_evidence"
+    if confluence == "both_lanes_weak":
+        if live_trades >= min_candidate:
+            return "candidate_backtest_required"
+        if live_trades >= min_investigate:
+            return "investigate_not_deployable"
+        return "watch_sample_too_small"
+    if combined_avg < 0 and confluence in {"single_lane_or_missing_live_data", "mixed_lanes"}:
+        return "broker_lane_attribution"
+    if confluence == "both_lanes_strong":
+        return "protect_or_constructive_reference"
+    return "monitor"
+
+
+def _candidate_direction(row: dict[str, Any]) -> str:
+    combined_avg = _first_float(row.get("combined_live_avg_r"))
+    if combined_avg is None:
+        return ""
+    if combined_avg < 0:
+        return "defensive_filter_candidate"
+    if combined_avg > 0:
+        return "protect_or_scale_reference"
+    return "neutral"
+
+
+def _candidate_sort_key(row: dict[str, Any]) -> tuple[int, float, int, str]:
+    priority_order = {
+        "candidate_backtest_required": 0,
+        "investigate_not_deployable": 1,
+        "broker_lane_attribution": 2,
+        "watch_sample_too_small": 3,
+        "monitor": 4,
+        "protect_or_constructive_reference": 5,
+    }
+    priority = priority_order.get(str(row.get("research_priority") or ""), 9)
+    net_r = _first_float(row.get("combined_live_net_r")) or 0.0
+    trades = int(_first_float(row.get("combined_live_trades")) or 0)
+    label = "|".join(str(row.get(column) or "") for column in str(row.get("group_by") or "").split("|"))
+    return (priority, net_r, -trades, label)
+
+
 def _write_csv(path: Path, rows: Sequence[dict[str, Any]]) -> None:
     columns = sorted({key for row in rows for key in row})
     with path.open("w", encoding="utf-8", newline="") as handle:
@@ -480,19 +722,104 @@ def _write_csv(path: Path, rows: Sequence[dict[str, Any]]) -> None:
         writer.writerows(rows)
 
 
+def _manifest(
+    *,
+    as_of_utc: pd.Timestamp,
+    output_dir: Path,
+    journal_specs: Sequence[tuple[str, Path]],
+    benchmark_specs: Sequence[tuple[str, Path]],
+    candle_roots: dict[str, Path],
+    exclusion_windows: Sequence[dict[str, Any]],
+    outputs: Sequence[Path],
+    live_rows: Sequence[dict[str, Any]],
+    benchmark_rows: Sequence[dict[str, Any]],
+    candidate_rows: Sequence[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "report": "lpfs_trade_diagnostics",
+        "generated_at_utc": as_of_utc.isoformat(),
+        "output_dir": str(output_dir),
+        "scope": "offline_read_only_strategy_attribution",
+        "non_actions": [
+            "no_live_runner_change",
+            "no_vps_access",
+            "no_mt5_access",
+            "no_broker_mutation",
+            "no_strategy_logic_change",
+            "no_risk_sizing_sl_tp_change",
+            "no_config_change",
+        ],
+        "inputs": {
+            "journals": [_labeled_fingerprint(label, path) for label, path in journal_specs],
+            "benchmark_trades": [_labeled_fingerprint(label, path) for label, path in benchmark_specs],
+            "candle_roots": [
+                {"lane": lane, "path": str(path), "exists": path.exists(), "type": "directory"}
+                for lane, path in sorted(candle_roots.items())
+            ],
+        },
+        "exclusion_windows": [
+            {
+                "reason": str(window["reason"]),
+                "start_utc": window["start_utc"].isoformat(),
+                "end_utc": window["end_utc"].isoformat(),
+            }
+            for window in exclusion_windows
+        ],
+        "row_counts": {
+            "closed_trade_diagnostics": len(live_rows),
+            "closed_trade_diagnostics_excluded_from_strategy_analysis": sum(
+                1 for row in live_rows if row.get("excluded_from_strategy_analysis") is True
+            ),
+            "closed_trade_diagnostics_with_candle_enrichment": sum(1 for row in live_rows if row.get("candle_time_utc")),
+            "backtest_diagnostics": len(benchmark_rows),
+            "research_candidates": len(candidate_rows),
+        },
+        "outputs": [_file_fingerprint(path) for path in outputs],
+    }
+
+
+def _labeled_fingerprint(label: str, path: Path) -> dict[str, Any]:
+    payload = _file_fingerprint(path)
+    payload["lane"] = label
+    return payload
+
+
+def _file_fingerprint(path: Path) -> dict[str, Any]:
+    payload: dict[str, Any] = {"path": str(path), "exists": path.exists()}
+    if not path.exists() or not path.is_file():
+        return payload
+    stat = path.stat()
+    payload["size_bytes"] = stat.st_size
+    payload["mtime_utc"] = pd.Timestamp(stat.st_mtime, unit="s", tz="UTC").isoformat()
+    payload["sha256"] = _sha256_file(path)
+    return payload
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _render_summary(
     live_rows: Sequence[dict[str, Any]],
     comparison_rows: Sequence[dict[str, Any]],
     confluence_rows: Sequence[dict[str, Any]],
+    candidate_rows: Sequence[dict[str, Any]],
     as_of_utc: pd.Timestamp,
 ) -> str:
     enriched = sum(1 for row in live_rows if row.get("diagnostic_schema_version"))
     candle_enriched = sum(1 for row in live_rows if row.get("candle_time_utc"))
+    excluded = sum(1 for row in live_rows if row.get("excluded_from_strategy_analysis") is True)
     lines = [
         "# LPFS Trade Diagnostics",
         "",
         f"Generated UTC: `{as_of_utc.isoformat()}`",
         f"Closed trades: `{len(live_rows)}`",
+        f"Closed trades excluded from strategy analysis: `{excluded}`",
         f"Rows with diagnostic payloads: `{enriched}`",
         f"Rows with offline candle enrichment: `{candle_enriched}`",
         "",
@@ -525,6 +852,25 @@ def _render_summary(
                 "- "
                 + f"{row.get('timeframe')}: {row.get('combined_live_trades')} live trades, "
                 + f"action `{row.get('research_action')}`"
+            )
+    candidates = [
+        row
+        for row in candidate_rows
+        if row.get("comparison_window") == "all"
+        and row.get("research_priority") in {"candidate_backtest_required", "investigate_not_deployable"}
+    ][:10]
+    if candidates:
+        lines.extend(["", "## Research Candidates", ""])
+        for row in candidates:
+            group_values = " ".join(
+                f"{key}={row.get(key)}" for key in str(row.get("group_by") or "").split("|") if row.get(key)
+            )
+            lines.append(
+                "- "
+                + f"{group_values}: {row.get('lane_confluence_status')}, "
+                + f"combined {row.get('combined_live_trades')} trades, "
+                + f"{float(row.get('combined_live_net_r') or 0):+.2f}R; "
+                + f"priority `{row.get('research_priority')}`"
             )
     return "\n".join(lines) + "\n"
 
@@ -735,6 +1081,16 @@ class _CandleFeatureCache:
             "candle_rsi_regime": row.get("rsi_regime") or "",
             "candle_momentum_3": _first_float(row.get("momentum_3")),
             "candle_momentum_3_regime": row.get("momentum_3_regime") or "",
+            "candle_ema_20": _first_float(row.get("ema_20")),
+            "candle_ema_50": _first_float(row.get("ema_50")),
+            "candle_close_ema_20_distance_pct": _first_float(row.get("close_ema_20_distance_pct")),
+            "candle_close_vs_ema_20": row.get("close_vs_ema_20") or "",
+            "candle_ema_20_slope_5": _first_float(row.get("ema_20_slope_5")),
+            "candle_ema_20_slope_regime": row.get("ema_20_slope_regime") or "",
+            "candle_macd_12_26": _first_float(row.get("macd_12_26")),
+            "candle_macd_signal_9": _first_float(row.get("macd_signal_9")),
+            "candle_macd_histogram": _first_float(row.get("macd_histogram")),
+            "candle_macd_histogram_regime": row.get("macd_histogram_regime") or "",
             "candle_atr_14": _first_float(row.get("atr_14")),
             "candle_atr_regime_252": row.get("atr_regime_252") or "",
             "candle_tick_volume_regime_252": row.get("tick_volume_regime_252") or "",
@@ -788,6 +1144,18 @@ def _add_candle_features(data: pd.DataFrame) -> pd.DataFrame:
     frame["candle_direction"] = ["up" if value > 0 else "down" if value < 0 else "flat" for value in close - open_]
     frame["momentum_3"] = close.pct_change(3)
     frame["momentum_3_regime"] = [_momentum_regime(value) for value in frame["momentum_3"]]
+    frame["ema_20"] = close.ewm(span=20, adjust=False, min_periods=5).mean()
+    frame["ema_50"] = close.ewm(span=50, adjust=False, min_periods=10).mean()
+    frame["close_ema_20_distance_pct"] = (close - frame["ema_20"]) / frame["ema_20"].replace(0, pd.NA)
+    frame["close_vs_ema_20"] = [_ema_relation(value) for value in frame["close_ema_20_distance_pct"]]
+    frame["ema_20_slope_5"] = (frame["ema_20"] - frame["ema_20"].shift(5)) / frame["ema_20"].shift(5).replace(0, pd.NA)
+    frame["ema_20_slope_regime"] = [_slope_regime(value) for value in frame["ema_20_slope_5"]]
+    ema_12 = close.ewm(span=12, adjust=False, min_periods=6).mean()
+    ema_26 = close.ewm(span=26, adjust=False, min_periods=13).mean()
+    frame["macd_12_26"] = ema_12 - ema_26
+    frame["macd_signal_9"] = frame["macd_12_26"].ewm(span=9, adjust=False, min_periods=5).mean()
+    frame["macd_histogram"] = frame["macd_12_26"] - frame["macd_signal_9"]
+    frame["macd_histogram_regime"] = [_macd_histogram_regime(value) for value in frame["macd_histogram"]]
     frame["rsi_14"] = _rsi(close, period=14)
     frame["rsi_regime"] = [_rsi_regime(value) for value in frame["rsi_14"]]
     previous_close = close.shift(1)
@@ -853,6 +1221,39 @@ def _rsi_regime(value: Any) -> str:
     if parsed > 65:
         return "overbought"
     return "neutral"
+
+
+def _ema_relation(value: Any) -> str:
+    parsed = _first_float(value)
+    if parsed is None:
+        return ""
+    if parsed > 0.001:
+        return "above"
+    if parsed < -0.001:
+        return "below"
+    return "near"
+
+
+def _slope_regime(value: Any) -> str:
+    parsed = _first_float(value)
+    if parsed is None:
+        return ""
+    if parsed > 0.001:
+        return "rising"
+    if parsed < -0.001:
+        return "falling"
+    return "flat"
+
+
+def _macd_histogram_regime(value: Any) -> str:
+    parsed = _first_float(value)
+    if parsed is None:
+        return ""
+    if parsed > 0:
+        return "positive"
+    if parsed < 0:
+        return "negative"
+    return "zero"
 
 
 def _timestamp_text(value: Any) -> str:

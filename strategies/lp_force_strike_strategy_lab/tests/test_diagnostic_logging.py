@@ -240,6 +240,8 @@ class DiagnosticLoggingTests(unittest.TestCase):
             self.assertTrue((output_dir / "backtest_diagnostics.csv").exists())
             self.assertTrue((output_dir / "backtest_comparison.csv").exists())
             self.assertTrue((output_dir / "timeframe_confluence.csv").exists())
+            self.assertTrue((output_dir / "research_candidates.csv").exists())
+            self.assertTrue((output_dir / "manifest.json").exists())
             self.assertIn("LPFS Trade Diagnostics", (output_dir / "summary.md").read_text(encoding="utf-8"))
             with (output_dir / "closed_trade_diagnostics.csv").open("r", encoding="utf-8", newline="") as handle:
                 closed_rows = list(csv.DictReader(handle))
@@ -247,14 +249,63 @@ class DiagnosticLoggingTests(unittest.TestCase):
             self.assertEqual(closed_rows[0]["timeframe_frequency_class"], "higher_frequency")
             self.assertTrue(closed_rows[0]["candle_time_utc"].startswith("2026-01-01T00:00:00"))
             self.assertIn(closed_rows[0]["candle_rsi_regime"], {"neutral", "oversold", "overbought"})
+            self.assertIn(closed_rows[0]["candle_close_vs_ema_20"], {"above", "below", "near"})
+            self.assertIn(closed_rows[0]["candle_macd_histogram_regime"], {"positive", "negative", "zero"})
             with (output_dir / "backtest_comparison.csv").open("r", encoding="utf-8", newline="") as handle:
                 comparison_rows = list(csv.DictReader(handle))
             self.assertTrue(
                 any(row["group_by"] == "lane|timeframe|candle_rsi_regime" for row in comparison_rows)
             )
+            self.assertTrue(
+                any(row["group_by"] == "lane|timeframe|candle_macd_histogram_regime" for row in comparison_rows)
+            )
             with (output_dir / "timeframe_confluence.csv").open("r", encoding="utf-8", newline="") as handle:
                 confluence_rows = list(csv.DictReader(handle))
             self.assertTrue(any(row["timeframe"] == "H4" for row in confluence_rows))
+            with (output_dir / "research_candidates.csv").open("r", encoding="utf-8", newline="") as handle:
+                candidate_rows = list(csv.DictReader(handle))
+            self.assertTrue(any(row["group_by"] == "timeframe" and row["timeframe"] == "H4" for row in candidate_rows))
+            manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["scope"], "offline_read_only_strategy_attribution")
+            self.assertEqual(manifest["row_counts"]["closed_trade_diagnostics"], 1)
+            self.assertTrue(any(output["path"].endswith("research_candidates.csv") for output in manifest["outputs"]))
+
+            excluded = subprocess.run(
+                [
+                    sys.executable,
+                    str(WORKSPACE_ROOT / "scripts" / "build_lpfs_trade_diagnostics.py"),
+                    "--journal",
+                    f"FTMO={journal}",
+                    "--benchmark-trades",
+                    f"FTMO={benchmark}",
+                    "--candle-root",
+                    f"FTMO={candle_root}",
+                    "--output-root",
+                    str(tmp / "excluded_reports"),
+                    "--as-of-utc",
+                    "2026-05-23T00:00:00Z",
+                    "--exclude-window",
+                    "downtime=2026-01-01T00:00:00Z,2026-01-02T00:00:00Z",
+                ],
+                cwd=WORKSPACE_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(excluded.returncode, 0, excluded.stderr)
+            excluded_dir = tmp / "excluded_reports" / "20260523_000000"
+            with (excluded_dir / "closed_trade_diagnostics.csv").open("r", encoding="utf-8", newline="") as handle:
+                excluded_rows = list(csv.DictReader(handle))
+            self.assertEqual(excluded_rows[0]["excluded_from_strategy_analysis"], "True")
+            self.assertEqual(excluded_rows[0]["strategy_analysis_exclusion_reason"], "downtime")
+            with (excluded_dir / "research_candidates.csv").open("r", encoding="utf-8", newline="") as handle:
+                excluded_candidates = list(csv.DictReader(handle))
+            self.assertEqual(excluded_candidates, [])
+            excluded_manifest = json.loads((excluded_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                excluded_manifest["row_counts"]["closed_trade_diagnostics_excluded_from_strategy_analysis"],
+                1,
+            )
 
     def test_gate_attribution_remote_script_uses_shared_bounded_reader(self) -> None:
         module_path = WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_gate_attribution.py"
