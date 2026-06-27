@@ -306,6 +306,8 @@ At the start of a new session, inspect these before making LPFS changes:
 - `SESSION_HANDOFF.md`
 - `strategies/lp_force_strike_strategy_lab/START_HERE.md`
 - `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md`
+- `docs/lpfs_strategy_improvement_workflow.md` before LPFS strategy-review,
+  candidate research, automation cadence, or workflow changes.
 - `docs/system_troubleshooting.md`
 - `docs/codex_worktree_workflow.md`
 - `docs/change_gate.md` before material live/deployment, broker, strategy,
@@ -390,7 +392,8 @@ long-backtest behavior.
 ## Strategy Improvement Workflow
 
 When asked whether LPFS should change, do not jump directly to a heuristic.
-Follow this workflow:
+Follow this workflow and the cadence/ownership rules in
+`docs/lpfs_strategy_improvement_workflow.md`:
 
 1. Confirm current live health and data integrity: runners, heartbeat, broker
    reads, pending orders, active positions, state/broker mismatch count,
@@ -436,6 +439,16 @@ Weekly automation should act as a trigger for this workflow. A single weak
 cohort is a watch item. Repeated cross-lane weakness across eligible weekly
 packets should lead to a scoped offline indicator-tagging and backtest research
 pass, not an immediate strategy patch.
+
+The weekly review is a trigger and triage layer, not a full strategy iteration
+by default. When there is an active candidate or data gap, propose or use a
+read-only midweek strategy watch rather than waiting passively until the next
+Saturday review. Every review should end with one primary outcome:
+`NO_ACTION`, `WATCH`, `RESEARCH_TRIGGERED`, `DATA_GAP`, `SAFETY_ISSUE`, or
+`PROPOSAL_READY`. The strategy agent owns asking the research questions and
+sounding out missing data or infrastructure; the human operator owns approval
+for live operations, new recurring automations, deployment, broker actions, and
+strategy/risk changes.
 
 ## Data Collection Requirements For Strategy Improvement
 

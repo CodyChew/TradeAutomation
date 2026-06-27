@@ -155,26 +155,29 @@ source of truth for strategy research and live execution work.
 10. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
    `docs/dry_run_executor.md` before continuing execution work.
 11. `configs/live_policy_ledger.csv` before interpreting live performance across
-   FTMO/IC sizing-policy epochs or changing live risk settings.
+    FTMO/IC sizing-policy epochs or changing live risk settings.
 12. `docs/lpfs_diagnostic_logging.md` before changing LPFS diagnostic journals,
-   trade-diagnostic reports, or live-vs-backtest analysis fields.
-13. `docs/phase2_production_hardening.md` before operating watchdogs,
-   kill-switch controls, heartbeat, status checks, or Task Scheduler setup.
-14. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
-   deployment, or maintenance.
-15. `docs/lpfs_icmarkets_vps_runbook.md` before IC VPS maintenance.
-16. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
-   account or broker feed.
-17. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
-   native MQL5 EA or Strategy Tester work.
-18. `docs/live_weekly_performance.html` for the generated FTMO/IC live weekly
+    trade-diagnostic reports, or live-vs-backtest analysis fields.
+13. `docs/lpfs_strategy_improvement_workflow.md` before LPFS strategy-review
+    cadence changes, candidate research, midweek/monthly review setup, or
+    workflow hardening.
+14. `docs/phase2_production_hardening.md` before operating watchdogs,
+    kill-switch controls, heartbeat, status checks, or Task Scheduler setup.
+15. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+    deployment, or maintenance.
+16. `docs/lpfs_icmarkets_vps_runbook.md` before IC VPS maintenance.
+17. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+    account or broker feed.
+18. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+    native MQL5 EA or Strategy Tester work.
+19. `docs/live_weekly_performance.html` for the generated FTMO/IC live weekly
     monitor; use the latest eligible `reports/live_ops/lpfs_weekly_strategy_review/`
     packet for current weekly truth when the generated page has not been
     intentionally refreshed.
-19. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
-20. `concepts/lp_levels_lab/PROJECT_STATE.md` and
-   `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
-   concept behavior.
+20. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
+21. `concepts/lp_levels_lab/PROJECT_STATE.md` and
+    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
+    concept behavior.
 
 Useful dashboard entry point:
 

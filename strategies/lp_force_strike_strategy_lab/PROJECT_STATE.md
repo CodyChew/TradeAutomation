@@ -381,6 +381,9 @@ Confluence read:
   `../../reports/live_ops/lpfs_strategy_research_readiness/20260627_131500/next_run_watch_criteria.csv`.
   No live strategy/risk/sizing/SL/TP/spread/recovery/config/broker-send change
   is approved.
+- Standing cadence, ownership, trigger/triage outcomes, candidate-register
+  rules, and human-operator responsibilities are defined in
+  `../../docs/lpfs_strategy_improvement_workflow.md`.
 
 ## 2026-05-30 Weekly Evidence Checkpoint
 

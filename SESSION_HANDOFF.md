@@ -31,27 +31,30 @@ file, and the JSONL journal before making operational decisions.
 11. `configs/live_policy_ledger.csv` before interpreting live performance across
    FTMO/IC sizing-policy epochs or changing live risk settings.
 12. `docs/lpfs_diagnostic_logging.md` before changing LPFS journals,
-   diagnostic reports, or live-vs-backtest analysis fields.
-13. `docs/lpfs_strategy_iteration_context.md` for the current evidence-gated
-   strategy-iteration objective, scope, workflow, blockers, and fresh-chat
-   handoff.
-14. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
-15. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
-   performance monitor, live start timestamps, version context, and
-   backtest-distribution comparison.
-16. `docs/phase2_production_hardening.md` before operating the watchdog, kill
-   switch, heartbeat, status command, or Task Scheduler setup.
-17. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
-   deployment, or maintenance.
-18. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
-   IC Markets production runner.
-19. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
-   account or broker feed.
-20. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
-   buckets or income expectations. It is linked from the dashboard top
-   navigation and the Home page FTMO Profiles section.
-21. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
-   native EA or Strategy Tester work.
+    diagnostic reports, or live-vs-backtest analysis fields.
+13. `docs/lpfs_strategy_improvement_workflow.md` for LPFS strategy-review
+    cadence, ownership, trigger/triage outcomes, candidate register rules, and
+    human-operator responsibilities.
+14. `docs/lpfs_strategy_iteration_context.md` for the current evidence-gated
+    strategy-iteration objective, scope, workflow, blockers, and fresh-chat
+    handoff.
+15. `docs/live_ops.html` for dashboard-level live-run behavior and scenarios.
+16. `docs/live_weekly_performance.html` for the read-only FTMO/IC weekly live
+    performance monitor, live start timestamps, version context, and
+    backtest-distribution comparison.
+17. `docs/phase2_production_hardening.md` before operating the watchdog, kill
+    switch, heartbeat, status command, or Task Scheduler setup.
+18. `docs/lpfs_lightsail_vps_runbook.md` before VPS remote access,
+    deployment, or maintenance.
+19. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+    IC Markets production runner.
+20. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+    account or broker feed.
+21. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+    buckets or income expectations. It is linked from the dashboard top
+    navigation and the Home page FTMO Profiles section.
+22. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+    native EA or Strategy Tester work.
 
 ## AI Agent Continuity Rules
 
@@ -128,6 +131,13 @@ file, and the JSONL journal before making operational decisions.
   continue from first-read docs. The objective remains portfolio-level LPFS
   improvement; H8 compressed risk is only the current candidate, not the whole
   strategy.
+- Strategy-improvement workflow hardening now lives in
+  `docs/lpfs_strategy_improvement_workflow.md`. Weekly review is the Saturday
+  trigger/triage layer; optional Tuesday/Thursday read-only midweek watch is
+  recommended when an active candidate or data gap exists; monthly review
+  compares live month outcomes against benchmark distributions. Every review
+  should end with `NO_ACTION`, `WATCH`, `RESEARCH_TRIGGERED`, `DATA_GAP`,
+  `SAFETY_ISSUE`, or `PROPOSAL_READY`.
 - Active-position state/broker repair deployment closeout: exact deployed SHA
   on both VPS lanes is
   `45efa748423f20881507cda9d4f81e4afe617bde`. The patch strengthens

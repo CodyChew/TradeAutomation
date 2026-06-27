@@ -258,22 +258,25 @@ operational decisions.
 9. `configs/live_policy_ledger.csv` before interpreting live performance across
    FTMO/IC sizing-policy epochs or changing live risk settings.
 10. `docs/lpfs_diagnostic_logging.md` before changing LPFS journal diagnostic
-   fields, trade diagnostic reports, or live-vs-backtest comparison logic.
-11. `docs/lpfs_strategy_iteration_context.md` before continuing the current
-   evidence-gated strategy-iteration workflow or handing the task to a fresh
-   Codex chat.
-12. `docs/lpfs_lightsail_vps_runbook.md` before any VPS maintenance or remote
-   access work.
-13. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
-   IC Markets production runner.
-14. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
-   `docs/dry_run_executor.md` before changing execution or notification code.
-15. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
-   account or broker feed.
-16. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
-   buckets or income expectations.
-17. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
-   native MQL5 EA or Strategy Tester work.
+    fields, trade diagnostic reports, or live-vs-backtest comparison logic.
+11. `docs/lpfs_strategy_improvement_workflow.md` before LPFS strategy-review
+    cadence changes, candidate research, midweek/monthly review setup, or
+    workflow hardening.
+12. `docs/lpfs_strategy_iteration_context.md` before continuing the current
+    evidence-gated strategy-iteration workflow or handing the task to a fresh
+    Codex chat.
+13. `docs/lpfs_lightsail_vps_runbook.md` before any VPS maintenance or remote
+    access work.
+14. `docs/lpfs_icmarkets_vps_runbook.md` before provisioning or deploying the
+    IC Markets production runner.
+15. `docs/mt5_execution_contract.md`, `docs/telegram_notifications.md`, and
+    `docs/dry_run_executor.md` before changing execution or notification code.
+16. `docs/lpfs_new_mt5_account_validation.md` before validating another MT5
+    account or broker feed.
+17. `docs/ftmo_challenge_profiles.html` before changing FTMO challenge risk
+    buckets or income expectations.
+18. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
+    native MQL5 EA or Strategy Tester work.
 
 ## Source-Of-Truth Matrix
 
@@ -291,6 +294,7 @@ operational decisions.
 | IC production setup | `docs/lpfs_icmarkets_vps_runbook.md`, `config.lpfs_icmarkets_raw_spread.example.json`, and `scripts/Get-LpfsDualVpsStatus.ps1` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
 | FTMO challenge sizing | `docs/ftmo_challenge_profiles.html` and `reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959` | Research-only frontier; do not change FTMO live validation config without a separate deployment decision. |
 | Weekly live performance and strategy review | `reports/live_ops/lpfs_weekly_strategy_review/`, `reports/live_ops/lpfs_weekly_performance/`, and `docs/live_weekly_performance.html` | Use only rows where `analysis_eligible=true` and `coverage_status=complete`; the latest eligible packet is current truth when generated HTML has not been intentionally refreshed; repeated cross-lane weakness triggers offline research, not an immediate live patch. |
+| LPFS strategy-improvement cadence and accountability | `docs/lpfs_strategy_improvement_workflow.md` | Defines weekly trigger/triage, optional midweek watch, monthly review, candidate register, role routing, and human-operator responsibilities. |
 | Per-trade live diagnostics and strategy-iteration workflow | `docs/lpfs_diagnostic_logging.md`, `docs/lpfs_strategy_iteration_context.md`, LPFS journal `diagnostics` payloads, and `reports/live_ops/lpfs_trade_diagnostics/` | Additive/offline reporting only; use for live-vs-backtest analysis before proposing heuristic changes. |
 | Rollover/spread-wait and Bid/Ask fills | `docs/live_ops.html`, `docs/mt5_execution_contract.md`, `SESSION_HANDOFF.md`, and live JSONL journals | Treat Telegram/chart visuals as alerts only; verify MT5 Bid/Ask ticks, order history, journal rows, spread snapshots, and both VPS lanes before concluding a bug. |
 | Native EA migration | `docs/ea_migration.html`, `mql5/lpfs_ea/README.md`, and `mql5/lpfs_ea/Experts/LPFS/LPFS_EA.mq5` | Tester-only v1; do not attach to production live charts. |

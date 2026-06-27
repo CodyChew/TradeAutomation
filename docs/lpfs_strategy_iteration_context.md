@@ -5,8 +5,9 @@ closeout.
 
 This is the durable handoff for the current LPFS diagnostic reporting and
 strategy-iteration work. A new Codex chat should be able to read this file,
-`SESSION_HANDOFF.md`, and `strategies/lp_force_strike_strategy_lab/START_HERE.md`
-without needing prior conversation history.
+`SESSION_HANDOFF.md`, `docs/lpfs_strategy_improvement_workflow.md`, and
+`strategies/lp_force_strike_strategy_lab/START_HERE.md` without needing prior
+conversation history.
 
 ## Current Objective
 
@@ -128,6 +129,9 @@ production-derived historical timestamps.
   this file and the first-read docs so another agent can continue from the repo.
   The agent should look portfolio-wide first, then candidate buckets; a narrow
   bucket such as H8 compressed risk is only one current hypothesis.
+- The standing cadence, trigger/triage outcomes, data-gap escalation rules, and
+  human-operator timeline are defined in
+  `docs/lpfs_strategy_improvement_workflow.md`.
 
 ## Approved Scope
 
@@ -195,12 +199,13 @@ Start here in a fresh Codex chat:
 1. `SESSION_HANDOFF.md`
 2. `strategies/lp_force_strike_strategy_lab/START_HERE.md`
 3. `docs/lpfs_strategy_iteration_context.md`
-4. `docs/lpfs_diagnostic_logging.md`
-5. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md`
-6. `docs/live_weekly_performance.html`
-7. `docs/mt5_execution_contract.md`
-8. `docs/lpfs_lightsail_vps_runbook.md`
-9. `docs/lpfs_icmarkets_vps_runbook.md`
+4. `docs/lpfs_strategy_improvement_workflow.md`
+5. `docs/lpfs_diagnostic_logging.md`
+6. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md`
+7. `docs/live_weekly_performance.html`
+8. `docs/mt5_execution_contract.md`
+9. `docs/lpfs_lightsail_vps_runbook.md`
+10. `docs/lpfs_icmarkets_vps_runbook.md`
 
 Before touching production-adjacent data, verify current repo status and live
 status. Do not assume this handoff is live-state truth.
@@ -453,14 +458,16 @@ Fresh-chat prompt:
 
 ```text
 Read SESSION_HANDOFF.md, strategies/lp_force_strike_strategy_lab/START_HERE.md,
+docs/lpfs_strategy_improvement_workflow.md,
 docs/lpfs_strategy_iteration_context.md, and docs/lpfs_diagnostic_logging.md.
-Continue the LPFS diagnostic reporting and evidence-gated strategy-iteration
+Continue the LPFS diagnostic reporting and evidence-gated strategy-improvement
 workflow from the current git state. Treat the 2026-06-27 strategy research
 readiness packet as the current research queue: H8 compressed risk is active,
-H8 low-spread-only is rejected, and no live strategy change is approved. Do not
-change live strategy behavior, entry/exit logic, risk settings,
-broker/execution logic, config defaults, live state, journals, MT5 orders, or
-MT5 positions.
+H8 low-spread-only is rejected, and no live strategy change is approved. Use
+the workflow doc for cadence, trigger/triage outcomes, candidate-register
+rules, data-gap escalation, and human-operator responsibilities. Do not change
+live strategy behavior, entry/exit logic, risk settings, broker/execution
+logic, config defaults, live state, journals, MT5 orders, or MT5 positions.
 ```
 
 Before making any change, the new chat should run `git status --short`, inspect
