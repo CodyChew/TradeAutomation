@@ -30,6 +30,17 @@ def _repo_head() -> str:
     return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=WORKSPACE_ROOT, text=True).strip()
 
 
+def _csv_round_trip(rows: list[dict[str, object]]) -> list[dict[str, str]]:
+    if not rows:
+        return []
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=list(rows[0].keys()), lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    output.seek(0)
+    return list(csv.DictReader(output))
+
+
 def _row(kind: str, occurred: str, **fields: object) -> dict[str, object]:
     return {
         "occurred_at_utc": occurred,
@@ -889,6 +900,18 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         )
         self.assertIn("positive R but negative broker PnL", html)
         self.assertIn("R/PnL alignment", html)
+
+        csv_html = weekly.build_dashboard_html(
+            _csv_round_trip(result["weekly_summary"]),
+            _csv_round_trip(result["lane_breakdown"]),
+            _csv_round_trip(result["historical_benchmark"]),
+            _csv_round_trip(result["weekly_flags"]),
+            _csv_round_trip(result["live_week_history"]),
+            _csv_round_trip(result["consistency_flags"]),
+            result["run_summary"],
+        )
+        self.assertNotIn("Combined live view is incomplete", csv_html)
+        self.assertIn("Combined live view: 2 closed trades", csv_html)
 
     def test_combined_row_inherits_incomplete_lane_caveat(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:

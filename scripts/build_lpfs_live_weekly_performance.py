@@ -720,7 +720,23 @@ def apply_validity_contract(
 
 
 def is_analysis_eligible(row: dict[str, Any]) -> bool:
-    return bool(row.get("analysis_eligible", not bool(row.get("fetch_incomplete"))))
+    if "analysis_eligible" in row:
+        return row_bool(row.get("analysis_eligible"))
+    return not row_bool(row.get("fetch_incomplete"))
+
+
+def row_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, str):
+        text = value.strip().casefold()
+        if text in {"", "0", "false", "no", "n"}:
+            return False
+        if text in {"1", "true", "yes", "y"}:
+            return True
+    return bool(value)
 
 
 def _signed_bucket(value: float | None) -> str:
@@ -1522,9 +1538,9 @@ def combined_summary_row(
         "first_runner_utc": "",
         "first_order_utc": "",
         "first_closed_trade_utc": "",
-        "partial_week": any(bool(row["partial_week"]) for row in rows),
+        "partial_week": any(row_bool(row["partial_week"]) for row in rows),
         "partial_reasons": combined_partial_reasons(rows),
-        "fetch_incomplete": any(bool(row.get("fetch_incomplete")) for row in rows),
+        "fetch_incomplete": any(row_bool(row.get("fetch_incomplete")) for row in rows),
         "consistency_history_status": (
             "unavailable"
             if any(str(row.get("consistency_history_status") or "") == "unavailable" for row in rows)
@@ -1532,14 +1548,14 @@ def combined_summary_row(
         ),
         "consistency_history_reason": combined_consistency_history_reason(rows),
         "completed_full_live_weeks": combined_completed_full_live_weeks(rows),
-        "latest_week_complete": all(bool(row.get("latest_week_complete")) for row in rows),
+        "latest_week_complete": all(row_bool(row.get("latest_week_complete")) for row in rows),
         "vps_head": "",
         "fetch_error": ";".join(str(row.get("fetch_error") or "") for row in rows if row.get("fetch_error")),
         "local_head": rows[0].get("local_head"),
         "origin_head": rows[0].get("origin_head"),
         "latest_runtime_commit": rows[0].get("latest_runtime_commit"),
-        "runtime_synced": all(bool(row["runtime_synced"]) for row in rows),
-        "runtime_changed_in_week": any(bool(row["runtime_changed_in_week"]) for row in rows),
+        "runtime_synced": all(row_bool(row["runtime_synced"]) for row in rows),
+        "runtime_changed_in_week": any(row_bool(row["runtime_changed_in_week"]) for row in rows),
         "closed_trades": closed,
         "wins": wins,
         "losses": losses,
@@ -1571,7 +1587,7 @@ def combined_summary_row(
 
 def combined_partial_reasons(rows: Sequence[dict[str, Any]]) -> str:
     reasons = ["combined_from_lane_statuses"]
-    if any(bool(row.get("fetch_incomplete")) for row in rows):
+    if any(row_bool(row.get("fetch_incomplete")) for row in rows):
         reasons.append("combined_from_incomplete_lane")
     return ";".join(reasons)
 
@@ -1650,17 +1666,17 @@ def classify_week(row: dict[str, Any], benchmark: dict[str, Any]) -> dict[str, A
         reasons = list(performance_reasons)
         percentile = historical_percentile(float(net_r), benchmark.get("weekly_r_values") or [])
     evidence_caveats: list[str] = []
-    if row.get("partial_week"):
+    if row_bool(row.get("partial_week")):
         status = "watch" if status == "normal" else status
         evidence_caveats.append("partial_week")
-    if row.get("runtime_changed_in_week"):
+    if row_bool(row.get("runtime_changed_in_week")):
         evidence_caveats.append("runtime_changed_in_week")
-    if not row.get("runtime_synced"):
+    if not row_bool(row.get("runtime_synced")):
         evidence_caveats.append("vps_not_confirmed_runtime_synced")
     if row.get("fetch_error"):
         status = "review"
         evidence_caveats.append("lane_fetch_incomplete")
-    if row.get("fetch_incomplete") and "lane_fetch_incomplete" not in evidence_caveats:
+    if row_bool(row.get("fetch_incomplete")) and "lane_fetch_incomplete" not in evidence_caveats:
         status = "review"
         evidence_caveats.append("lane_fetch_incomplete")
     if row.get("lifecycle_evidence_caveats"):
@@ -1922,7 +1938,7 @@ def build_dashboard_html(
     ]
     combined_note = ""
     if combined:
-        if combined.get("fetch_incomplete"):
+        if row_bool(combined.get("fetch_incomplete")):
             combined_note = (
                 "<p class=\"callout warning\">Combined live view is incomplete because at least one lane "
                 "does not prove full weekly coverage. Known fetched partial evidence is "
