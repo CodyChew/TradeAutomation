@@ -1,6 +1,7 @@
 # LPFS Strategy Iteration Context
 
-Last updated: 2026-06-20 ICT after weekly strategy-review automation refresh.
+Last updated: 2026-06-27 ICT after the H8 compressed-risk research readiness
+closeout.
 
 This is the durable handoff for the current LPFS diagnostic reporting and
 strategy-iteration work. A new Codex chat should be able to read this file,
@@ -9,23 +10,26 @@ without needing prior conversation history.
 
 ## Current Objective
 
-Make LPFS strategy iteration evidence-based without changing live trading
-behavior. Production-derived analysis must use trustworthy journals, broker
-facts, status evidence, and normalized C-01 timestamp evidence where historical
-timestamp paths are involved. Weekly automation now provides the routine
-read-only checkpoint; deeper indicator-tagging and backtest research should
-start only when eligible weekly evidence shows repeated cross-lane weakness.
+Improve LPFS as a whole, not just one weak bucket, through evidence-backed
+weekly monitoring, offline diagnosis, candidate research, and explicit
+strategy-change approval. Production-derived analysis must use trustworthy
+journals, broker facts, status evidence, and normalized C-01 timestamp evidence
+where historical timestamp paths are involved. Weekly automation is the routine
+read-only trigger; deeper indicator-tagging and backtest research should start
+only when eligible weekly evidence shows repeated weakness, account-outcome
+divergence that needs attribution, or a clear evidence gap.
 
 The current work is reporting/context only. It is not a live strategy change,
 not a live deployment, and not approval to change entries, exits, risk,
 timeframe selection, spread gates, recovery behavior, or broker execution.
 
-H8 was a prior watch item after the 2026-06-14 weekly packet. The current
-2026-06-20 complete weekly packet moved the live watch set to H4, `NZDUSD`,
-and positive-R/negative-broker-PnL account-outcome divergence. These are watch
-items only, not selected change candidates unless future eligible diagnostics
-prove persistent cross-lane weakness and recent-window plus long-backtest
-evidence supports a specific action.
+The current active research candidate is H8 compressed risk:
+`timeframe=H8` and `risk_atr_bucket=lt_0p5`, especially its low-spread
+intersection. This is a research candidate only, not a live filter. The
+2026-06-27 research pass rejected the simple H8 low-spread-only filter because
+low-spread H8 was live-weak but historically positive; it is diagnostic context,
+not a causal rule. No live strategy, risk, sizing, SL/TP, spread, recovery,
+broker-send, or config change is approved.
 
 Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO and IC
 live data collection are running again, recovery remains disabled, and later
@@ -51,18 +55,28 @@ production-derived historical timestamps.
   explicitly using the ledger activation boundary `2026-05-30T17:14:27Z` and
   the flattened diagnostic scale field.
 - The latest completed weekly checkpoint is
-  `reports/live_ops/lpfs_weekly_strategy_review/20260620_080205_account_outcome/weekly/20260620_010214`.
-  Both lanes are `analysis_eligible=true` with complete coverage. FTMO had
-  20 closed trades, `+1.87R`, broker PnL `-4.39`, 11 wins / 9 losses, PF
-  `1.20`, historical band `p45.4`; IC had 20 closed trades, `+2.03R`, broker
-  PnL `+1.27`, 11 wins / 9 losses, PF `1.23`, historical band `p44.1`;
-  combined was 40 closed trades, `+3.90R`, and broker PnL `-3.12`.
-- Current confluence watch items: H4 was weak on both lanes (`FTMO -1.01R`,
-  `IC -3.00R`) and `NZDUSD` was `-2.01R` on both lanes. Positive strategy R
-  with negative broker PnL is a separate account-outcome/allocation watch item.
-  Treat these as watch items only. If they repeat across future eligible weekly
-  packets, start offline attribution and indicator-tagging research before
-  proposing any live heuristic.
+  `reports/live_ops/lpfs_weekly_strategy_review/20260627_080107/weekly/20260627_010107`.
+  Both lanes are `analysis_eligible=true` with complete weekly coverage. FTMO
+  had 20 closed trades, `+1.99R`, broker PnL `+11.24`, 11 wins / 9 losses, PF
+  `1.21`, historical band `p46.9`; IC had 22 closed trades, `-4.84R`, broker
+  PnL `-11.79`, 9 wins / 13 losses, PF `0.65`, historical band `<=p10`;
+  combined was 42 closed trades, `-2.85R`, broker PnL `-0.55`, PF `0.88`.
+- Latest same-day dual status report:
+  `reports/live_ops/lpfs_dual_vps_status_20260627_080624.md`, SHA-256
+  `b56f0ad7bf543ac157522522173620a01c2ce584b1c4925974738681e616728d`.
+  It showed both lanes `RUNNING`, runtime SHA `6c4ecb1`, kill switches clear,
+  broker status `OK`, recovery disabled, market-data fetch failures `0`,
+  telemetry write/retention failures `0`, and active state/broker mismatch
+  count `0`. Exposure in that packet was FTMO 7 pending / 4 active and IC
+  2 pending / 5 active strategy items. Treat those as historical packet facts;
+  capture fresh status before live operations.
+- Current research closeout:
+  `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500`, manifest
+  SHA-256 `1a6136209337be1b1d4b28e3da4e8e7f4da97421872d67c74af8270f09065ec6`.
+  The strategy decision is `NO` live change now. Keep H8 compressed risk active
+  as the primary research candidate, reject the H8 low-spread-only filter, and
+  require the next eligible weekly packet to test the explicit watch criteria
+  before escalating any formal candidate proposal.
 - Historical 2026-05-30 weekly checkpoint:
   `reports/live_ops/lpfs_weekly_performance/20260530_150637`. Its generated
   dashboard had an FTMO fetch-timeout caveat, so the authoritative FTMO
@@ -88,11 +102,12 @@ production-derived historical timestamps.
   useful for future strategy review. This reporting change has not been
   deployed to the VPS and does not need a runner restart unless the user later
   wants the report code available on the VPS checkout.
-- Current enriched closed-trade sample is still too small for an informed live
-  heuristic change. The 2026-05-30 diagnostic report has 29 closed trades with
-  `diagnostic_schema_version`; all 29 are from the latest week, but only 16
-  have full setup geometry, spread gate, order retcode, and backtest join
-  fields.
+- Current enriched closed-trade sample is research-useful but still not enough
+  for an informed live heuristic change. The 2026-06-27 diagnostic packet
+  `reports/live_ops/lpfs_trade_diagnostics/20260627_121200` has 86 closed
+  trades, 86 rows with diagnostic payloads, and 86 rows with offline candle
+  enrichment. Manifest SHA-256:
+  `d30a72bea2669ba87e547eacd2604b34c0aaa8772dbab03b7adf2d716a81bb13`.
 - Weekly automation is part of the diagnostic workflow. It should collect or
   inspect read-only report/status packets, reject incomplete evidence using
   `analysis_eligible=false` or `coverage_status=incomplete`, and post a concise
@@ -105,6 +120,14 @@ production-derived historical timestamps.
   spread-risk, session/hour, weekday, and broker lane. Store raw or large
   analysis evidence in ignored report packets with manifests; commit only
   scripts, tests, docs, schemas, and small sanitized summaries.
+- Strategy-agent experience from the June 2026 iteration: the workflow improves
+  when weekly monitoring, issue diagnosis, candidate research, and live
+  strategy-change approval are separate stages. Do not let chat memory become
+  the source of truth. Record the active research queue, rejected hypotheses,
+  packet paths, manifest hashes, watch criteria, and explicit non-actions in
+  this file and the first-read docs so another agent can continue from the repo.
+  The agent should look portfolio-wide first, then candidate buckets; a narrow
+  bucket such as H8 compressed risk is only one current hypothesis.
 
 ## Approved Scope
 
@@ -130,28 +153,40 @@ Not approved now:
 - VPS deployment or runner restarts for this reporting-only work.
 - Manual edits to live state, journals, MT5 orders, MT5 positions, or history.
 
-## Files Changed So Far
+## Current Research Packets
 
-Intentional LPFS diagnostic/reporting/context files changed in this work:
+The active strategy-research context is repo-backed by ignored local report
+packets and tracked first-read docs. Do not commit raw ignored report packets;
+preserve paths and hashes in handoff docs instead.
 
-- `scripts/build_lpfs_trade_diagnostics.py`
-- `strategies/lp_force_strike_strategy_lab/tests/test_diagnostic_logging.py`
-- `docs/lpfs_diagnostic_logging.md`
-- `docs/lpfs_strategy_iteration_context.md`
-- `PROJECT_STATE.md`
-- `SESSION_HANDOFF.md`
-- `docs/live_weekly_performance.html`
-- `reports/live_ops/lpfs_weekly_strategy_review/20260614_015721/weekly/20260613_185722`
-- `reports/live_ops/lpfs_weekly_performance/20260530_150637/local_snapshot_review.md`
-- `docs/lpfs_monthly_evidence_20260530.md`
-- `strategies/lp_force_strike_strategy_lab/START_HERE.md`
-- `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md`
-
-Current local worktree may contain uncommitted documentation/report artifacts
-from the 2026-06-14 weekly strategy-review checkpoint and the historical
-2026-05-30 checkpoint. Run `git status --short` before staging and do not
-stage, revert, or mix unrelated files into an LPFS diagnostic/reporting commit
-unless separately reviewed.
+- Weekly strategy-review packet:
+  `reports/live_ops/lpfs_weekly_strategy_review/20260627_080107/weekly/20260627_010107`;
+  `weekly_summary.csv` SHA-256
+  `49eb0b436953fbfee74193acf59e874d4f54b7d36044494d24eb77405347dfe1`.
+- Dual-status packet:
+  `reports/live_ops/lpfs_dual_vps_status_20260627_080624.md`; SHA-256
+  `b56f0ad7bf543ac157522522173620a01c2ce584b1c4925974738681e616728d`.
+- Trade diagnostics packet:
+  `reports/live_ops/lpfs_trade_diagnostics/20260627_121200`; manifest SHA-256
+  `d30a72bea2669ba87e547eacd2604b34c0aaa8772dbab03b7adf2d716a81bb13`.
+- Candidate backtest matrix:
+  `reports/live_ops/lpfs_candidate_backtest_matrix/20260627_122800`; manifest
+  SHA-256 `4e3191ef8075f7c2511d9ed419884fe1ea389b0696c50e119cf6315875621d60`.
+- Live-vs-backtest divergence attribution:
+  `reports/live_ops/lpfs_live_backtest_divergence/20260627_124500`; manifest
+  SHA-256 `e76af5226a87a5c885f81f049a80234a558101fffb171f665f1dcabd04b7e9b7`.
+- H8 compressed-risk candidate dashboard:
+  `reports/live_ops/lpfs_h8_compressed_risk_candidate/20260627_125500`;
+  manifest SHA-256
+  `894581b8eeff1da94869b999a3c153da53b077eb099b4c084aea653c899ba801`.
+- H8 compressed-risk interaction isolation:
+  `reports/live_ops/lpfs_h8_compressed_risk_interactions/20260627_130500`;
+  manifest SHA-256
+  `1f66b98321f55ec5821bc39f08167c010475ba79570d7846529b16ad1193a89e`.
+- Strategy research readiness closeout:
+  `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500`;
+  manifest SHA-256
+  `1a6136209337be1b1d4b28e3da4e8e7f4da97421872d67c74af8270f09065ec6`.
 
 ## Files To Inspect First
 
@@ -338,9 +373,9 @@ surface hypotheses and evidence quality.
 
 ## Current Blockers
 
-- Current enriched live closed-trade sample is too small for a live strategy
-  change, but the live first-month monthly underperformance is strong enough
-  to justify offline cause-attribution research now.
+- Current enriched live closed-trade sample is strong enough for offline
+  candidate research, but still too small and too mixed for a live strategy
+  change.
 - Production diagnostic rows are only useful after enough real lifecycle and
   close events accumulate.
 - The 2026-05-30 generated weekly dashboard hit an FTMO fetch timeout, so that
@@ -355,8 +390,8 @@ surface hypotheses and evidence quality.
 - The current diagnostic report preserves sizing scale per enriched trade but
   does not yet derive `policy_id` from `configs/live_policy_ledger.csv` or
   automatically produce policy-epoch comparison groups.
-- There are unrelated dirty/untracked files in the local worktree that must not
-  be mixed into LPFS diagnostic commits.
+- Raw ignored report packets are local evidence, not commit material. Commit
+  only reviewed scripts, tests, docs, schemas, and small sanitized summaries.
 
 ## Open Questions
 
@@ -373,52 +408,44 @@ surface hypotheses and evidence quality.
 
 ## Testing Status
 
-Latest verification completed on 2026-05-26 after the diagnostic-reporting
-changes:
+For this 2026-06-27 docs/research handoff update, run the docs/status
+verification required by `AGENTS.md`:
 
-- Focused LPFS diagnostic/reporting/executor suites passed: `73` tests.
-- `.\venv\Scripts\python scripts\run_core_coverage.py` passed.
-- Core coverage report showed `100.00%` total coverage across the configured
-  core suites.
+- `.\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_dashboard_pages`
+- `git diff --check`
+- first-read drift audit over `SESSION_HANDOFF.md`, root `PROJECT_STATE.md`,
+  LPFS `START_HERE.md`, LPFS `PROJECT_STATE.md`, and this file.
 
-Documentation-only edits after that do not change runtime behavior. If any
+Documentation-only edits here do not change runtime behavior. If any
 implementation file changes again, rerun focused tests and core coverage before
 handoff.
 
 ## Recommended Next Implementation Steps
 
 1. Keep the live runners unchanged.
-2. Start offline first-month cause attribution from
-   `reports/live_ops/lpfs_trade_diagnostics/20260530_153500`, with the monthly
-   tail-risk result as the reason for escalation.
-3. Compare FTMO and IC by timeframe, symbol, side, session/weekday, setup
-   geometry, spread-risk, execution path, recovery path, and candle-derived
-   recent-regime fields.
-4. Segment IC analysis by the historical scale-2 and active scale-1 policy
+2. At the next eligible weekly checkpoint, evaluate the explicit criteria in
+   `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500/next_run_watch_criteria.csv`.
+3. Track H8 compressed risk (`timeframe=H8`, `risk_atr_bucket=lt_0p5`) and its
+   low-spread intersection, but keep the analysis portfolio-wide by also
+   reviewing symbol, side, session/hour, weekday, spread-risk, risk/ATR, and
+   account-outcome divergence.
+4. Do not resurrect the simple H8 low-spread-only filter unless new evidence
+   overturns the 2026-06-27 rejection.
+5. Segment IC analysis by the historical scale-2 and active scale-1 policy
    epochs from `configs/live_policy_ledger.csv`; do not attribute PnL-size
    changes to strategy quality.
-5. Check whether any weak bucket is also weak in recent 3/6/12 month V22
-   benchmark windows and not just the full 10-year average.
-6. Let production collect more sparse lifecycle diagnostics naturally.
-7. At the next weekly checkpoint, safely collect local journal copies and build
-   the diagnostic report.
-8. Review `timeframe_confluence.csv` and `backtest_comparison.csv` for
-   cross-lane, recent-window, and timeframe-normalized signals.
-9. Watch the current 2026-06-20 set: H4 and `NZDUSD` cross-lane weakness plus
-   positive-R/negative-broker-PnL account-outcome divergence. Do not change
-   rules unless repeated eligible evidence and recent/full backtests support a
-   scoped candidate.
-10. Preserve and extend the hardened weekly strategy-review path: use eligible
+6. Preserve and extend the hardened weekly strategy-review path: use eligible
    packets where `analysis_eligible=true` and `coverage_status=complete`, and
    use bounded/local lifecycle evidence when remote fetch coverage is
    incomplete.
-11. Add offline policy-ledger enrichment so future diagnostic reports derive a
-   stable `policy_id` and comparison groups from lane plus lifecycle timestamp.
-12. If evidence thresholds are met, create a separate research plan for one
-   small reversible heuristic candidate.
-13. Backtest any candidate on both FTMO and IC recent windows plus full-history
+7. If the H8 compressed-risk candidate repeats, narrow it until the 12M
+   guardrail no longer contradicts the rule and long-history removal breadth is
+   within the preferred 15% or maximum 20% boundary.
+8. If evidence thresholds are met, create a separate formal strategy-change
+   proposal for one small reversible heuristic candidate, with recent 3/6/12
+   month support, FTMO/IC confluence or explained divergence, and full-history
    guardrails.
-14. Request explicit user approval before any live strategy-change deployment.
+9. Request explicit user approval before any live strategy-change deployment.
 
 ## Next Codex Handoff
 
@@ -428,9 +455,12 @@ Fresh-chat prompt:
 Read SESSION_HANDOFF.md, strategies/lp_force_strike_strategy_lab/START_HERE.md,
 docs/lpfs_strategy_iteration_context.md, and docs/lpfs_diagnostic_logging.md.
 Continue the LPFS diagnostic reporting and evidence-gated strategy-iteration
-workflow from the current git state. Do not change live strategy behavior,
-entry/exit logic, risk settings, broker/execution logic, config defaults, live
-state, journals, MT5 orders, or MT5 positions.
+workflow from the current git state. Treat the 2026-06-27 strategy research
+readiness packet as the current research queue: H8 compressed risk is active,
+H8 low-spread-only is rejected, and no live strategy change is approved. Do not
+change live strategy behavior, entry/exit logic, risk settings,
+broker/execution logic, config defaults, live state, journals, MT5 orders, or
+MT5 positions.
 ```
 
 Before making any change, the new chat should run `git status --short`, inspect

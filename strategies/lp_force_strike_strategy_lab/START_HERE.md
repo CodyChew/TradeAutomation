@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-06-20 ICT after the LPFS weekly account-outcome reporting
-and first-read state cleanup.
+Last updated: 2026-06-27 ICT after the LPFS H8 compressed-risk strategy
+research readiness closeout.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -171,18 +171,23 @@ operational decisions.
   profile and H4/H8 `0.20%`, H12/D1 `0.25%`, W1 `0.55%` as the
   aggressive/funded profile. This did not change live config or VPS runtime.
 - Weekly strategy-review state: latest eligible packet
-  `reports/live_ops/lpfs_weekly_strategy_review/20260620_080205_account_outcome/weekly/20260620_010214`
-  covers 2026-06-15 05:00 SGT to 2026-06-20 05:00 SGT. Both lanes are
+  `reports/live_ops/lpfs_weekly_strategy_review/20260627_080107/weekly/20260627_010107`
+  covers 2026-06-22 05:00 SGT to 2026-06-27 05:00 SGT. Both lanes are
   `analysis_eligible=true` with `coverage_status=complete`. FTMO had `20`
-  closed trades, `+1.87R`, broker PnL `-4.39`, PF `1.20`, historical band
-  `p45.4`; IC had `20` closed trades, `+2.03R`, broker PnL `+1.27`, PF
-  `1.23`, historical band `p44.1`; combined was `40` closes, `+3.90R`,
-  broker PnL `-3.12`, PF `1.21`. H4 and `NZDUSD` are current cross-lane watch
-  items, and positive R with negative broker PnL is an account-outcome/
-  allocation watch item. This is not a live strategy-change candidate unless
-  future eligible weekly packets repeat the weakness and offline attribution,
-  indicator-tagging, and recent-window/long-backtest research support a
-  specific action.
+  closed trades, `+1.99R`, broker PnL `+11.24`, PF `1.21`, historical band
+  `p46.9`; IC had `22` closed trades, `-4.84R`, broker PnL `-11.79`, PF
+  `0.65`, historical band `<=p10`; combined was `42` closes, `-2.85R`, broker
+  PnL `-0.55`, PF `0.88`.
+- Strategy research readiness state:
+  `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500`,
+  manifest SHA-256
+  `1a6136209337be1b1d4b28e3da4e8e7f4da97421872d67c74af8270f09065ec6`.
+  No live strategy change is justified. Reject the H8 low-spread-only filter.
+  Keep H8 compressed risk (`timeframe=H8`, `risk_atr_bucket=lt_0p5`),
+  especially the low-spread intersection, as the active research candidate
+  until the next eligible weekly packet confirms or weakens the thesis.
+  Portfolio-level improvement remains the objective; this bucket is one current
+  hypothesis, not the whole strategy.
 - First-month monthly evidence state: review
   `docs/lpfs_monthly_evidence_20260530.md`.
   Against the accepted V22 separated commission-adjusted monthly backtest
@@ -246,8 +251,10 @@ operational decisions.
 6. `docs/strategy.html` for the current strategy contract.
 7. `docs/live_ops.html` for live-run behavior, gates, reconciliation, status,
    and operator commands.
-8. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
-   performance checkpoint and backtest-distribution comparison.
+8. `docs/live_weekly_performance.html` for the generated FTMO/IC weekly
+   performance monitor and backtest-distribution comparison; use the latest
+   eligible `reports/live_ops/lpfs_weekly_strategy_review/` packet for current
+   weekly truth when the generated page has not been intentionally refreshed.
 9. `configs/live_policy_ledger.csv` before interpreting live performance across
    FTMO/IC sizing-policy epochs or changing live risk settings.
 10. `docs/lpfs_diagnostic_logging.md` before changing LPFS journal diagnostic
@@ -283,7 +290,7 @@ operational decisions.
 | IC account validation | `docs/account_validation.html`, `docs/lpfs_new_mt5_account_validation.md`, and `config.lpfs_new_mt5_account.example.json` | Local-only validation and smoke testing; do not touch VPS live account. |
 | IC production setup | `docs/lpfs_icmarkets_vps_runbook.md`, `config.lpfs_icmarkets_raw_spread.example.json`, and `scripts/Get-LpfsDualVpsStatus.ps1` | Separate VPS/runtime/task/Telegram lane for IC; FTMO remains untouched. |
 | FTMO challenge sizing | `docs/ftmo_challenge_profiles.html` and `reports/strategies/lpfs_ftmo_challenge_frontier/20260508_112959` | Research-only frontier; do not change FTMO live validation config without a separate deployment decision. |
-| Weekly live performance and strategy review | `docs/live_weekly_performance.html`, `reports/live_ops/lpfs_weekly_strategy_review/`, and `reports/live_ops/lpfs_weekly_performance/` | Use only rows where `analysis_eligible=true` and `coverage_status=complete`; repeated cross-lane weakness triggers offline research, not an immediate live patch. |
+| Weekly live performance and strategy review | `reports/live_ops/lpfs_weekly_strategy_review/`, `reports/live_ops/lpfs_weekly_performance/`, and `docs/live_weekly_performance.html` | Use only rows where `analysis_eligible=true` and `coverage_status=complete`; the latest eligible packet is current truth when generated HTML has not been intentionally refreshed; repeated cross-lane weakness triggers offline research, not an immediate live patch. |
 | Per-trade live diagnostics and strategy-iteration workflow | `docs/lpfs_diagnostic_logging.md`, `docs/lpfs_strategy_iteration_context.md`, LPFS journal `diagnostics` payloads, and `reports/live_ops/lpfs_trade_diagnostics/` | Additive/offline reporting only; use for live-vs-backtest analysis before proposing heuristic changes. |
 | Rollover/spread-wait and Bid/Ask fills | `docs/live_ops.html`, `docs/mt5_execution_contract.md`, `SESSION_HANDOFF.md`, and live JSONL journals | Treat Telegram/chart visuals as alerts only; verify MT5 Bid/Ask ticks, order history, journal rows, spread snapshots, and both VPS lanes before concluding a bug. |
 | Native EA migration | `docs/ea_migration.html`, `mql5/lpfs_ea/README.md`, and `mql5/lpfs_ea/Experts/LPFS/LPFS_EA.mq5` | Tester-only v1; do not attach to production live charts. |

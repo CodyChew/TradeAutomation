@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-06-20 ICT after the LPFS weekly account-outcome reporting
-and first-read state cleanup.
+Last updated: 2026-06-27 ICT after the LPFS H8 compressed-risk strategy
+research readiness closeout.
 
 ## Immediate LPFS Safety State
 
@@ -14,12 +14,13 @@ refresh, Phase 1 live quote telemetry separation, active-position
 state/broker repair, and transient market-data frame-skip handling.
 
 Latest same-day status packet:
-`reports/live_ops/lpfs_weekly_strategy_review/20260620_134803/status/lpfs_dual_vps_status_20260620_134911.md`.
+`reports/live_ops/lpfs_dual_vps_status_20260627_080624.md`, SHA-256
+`b56f0ad7bf543ac157522522173620a01c2ce584b1c4925974738681e616728d`.
 That packet showed both lanes `RUNNING`, kill switches clear, one logical
 runner path per lane, fresh heartbeats, broker status `OK`, recovery disabled,
 telemetry failures `0`, market-data fetch failures `0`, and active
-state/broker mismatch count `0`. Broker exposure in that packet was FTMO `10`
-pending LPFS orders / `4` active positions and IC `9` pending LPFS orders / `4`
+state/broker mismatch count `0`. Broker exposure in that packet was FTMO `7`
+pending LPFS orders / `4` active positions and IC `2` pending LPFS orders / `5`
 active positions. Treat those counts as historical packet facts only; capture a
 fresh dual-VPS status packet before future live operations.
 
@@ -76,14 +77,16 @@ source of truth for strategy research and live execution work.
   `Administrator` desktop login.
 - The old local PC `cy-desktop` has been removed from Tailscale, and old-PC
   SSH key entries were removed from both VPSes.
-- Latest verified dual-VPS operating evidence from this PC is the 2026-06-20
-  weekly-review status packet under
-  `reports/live_ops/lpfs_weekly_strategy_review/20260620_134803/status/lpfs_dual_vps_status_20260620_134911.md`.
+- Latest verified dual-VPS operating evidence from this PC is the 2026-06-27
+  status packet
+  `reports/live_ops/lpfs_dual_vps_status_20260627_080624.md`, SHA-256
+  `b56f0ad7bf543ac157522522173620a01c2ce584b1c4925974738681e616728d`.
   It showed both lanes running on runtime SHA `6c4ecb1`, kill switches clear,
   broker OK, recovery disabled, telemetry failures `0`, market-data fetch
-  failures `0`, and active state/broker mismatch count `0`. Treat those counts
-  as a historical snapshot only; capture a fresh packet before future live
-  operations.
+  failures `0`, and active state/broker mismatch count `0`. Broker exposure in
+  that packet was FTMO `7` pending / `4` active strategy items and IC `2`
+  pending / `5` active strategy items. Treat those counts as a historical
+  snapshot only; capture a fresh packet before future live operations.
 - Live sizing policy epochs are tracked in `configs/live_policy_ledger.csv`.
   That ledger is the handoff source for distinguishing strategy performance
   from risk-policy changes. It records FTMO scale `0.05`, historical IC scale
@@ -95,19 +98,21 @@ source of truth for strategy research and live execution work.
   by sizing-policy epoch. Segment IC rows explicitly around
   `2026-05-30T17:14:27Z` until that reporting enhancement is added.
 - Latest LPFS weekly strategy-review checkpoint is
-  `reports/live_ops/lpfs_weekly_strategy_review/20260620_080205_account_outcome/weekly/20260620_010214`,
-  with status packet
-  `reports/live_ops/lpfs_weekly_strategy_review/20260620_134803/status/lpfs_dual_vps_status_20260620_134911.md`.
+  `reports/live_ops/lpfs_weekly_strategy_review/20260627_080107/weekly/20260627_010107`.
   Both lanes are `analysis_eligible=true` with `coverage_status=complete`.
-  FTMO had `20` closed trades, `+1.87R`, broker PnL `-4.39`, PF `1.20`,
-  historical band `p45.4`; IC had `20` closed trades, `+2.03R`, broker PnL
-  `+1.27`, PF `1.23`, historical band `p44.1`; combined was `40` closes,
-  `+3.90R`, broker PnL `-3.12`, PF `1.21`. H4 and `NZDUSD` are current
-  cross-lane watch items, and positive strategy R with negative broker PnL is a
-  separate account-outcome/allocation watch item. This is not a live
-  strategy-change candidate unless future eligible weekly packets repeat the
-  weakness and offline attribution, indicator-tagging, and recent-window plus
-  long-backtest research support a specific action.
+  FTMO had `20` closed trades, `+1.99R`, broker PnL `+11.24`, PF `1.21`,
+  historical band `p46.9`; IC had `22` closed trades, `-4.84R`, broker PnL
+  `-11.79`, PF `0.65`, historical band `<=p10`; combined was `42` closes,
+  `-2.85R`, broker PnL `-0.55`, PF `0.88`.
+- Latest LPFS strategy research readiness packet is
+  `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500`,
+  manifest SHA-256
+  `1a6136209337be1b1d4b28e3da4e8e7f4da97421872d67c74af8270f09065ec6`.
+  Decision: no live strategy change now. Reject the H8 low-spread-only filter.
+  Keep H8 compressed risk (`timeframe=H8`, `risk_atr_bucket=lt_0p5`) as the
+  active research candidate, especially the low-spread intersection, but require
+  the next eligible weekly packet plus recent-window and long-history guardrails
+  before any formal strategy-change proposal.
 - The first-month monthly review is `docs/lpfs_monthly_evidence_20260530.md`.
   It escalates LPFS from passive monitoring to offline cause-attribution
   investigation: FTMO May 2026 live closed trades are `-15.09R` at monthly
@@ -162,8 +167,10 @@ source of truth for strategy research and live execution work.
    account or broker feed.
 17. `docs/ea_migration.html` and `mql5/lpfs_ea/README.md` before continuing
    native MQL5 EA or Strategy Tester work.
-18. `docs/live_weekly_performance.html` for the latest FTMO/IC live weekly
-   performance checkpoint.
+18. `docs/live_weekly_performance.html` for the generated FTMO/IC live weekly
+    monitor; use the latest eligible `reports/live_ops/lpfs_weekly_strategy_review/`
+    packet for current weekly truth when the generated page has not been
+    intentionally refreshed.
 19. `shared/market_data_lab/PROJECT_STATE.md` for dataset status.
 20. `concepts/lp_levels_lab/PROJECT_STATE.md` and
    `concepts/force_strike_pattern_lab/PROJECT_STATE.md` only when changing
@@ -207,27 +214,29 @@ tracked TradeAutomation structure above plus ignored local artifacts such as
 
 ## LPFS Live Performance And Reporting Safety
 
-The latest Saturday LPFS weekly strategy-review checkpoint is:
+The latest Saturday LPFS weekly strategy-review checkpoint is the ignored
+packet below. The tracked generated dashboard at `docs/live_weekly_performance.html`
+is a general weekly-monitor surface and can lag until intentionally regenerated;
+do not treat it as newer than the packet paths recorded here.
 
-- dashboard: `docs/live_weekly_performance.html`;
 - weekly strategy-review packet:
-  `reports/live_ops/lpfs_weekly_strategy_review/20260620_080205_account_outcome/weekly/20260620_010214`;
+  `reports/live_ops/lpfs_weekly_strategy_review/20260627_080107/weekly/20260627_010107`;
 - status packet:
-  `reports/live_ops/lpfs_weekly_strategy_review/20260620_134803/status/lpfs_dual_vps_status_20260620_134911.md`;
-- completed week: 2026-06-15 05:00 SGT to 2026-06-20 05:00 SGT;
-- FTMO: `20` closed trades, `+1.87R`, broker PnL `-4.39`, historical band
-  `p45.4`, PF `1.20`, `analysis_eligible=true`, `coverage_status=complete`;
-- IC: `20` closed trades, `+2.03R`, broker PnL `+1.27`, historical band
-  `p44.1`, PF `1.23`, `analysis_eligible=true`, `coverage_status=complete`;
-- combined: `40` closed trades, `+3.90R`, broker PnL `-3.12`, PF `1.21`.
+  `reports/live_ops/lpfs_dual_vps_status_20260627_080624.md`;
+- completed week: 2026-06-22 05:00 SGT to 2026-06-27 05:00 SGT;
+- FTMO: `20` closed trades, `+1.99R`, broker PnL `+11.24`, historical band
+  `p46.9`, PF `1.21`, `analysis_eligible=true`, `coverage_status=complete`;
+- IC: `22` closed trades, `-4.84R`, broker PnL `-11.79`, historical band
+  `<=p10`, PF `0.65`, `analysis_eligible=true`, `coverage_status=complete`;
+- combined: `42` closed trades, `-2.85R`, broker PnL `-0.55`, PF `0.88`.
 
-Interpretation: the latest eligible weekly review is not a clean strategy
-failure. H4 and `NZDUSD` are current cross-lane watch items, and positive R
-with negative broker PnL is an account-outcome/allocation watch item. A single
-eligible week is a watch item only. Repeated cross-lane weakness or repeated
-R/PnL divergence across future eligible weekly packets should trigger a scoped
-offline attribution, indicator-tagging, and backtest research pass, not an
-immediate live strategy patch.
+Interpretation: the latest eligible weekly review triggered offline research,
+not an immediate live strategy patch. The simple H8 low-spread-only filter was
+rejected as a proxy. H8 compressed risk is the active research candidate, but it
+is blocked from live use by contradictory 12M support, asymmetric FTMO/IC
+long-history support, and broad H8 trade removal. The next weekly packet should
+evaluate the readiness criteria in
+`reports/live_ops/lpfs_strategy_research_readiness/20260627_131500/next_run_watch_criteria.csv`.
 
 Historical caveat: the 2026-05-30 weekly packet
 `reports/live_ops/lpfs_weekly_performance/20260530_150637` had a generated

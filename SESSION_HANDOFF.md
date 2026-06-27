@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-06-20 ICT after the LPFS weekly account-outcome reporting
-and first-read state cleanup.
+Last updated: 2026-06-27 ICT after the LPFS H8 compressed-risk strategy
+research readiness closeout.
 
 This is the canonical context-transfer file for the next AI/Codex session.
 Use it as a map, then verify live MT5 state from MT5, the ignored live state
@@ -90,27 +90,44 @@ file, and the JSONL journal before making operational decisions.
   and posts a concise Telegram summary when existing ignored local Telegram
   configs are available. Telegram posting is informational only and must not be
   treated as broker truth.
-- Latest read-only weekly review packet:
-  `reports/live_ops/lpfs_weekly_strategy_review/20260620_080205_account_outcome/weekly/20260620_010214`.
-  Latest same-day status packet:
-  `reports/live_ops/lpfs_weekly_strategy_review/20260620_134803/status/lpfs_dual_vps_status_20260620_134911.md`.
-  Both FTMO and IC weekly rows were analysis eligible. FTMO: `20` closes,
-  `+1.87R`, broker PnL `-4.39`, win rate `55.0%`, PF `1.20`, historical band
-  `p45.4`. IC: `20` closes, `+2.03R`, broker PnL `+1.27`, win rate `55.0%`,
-  PF `1.23`, historical band `p44.1`. Combined: `40` closes, `+3.90R`,
-  broker PnL `-3.12`, PF `1.21`.
-- Current strategy watch items: H4 and `NZDUSD` were weak on both lanes in the
-  latest complete weekly packet (`FTMO H4 -1.01R`, `IC H4 -3.00R`; `NZDUSD
-  -2.01R` on both lanes). FTMO also showed positive strategy R but negative
-  broker PnL, and the combined broker PnL was slightly negative despite
-  positive combined R. Treat this as an account-outcome/allocation watch item,
-  not a live strategy-change candidate. If repeated in future eligible weekly
-  packets, the strategy agent should initiate an offline attribution pass that
-  separates R edge from broker PnL by symbol, timeframe, side, lane, risk
-  allocation, pip value, commission/swap, and policy epoch before considering
-  an offline indicator-tagging research pass. Do not add indicators or sizing
-  changes to the live runner unless a separately approved strategy patch is
-  supported by recent-window and long-backtest evidence.
+- Latest read-only weekly strategy-review packet:
+  `reports/live_ops/lpfs_weekly_strategy_review/20260627_080107/weekly/20260627_010107`.
+  Both FTMO and IC weekly rows were analysis eligible with complete weekly
+  coverage. FTMO: `20` closes, `+1.99R`, broker PnL `+11.24`, win rate
+  `55.0%`, PF `1.21`, historical band `p46.9`. IC: `22` closes, `-4.84R`,
+  broker PnL `-11.79`, win rate `40.9%`, PF `0.65`, historical band `<=p10`.
+  Combined: `42` closes, `-2.85R`, broker PnL `-0.55`, PF `0.88`.
+- Latest same-day dual-status packet:
+  `reports/live_ops/lpfs_dual_vps_status_20260627_080624.md`; SHA-256
+  `b56f0ad7bf543ac157522522173620a01c2ce584b1c4925974738681e616728d`.
+  It showed both lanes `RUNNING`, runtime SHA `6c4ecb1`, kill switches clear,
+  broker status `OK`, recovery disabled, market-data fetch failures `0`,
+  telemetry write/retention failures `0`, and active state/broker mismatch
+  count `0`. Broker exposure in that packet was FTMO `7` pending / `4` active
+  strategy items and IC `2` pending / `5` active strategy items. Treat those
+  counts as historical packet facts only; capture a fresh dual-VPS status packet
+  before future live operations.
+- Current strategy research closeout:
+  `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500`,
+  manifest SHA-256
+  `1a6136209337be1b1d4b28e3da4e8e7f4da97421872d67c74af8270f09065ec6`.
+  The strategy decision is `NO` live change now. The simple H8 low-spread-only
+  filter is rejected because it is live-weak but historically positive. Keep
+  H8 compressed risk (`timeframe=H8`, `risk_atr_bucket=lt_0p5`), especially the
+  low-spread intersection, as the active research candidate. It has 3M/6M and
+  long-history support, but is blocked by contradictory 12M evidence,
+  asymmetric FTMO/IC long-history evidence, and broad H8 trade removal. The
+  next eligible weekly packet must evaluate
+  `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500/next_run_watch_criteria.csv`
+  before any candidate is escalated.
+- Strategy-agent workflow lesson from this iteration: keep weekly monitoring,
+  diagnosis, candidate research, and live strategy-change approval as separate
+  stages. Do not rely on this chat as the source of truth. Preserve active
+  candidates, rejected hypotheses, packet paths, manifest hashes, next-run
+  criteria, and explicit non-actions in the repo so another strategy agent can
+  continue from first-read docs. The objective remains portfolio-level LPFS
+  improvement; H8 compressed risk is only the current candidate, not the whole
+  strategy.
 - Active-position state/broker repair deployment closeout: exact deployed SHA
   on both VPS lanes is
   `45efa748423f20881507cda9d4f81e4afe617bde`. The patch strengthens
@@ -628,9 +645,11 @@ file, and the JSONL journal before making operational decisions.
   month windows, candle RSI/momentum/ATR/volume/spread regimes, and FTMO/IC
   confluence views. Do not add these calculations to the live runner loop. At
   that checkpoint, H8 was not a selected change candidate; later 2026-06-14
-  weekly strategy-review evidence moved H8 to a historical watch item only;
-  the current 2026-06-20 watch set is H4, `NZDUSD`, and the account-outcome
-  R-vs-broker-PnL divergence described near the top of this handoff.
+  weekly strategy-review evidence moved H8 to a watch item. The current
+  2026-06-27 research state is stronger but still not deployable: reject the
+  H8 low-spread-only filter, keep H8 compressed risk as a research candidate,
+  and require the next-run criteria near the top of this handoff before
+  escalating any live strategy proposal.
 - 2026-05-30 weekly evidence checkpoint: the generated weekly dashboard wrote
   `reports/live_ops/lpfs_weekly_performance/20260530_150637` and refreshed
   `docs/live_weekly_performance.html`, but the FTMO row has a fetch-timeout
@@ -642,9 +661,9 @@ file, and the JSONL journal before making operational decisions.
   weak/watch at 16 closed trades, `-3.63R`, PF `0.67`, p12.5. Weekly
   performance diverged by lane. That checkpoint's cross-lane weakness was H4
   (`-4.37R` over 17 combined trades), while H8 was not weak then (`+0.14R` over
-  8 combined trades). No live strategy change is approved; current watch-item
-  guidance is the 2026-06-20 H4/`NZDUSD`/account-outcome note near the top of
-  this handoff.
+  8 combined trades). No live strategy change is approved; current strategy
+  guidance is the 2026-06-27 H8 compressed-risk research closeout near the top
+  of this handoff.
 - 2026-05-30 first-month monthly evidence review:
   `docs/lpfs_monthly_evidence_20260530.md`.
   Against the accepted V22 separated commission-adjusted monthly backtest
