@@ -288,11 +288,14 @@ ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -Command `$path='
 5. Validate config load and effective buckets without sending orders:
 
 ```powershell
-ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -Command Set-Location C:\TradeAutomation; `$env:PYTHONPATH='C:\TradeAutomation\strategies\lp_force_strike_strategy_lab\src;C:\TradeAutomation\concepts\lp_levels_lab\src;C:\TradeAutomation\concepts\force_strike_pattern_lab\src;C:\TradeAutomation\shared\backtest_engine_lab\src'; .\venv\Scripts\python -c `"from lp_force_strike_strategy_lab import load_live_send_settings, live_risk_buckets_from_config; s=load_live_send_settings('config.lpfs_icmarkets_raw_spread.local.json'); b=live_risk_buckets_from_config(s.executor); print('scale', s.executor.risk_bucket_scale); print('max_trade', s.executor.max_risk_pct_per_trade); print('max_open', s.executor.max_open_risk_pct); print('buckets', b)`""
+ssh lpfs-ic-vps "powershell -NoProfile -ExecutionPolicy Bypass -Command Set-Location C:\TradeAutomation; .\venv\Scripts\python scripts\audit_lpfs_local_configs.py --config config.lpfs_icmarkets_raw_spread.local.json"
 ```
 
-Expected output includes `scale 1.0`, `max_trade 0.75`, `max_open 6.0`, and
-effective buckets H4/H8 `0.25`, H12/D1 `0.30`, W1 `0.75`.
+Expected output is redacted and includes `settings_load_status=ok`,
+`risk_bucket_scale=1.0`, `max_risk_pct_per_trade=0.75`,
+`max_open_risk_pct=6.0`, and effective buckets H4/H8 `0.25`, H12/D1 `0.30`,
+W1 `0.75`. It must not print MT5 account numbers, server names, passwords,
+Telegram tokens, or chat IDs.
 
 6. Clear the IC kill switch:
 
@@ -380,9 +383,10 @@ write deployment automation that expects it to emit `LPFS_SNAPSHOT_JSON`; use
 `Get-LpfsDualVpsStatus.ps1` for the structured dual-lane proof packet, or add
 a tested explicit single-lane structured mode first.
 
-`summarize_lpfs_live_gate_attribution.py` uses a shared-read stream and bounds
-returned rows by default, but it still streams the full journal source before
-returning its tail. Byte-bounded gate-attribution optimization is deferred.
+`summarize_lpfs_live_gate_attribution.py` uses a shared-read stream, defaults
+to a `64 MiB` source suffix, and then applies the returned-row tail. Use a
+larger `--max-source-bytes` only intentionally; unbounded scans require
+explicit `--allow-full-scan`.
 
 The status packet includes C: drive free-space fields. Treat
 `disk_status=warn` as a cleanup or sizing-review trigger, and

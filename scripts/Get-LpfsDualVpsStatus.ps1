@@ -427,7 +427,7 @@ def heartbeat_summary(path):
         summary["parse_error"] = str(exc)
     return summary
 
-def classify_lane(kill_switch_active, task, processes, heartbeat, broker, position_comparison):
+def classify_lane(kill_switch_active, task, processes, heartbeat, broker, position_comparison, pending_comparison):
     broker_available = bool(broker.get("available"))
     broker_status = "OK" if broker_available else "ERROR/UNKNOWN"
     task_status = task.get("status")
@@ -437,10 +437,14 @@ def classify_lane(kill_switch_active, task, processes, heartbeat, broker, positi
     pending_order_count = len(broker.get("strategy_orders") or []) if broker_available else None
     position_count = len(broker.get("strategy_positions") or []) if broker_available else None
     position_mismatch_count = int(position_comparison.get("mismatch_count") or 0)
+    pending_mismatch_count = int(pending_comparison.get("mismatch_count") or 0)
 
     if not process_probe_trusted:
         state = "AMBIGUOUS"
         reason = "process_probe_untrusted"
+    elif pending_mismatch_count:
+        state = "AMBIGUOUS"
+        reason = "pending_order_state_broker_mismatch"
     elif position_mismatch_count:
         state = "AMBIGUOUS"
         reason = "active_position_state_broker_mismatch"
@@ -481,6 +485,9 @@ def classify_lane(kill_switch_active, task, processes, heartbeat, broker, positi
         "broker_status": broker_status,
         "pending_strategy_order_count": pending_order_count,
         "strategy_position_count": position_count,
+        "pending_order_state_broker_mismatch_count": pending_mismatch_count,
+        "pending_state_not_in_broker": pending_comparison.get("state_not_in_broker"),
+        "pending_broker_not_in_state": pending_comparison.get("broker_not_in_state"),
         "active_position_state_broker_mismatch_count": position_mismatch_count,
         "state_not_in_broker": position_comparison.get("state_not_in_broker"),
         "broker_not_in_state": position_comparison.get("broker_not_in_state"),
@@ -631,7 +638,28 @@ state_active_ids = sorted(
         if item_id is not None
     }
 )
+state_pending_ids = sorted(
+    {
+        item_id
+        for item_id in (
+            as_int(item.get("order_ticket"))
+            for item in open_state_items
+            if item.get("bucket") == "pending_orders"
+        )
+        if item_id is not None
+    }
+)
 if broker.get("available"):
+    broker_pending_ids = sorted(
+        {
+            item_id
+            for item_id in (
+                as_int(item.get("ticket"))
+                for item in (broker.get("strategy_orders") or [])
+            )
+            if item_id is not None
+        }
+    )
     broker_active_ids = sorted(
         {
             item_id
@@ -642,12 +670,25 @@ if broker.get("available"):
             if item_id is not None
         }
     )
+    pending_state_not_in_broker = sorted(set(state_pending_ids) - set(broker_pending_ids))
+    pending_broker_not_in_state = sorted(set(broker_pending_ids) - set(state_pending_ids))
     state_not_in_broker = sorted(set(state_active_ids) - set(broker_active_ids))
     broker_not_in_state = sorted(set(broker_active_ids) - set(state_active_ids))
 else:
+    broker_pending_ids = []
+    pending_state_not_in_broker = []
+    pending_broker_not_in_state = []
     broker_active_ids = []
     state_not_in_broker = []
     broker_not_in_state = []
+pending_comparison = {
+    "state_pending_order_ids": state_pending_ids,
+    "broker_pending_order_ids": broker_pending_ids,
+    "state_not_in_broker": pending_state_not_in_broker,
+    "broker_not_in_state": pending_broker_not_in_state,
+    "mismatch_count": len(pending_state_not_in_broker) + len(pending_broker_not_in_state) if broker.get("available") else 0,
+    "status": "OK" if broker.get("available") and not pending_state_not_in_broker and not pending_broker_not_in_state else ("ERROR/UNKNOWN" if not broker.get("available") else "MISMATCH"),
+}
 position_comparison = {
     "state_active_position_ids": state_active_ids,
     "broker_active_position_ids": broker_active_ids,
@@ -657,7 +698,7 @@ position_comparison = {
     "status": "OK" if broker.get("available") and not state_not_in_broker and not broker_not_in_state else ("ERROR/UNKNOWN" if not broker.get("available") else "MISMATCH"),
 }
 
-operational_summary = classify_lane(kill_switch_path.exists(), task, processes, heartbeat, broker, position_comparison)
+operational_summary = classify_lane(kill_switch_path.exists(), task, processes, heartbeat, broker, position_comparison, pending_comparison)
 
 snapshot = {
     "name": name,
@@ -679,6 +720,7 @@ snapshot = {
     "open_state_items": open_state_items,
     "recent_signal_rows": recent_signal_rows,
     "broker": broker,
+    "pending_order_comparison": pending_comparison,
     "position_comparison": position_comparison,
 }
 print("### Lane State Summary")
@@ -704,6 +746,11 @@ print("latest_market_data_fetch_error=" + str(heartbeat.get("last_cycle", {}).ge
 print("broker_status=" + str(operational_summary["broker_status"]))
 print("pending_strategy_order_count=" + str(operational_summary["pending_strategy_order_count"]))
 print("strategy_position_count=" + str(operational_summary["strategy_position_count"]))
+print("pending_order_state_broker_mismatch_count=" + str(operational_summary["pending_order_state_broker_mismatch_count"]))
+print("state_pending_order_ids=" + json.dumps(pending_comparison["state_pending_order_ids"], separators=(",", ":")))
+print("broker_pending_order_ids=" + json.dumps(pending_comparison["broker_pending_order_ids"], separators=(",", ":")))
+print("pending_state_not_in_broker=" + json.dumps(pending_comparison["state_not_in_broker"], separators=(",", ":")))
+print("pending_broker_not_in_state=" + json.dumps(pending_comparison["broker_not_in_state"], separators=(",", ":")))
 print("active_position_state_broker_mismatch_count=" + str(operational_summary["active_position_state_broker_mismatch_count"]))
 print("state_active_position_ids=" + json.dumps(position_comparison["state_active_position_ids"], separators=(",", ":")))
 print("broker_active_position_ids=" + json.dumps(position_comparison["broker_active_position_ids"], separators=(",", ":")))
@@ -831,6 +878,8 @@ if ($null -ne $Ftmo -and $null -ne $Ic) {
 
     $ComparisonLines.Add("ftmo_open_state_items=$(@($Ftmo.open_state_items).Count)")
     $ComparisonLines.Add("ic_open_state_items=$(@($Ic.open_state_items).Count)")
+    $ComparisonLines.Add("ftmo_pending_order_state_broker_mismatch_count=$($Ftmo.pending_order_comparison.mismatch_count)")
+    $ComparisonLines.Add("ic_pending_order_state_broker_mismatch_count=$($Ic.pending_order_comparison.mismatch_count)")
     $ComparisonLines.Add("ftmo_active_position_state_broker_mismatch_count=$($Ftmo.position_comparison.mismatch_count)")
     $ComparisonLines.Add("ic_active_position_state_broker_mismatch_count=$($Ic.position_comparison.mismatch_count)")
     $ComparisonLines.Add("shared_open_signal_keys=$($Shared.Count)")

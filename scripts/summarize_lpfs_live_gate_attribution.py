@@ -29,6 +29,8 @@ from lp_force_strike_strategy_lab.live_gate_attribution import (  # noqa: E402
     render_gate_attribution_markdown,
 )
 
+DEFAULT_MAX_SOURCE_BYTES = 64 * 1024 * 1024
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -58,6 +60,12 @@ def main() -> int:
         help="Read only the last N JSONL rows from each journal. Default keeps active-file reads bounded.",
     )
     parser.add_argument(
+        "--max-source-bytes",
+        type=int,
+        default=DEFAULT_MAX_SOURCE_BYTES,
+        help="Maximum trailing source bytes to read unless --allow-full-scan is set.",
+    )
+    parser.add_argument(
         "--allow-full-scan",
         action="store_true",
         help="Explicitly allow an unbounded full journal scan.",
@@ -74,8 +82,11 @@ def main() -> int:
         parser.error("--weekly-open-window-hours must be zero or positive")
     if args.allow_full_scan:
         args.tail_lines = None
+        args.max_source_bytes = None
     if args.tail_lines is not None and args.tail_lines <= 0:
         parser.error("--tail-lines must be positive")
+    if args.max_source_bytes is not None and args.max_source_bytes <= 0:
+        parser.error("--max-source-bytes must be positive")
     if not args.journal and not args.ssh_journal:
         parser.error("provide at least one --journal or --ssh-journal")
 
@@ -83,7 +94,7 @@ def main() -> int:
     for raw in args.journal:
         label, path = _split_label(raw)
         events = _filter_events(
-            _load_local_jsonl(path, tail_lines=args.tail_lines),
+            _load_local_jsonl(path, tail_lines=args.tail_lines, max_source_bytes=args.max_source_bytes),
             include_market_snapshots=args.include_market_snapshots,
         )
         reports.append(
@@ -96,7 +107,13 @@ def main() -> int:
     for raw in args.ssh_journal:
         label, alias, remote_path = _split_ssh_journal(raw)
         events = _filter_events(
-            _load_ssh_jsonl(alias, remote_path, tail_lines=args.tail_lines, include_market_snapshots=args.include_market_snapshots),
+            _load_ssh_jsonl(
+                alias,
+                remote_path,
+                tail_lines=args.tail_lines,
+                max_source_bytes=args.max_source_bytes,
+                include_market_snapshots=args.include_market_snapshots,
+            ),
             include_market_snapshots=args.include_market_snapshots,
         )
         reports.append(
@@ -136,11 +153,29 @@ def _split_ssh_journal(raw: str) -> tuple[str, str, str]:
     return label, alias, remote_path
 
 
-def _load_local_jsonl(path: str, *, tail_lines: int | None) -> list[dict[str, object]]:
+def _load_local_jsonl(
+    path: str,
+    *,
+    tail_lines: int | None,
+    max_source_bytes: int | None,
+) -> list[dict[str, object]]:
     if tail_lines is None:
         return load_jsonl_events(path)
-    with Path(path).open("r", encoding="utf-8") as handle:
-        return parse_jsonl_lines(deque(handle, maxlen=tail_lines))
+    rows = _read_local_suffix_lines(Path(path), max_source_bytes=max_source_bytes)
+    return parse_jsonl_lines(deque(rows, maxlen=tail_lines))
+
+
+def _read_local_suffix_lines(path: Path, *, max_source_bytes: int | None) -> list[str]:
+    if max_source_bytes is None:
+        return path.read_text(encoding="utf-8").splitlines()
+    with path.open("rb") as handle:
+        handle.seek(0, 2)
+        size = handle.tell()
+        start = max(0, size - int(max_source_bytes))
+        handle.seek(start)
+        if start > 0:
+            handle.readline()
+        return handle.read().decode("utf-8", errors="replace").splitlines()
 
 
 def _load_ssh_jsonl(
@@ -148,11 +183,13 @@ def _load_ssh_jsonl(
     remote_path: str,
     *,
     tail_lines: int | None,
+    max_source_bytes: int | None,
     include_market_snapshots: bool,
 ) -> list[dict[str, object]]:
     remote_command = _remote_shared_jsonl_reader_script(
         remote_path,
         tail_lines=tail_lines,
+        max_source_bytes=max_source_bytes,
         include_market_snapshots=include_market_snapshots,
     )
     encoded = base64.b64encode(remote_command.encode("utf-16le")).decode("ascii")
@@ -168,26 +205,38 @@ def _remote_shared_jsonl_reader_script(
     remote_path: str,
     *,
     tail_lines: int | None,
+    max_source_bytes: int | None,
     include_market_snapshots: bool,
 ) -> str:
     tail_value = 0 if tail_lines is None else int(tail_lines)
+    max_bytes_value = 0 if max_source_bytes is None else int(max_source_bytes)
     include_value = "$true" if include_market_snapshots else "$false"
     path_literal = json.dumps(remote_path)
     return f"""
 $ErrorActionPreference = 'Stop'
 $Path = {path_literal}
 $TailLines = {tail_value}
+$MaxSourceBytes = {max_bytes_value}
 $IncludeMarketSnapshots = {include_value}
-function New-SharedTextReader([string]$Path) {{
+function New-SharedTextReader([string]$Path, [int64]$MaxSourceBytes) {{
   $stream = [System.IO.FileStream]::new(
     $Path,
     [System.IO.FileMode]::Open,
     [System.IO.FileAccess]::Read,
     [System.IO.FileShare]::ReadWrite
   )
+  if ($MaxSourceBytes -gt 0 -and $stream.Length -gt $MaxSourceBytes) {{
+    [void]$stream.Seek(-1 * $MaxSourceBytes, [System.IO.SeekOrigin]::End)
+    while ($stream.Position -lt $stream.Length) {{
+      $byte = $stream.ReadByte()
+      if ($byte -lt 0 -or $byte -eq 10) {{
+        break
+      }}
+    }}
+  }}
   [System.IO.StreamReader]::new($stream)
 }}
-$reader = New-SharedTextReader $Path
+$reader = New-SharedTextReader $Path $MaxSourceBytes
 try {{
   if ($TailLines -gt 0) {{
     $buffer = [System.Collections.Generic.Queue[string]]::new()

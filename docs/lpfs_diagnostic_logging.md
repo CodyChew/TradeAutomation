@@ -156,10 +156,10 @@ only with explicit approval. Capture a fresh dual-VPS status packet after
 collection.
 
 `scripts/summarize_lpfs_live_gate_attribution.py` defaults to
-`--tail-lines 200000` and uses a shared-read stream for remote SSH journals.
-Its tail limit bounds returned rows, but the reader still streams the full
-source before returning the tail. Byte-bounded gate-attribution optimization
-is deferred.
+`--tail-lines 200000`, uses a shared-read stream for remote SSH journals, and
+defaults to a `64 MiB` source suffix before applying the returned-row tail.
+Use a larger `--max-source-bytes` only intentionally; unbounded scans require
+explicit `--allow-full-scan`.
 
 The weekly performance collector remains separate and unchanged. Its
 calculations are not replaced by the compact-summary snapshot workflow.

@@ -254,7 +254,7 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
                 "Monitor lpfs_live_heartbeat.json and the latest timestamped log when using the Phase 2 wrapper.",
                 "Use MT5 orders_get / positions_get as the source of truth for open exposure.",
                 "Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled; quote telemetry lives in lpfs_live_market_snapshots.jsonl after the Phase 1 telemetry split.",
-                "Phase 1 telemetry is active on both lanes after deliberate FTMO-first and IC-second restarts; active-position repair later deployed on both lanes at runtime SHA 45efa748423f20881507cda9d4f81e4afe617bde.",
+                "Phase 1 telemetry is active on both lanes after deliberate FTMO-first and IC-second restarts; active-position repair later deployed on both lanes at runtime SHA 45efa748423f20881507cda9d4f81e4afe617bde, and the latest accepted robustness boundary is RA-002/RA-003 runtime SHA 6c4ecb131d7499e455ef42cfeb91ba0bc0a75490.",
                 "Treat spread waits and broker market-closed placement blocks as retryable until entry touch or bar-count expiry makes the setup invalid. C-01 holds market recovery disabled.",
             ],
         ),
@@ -487,6 +487,10 @@ def build_live_ops_page(output: Path = DEFAULT_OUTPUT) -> Path:
         (
             "Run strict core coverage",
             r".\venv\Scripts\python scripts\run_core_coverage.py",
+        ),
+        (
+            "Audit ignored local config shape",
+            r".\venv\Scripts\python scripts\audit_lpfs_local_configs.py",
         ),
     ]
     command_html = "\n".join(
@@ -766,7 +770,7 @@ Get-CimInstance Win32_Process |
     <section id="proof" class="ops-hero" aria-labelledby="proof-title">
       <div class="eyebrow">Static Verification Guide</div>
       <h2 id="proof-title">What Proves The Runner Is Correct</h2>
-      <p class="callout warning"><strong>Current accepted operating state:</strong> accepted final proof shows FTMO <code>LPFS_Live</code> and IC <code>LPFS_IC_Live</code> running on deployed SHA <code>45efa748423f20881507cda9d4f81e4afe617bde</code>, kill switches clear, recovery disabled, telemetry failures 0, and active state/broker mismatch count 0. Pending broker orders are not required to be zero; final proof recorded FTMO 3 and IC 2 pending LPFS orders, each matching its fresh broker baseline.</p>
+      <p class="callout warning"><strong>Current accepted operating state:</strong> accepted RA-002/RA-003 final proof shows FTMO <code>LPFS_Live</code> and IC <code>LPFS_IC_Live</code> running on deployed SHA <code>6c4ecb131d7499e455ef42cfeb91ba0bc0a75490</code>, kill switches clear, recovery disabled, telemetry failures 0, market-data fetch failures 0, and active state/broker mismatch count 0. Pending broker orders are not required to be zero; final proof recorded FTMO 9 and IC 8 pending LPFS orders, each expected to match broker truth or be fully journal-explained.</p>
       <p class="callout warning"><strong>Phase 1 telemetry and active-position repair completed:</strong> lifecycle journals no longer receive new live <code>market_snapshot</code> rows, separated telemetry journals exist/grow, and broker-missing active positions are removed from local state only with full MT5 close-deal volume proof. No historical journal cleanup was done.</p>
       <p class="callout warning"><strong>Real orders can be sent.</strong> Correctness is proven from MT5 broker state, local state, and lifecycle journal rows. Quote telemetry is stored separately after the Phase 1 telemetry split. Telegram is useful for operator awareness, but Telegram is reporting only and does not prove broker state.</p>
       <div class="ops-grid">
@@ -919,7 +923,7 @@ Get-CimInstance Win32_Process |
             ("Runtime files", "lpfs_ic_live_*", "State, journal, heartbeat, and logs use IC-specific names under C:\\TradeAutomationRuntimeIC."),
             ("MT5 identity", "ICMarketsSC-MT5-2", "Fail closed if the VPS MT5 terminal is not logged into the expected IC account/server."),
             ("Broker identity", "magic 231500 / LPFSIC", "Separate magic and broker comment prefix prevent FTMO and IC state from being confused."),
-            ("Active-position repair state", "LPFS_IC_Live running", "Accepted final proof recorded IC running on runtime SHA 45efa748423f20881507cda9d4f81e4afe617bde after FTMO proof, task running/enabled, kill switch clear, one logical runner path, fresh heartbeat, 2 pending LPFS orders matching baseline, 1 active position matching baseline, mismatch count 0, lifecycle journal delta with broker-proven stale-position close rows, and telemetry failures 0. Run the dual VPS status packet for current truth before maintenance."),
+            ("Active-position repair state", "LPFS_IC_Live running", "Historical active-position repair proof recorded IC running on runtime SHA 45efa748423f20881507cda9d4f81e4afe617bde after FTMO proof, with broker-proven stale-position close rows. Latest RA-002/RA-003 proof later recorded runtime SHA 6c4ecb131d7499e455ef42cfeb91ba0bc0a75490, kill switch clear, one logical runner path, fresh heartbeat, 8 pending LPFS orders, 1 active position, mismatch count 0, telemetry failures 0, and market-data fetch failures 0. Run the dual VPS status packet for current truth before maintenance."),
             ("Startup alert", "LPFS_IC_Startup_Alert", "At-startup SYSTEM task sends IC Telegram boot/restart cards into the IC channel and journals into lpfs_ic_live_journal.jsonl."),
             ("Latest IC live smoke", "1 pending order placed", "The first IC VPS live-send cycle completed before continuous task startup; broker/runtime reconciliation is captured by the dual VPS status report."),
             ("Sizing policy", "ledger scale 1.0", "See configs/live_policy_ledger.csv. The active IC live policy keeps the 0.25/0.30/0.75 bucket shape, uses risk_bucket_scale=1.0, max_risk_pct_per_trade=0.75, and keeps the historical scale-2 epoch traceable."),
@@ -930,8 +934,8 @@ Get-CimInstance Win32_Process |
 
     <section id="commands" aria-labelledby="commands-title">
       <h2 id="commands-title">Operator Commands</h2>
-      <p class="callout warning"><strong>Current accepted operating state:</strong> Stage 5 minimum-safety resumption, Phase 1 telemetry deploy, and active-position state/broker repair deploy completed with FTMO first and IC second. Both live data-collection tasks were accepted as running with kill switches clear, recovery disabled, telemetry failures 0, active state/broker mismatch count 0, FTMO 3 pending orders plus 2 active positions, and IC 2 pending orders plus 1 active position. Pending orders must match the fresh broker baseline or be fully journal-explained; do not require zero pending orders for a healthy running lane. Do not run reconciliation, run a canary, manually mutate broker exposure, clean historical journals, or start duplicate runners; use the dual VPS status packet for current process and broker truth.</p>
-      <p>Run these from the repository root after confirming <code>config.local.json</code> is intentionally set for the target account.</p>
+      <p class="callout warning"><strong>Current accepted operating state:</strong> Stage 5 minimum-safety resumption, Phase 1 telemetry deploy, active-position state/broker repair, market-data frame-skip, and RA-002/RA-003 robustness deploys completed with FTMO first and IC second. Both live data-collection tasks were accepted as running at runtime SHA <code>6c4ecb131d7499e455ef42cfeb91ba0bc0a75490</code> with kill switches clear, recovery disabled, telemetry failures 0, market-data fetch failures 0, active state/broker mismatch count 0, FTMO 9 pending orders plus 3 active positions, and IC 8 pending orders plus 1 active position. Pending orders must match broker truth or be fully journal-explained; do not require zero pending orders for a healthy running lane. Do not run reconciliation, run a canary, manually mutate broker exposure, clean historical journals, or start duplicate runners; use the dual VPS status packet for current process and broker truth.</p>
+      <p>Run these from the repository root after confirming <code>config.local.json</code> is intentionally set for the target account. Run <code>scripts/run_core_coverage.py</code> serially; it uses shared coverage files in the repo root and must not run concurrently with other coverage jobs or subagents in the same checkout.</p>
       <div class="command-list">
         {command_html}
       </div>
@@ -948,7 +952,7 @@ Get-CimInstance Win32_Process |
             ("Watch", "True rejects stay final", "Manual deletion and true broker rejects remain final. C-01 reconcile-only cleanup requires validated MT5 broker history; operator-evidence fallback is disabled. Do not perform state surgery."),
             ("Watch", "SSH/report fetch failures must be visible", "Weekly reporting must mark lane fetch failures as incomplete instead of treating missing journal/state data as a clean result."),
             ("Protection", "Compact summaries require local snapshots", "Collect a bounded shared-read journal snapshot, capture a fresh dual-VPS health packet, then run the manifest-backed compact summary locally. Direct active-journal summary reads are rejected."),
-            ("Watch", "Gate attribution still scans the source", "Gate attribution uses FileShare.ReadWrite and bounds returned rows by default, but it still streams the full remote source before returning its tail. A byte-bounded optimization is deferred."),
+            ("Protection", "Gate attribution is source-bounded", "Gate attribution uses FileShare.ReadWrite, defaults to a 64 MiB source suffix, then applies --tail-lines to returned rows. Use --max-source-bytes intentionally for a larger bounded read; unbounded scans require explicit --allow-full-scan."),
             ("Watch", "Receipt snapshot hash includes moving fields", "C-01 reconciliation receipt stable_hash currently includes full live position rows, including moving price_current and profit. Validate the receipt chain internally and compare stable inventory fields across adjacent exports. Review a narrower hash projection separately."),
             ("Protection", "IC packet output hygiene", "For future IC packet capture, suppress PowerShell CLIXML progress noise, capture stdout and stderr separately, and preserve explicit remote exit codes. Transport progress records are not broker evidence."),
             ("Watch", "EA v1 remains tester-only", "The native MQL5 EA scaffold is Strategy Tester-only. Do not attach it to FTMO or IC live charts during v1."),

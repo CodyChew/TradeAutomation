@@ -685,6 +685,10 @@ def coverage_failure_reason(fetch_error: str, metadata: dict[str, Any], *, combi
         return "combined_from_incomplete_lane"
     if fetch_error:
         return "fetch_error"
+    if int(metadata.get("lifecycle_parse_errors") or 0) > 0:
+        return "lifecycle_parse_error"
+    if metadata.get("state_parse_error"):
+        return "state_parse_error"
     if metadata.get("fetch_incomplete") and not metadata.get("week_coverage_proven"):
         return "bounded_window_after_week_start"
     if metadata.get("fetch_incomplete"):
@@ -963,7 +967,11 @@ def summarize_lane_week(
     )
     runtime_changed = bool(git_info.get("runtime_commits_in_window"))
     fetch_error = str(lane_input.state_payload.get("fetch_error") or lane_input.fetch_metadata.get("fetch_error") or "")
-    fetch_incomplete = bool(fetch_error or lane_input.fetch_metadata.get("fetch_incomplete"))
+    evidence_parse_error = bool(
+        lane_input.fetch_metadata.get("state_parse_error")
+        or int(lane_input.fetch_metadata.get("lifecycle_parse_errors") or 0) > 0
+    )
+    fetch_incomplete = bool(fetch_error or lane_input.fetch_metadata.get("fetch_incomplete") or evidence_parse_error)
 
     row = {
         "lane": lane_input.config.name,
@@ -1178,6 +1186,10 @@ def consistency_history_unavailable_reason(lane_input: LaneInput) -> str:
     metadata = lane_input.fetch_metadata or {}
     if metadata.get("fetch_error") or metadata.get("fetch_incomplete"):
         return "lane_fetch_incomplete"
+    if int(metadata.get("lifecycle_parse_errors") or 0) > 0:
+        return "lifecycle_parse_error"
+    if metadata.get("state_parse_error"):
+        return "state_parse_error"
     if metadata.get("first_live_metadata_unavailable"):
         return CONSISTENCY_HISTORY_UNAVAILABLE_REASON
     return ""
@@ -1203,7 +1215,11 @@ def live_week_history_rows(
     first_journal_sgt = parse_timestamp(start_info["first_journal_utc"]).tz_convert(SGT) if start_info.get("first_journal_utc") else None
     now_sgt = as_of_utc.tz_convert(SGT)
     fetch_error = str(lane_input.state_payload.get("fetch_error") or lane_input.fetch_metadata.get("fetch_error") or "")
-    fetch_incomplete = bool(fetch_error or lane_input.fetch_metadata.get("fetch_incomplete"))
+    evidence_parse_error = bool(
+        lane_input.fetch_metadata.get("state_parse_error")
+        or int(lane_input.fetch_metadata.get("lifecycle_parse_errors") or 0) > 0
+    )
+    fetch_incomplete = bool(fetch_error or lane_input.fetch_metadata.get("fetch_incomplete") or evidence_parse_error)
 
     history_rows: list[dict[str, Any]] = []
     trade_rows: list[dict[str, Any]] = []

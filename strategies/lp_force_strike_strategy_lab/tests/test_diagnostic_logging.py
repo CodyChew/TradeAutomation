@@ -267,11 +267,39 @@ class DiagnosticLoggingTests(unittest.TestCase):
         script = module._remote_shared_jsonl_reader_script(
             r"C:\TradeAutomationRuntime\data\live\lpfs_live_journal.jsonl",
             tail_lines=500,
+            max_source_bytes=4096,
             include_market_snapshots=False,
         )
         self.assertIn("[System.IO.FileShare]::ReadWrite", script)
         self.assertIn("$TailLines = 500", script)
+        self.assertIn("$MaxSourceBytes = 4096", script)
+        self.assertIn("Seek(-1 * $MaxSourceBytes", script)
+        self.assertIn("$stream.ReadByte()", script)
+        self.assertNotIn("$discard.ReadLine()", script)
         self.assertNotIn("Get-Content", script)
+
+    def test_gate_attribution_local_reader_bounds_source_bytes_before_tail(self) -> None:
+        module_path = WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_gate_attribution.py"
+        spec = importlib.util.spec_from_file_location("gate_script", module_path)
+        self.assertIsNotNone(spec)
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            journal = Path(tmpdir) / "journal.jsonl"
+            journal.write_text(
+                "\n".join(json.dumps({"event": "setup_rejected", "seq": seq}) for seq in range(20)) + "\n",
+                encoding="utf-8",
+            )
+
+            rows = module._load_local_jsonl(str(journal), tail_lines=10, max_source_bytes=90)
+
+        seqs = [row["seq"] for row in rows]
+        self.assertGreater(len(seqs), 0)
+        self.assertLessEqual(len(seqs), 10)
+        self.assertEqual(seqs[-1], 19)
+        self.assertNotIn(0, seqs)
 
 
 def _setup() -> TradeSetup:

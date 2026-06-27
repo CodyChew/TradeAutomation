@@ -126,9 +126,16 @@ class LiveSendExecutorConfig:
     market_recovery_mode: str = "disabled"
     market_recovery_deviation_points: int = 0
     history_lookback_days: int = 30
+    expected_account_login: str | None = None
+    expected_account_server: str | None = None
 
     def safe_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        payload = asdict(self)
+        payload.pop("expected_account_login", None)
+        payload.pop("expected_account_server", None)
+        payload["expected_account_login_set"] = bool(self.expected_account_login)
+        payload["expected_account_server_set"] = bool(self.expected_account_server)
+        return payload
 
 
 @dataclass(frozen=True)
@@ -909,6 +916,11 @@ def load_live_send_settings(path: str | Path = "config.local.json", *, env: dict
     base_dir = config_path.parent if config_path.parent != Path("") else Path(".")
     live_payload = dict(payload.get("live_send", {}) or {})
     dry_executor = dry_settings.executor
+    expected_account_login = dry_settings.local.expected_login
+    expected_account_server = dry_settings.local.expected_server
+    if not dry_settings.local.use_existing_terminal_session:
+        expected_account_login = expected_account_login or dry_settings.local.mt5_login
+        expected_account_server = expected_account_server or dry_settings.local.mt5_server
 
     executor = LiveSendExecutorConfig(
         execution_mode=str(live_payload.get("execution_mode", "DRY_RUN")),
@@ -956,6 +968,8 @@ def load_live_send_settings(path: str | Path = "config.local.json", *, env: dict
         market_recovery_mode=str(live_payload.get("market_recovery_mode", "disabled")),
         market_recovery_deviation_points=int(live_payload.get("market_recovery_deviation_points", 0)),
         history_lookback_days=int(live_payload.get("history_lookback_days", 30)),
+        expected_account_login=expected_account_login,
+        expected_account_server=expected_account_server,
     )
     return LiveSendSettings(local=dry_settings.local, executor=executor)
 
@@ -985,6 +999,11 @@ def validate_live_send_settings(settings: LiveSendSettings) -> None:
         raise LocalConfigError("live_send.market_snapshot_journal_max_bytes must be positive.")
     if _path_identity(config.journal_path) == _path_identity(config.market_snapshot_journal_path):
         raise LocalConfigError("live_send.market_snapshot_journal_path must differ from live_send.journal_path.")
+    if config.expected_account_login:
+        try:
+            int(str(config.expected_account_login))
+        except ValueError as exc:
+            raise LocalConfigError("MT5 expected login must be numeric in local live-send config.") from exc
 
 
 def _path_identity(path: str | Path) -> str:
@@ -1728,10 +1747,17 @@ def _broker_backstop_elapsed(pending: LiveTrackedOrder) -> bool:
     return _as_utc_timestamp(pending.broker_backstop_expiration_time_utc) <= pd.Timestamp.now(tz="UTC")
 
 
-def send_pending_order(mt5_module: Any, intent: MT5OrderIntent) -> LiveOrderSendOutcome:
+def send_pending_order(
+    mt5_module: Any,
+    intent: MT5OrderIntent,
+    *,
+    config: LiveSendExecutorConfig | None = None,
+) -> LiveOrderSendOutcome:
     """Send a validated MT5 pending order request."""
 
     request = build_order_check_request(mt5_module, intent)
+    if config is not None:
+        _validate_current_account_identity(mt5_module, config)
     result = mt5_module.order_send(request)
     retcode = None if result is None else getattr(result, "retcode", None)
     comment = "order_send returned None" if result is None else str(getattr(result, "comment", "") or "")
@@ -1872,12 +1898,15 @@ def send_market_recovery_order(
     mt5_module: Any,
     intent: MT5OrderIntent,
     *,
+    config: LiveSendExecutorConfig | None = None,
     deviation_points: int = 0,
     checked_request: dict[str, Any] | None = None,
 ) -> LiveOrderSendOutcome:
     """Send a validated MT5 market-recovery order request."""
 
     request = _market_send_request(mt5_module, intent, deviation_points=deviation_points, checked_request=checked_request)
+    if config is not None:
+        _validate_current_account_identity(mt5_module, config)
     result = mt5_module.order_send(request)
     retcode = None if result is None else getattr(result, "retcode", None)
     comment = "order_send returned None" if result is None else str(getattr(result, "comment", "") or "")
@@ -1896,7 +1925,12 @@ def send_market_recovery_order(
     )
 
 
-def cancel_pending_order(mt5_module: Any, order: LiveTrackedOrder) -> LiveOrderSendOutcome:
+def cancel_pending_order(
+    mt5_module: Any,
+    order: LiveTrackedOrder,
+    *,
+    config: LiveSendExecutorConfig | None = None,
+) -> LiveOrderSendOutcome:
     """Remove one stale pending order from MT5."""
 
     request = {
@@ -1906,6 +1940,8 @@ def cancel_pending_order(mt5_module: Any, order: LiveTrackedOrder) -> LiveOrderS
         "magic": order.magic,
         "comment": order.comment,
     }
+    if config is not None:
+        _validate_current_account_identity(mt5_module, config)
     result = mt5_module.order_send(request)
     retcode = None if result is None else getattr(result, "retcode", None)
     comment = "order_send returned None" if result is None else str(getattr(result, "comment", "") or "")
@@ -2241,6 +2277,7 @@ def _process_market_recovery_live_send(
     outcome = send_market_recovery_order(
         mt5_module,
         intent,
+        config=config,
         deviation_points=config.market_recovery_deviation_points,
         checked_request=order_check.request,
     )
@@ -2759,8 +2796,39 @@ def process_trade_setup_live_send(
     if adopted is not None:
         return adopted
 
-    outcome = send_pending_order(mt5_module, decision.intent)
+    outcome = send_pending_order(mt5_module, decision.intent, config=config)
     if not outcome.sent or outcome.order_ticket is None:
+        try:
+            adopted_after_send = _adopt_existing_broker_item(
+                mt5_module,
+                decision.intent,
+                config=config,
+                state=checked_state,
+                symbol_spec=symbol_spec,
+                notifier=notifier,
+                diagnostics=send_diagnostics,
+                adoption_context="after_order_send_attempt",
+            )
+        except BrokerSnapshotUnavailable as exc:
+            _record_pending_send_reconcile_required(
+                config,
+                signal_key=signal_key,
+                setup=setup,
+                intent=decision.intent,
+                outcome=outcome,
+                reason="broker_snapshot_unavailable_after_pending_send_attempt",
+                error=str(exc),
+            )
+            _save_live_state(config, checked_state)
+            return LiveSetupResult(
+                state=checked_state,
+                signal_key=signal_key,
+                status="blocked",
+                order_check=order_check,
+                order_send=outcome,
+            )
+        if adopted_after_send is not None:
+            return adopted_after_send
         retry_status = _retryable_order_send_block_status(outcome)
         if retry_status is not None:
             event = _retryable_broker_block_event(retry_status, signal_key, outcome.retcode, outcome.comment)
@@ -2866,7 +2934,7 @@ def reconcile_live_state(
         if order is not None:
             expiry_check = pending_order_bar_expiry_check(mt5_module, pending, config)
             if expiry_check.expired or _broker_backstop_elapsed(pending):
-                cancel = cancel_pending_order(mt5_module, pending)
+                cancel = cancel_pending_order(mt5_module, pending, config=config)
                 event = _pending_cancelled_event(pending, cancel, expired=True, expiry_check=expiry_check)
                 event_key_suffix = "cancelled" if cancel.sent else "cancel_failed"
                 next_state = _record_event_once(
@@ -3368,6 +3436,7 @@ def validated_broker_snapshot(mt5_module: Any, config: LiveSendExecutorConfig) -
     account = mt5_module.account_info()
     if account is None:
         raise BrokerSnapshotUnavailable(_broker_read_error(mt5_module, "account_info"))
+    _validate_snapshot_account_identity(account, config)
     orders = current_strategy_orders(mt5_module, config)
     positions = current_strategy_positions(mt5_module, config)
     end = pd.Timestamp.now(tz="UTC")
@@ -3390,6 +3459,29 @@ def validated_broker_snapshot(mt5_module: Any, config: LiveSendExecutorConfig) -
         history_orders=history_orders,
         history_deals=history_deals,
     )
+
+
+def _validate_snapshot_account_identity(account: Any, config: LiveSendExecutorConfig) -> None:
+    if config.expected_account_login:
+        try:
+            expected_login = int(str(config.expected_account_login))
+        except ValueError as exc:
+            raise BrokerSnapshotUnavailable("configured expected account login is not numeric") from exc
+        actual_login = int(getattr(account, "login", 0) or 0)
+        if actual_login != expected_login:
+            raise BrokerSnapshotUnavailable("connected MT5 account login does not match expected live-send config")
+    if config.expected_account_server:
+        expected_server = str(config.expected_account_server).strip()
+        actual_server = str(getattr(account, "server", "") or "").strip()
+        if actual_server != expected_server:
+            raise BrokerSnapshotUnavailable("connected MT5 account server does not match expected live-send config")
+
+
+def _validate_current_account_identity(mt5_module: Any, config: LiveSendExecutorConfig) -> None:
+    account = mt5_module.account_info()
+    if account is None:
+        raise BrokerSnapshotUnavailable(_broker_read_error(mt5_module, "account_info"))
+    _validate_snapshot_account_identity(account, config)
 
 
 def latest_close_for_position(
@@ -4383,6 +4475,42 @@ def _record_market_recovery_reconcile_required(
     )
 
 
+def _record_pending_send_reconcile_required(
+    config: LiveSendExecutorConfig,
+    *,
+    signal_key: str,
+    setup: TradeSetup,
+    intent: MT5OrderIntent,
+    outcome: LiveOrderSendOutcome,
+    reason: str,
+    error: str | None = None,
+) -> None:
+    append_audit_event(
+        config.journal_path,
+        "pending_order_send_reconcile_required",
+        signal_key=signal_key,
+        symbol=setup.symbol,
+        timeframe=setup.timeframe,
+        side=setup.side,
+        setup_id=setup.setup_id,
+        order_type=intent.order_type,
+        entry_price=float(intent.entry_price),
+        stop_loss=float(intent.stop_loss),
+        take_profit=float(intent.take_profit),
+        volume=float(intent.volume),
+        target_risk_pct=float(intent.target_risk_pct),
+        actual_risk_pct=float(intent.actual_risk_pct),
+        order_send_retcode=outcome.retcode,
+        order_send_comment=outcome.comment,
+        order_ticket=outcome.order_ticket,
+        deal_ticket=outcome.deal_ticket,
+        reason=reason,
+        error=error,
+        timestamp_semantics_version=MT5_EPOCH_UTC_V2,
+        timestamp_provenance="system_utc",
+    )
+
+
 def _record_market_recovery_presend(
     config: LiveSendExecutorConfig,
     state: LiveExecutorState,
@@ -4586,6 +4714,7 @@ def _adopt_existing_broker_item(
     symbol_spec: MT5SymbolExecutionSpec,
     notifier: TelegramNotifier | None = None,
     diagnostics: dict[str, Any] | None = None,
+    adoption_context: str = "before_order_send",
 ) -> LiveSetupResult | None:
     order = _matching_broker_order_for_intent(mt5_module, intent, config, symbol_spec)
     if order is not None:
@@ -4595,7 +4724,7 @@ def _adopt_existing_broker_item(
         tracked = _tracked_order_from_intent(intent, ticket, price_digits=symbol_spec.digits, diagnostics=diagnostics)
         next_state = replace(state, pending_orders=(*state.pending_orders, tracked))
         _save_live_state(config, next_state)
-        event = _order_adopted_event(tracked, source="pending order", broker_item=order)
+        event = _order_adopted_event(tracked, source="pending order", broker_item=order, adoption_context=adoption_context)
         next_state = _record_event_once(
             config,
             next_state,
@@ -4623,7 +4752,12 @@ def _adopt_existing_broker_item(
     )
     next_state = replace(state, active_positions=(*state.active_positions, tracked_position))
     _save_live_state(config, next_state)
-    event = _order_adopted_event(tracked_position, source="open position", broker_item=position)
+    event = _order_adopted_event(
+        tracked_position,
+        source="open position",
+        broker_item=position,
+        adoption_context=adoption_context,
+    )
     next_state = _record_event_once(
         config,
         next_state,
@@ -4818,10 +4952,17 @@ def _market_recovery_sent_event(
     )
 
 
-def _order_adopted_event(item: LiveTrackedOrder | LiveTrackedPosition, *, source: str, broker_item: Any) -> NotificationEvent:
+def _order_adopted_event(
+    item: LiveTrackedOrder | LiveTrackedPosition,
+    *,
+    source: str,
+    broker_item: Any,
+    adoption_context: str = "before_order_send",
+) -> NotificationEvent:
     fields = fields_with_diagnostics(
         {
             "adoption_source": source,
+            "adoption_context": adoption_context,
             "order_ticket": item.order_ticket,
             "position_id": getattr(item, "position_id", None),
             "order_type": "BUY_LIMIT" if item.side == "long" else "SELL_LIMIT",
@@ -4835,8 +4976,17 @@ def _order_adopted_event(item: LiveTrackedOrder | LiveTrackedPosition, *, source
             "broker_comment": str(getattr(broker_item, "comment", "") or ""),
         },
         item.diagnostics,
-        execution={"stage": "order_adopted", "execution_path": "adopted_existing_broker_item"},
+        execution={
+            "stage": "order_adopted_after_send_attempt"
+            if adoption_context == "after_order_send_attempt"
+            else "order_adopted",
+            "execution_path": "adopted_existing_broker_item",
+        },
     )
+    if adoption_context == "after_order_send_attempt":
+        message = f"MT5 {source} matched this LPFS setup after an ambiguous order_send result; local state adopted broker truth."
+    else:
+        message = f"Existing MT5 {source} matched this LPFS setup; no new order sent."
     return NotificationEvent(
         kind="order_adopted",
         mode="LIVE",
@@ -4848,7 +4998,7 @@ def _order_adopted_event(item: LiveTrackedOrder | LiveTrackedPosition, *, source
         status="adopted",
         signal_key=item.signal_key,
         fields=fields,
-        message=f"Existing MT5 {source} matched this LPFS setup; no new order sent.",
+        message=message,
     )
 
 

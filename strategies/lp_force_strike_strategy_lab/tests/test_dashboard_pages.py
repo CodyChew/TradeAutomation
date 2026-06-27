@@ -232,8 +232,10 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("High-volume market_snapshot rows are separated", html)
         self.assertIn("Retention applies here only", html)
         self.assertIn("Phase 1 telemetry and active-position repair completed", html)
+        self.assertIn("6c4ecb131d7499e455ef42cfeb91ba0bc0a75490", html)
         self.assertIn("45efa748423f20881507cda9d4f81e4afe617bde", html)
         self.assertIn("telemetry failures 0", html)
+        self.assertIn("market-data fetch failures 0", html)
         self.assertIn("Telegram is reporting only", html)
         self.assertIn("Operator Checklist", html)
         self.assertIn("Weekly dashboard is latest-week only", html)
@@ -262,11 +264,13 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Current accepted operating state", html)
         self.assertIn("LPFS_Live</code> and IC <code>LPFS_IC_Live</code> running", html)
         self.assertIn("kill switches clear", html)
-        self.assertIn("FTMO 3 and IC 2 pending LPFS orders", html)
-        self.assertIn("Pending orders must match the fresh broker baseline", html)
+        self.assertIn("FTMO 9 and IC 8 pending LPFS orders", html)
+        self.assertIn("Pending orders must match broker truth", html)
         self.assertIn("Active-position repair state", html)
         self.assertIn("broker-proven stale-position close rows", html)
         self.assertIn("use the dual VPS status packet for current process and broker truth", html)
+        self.assertIn("audit_lpfs_local_configs.py", html)
+        self.assertIn("run_core_coverage.py</code> serially", html)
         self.assertNotIn("C-01 containment active", html)
         self.assertNotIn("C-01 contained review hold", html)
         self.assertNotIn("remain paused", html)
@@ -325,7 +329,9 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("--journal-snapshot", html)
         self.assertNotIn("summarize_lpfs_live_trades.py --config config.local.json --runtime-root", html)
         self.assertIn("Compact summaries require local snapshots", html)
-        self.assertIn("Gate attribution still scans the source", html)
+        self.assertIn("Gate attribution is source-bounded", html)
+        self.assertIn("defaults to a 64 MiB source suffix", html)
+        self.assertIn("--allow-full-scan", html)
         self.assertIn("IC Markets VPS Boundary", html)
         self.assertIn("LPFS_IC_Live", html)
         self.assertIn("C:\\TradeAutomationRuntimeIC", html)
@@ -367,10 +373,15 @@ class DashboardPagesTests(unittest.TestCase):
             "pending_strategy_order_count=",
             "strategy_position_count=",
             "active_position_state_broker_mismatch_count=",
+            "pending_order_state_broker_mismatch_count=",
             "state_active_position_ids=",
             "broker_active_position_ids=",
+            "state_pending_order_ids=",
+            "broker_pending_order_ids=",
             "state_not_in_broker=",
             "broker_not_in_state=",
+            "pending_state_not_in_broker=",
+            "pending_broker_not_in_state=",
             "lifecycle_journal_path=",
             "lifecycle_journal_size_bytes=",
             "lifecycle_journal_mtime=",
@@ -394,6 +405,8 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("direct_runner_chain", script)
         self.assertIn("process_probe_untrusted", script)
         self.assertIn("active_position_state_broker_mismatch", script)
+        self.assertIn("pending_order_state_broker_mismatch", script)
+        self.assertIn('"pending_order_comparison"', script)
         self.assertIn("if not process_probe_trusted", script)
         self.assertIn('"probe_trusted": False', script)
 

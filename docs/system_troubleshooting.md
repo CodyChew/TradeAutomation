@@ -279,10 +279,9 @@ Safe patterns:
 
 - prefer `scripts/Get-LpfsDualVpsStatus.ps1` for current status;
 - prefer `scripts/summarize_lpfs_live_gate_attribution.py --tail-lines 200000`
-  for remote gate-attribution reads; it uses `FileShare.ReadWrite`, but the
-  tail limit bounds returned rows rather than remote source work. It still
-  streams the full journal before returning its tail. Byte-bounded
-  gate-attribution optimization is deferred;
+  for remote gate-attribution reads; it uses `FileShare.ReadWrite`, defaults
+  to a `64 MiB` source suffix before applying the returned-row tail, and
+  requires explicit `--allow-full-scan` for unbounded reads;
 - collect routine compact-summary evidence with
   `scripts/collect_lpfs_live_journal_snapshots.py`. It captures a fixed
   point-in-time source range through `FileShare.ReadWrite`, defaults to an

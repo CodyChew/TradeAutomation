@@ -670,6 +670,57 @@ class LiveWeeklyPerformanceTests(unittest.TestCase):
         )
         self.assertIn(">incomplete<", html)
 
+    def test_parse_errors_mark_lane_incomplete_even_with_parsed_trade_rows(self) -> None:
+        cases = (
+            ("lifecycle_parse_errors", {"lifecycle_parse_errors": 1}, "lifecycle_parse_error"),
+            ("state_parse_error", {"state_parse_error": True}, "state_parse_error"),
+        )
+        for name, metadata_update, expected_reason in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as raw_tmp:
+                tmp = Path(raw_tmp)
+                lane = _lane_input(
+                    tmp,
+                    "FTMO",
+                    first_journal="2026-04-30T19:48:13Z",
+                    first_order="2026-04-30T19:48:18Z",
+                    close_r=1.25,
+                )
+                lane = weekly.LaneInput(
+                    config=lane.config,
+                    first_journal_row=lane.first_journal_row,
+                    lifecycle_rows=lane.lifecycle_rows,
+                    state_payload=lane.state_payload,
+                    vps_head=lane.vps_head,
+                    fetch_metadata={
+                        "fetch_incomplete": False,
+                        "week_coverage_proven": True,
+                        "reached_source_start": True,
+                        **metadata_update,
+                    },
+                )
+                result = weekly.build_weekly_report(
+                    lane_inputs=[lane],
+                    git_info=_git_info(runtime_changed=False),
+                    as_of_utc=weekly.parse_timestamp("2026-05-09T00:00:00Z"),
+                    report_root=tmp / "reports",
+                    docs_output=tmp / "docs" / "live_weekly_performance.html",
+                )
+
+                row = result["weekly_summary"][0]
+                self.assertTrue(row["fetch_incomplete"])
+                self.assertFalse(row["analysis_eligible"])
+                self.assertEqual(row["performance_confidence"], "incomplete")
+                self.assertEqual(row["coverage_status"], "incomplete")
+                self.assertEqual(row["coverage_failure_reason"], expected_reason)
+                self.assertEqual(row["closed_trades_display"], "incomplete")
+                self.assertIsNone(row["closed_trades"])
+                self.assertEqual(row["known_fetched_closed_trades"], 1)
+                self.assertIn("lane_fetch_incomplete", row["partial_reasons"])
+                self.assertEqual(row["consistency_history_status"], "unavailable")
+                self.assertEqual(row["consistency_history_reason"], expected_reason)
+                self.assertEqual(result["consistency_flags"][0]["consistency_reasons"], expected_reason)
+                self.assertEqual(result["run_summary"]["lanes"][0]["coverage_failure_reason"], expected_reason)
+
     def test_complete_bounded_week_with_missing_first_live_metadata_marks_consistency_unavailable(self) -> None:
         with tempfile.TemporaryDirectory() as raw_tmp:
             tmp = Path(raw_tmp)

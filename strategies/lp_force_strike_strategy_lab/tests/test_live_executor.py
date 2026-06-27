@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from unittest import mock
 from pathlib import Path
 from types import SimpleNamespace
@@ -148,6 +149,28 @@ def _pending(**overrides) -> LiveTrackedOrder:
     }
     values.update(overrides)
     return LiveTrackedOrder(**values)
+
+
+def _pending_intent(**overrides) -> MT5OrderIntent:
+    values = {
+        "signal_key": "lpfs:EURUSD:H4:10:long",
+        "symbol": "EURUSD",
+        "timeframe": "H4",
+        "side": "long",
+        "order_type": "BUY_LIMIT",
+        "volume": 0.02,
+        "entry_price": 1.1,
+        "stop_loss": 1.095,
+        "take_profit": 1.105,
+        "target_risk_pct": 0.01,
+        "actual_risk_pct": 0.01,
+        "expiration_time_utc": pd.Timestamp("2026-01-02T04:00:00Z"),
+        "magic": 131500,
+        "comment": "LPFS H4 L 10",
+        "setup_id": "setup",
+    }
+    values.update(overrides)
+    return MT5OrderIntent(**values)
 
 
 def _rates_from_times(times: list[str]) -> list[dict]:
@@ -550,6 +573,8 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(settings.executor.risk_buckets_pct, {"H4": 0.25, "H8": 0.25})
             self.assertEqual(settings.executor.strategy_magic, 231500)
             self.assertEqual(settings.executor.order_comment_prefix, "LPFSIC")
+            self.assertEqual(settings.executor.expected_account_login, "123")
+            self.assertEqual(settings.executor.expected_account_server, "Real")
             self.assertEqual(
                 Path(settings.executor.market_snapshot_journal_path),
                 Path(tmpdir) / "live" / "market_snapshots.jsonl",
@@ -560,6 +585,10 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertFalse(settings.executor.require_lp_pivot_before_fs_mother)
             self.assertFalse(live_module._dry_compatible_config(settings.executor).require_lp_pivot_before_fs_mother)
             self.assertNotIn("'token'", str(settings.safe_dict()))
+            self.assertTrue(settings.executor.safe_dict()["expected_account_login_set"])
+            self.assertTrue(settings.executor.safe_dict()["expected_account_server_set"])
+            self.assertNotIn("expected_account_login", settings.executor.safe_dict())
+            self.assertNotIn("expected_account_server", settings.executor.safe_dict())
             validate_live_send_settings(settings)
 
             bad_values = [
@@ -574,10 +603,11 @@ class LiveExecutorTests(unittest.TestCase):
                 {"market_recovery_mode": "always"},
                 {"market_recovery_deviation_points": -1},
                 {"market_snapshot_journal_max_bytes": 0},
+                {"expected_account_login": "not-numeric"},
             ]
             for overrides in bad_values:
                 with self.subTest(overrides=overrides), self.assertRaises(LocalConfigError):
-                    validate_live_send_settings(type(settings)(settings.local, type(settings.executor)(**{**settings.executor.safe_dict(), **overrides})))
+                    validate_live_send_settings(type(settings)(settings.local, replace(settings.executor, **overrides)))
 
             same_path_overrides = [
                 {"market_snapshot_journal_path": settings.executor.journal_path},
@@ -586,7 +616,14 @@ class LiveExecutorTests(unittest.TestCase):
                 same_path_overrides.append({"market_snapshot_journal_path": settings.executor.journal_path.upper()})
             for overrides in same_path_overrides:
                 with self.subTest(overrides=overrides), self.assertRaisesRegex(LocalConfigError, "market_snapshot_journal_path"):
-                    validate_live_send_settings(type(settings)(settings.local, type(settings.executor)(**{**settings.executor.safe_dict(), **overrides})))
+                    validate_live_send_settings(type(settings)(settings.local, replace(settings.executor, **overrides)))
+
+            validate_live_send_settings(
+                type(settings)(
+                    settings.local,
+                    replace(settings.executor, expected_account_login=None, expected_account_server=None),
+                )
+            )
 
             fallback = load_live_send_settings(Path(tmpdir) / "missing.json", env={"MT5_EXPECTED_LOGIN": "1", "MT5_EXPECTED_SERVER": "Real"})
             self.assertEqual(fallback.executor.risk_bucket_scale, 0.05)
@@ -607,6 +644,22 @@ class LiveExecutorTests(unittest.TestCase):
             )
             string_symbol = load_live_send_settings(config_path, env={})
             self.assertEqual(string_symbol.executor.symbols, ("EURUSD",))
+
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "mt5": {
+                            "use_existing_terminal_session": False,
+                            "login": "321",
+                            "server": "BrokerServer",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            explicit_login = load_live_send_settings(config_path, env={})
+            self.assertEqual(explicit_login.executor.expected_account_login, "321")
+            self.assertEqual(explicit_login.executor.expected_account_server, "BrokerServer")
 
             config_path.write_text(json.dumps({"live_send": {"risk_buckets_pct": ["H4", 0.25]}}), encoding="utf-8")
             with self.assertRaisesRegex(LocalConfigError, "risk_buckets_pct must be an object"):
@@ -1266,23 +1319,7 @@ class LiveExecutorTests(unittest.TestCase):
 
     def test_send_and_cancel_pending_order_outcomes(self) -> None:
         mt5 = FakeMT5()
-        intent = MT5OrderIntent(
-            signal_key="lpfs:EURUSD:H4:10:long",
-            symbol="EURUSD",
-            timeframe="H4",
-            side="long",
-            order_type="BUY_LIMIT",
-            volume=0.02,
-            entry_price=1.1,
-            stop_loss=1.095,
-            take_profit=1.105,
-            target_risk_pct=0.01,
-            actual_risk_pct=0.01,
-            expiration_time_utc=pd.Timestamp("2026-01-02T04:00:00Z"),
-            magic=131500,
-            comment="LPFS H4 L 10",
-            setup_id="setup",
-        )
+        intent = _pending_intent()
 
         sent = send_pending_order(mt5, intent)
         self.assertTrue(sent.sent)
@@ -1391,6 +1428,39 @@ class LiveExecutorTests(unittest.TestCase):
         mt5.order_send_result = SimpleNamespace(retcode=999, comment="bad market", order=0, deal=0)
         rejected_market = send_market_recovery_order(mt5, market_intent, deviation_points=0)
         self.assertFalse(rejected_market.sent)
+
+    def test_broker_account_identity_is_validated_before_snapshot_and_send(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mt5 = FakeMT5()
+            intent = _pending_intent()
+
+            login_config = _config(tmpdir, expected_account_login="999", expected_account_server="Real")
+            with self.assertRaisesRegex(live_module.BrokerSnapshotUnavailable, "login"):
+                live_module.validated_broker_snapshot(mt5, login_config)
+            with self.assertRaisesRegex(live_module.BrokerSnapshotUnavailable, "login"):
+                send_pending_order(mt5, intent, config=login_config)
+            self.assertEqual(mt5.order_send_requests, [])
+
+            malformed_config = _config(tmpdir, expected_account_login="not-numeric", expected_account_server="Real")
+            with self.assertRaisesRegex(live_module.BrokerSnapshotUnavailable, "not numeric"):
+                live_module.validated_broker_snapshot(mt5, malformed_config)
+
+            matching_config = _config(tmpdir, expected_account_login="123", expected_account_server="Real")
+            snapshot = live_module.validated_broker_snapshot(mt5, matching_config)
+            self.assertEqual(snapshot.account_server, "Real")
+
+            server_config = _config(tmpdir, expected_account_login="123", expected_account_server="Demo")
+            with self.assertRaisesRegex(live_module.BrokerSnapshotUnavailable, "server"):
+                live_module.validated_broker_snapshot(mt5, server_config)
+            with self.assertRaisesRegex(live_module.BrokerSnapshotUnavailable, "server"):
+                send_market_recovery_order(mt5, _pending_intent(order_type="BUY"), config=server_config)
+            self.assertEqual(mt5.order_send_requests, [])
+
+            account_missing_mt5 = FakeMT5()
+            account_missing_mt5.account = None
+            with self.assertRaisesRegex(live_module.BrokerSnapshotUnavailable, "account_info"):
+                send_pending_order(account_missing_mt5, intent, config=_config(tmpdir))
+            self.assertEqual(account_missing_mt5.order_send_requests, [])
 
     def test_pending_expiry_counts_actual_bars_across_weekend_gaps_for_all_timeframes(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -2860,6 +2930,72 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(mt5.order_send_requests, [])
             self.assertEqual(adopted_position.state.active_positions[0].position_id, 8888)
             self.assertEqual(adopted_position.state.active_positions[0].order_ticket, 8888)
+
+    def test_process_live_setup_adopts_broker_order_after_ambiguous_send_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+
+            def none_send_then_order_exists(request: dict):
+                mt5.order_send_requests.append(request)
+                mt5.orders = [
+                    SimpleNamespace(
+                        ticket=7778,
+                        symbol=request["symbol"],
+                        magic=request["magic"],
+                        type=request["type"],
+                        comment=request["comment"],
+                        volume_initial=request["volume"],
+                        price_open=request["price"],
+                        sl=request["sl"],
+                        tp=request["tp"],
+                    )
+                ]
+                return None
+
+            mt5.order_send = none_send_then_order_exists
+            result = process_trade_setup_live_send(mt5, _setup(), config=config, state=LiveExecutorState())
+
+            self.assertEqual(result.status, "order_adopted")
+            self.assertEqual(len(mt5.order_send_requests), 1)
+            self.assertEqual(result.state.pending_orders[0].order_ticket, 7778)
+            self.assertIn(result.signal_key, result.state.processed_signal_keys)
+            row = json.loads(Path(config.journal_path).read_text(encoding="utf-8").strip().splitlines()[-1])
+            notification = row["notification_event"]
+            self.assertEqual(notification["kind"], "order_adopted")
+            self.assertEqual(notification["fields"]["adoption_context"], "after_order_send_attempt")
+            self.assertEqual(notification["fields"]["diagnostics"]["execution"]["stage"], "order_adopted_after_send_attempt")
+            self.assertIn("ambiguous order_send result", notification["message"])
+
+    def test_process_live_setup_blocks_when_post_send_broker_read_is_unavailable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = _config(tmpdir)
+            mt5 = FakeMT5()
+
+            def none_send_then_orders_unavailable(request: dict):
+                mt5.order_send_requests.append(request)
+                mt5.orders = None
+                return None
+
+            mt5.order_send = none_send_then_orders_unavailable
+            result = process_trade_setup_live_send(mt5, _setup(), config=config, state=LiveExecutorState())
+
+            self.assertEqual(result.status, "blocked")
+            self.assertEqual(len(mt5.order_send_requests), 1)
+            self.assertIsNotNone(result.order_send)
+            self.assertFalse(result.order_send.sent)
+            self.assertIn(result.signal_key, result.state.processed_signal_keys)
+            self.assertIn(result.signal_key, result.state.order_checked_signal_keys)
+            self.assertEqual(result.state.pending_orders, ())
+
+            rows = _journal_rows(Path(config.journal_path))
+            reconcile_rows = [row for row in rows if row["event"] == "pending_order_send_reconcile_required"]
+            self.assertEqual(len(reconcile_rows), 1)
+            fields = reconcile_rows[0]
+            self.assertEqual(fields["reason"], "broker_snapshot_unavailable_after_pending_send_attempt")
+            self.assertEqual(fields["signal_key"], result.signal_key)
+            self.assertEqual(fields["order_send_comment"], "order_send returned None")
+            self.assertIn("orders_get", fields["error"])
 
     def test_process_live_setup_does_not_adopt_mismatched_broker_order(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
