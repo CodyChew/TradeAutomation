@@ -713,6 +713,20 @@ class NotificationTests(unittest.TestCase):
         self.assertIn("Order: #9001", cancelled)
         self.assertIn("Action: Removed from local pending tracking", cancelled)
 
+        cancelled_from_history = format_notification_message(
+            NotificationEvent(
+                kind="pending_cancelled",
+                mode="LIVE",
+                title="History",
+                status="history",
+                symbol="EURUSD",
+                timeframe="H4",
+                side="long",
+                fields={"order_ticket": 9002},
+            )
+        )
+        self.assertIn("Reason: Pending order is no longer open in MT5", cancelled_from_history)
+
         bare_order = format_notification_message(NotificationEvent(kind="order_sent", mode="LIVE", title="Order"))
         self.assertIn("n/a | LIMIT #n/a", bare_order)
         self.assertIn("Plan: Entry n/a | SL n/a | TP n/a", bare_order)

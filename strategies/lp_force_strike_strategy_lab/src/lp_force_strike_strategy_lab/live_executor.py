@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import time
 from types import SimpleNamespace
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 import pandas as pd
 
@@ -707,6 +707,15 @@ def _classify_stale_pending_for_reconciliation(
         (item for item in snapshot.history_orders if int(getattr(item, "ticket", 0) or 0) == pending.order_ticket),
         None,
     )
+    if history_order is not None and _history_order_manual_cancel_proven(mt5_module, history_order):
+        return {"order_ticket": pending.order_ticket, "status": "manual_broker_cancel_confirmed", "reason": "mt5_history"}
+    terminal_state = _history_order_terminal_state(mt5_module, history_order) if history_order is not None else None
+    if terminal_state in {"expired", "rejected"}:
+        return {
+            "order_ticket": pending.order_ticket,
+            "status": f"{terminal_state}_confirmed",
+            "reason": "mt5_history",
+        }
     history_deals = [
         item for item in snapshot.history_deals if int(getattr(item, "order", 0) or 0) == pending.order_ticket
     ]
@@ -719,14 +728,6 @@ def _classify_stale_pending_for_reconciliation(
         if deal_position_ids and deal_position_ids <= active_position_ids:
             return {"order_ticket": pending.order_ticket, "status": "filled_confirmed", "reason": "mt5_deal_history"}
         return {"order_ticket": pending.order_ticket, "status": "unresolved", "reason": "history_deals_present"}
-    if history_order is not None and _history_order_manual_cancel_proven(mt5_module, history_order):
-        return {"order_ticket": pending.order_ticket, "status": "manual_broker_cancel_confirmed", "reason": "mt5_history"}
-    if history_order is not None and _history_order_terminal_state(mt5_module, history_order) in {"expired", "rejected"}:
-        return {
-            "order_ticket": pending.order_ticket,
-            "status": f"{_history_order_terminal_state(mt5_module, history_order)}_confirmed",
-            "reason": "mt5_history",
-        }
     return {"order_ticket": pending.order_ticket, "status": "unresolved", "reason": "missing_manual_cancel_proof"}
 
 
@@ -2982,12 +2983,13 @@ def reconcile_live_state(
             )
             continue
         history_order = _history_order_for_ticket(mt5_module, pending, config, snapshot=snapshot)
-        event = _pending_missing_event(pending, history_order=history_order)
+        event = _pending_missing_event(pending, history_order=history_order, classification=classification)
+        event_key_prefix = "pending_expired" if classification.get("status") == "expired_confirmed" else "pending_cancelled"
         next_state = _record_event_once(
             config,
             next_state,
             notifier,
-            f"pending_cancelled:{pending.order_ticket}",
+            f"{event_key_prefix}:{pending.order_ticket}",
             event,
             reply_thread_key=f"order:{pending.order_ticket}",
         )
@@ -5171,21 +5173,48 @@ def _pending_cancelled_event(
     )
 
 
-def _pending_missing_event(order: LiveTrackedOrder, *, history_order: Any | None = None) -> NotificationEvent:
-    status = "missing" if history_order is None else "history"
+def _pending_missing_event(
+    order: LiveTrackedOrder,
+    *,
+    history_order: Any | None = None,
+    classification: Mapping[str, Any] | None = None,
+) -> NotificationEvent:
+    classification_status = str((classification or {}).get("status") or "")
+    if classification_status == "expired_confirmed":
+        kind = "pending_expired"
+        title = "Pending order expired"
+        status = "expired"
+        stage = "pending_expired"
+    elif classification_status == "rejected_confirmed":
+        kind = "pending_cancelled"
+        title = "Pending order rejected"
+        status = "rejected"
+        stage = "pending_rejected"
+    elif classification_status == "manual_broker_cancel_confirmed":
+        kind = "pending_cancelled"
+        title = "Pending order cancelled"
+        status = "cancelled"
+        stage = "pending_cancelled"
+    else:
+        kind = "pending_cancelled"
+        title = "Pending order no longer open"
+        status = "missing" if history_order is None else "history"
+        stage = "pending_missing"
     fields = fields_with_diagnostics(
         {
             "order_ticket": order.order_ticket,
             "price_digits": order.price_digits,
             "broker_comment": "" if history_order is None else str(getattr(history_order, "comment", "") or ""),
+            "classification_status": classification_status,
+            "classification_reason": "" if classification is None else str(classification.get("reason", "")),
         },
         order.diagnostics,
-        execution={"stage": "pending_missing", "execution_path": "pending_limit"},
+        execution={"stage": stage, "execution_path": "pending_limit"},
     )
     return NotificationEvent(
-        kind="pending_cancelled",
+        kind=kind,
         mode="LIVE",
-        title="Pending order no longer open",
+        title=title,
         severity="warning",
         symbol=order.symbol,
         timeframe=order.timeframe,

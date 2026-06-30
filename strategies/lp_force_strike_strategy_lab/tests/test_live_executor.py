@@ -3226,6 +3226,58 @@ class LiveExecutorTests(unittest.TestCase):
             )
             self.assertEqual(duplicate_notice.notified_event_keys, ("pending_cancelled:9002",))
 
+            mt5.history_orders = [
+                SimpleNamespace(
+                    ticket=9004,
+                    magic=131500,
+                    symbol="EURUSD",
+                    state=mt5.ORDER_STATE_EXPIRED,
+                    reason=None,
+                    comment="expired",
+                )
+            ]
+            mt5.deals = [SimpleNamespace(order=9004, position_id=9999)]
+            expired_missing = reconcile_live_state(
+                mt5,
+                config=config,
+                state=LiveExecutorState(pending_orders=(_pending(order_ticket=9004),)),
+            )
+            self.assertEqual(expired_missing.pending_orders, ())
+            self.assertIn("pending_expired:9004", expired_missing.notified_event_keys)
+            expired_rows = _journal_rows(Path(config.journal_path))
+            self.assertEqual(expired_rows[-1]["notification_event"]["kind"], "pending_expired")
+            self.assertEqual(expired_rows[-1]["notification_event"]["status"], "expired")
+            self.assertEqual(
+                expired_rows[-1]["notification_event"]["fields"]["classification_status"],
+                "expired_confirmed",
+            )
+
+            mt5.history_orders = []
+            mt5.deals = [SimpleNamespace(order=9005, position_id=9999)]
+            ambiguous_missing = reconcile_live_state(
+                mt5,
+                config=config,
+                state=LiveExecutorState(pending_orders=(_pending(order_ticket=9005),)),
+            )
+            self.assertEqual(len(ambiguous_missing.pending_orders), 1)
+            ambiguous_rows = _journal_rows(Path(config.journal_path))
+            self.assertEqual(ambiguous_rows[-1]["event"], "pending_missing_unresolved")
+            self.assertEqual(ambiguous_rows[-1]["classification"]["reason"], "history_deals_present")
+
+            rejected_event = live_module._pending_missing_event(
+                _pending(order_ticket=9006),
+                history_order=SimpleNamespace(comment="rejected by broker"),
+                classification={"status": "rejected_confirmed", "reason": "mt5_history"},
+            )
+            self.assertEqual(rejected_event.kind, "pending_cancelled")
+            self.assertEqual(rejected_event.status, "rejected")
+            self.assertEqual(rejected_event.fields["diagnostics"]["execution"]["stage"], "pending_rejected")
+
+            missing_event = live_module._pending_missing_event(_pending(order_ticket=9007))
+            self.assertEqual(missing_event.kind, "pending_cancelled")
+            self.assertEqual(missing_event.status, "missing")
+            self.assertEqual(missing_event.fields["diagnostics"]["execution"]["stage"], "pending_missing")
+
             active = _active()
             mt5.deals = [
                 SimpleNamespace(
