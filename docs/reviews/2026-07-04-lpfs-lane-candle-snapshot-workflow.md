@@ -77,6 +77,34 @@ and broker server/company metadata match the expected lane. Any missing,
 cross-lane, malformed, partial, or tampered packet is `STOPPED` /
 `safe_for_strategy_analysis=false`.
 
+## IC Timeout Follow-Up
+
+On the first full read-only run, FTMO produced a valid packet but IC timed out
+before any manifest was returned. The failure exposed two collector robustness
+gaps rather than a valid strategy-data result:
+
+- the large remote PowerShell body was sent over SSH stdin, which could time
+  out before the IC remote script body created its work directory;
+- the first per-frame helper iteration assumed the VPS-side
+  `DatasetConfig` accepted `allow_symbol_select`, while the deployed IC repo
+  still had the older constructor.
+
+Resolution:
+
+- upload the reviewed PowerShell helper as a temporary script with `scp` and
+  execute it with `powershell -File`, avoiding the long stdin transport path;
+- run each requested symbol/timeframe through a bounded per-frame worker so a
+  slow or failed MT5 history call is recorded in `pull_result.json` instead of
+  hiding behind a lane-level timeout;
+- use `copy_rates_from_pos` for recent `--history-years` snapshots, preserving
+  the requested window in manifests while avoiding slow date-range history
+  downloads where possible;
+- keep `symbol_select` disabled and keep partial/failed lanes as `STOPPED`.
+
+A small IC `EURUSD/H4` read-only probe passed after the fix. Full dual-lane
+strategy evidence still requires a clean committed collector SHA and a fresh
+full packet where both lanes pass validation.
+
 ## Safety Boundaries
 
 This workflow does not approve or perform:

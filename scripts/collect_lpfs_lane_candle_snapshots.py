@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 from typing import Any, Callable, Sequence
 
@@ -39,7 +40,6 @@ DEFAULT_TIMEFRAMES = ("H4", "H8", "H12", "D1", "W1")
 DEFAULT_HISTORY_YEARS = 1
 COLLECTOR_SCHEMA_VERSION = 1
 REMOTE_MARKER = "LPFS_LANE_CANDLE_SNAPSHOT_JSON="
-STDIN_POWERSHELL_BOOTSTRAP = "$script = [Console]::In.ReadToEnd(); Invoke-Expression $script"
 LANE_RE = re.compile(r"^[A-Z][A-Z0-9_-]*$")
 
 
@@ -67,6 +67,7 @@ class LaneRequest:
     date_start_utc: str | None
     date_end_utc: str | None
     collection_id: str
+    frame_timeout_seconds: int
 
 
 @dataclass(frozen=True)
@@ -115,6 +116,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
     parser.add_argument("--remote-root", default=r"C:\Windows\Temp\lpfs_lane_candle_snapshots")
     parser.add_argument("--timeout", type=int, default=3600)
+    parser.add_argument(
+        "--frame-timeout",
+        type=int,
+        default=180,
+        help="Per symbol/timeframe MT5 pull timeout inside the remote helper.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Build and validate the request packet without SSH/SCP.")
     args = parser.parse_args(argv)
 
@@ -126,6 +133,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise CandleSnapshotError("--history-years must be positive")
         if bool(args.date_start_utc) != bool(args.date_end_utc):
             raise CandleSnapshotError("--date-start-utc and --date-end-utc must be provided together")
+        if args.frame_timeout <= 0:
+            raise CandleSnapshotError("--frame-timeout must be positive")
         packet = collect_lane_candle_snapshots(
             lanes=lanes,
             symbols=symbols,
@@ -136,6 +145,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             output_root=Path(args.output_root),
             remote_root=args.remote_root,
             timeout=args.timeout,
+            frame_timeout_seconds=args.frame_timeout,
             dry_run=args.dry_run,
         )
     except CandleSnapshotError as exc:
@@ -157,6 +167,7 @@ def collect_lane_candle_snapshots(
     output_root: Path = DEFAULT_OUTPUT_ROOT,
     remote_root: str = r"C:\Windows\Temp\lpfs_lane_candle_snapshots",
     timeout: int = 3600,
+    frame_timeout_seconds: int = 180,
     dry_run: bool = False,
     now: datetime | None = None,
     runner: Callable[..., CommandResult] | None = None,
@@ -188,6 +199,7 @@ def collect_lane_candle_snapshots(
                 date_start_utc=date_start_utc,
                 date_end_utc=date_end_utc,
                 collection_id=collection_id,
+                frame_timeout_seconds=frame_timeout_seconds,
             )
             lane_dir = staging_dir / lane_key.lower()
             lane_dir.mkdir()
@@ -277,11 +289,16 @@ def _collect_one_lane(
         candle_root,
         request=request,
     )
-    _write_validation(lane_dir, validation["result"], validation["failures"], remote_summary=remote_summary, validation=validation)
+    failures = list(validation["failures"])
+    remote_result = str(remote_summary.get("result") or "")
+    if remote_result != "PASS":
+        failures.insert(0, f"remote collection result was {remote_result or 'UNKNOWN'}")
+    result = "PASS" if not failures else "STOPPED"
+    _write_validation(lane_dir, result, failures, remote_summary=remote_summary, validation=validation)
     return {
         "lane": request.profile.lane,
-        "result": validation["result"],
-        "failures": validation["failures"],
+        "result": result,
+        "failures": failures,
         "local_candle_root": str(candle_root),
         "manifest_count": validation["manifest_count"],
         "row_count": validation["row_count"],
@@ -303,6 +320,7 @@ def build_remote_lane_script(request: LaneRequest, *, remote_root: str) -> str:
     }
     if request.date_start_utc and request.date_end_utc:
         config.pop("history_years", None)
+    config["frame_timeout_seconds"] = request.frame_timeout_seconds
     config_b64 = base64.b64encode(json.dumps(config, separators=(",", ":"), sort_keys=True).encode("utf-8")).decode("ascii")
     request_b64 = base64.b64encode(json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")).decode("ascii")
     python_source = _remote_collect_python_source()
@@ -343,8 +361,9 @@ if ($PullExit -ne 0) {{ throw "lane candle collection failed with exit code $Pul
 if (Test-Path -LiteralPath $ZipPath) {{ Remove-Item -LiteralPath $ZipPath -Force }}
 Compress-Archive -LiteralPath $DataRoot,$ConfigPath,$RequestPath,$ResultPath,$CollectScriptPath -DestinationPath $ZipPath -Force
 $ZipHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ZipPath).Hash.ToLowerInvariant()
+$PullResult = Get-Content -LiteralPath $ResultPath -Raw | ConvertFrom-Json
 $Summary = [ordered]@{{
-  result = 'PASS'
+  result = [string]$PullResult.result
   lane = '{request.profile.lane}'
   ssh_alias = '{request.profile.ssh_alias}'
   repo_head = [string]$RepoHead
@@ -355,6 +374,8 @@ $Summary = [ordered]@{{
   remote_zip_sha256 = $ZipHash
   expected_server = '{request.profile.expected_server}'
   expected_company_contains = '{request.profile.expected_company_contains}'
+  failed_item_count = [int]$PullResult.failed_item_count
+  item_count = [int]$PullResult.item_count
 }}
 Write-Output ('{REMOTE_MARKER}' + ($Summary | ConvertTo-Json -Compress -Depth 8))
 """
@@ -366,8 +387,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
+import subprocess
 import sys
+import time
 
 
 class StrictMT5Proxy:
@@ -386,22 +410,25 @@ def main() -> int:
     parser.add_argument("--repo", required=True)
     parser.add_argument("--config", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--frame-worker", action="store_true")
+    parser.add_argument("--symbol")
+    parser.add_argument("--timeframe")
     args = parser.parse_args()
 
     repo = Path(args.repo)
     sys.path.insert(0, str(repo / "shared" / "market_data_lab" / "src"))
 
-    import MetaTrader5 as mt5_module  # type: ignore
+    if args.frame_worker:
+        return run_frame_worker(args)
+    return run_parent(args)
+
+
+def run_parent(args) -> int:
     from market_data_lab import (
         DatasetConfig,
-        build_dataset_manifest,
         normalize_timeframe,
-        pull_symbol_rates,
         resolve_date_window,
-        write_dataset_manifest,
-        write_rates_csv,
     )
-    from market_data_lab.mt5 import account_metadata, ensure_symbol, symbol_metadata, terminal_metadata
 
     payload = json.loads(Path(args.config).read_text(encoding="utf-8"))
     config_kwargs = {
@@ -417,62 +444,75 @@ def main() -> int:
     if "allow_symbol_select" in getattr(DatasetConfig, "__dataclass_fields__", {}):
         config_kwargs["allow_symbol_select"] = False
     config = DatasetConfig(**config_kwargs)
-    strict_mt5 = StrictMT5Proxy(mt5_module)
-    if not strict_mt5.initialize():
-        raise RuntimeError(f"MetaTrader5 initialize failed: {strict_mt5.last_error()}")
     start, end = resolve_date_window(config)
-    account = account_metadata(strict_mt5.account_info())
-    terminal = terminal_metadata(strict_mt5.terminal_info())
+    data_root = Path(config.data_root)
+    data_root.mkdir(parents=True, exist_ok=True)
+    item_root = data_root / "_pull_items"
+    item_root.mkdir(parents=True, exist_ok=True)
     items = []
-    try:
-        for symbol in config.symbols:
-            for timeframe in config.timeframes:
-                label = normalize_timeframe(timeframe)
-                try:
-                    info = ensure_symbol(strict_mt5, symbol, allow_symbol_select=False)
-                except TypeError:
-                    info = ensure_symbol(strict_mt5, symbol)
-                frame = pull_symbol_rates(
-                    strict_mt5,
-                    symbol=symbol,
-                    timeframe=label,
-                    start=start.to_pydatetime(),
-                    end=end.to_pydatetime(),
-                )
-                data_path = write_rates_csv(config.data_root, frame, symbol=symbol, timeframe=label)
-                manifest = build_dataset_manifest(
-                    frame,
-                    symbol=symbol,
-                    timeframe=label,
-                    source="mt5",
-                    data_path=data_path,
-                    requested_start_utc=start,
-                    requested_end_utc=end,
-                    symbol_metadata=symbol_metadata(info, symbol),
-                    account_metadata=account,
-                    terminal_metadata=terminal,
-                )
-                manifest_path = write_dataset_manifest(config.data_root, manifest)
-                items.append(
-                    {
+    failures = []
+    frame_timeout = int(payload.get("frame_timeout_seconds") or 180)
+    for symbol in config.symbols:
+        for timeframe in config.timeframes:
+            label = normalize_timeframe(timeframe)
+            item_path = item_root / f"{symbol}_{label}.json"
+            command = [
+                sys.executable,
+                str(Path(__file__).resolve()),
+                "--repo",
+                str(args.repo),
+                "--config",
+                str(args.config),
+                "--output",
+                str(item_path),
+                "--frame-worker",
+                "--symbol",
+                str(symbol).upper(),
+                "--timeframe",
+                label,
+            ]
+            started = time.perf_counter()
+            try:
+                completed = subprocess.run(command, capture_output=True, text=True, timeout=frame_timeout, check=False)
+            except subprocess.TimeoutExpired as exc:
+                item = {
+                    "symbol": str(symbol).upper(),
+                    "timeframe": label,
+                    "status": "failed",
+                    "error_type": "TimeoutExpired",
+                    "error": f"frame collection timed out after {frame_timeout}s",
+                    "duration_seconds": round(time.perf_counter() - started, 3),
+                    "stdout_tail": _tail_text(exc.stdout),
+                    "stderr_tail": _tail_text(exc.stderr),
+                }
+            else:
+                if completed.returncode == 0 and item_path.is_file():
+                    item = json.loads(item_path.read_text(encoding="utf-8"))
+                else:
+                    item = {
                         "symbol": str(symbol).upper(),
                         "timeframe": label,
-                        "status": "ok",
-                        "rows": int(len(frame)),
-                        "data_path": str(data_path),
-                        "manifest_path": str(manifest_path),
-                        "coverage_start_utc": manifest["coverage_start_utc"],
-                        "coverage_end_utc": manifest["coverage_end_utc"],
+                        "status": "failed",
+                        "error_type": "FrameWorkerFailed",
+                        "error": f"frame worker exited {completed.returncode}",
+                        "duration_seconds": round(time.perf_counter() - started, 3),
+                        "stdout_tail": _tail_text(completed.stdout),
+                        "stderr_tail": _tail_text(completed.stderr),
                     }
-                )
-    finally:
-        strict_mt5.shutdown()
+            if item.get("status") != "ok":
+                failures.append(f"{symbol}:{label}: {item.get('error_type')}: {item.get('error')}")
+            items.append(item)
     Path(args.output).write_text(
         json.dumps(
             {
-                "result": "PASS",
+                "result": "PASS" if not failures else "STOPPED",
                 "allow_symbol_select": False,
                 "storage_format": "csv",
+                "pull_granularity": "per_frame_worker",
+                "frame_timeout_seconds": frame_timeout,
+                "item_count": len(items),
+                "failed_item_count": len(failures),
+                "failures": failures,
                 "items": items,
             },
             indent=2,
@@ -482,6 +522,129 @@ def main() -> int:
         encoding="utf-8",
     )
     return 0
+
+
+def run_frame_worker(args) -> int:
+    import pandas as pd
+    import MetaTrader5 as mt5_module  # type: ignore
+    from market_data_lab import (
+        DatasetConfig,
+        build_dataset_manifest,
+        get_timeframe_spec,
+        mt5_timeframe_value,
+        normalize_rates_frame,
+        normalize_timeframe,
+        resolve_date_window,
+        validate_rates_frame,
+        write_dataset_manifest,
+        write_rates_csv,
+    )
+    from market_data_lab.mt5 import account_metadata, ensure_symbol, pull_symbol_rates, symbol_metadata, terminal_metadata
+
+    if not args.symbol or not args.timeframe:
+        raise RuntimeError("--symbol and --timeframe are required for --frame-worker")
+    payload = json.loads(Path(args.config).read_text(encoding="utf-8"))
+    config_kwargs = {
+        "dataset_name": str(payload["dataset_name"]),
+        "data_root": str(payload["data_root"]),
+        "symbols": tuple(str(symbol).upper() for symbol in payload["symbols"]),
+        "timeframes": tuple(str(timeframe).upper() for timeframe in payload["timeframes"]),
+        "history_years": payload.get("history_years"),
+        "date_start_utc": payload.get("date_start_utc"),
+        "date_end_utc": payload.get("date_end_utc"),
+        "source": "mt5",
+    }
+    if "allow_symbol_select" in getattr(DatasetConfig, "__dataclass_fields__", {}):
+        config_kwargs["allow_symbol_select"] = False
+    config = DatasetConfig(**config_kwargs)
+    symbol = str(args.symbol).upper()
+    label = normalize_timeframe(args.timeframe)
+    if symbol not in config.symbols or label not in tuple(normalize_timeframe(tf) for tf in config.timeframes):
+        raise RuntimeError(f"worker frame {symbol}:{label} is not in request config")
+    strict_mt5 = StrictMT5Proxy(mt5_module)
+    started = time.perf_counter()
+    if not strict_mt5.initialize():
+        raise RuntimeError(f"MetaTrader5 initialize failed: {strict_mt5.last_error()}")
+    start, end = resolve_date_window(config)
+    try:
+        try:
+            info = ensure_symbol(strict_mt5, symbol, allow_symbol_select=False)
+        except TypeError:
+            info = ensure_symbol(strict_mt5, symbol)
+        account = account_metadata(strict_mt5.account_info())
+        terminal = terminal_metadata(strict_mt5.terminal_info())
+        pull_method = "copy_rates_range"
+        bar_count_requested = None
+        if config.date_start_utc is None and config.date_end_utc is None:
+            pull_method = "copy_rates_from_pos"
+            expected_delta = get_timeframe_spec(label).expected_delta
+            window_seconds = max((end - start) / pd.Timedelta(seconds=1), 1.0)
+            delta_seconds = max(expected_delta / pd.Timedelta(seconds=1), 1.0)
+            bar_count_requested = max(int(math.ceil(window_seconds / delta_seconds)) + 20, 10)
+            raw = strict_mt5.copy_rates_from_pos(
+                symbol,
+                mt5_timeframe_value(strict_mt5, label),
+                0,
+                int(bar_count_requested),
+            )
+            if raw is None:
+                raise RuntimeError(f"copy_rates_from_pos failed for {symbol} {label}: {strict_mt5.last_error()}")
+            frame = normalize_rates_frame(pd.DataFrame(raw), symbol=symbol, timeframe=label)
+            timestamps = pd.to_datetime(frame["time_utc"], utc=True)
+            frame = frame.loc[(timestamps >= start) & (timestamps <= end)].reset_index(drop=True)
+            validate_rates_frame(frame, symbol=symbol, timeframe=label)
+        else:
+            frame = pull_symbol_rates(
+                strict_mt5,
+                symbol=symbol,
+                timeframe=label,
+                start=start.to_pydatetime(),
+                end=end.to_pydatetime(),
+            )
+        data_path = write_rates_csv(config.data_root, frame, symbol=symbol, timeframe=label)
+        manifest = build_dataset_manifest(
+            frame,
+            symbol=symbol,
+            timeframe=label,
+            source="mt5",
+            data_path=data_path,
+            requested_start_utc=start,
+            requested_end_utc=end,
+            symbol_metadata=symbol_metadata(info, symbol),
+            account_metadata=account,
+            terminal_metadata=terminal,
+        )
+        manifest["pull_method"] = pull_method
+        if bar_count_requested is not None:
+            manifest["bar_count_requested"] = int(bar_count_requested)
+        manifest_path = write_dataset_manifest(config.data_root, manifest)
+        item = {
+            "symbol": symbol,
+            "timeframe": label,
+            "status": "ok",
+            "rows": int(len(frame)),
+            "data_path": str(data_path),
+            "manifest_path": str(manifest_path),
+            "coverage_start_utc": manifest["coverage_start_utc"],
+            "coverage_end_utc": manifest["coverage_end_utc"],
+            "pull_method": pull_method,
+            "bar_count_requested": bar_count_requested,
+            "duration_seconds": round(time.perf_counter() - started, 3),
+        }
+    finally:
+        strict_mt5.shutdown()
+    Path(args.output).write_text(
+        json.dumps(item, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return 0
+
+
+def _tail_text(value, limit=4000):
+    if value is None:
+        return ""
+    text = value.decode("utf-8", errors="replace") if isinstance(value, bytes) else str(value)
+    return text[-limit:]
 
 
 if __name__ == "__main__":
@@ -665,6 +828,7 @@ def _write_packet_manifest(
             "no_config_change",
             "no_runtime_state_or_journal_mutation",
             "no_broker_order_or_position_mutation",
+            "no_symbol_visibility_mutation",
             "no_strategy_logic_change",
         ],
     }
@@ -674,27 +838,47 @@ def _write_packet_manifest(
 
 
 def _run_ssh_powershell(alias: str, script: str, *, timeout: int) -> CommandResult:
-    encoded_bootstrap = base64.b64encode(STDIN_POWERSHELL_BOOTSTRAP.encode("utf-16le")).decode("ascii")
-    args = (
+    script_hash = hashlib.sha256(script.encode("utf-8")).hexdigest()
+    remote_script = f"C:/Windows/Temp/lpfs_lane_candle_snapshots_remote_{script_hash[:16]}_{os.getpid()}.ps1"
+    with tempfile.NamedTemporaryFile("w", suffix=".ps1", encoding="utf-8", delete=False) as handle:
+        handle.write(script)
+        local_script = Path(handle.name)
+    upload_args = (
+        "scp",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        str(local_script),
+        f"{alias}:{remote_script}",
+    )
+    run_args = (
         "ssh",
         "-o",
         "BatchMode=yes",
         "-o",
         "ConnectTimeout=15",
         alias,
-        f"powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {encoded_bootstrap}",
+        f"powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File {remote_script}",
     )
+    args = upload_args + ("&&",) + run_args
     try:
-        completed = subprocess.run(
-            list(args),
-            input=script,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
+        upload = subprocess.run(list(upload_args), capture_output=True, text=True, timeout=min(timeout, 300), check=False)
+        if upload.returncode != 0:
+            return CommandResult(
+                args=args,
+                stdout=upload.stdout,
+                stderr=f"remote script upload failed with exit code {upload.returncode}\n{upload.stderr}",
+                returncode=int(upload.returncode),
+            )
+        completed = subprocess.run(list(run_args), capture_output=True, text=True, timeout=timeout, check=False)
     except subprocess.TimeoutExpired as exc:
         return CommandResult(args=args, stdout=exc.stdout or "", stderr=f"timeout after {timeout}s", returncode=124)
+    finally:
+        try:
+            local_script.unlink()
+        except OSError:
+            pass
     return CommandResult(args=args, stdout=completed.stdout, stderr=completed.stderr, returncode=int(completed.returncode))
 
 

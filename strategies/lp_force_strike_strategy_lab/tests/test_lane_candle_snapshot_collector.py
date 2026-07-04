@@ -3,10 +3,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import importlib.util
 import json
+import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+import zipfile
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
@@ -60,6 +62,7 @@ class LaneCandleSnapshotCollectorTests(unittest.TestCase):
             date_start_utc=None,
             date_end_utc=None,
             collection_id="20260704_120000",
+            frame_timeout_seconds=180,
         )
 
         script = module.build_remote_lane_script(request, remote_root=r"C:\Windows\Temp\lpfs_test")
@@ -76,6 +79,10 @@ class LaneCandleSnapshotCollectorTests(unittest.TestCase):
         self.assertIn("symbol_select is disabled", helper)
         self.assertIn("write_rates_csv", helper)
         self.assertIn('"storage_format": "csv"', helper)
+        self.assertIn("copy_rates_from_pos", helper)
+        self.assertIn("--frame-worker", helper)
+        self.assertIn("frame_timeout_seconds", helper)
+        self.assertIn("TimeoutExpired", helper)
         self.assertIn(module.REMOTE_MARKER, script)
         self.assertIn("Compress-Archive", script)
         forbidden = (
@@ -112,6 +119,7 @@ class LaneCandleSnapshotCollectorTests(unittest.TestCase):
                 date_start_utc=None,
                 date_end_utc=None,
                 collection_id="20260704_120000",
+                frame_timeout_seconds=180,
             )
 
             validation = module.validate_lane_candle_root(candle_root, request=request)
@@ -140,6 +148,7 @@ class LaneCandleSnapshotCollectorTests(unittest.TestCase):
                 date_start_utc=None,
                 date_end_utc=None,
                 collection_id="20260704_120000",
+                frame_timeout_seconds=180,
             )
 
             validation = module.validate_lane_candle_root(candle_root, request=request)
@@ -168,6 +177,7 @@ class LaneCandleSnapshotCollectorTests(unittest.TestCase):
                 date_start_utc=None,
                 date_end_utc=None,
                 collection_id="20260704_120000",
+                frame_timeout_seconds=180,
             )
 
             validation = module.validate_lane_candle_root(candle_root, request=request)
@@ -184,6 +194,74 @@ class LaneCandleSnapshotCollectorTests(unittest.TestCase):
             module._parse_remote_summary(
                 module.REMOTE_MARKER + '{"result":"PASS"}\n' + module.REMOTE_MARKER + '{"result":"PASS"}\n'
             )
+
+    def test_remote_stopped_packet_is_fetched_but_not_promoted_to_pass(self) -> None:
+        module = _load_collector()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            remote_root = root / "remote"
+            candle_root = remote_root / "candles"
+            _write_manifest(
+                candle_root,
+                symbol="EURUSD",
+                timeframe="H4",
+                server="FTMO-Server",
+                company="FTMO",
+            )
+            remote_zip = root / "snapshot.zip"
+            with zipfile.ZipFile(remote_zip, "w") as archive:
+                for path in sorted(remote_root.rglob("*")):
+                    if path.is_file():
+                        archive.write(path, path.relative_to(remote_root).as_posix())
+            remote_summary = {
+                "result": "STOPPED",
+                "remote_zip_scp_path": "C:/Windows/Temp/lpfs_test/snapshot.zip",
+                "remote_zip_sha256": module._sha256_file(remote_zip),
+                "failed_item_count": 1,
+                "item_count": 2,
+            }
+
+            def runner(*_args, **_kwargs):
+                return module.CommandResult(
+                    args=("ssh",),
+                    stdout=module.REMOTE_MARKER + json.dumps(remote_summary, sort_keys=True) + "\n",
+                    stderr="",
+                    returncode=0,
+                )
+
+            def fetcher(_alias, _remote_path, local_zip, **_kwargs):
+                shutil.copyfile(remote_zip, local_zip)
+                return module.CommandResult(args=("scp",), stdout="", stderr="", returncode=0)
+
+            request = module.LaneRequest(
+                profile=module.LANE_PROFILES["FTMO"],
+                symbols=("EURUSD", "GBPUSD"),
+                timeframes=("H4",),
+                history_years=1,
+                date_start_utc=None,
+                date_end_utc=None,
+                collection_id="20260704_120000",
+                frame_timeout_seconds=180,
+            )
+            lane_dir = root / "packet" / "ftmo"
+            lane_dir.mkdir(parents=True)
+
+            result = module._collect_one_lane(
+                request,
+                lane_dir=lane_dir,
+                remote_root=r"C:\Windows\Temp\lpfs_test",
+                timeout=60,
+                dry_run=False,
+                runner=runner,
+                fetcher=fetcher,
+            )
+
+            validation = json.loads((lane_dir / "validation_summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(result["result"], "STOPPED")
+            self.assertTrue((lane_dir / "snapshot.zip").is_file())
+            self.assertIn("remote collection result was STOPPED", validation["failures"])
+            self.assertTrue(any("GBPUSD:H4" in failure for failure in validation["failures"]))
 
 
 def _write_manifest(candle_root: Path, *, symbol: str, timeframe: str, server: str, company: str) -> None:
