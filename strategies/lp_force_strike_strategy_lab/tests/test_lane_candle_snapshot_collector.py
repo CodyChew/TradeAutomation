@@ -66,6 +66,7 @@ class LaneCandleSnapshotCollectorTests(unittest.TestCase):
         helper = module._remote_collect_python_source()
 
         self.assertIn("collect_lane_candles.py", script)
+        self.assertIn("[IO.File]::WriteAllBytes($CollectScriptPath", script)
         self.assertIn("collect script hash mismatch", script)
         self.assertIn("CollectScriptHash", script)
         self.assertIn("collect_script_sha256", script)
