@@ -10,7 +10,9 @@ Start a new handover or Codex session with `SESSION_HANDOFF.md`, then
 read `strategies/majority_flush_strategy_lab/START_HERE.md`.
 For Codex branch and worktree hygiene, read
 `docs/codex_worktree_workflow.md` and confirm `AGENTS.md` is present in the
-active checkout before editing.
+active checkout before editing. For repo-structure, onboarding, workflow, or
+decision-history maintenance, read `docs/repo_maintenance_policy.md` and
+`docs/decision_log.md`.
 
 ## Structure
 
@@ -21,6 +23,8 @@ active checkout before editing.
   Strategy Tester-only and separate from Python production live runners.
 - `data/`: local generated datasets, ignored by git.
 - `reports/`: local generated research outputs, ignored by git.
+- `docs/reviews/` and `docs/decision_log.md`: material review artifacts and
+  the concise durable-decision index.
 
 `TradeAutomation` is the active Git repo. Preserved local side labs that are
 not part of this repo live beside it in `../TradingResearchLabs/`. Keep
@@ -122,6 +126,13 @@ See `docs/testing_strategy.md` for the scoped rules and edge-case expectations.
 The exact test count changes as LPFS grows. Treat the command output as the
 current authority; before changing strategy or execution behavior, rerun the
 gate and record the fresh result in the relevant handoff/state file.
+
+For repo/process hardening, onboarding, role/team, first-read, or
+decision-history changes, run the lightweight process audit:
+
+```powershell
+.\venv\Scripts\python scripts\audit_repo_process.py
+```
 
 ## Current Shared Labs
 

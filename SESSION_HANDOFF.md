@@ -11,7 +11,9 @@ file, and the JSONL journal before making operational decisions.
 
 1. `AGENTS.md` for role boundaries and repo workflow expectations, and
    `docs/change_gate.md` before material live/deployment, broker, strategy,
-   risk, evidence, generated-artifact, or process changes.
+   risk, evidence, generated-artifact, or process changes. Use
+   `docs/repo_maintenance_policy.md` and `docs/decision_log.md` before
+   repo-structure, onboarding, workflow-hardening, or decision-history changes.
 2. `SESSION_HANDOFF.md` for this latest operational snapshot.
 3. `docs/codex_worktree_workflow.md` before editing from a Codex or linked
    Git worktree.

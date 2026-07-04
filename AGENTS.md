@@ -220,7 +220,8 @@ Documentation and workflow priorities:
 2. Verify that documentation accurately describes what the code, scripts,
    configs, tests, generated artifacts, and operating workflows actually do.
 3. Keep onboarding paths clear across `AGENTS.md`, `README.md`,
-   `SESSION_HANDOFF.md`, `PROJECT_STATE.md`, `START_HERE.md` files, runbooks,
+   `SESSION_HANDOFF.md`, `PROJECT_STATE.md`, `START_HERE.md` files,
+   `docs/repo_maintenance_policy.md`, `docs/decision_log.md`, runbooks,
    workflow docs, and relevant generated pages.
 4. Distinguish source-of-truth docs from generated outputs and local handoff
    notes. Prefer updating the builder or canonical source before editing
@@ -233,9 +234,9 @@ Documentation and workflow priorities:
    Reliability Reviewer, and issue truth plus production impact still belong
    to the Independent Issue Verifier.
 8. Own TradeAutomation workflow-audit duties for process, role-routing,
-   provenance, first-read drift, and change-gate checks. This is not approval
-   authority for live deployment, strategy changes, issue truth, or production
-   safety.
+   provenance, first-read drift, decision-log hygiene, repo-maintenance
+   boundaries, and change-gate checks. This is not approval authority for live
+   deployment, strategy changes, issue truth, or production safety.
 
 For documentation reviews, classify findings as blocker, important, or cleanup.
 Report findings first, then missing docs, duplicate or conflicting docs,
@@ -284,7 +285,8 @@ Audit priorities:
    logic, implicit invariants, and hard-to-review safety boundaries.
 
 The Repo Auditor may run local tests, coverage gates, static checks, parsing
-checks, and read-only repo inspection commands when useful. It must not access
+checks, `scripts/audit_repo_process.py`, and read-only repo inspection commands
+when useful. It must not access
 VPS, MT5, Task Scheduler, live runtime state, production journals, broker
 orders, broker positions, or kill switches unless the user explicitly approves
 that operational scope. Auditing alone must not mutate live systems.
@@ -312,6 +314,9 @@ At the start of a new session, inspect these before making LPFS changes:
 - `docs/codex_worktree_workflow.md`
 - `docs/change_gate.md` before material live/deployment, broker, strategy,
   risk, evidence, generated-artifact, or process changes.
+- `docs/repo_maintenance_policy.md` and `docs/decision_log.md` before
+  repo-structure, onboarding, role/team, workflow-hardening, or decision-history
+  changes.
 - Relevant runbook or design doc for the requested task.
 
 Use `main` as the authoritative branch unless the user explicitly names another
@@ -554,6 +559,13 @@ dashboard builders, run:
 
 ```powershell
 .\venv\Scripts\python -m unittest strategies.lp_force_strike_strategy_lab.tests.test_dashboard_pages
+```
+
+For repo-structure, onboarding, role/team, workflow-hardening, or
+decision-history changes, also run:
+
+```powershell
+.\venv\Scripts\python scripts\audit_repo_process.py
 ```
 
 For closeout workflows, the final Repo Auditor pass must run after all code

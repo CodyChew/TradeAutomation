@@ -136,9 +136,11 @@ source of truth for strategy research and live execution work.
 
 ## Read This First In A New Codex Session
 
-1. `AGENTS.md` for role boundaries and repo workflow expectations, and
+1. `AGENTS.md` for role boundaries and repo workflow expectations,
    `docs/change_gate.md` before material live/deployment, broker, strategy,
-   risk, evidence, generated-artifact, or process changes.
+   risk, evidence, generated-artifact, or process changes, and
+   `docs/repo_maintenance_policy.md` plus `docs/decision_log.md` before
+   repo-structure, onboarding, workflow-hardening, or decision-history changes.
 2. `SESSION_HANDOFF.md` for the latest operational snapshot.
 3. `PROJECT_STATE.md` for the overall workspace state.
 4. `docs/codex_worktree_workflow.md` before editing from a Codex or linked
@@ -207,6 +209,8 @@ https://codychew.github.io/TradeAutomation/
   execution. Compile and tester load/config smoke passed; full-result smoke is
   pending until the EA gets single-chart smoke mode and new-bar gating.
 - `docs/`: static GitHub Pages dashboards.
+- `docs/reviews/`: material review artifacts; `docs/decision_log.md` is the
+  concise durable-decision index.
 - `data/` and `reports/`: generated local data/results, intentionally ignored by
   git.
 
