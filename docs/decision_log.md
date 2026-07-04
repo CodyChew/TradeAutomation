@@ -8,6 +8,36 @@ Do not use this file as live broker truth. Current live status still comes from
 fresh status packets, MT5 broker facts, runtime state, and the first-read docs
 listed in `AGENTS.md`.
 
+## 2026-07-04 - Add Offline LPFS Factor Attribution Builder
+
+Decision:
+
+- Add `scripts/build_lpfs_factor_attribution.py` as the maintained offline
+  builder for price-structure, momentum, volume, time/session, core cohort, and
+  cross-lane factor matrices from existing LPFS trade-diagnostics packets.
+- Keep outputs under ignored `reports/live_ops/lpfs_factor_attribution/` with
+  manifests, input fingerprints, row counts, freshness metadata, caveats, and
+  explicit non-actions.
+- Preserve the boundary that factor rows are research-only and do not approve
+  live strategy filters or production changes.
+
+Reason:
+
+- The strategy-improvement workflow needs repeatable factor attribution, not
+  ad hoc summaries, when FTMO or IC forward evidence is weak.
+- The builder lets future agents compare lane-first live cohorts against 3/6/12
+  month and long-history backtest diagnostics while preserving data-quality
+  caveats.
+
+Evidence:
+
+- Review: `docs/reviews/2026-07-04-lpfs-offline-factor-attribution-builder.md`.
+
+Follow-up:
+
+- Refresh safe local journal snapshots and candle roots before using this
+  builder to attribute later weekly packets such as the 2026-07-04 packet.
+
 ## 2026-07-04 - Add Context Architecture And Evidence Catalog
 
 Decision:

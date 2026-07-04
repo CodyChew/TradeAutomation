@@ -77,6 +77,10 @@ def dashboard_page_links(current_page: str, metadata: dict[str, Any] | None = No
     links.append(f'<a class="page-link{strategy_active}" href="strategy.html">Strategy</a>')
     live_ops_active = " active" if current_page == "live_ops.html" else ""
     links.append(f'<a class="page-link{live_ops_active}" href="live_ops.html">Live Ops</a>')
+    command_center_active = " active" if current_page == "lpfs_command_center.html" else ""
+    links.append(
+        f'<a class="page-link{command_center_active}" href="lpfs_command_center.html">LPFS Command Center</a>'
+    )
     weekly_active = " active" if current_page == "live_weekly_performance.html" else ""
     links.append(
         f'<a class="page-link{weekly_active}" href="live_weekly_performance.html">Weekly Performance</a>'

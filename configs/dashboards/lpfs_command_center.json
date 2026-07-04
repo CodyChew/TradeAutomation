@@ -1,0 +1,231 @@
+{
+  "schema_version": "2026-07-04.1",
+  "page": {
+    "title": "LPFS Command Center",
+    "subtitle": "Operator and strategy-improvement snapshot for LPFS. Static, additive, evidence-linked, and not broker truth by itself.",
+    "generated_at_ict": "2026-07-04 16:30 ICT",
+    "source_mode": "static_existing_evidence_only",
+    "freshness_warning": "This page is a generated static dashboard. Before any live operation, deployment, restart, broker action, or strategy change, capture fresh dual-VPS status and broker evidence.",
+    "dashboard_path": "docs/lpfs_command_center.html"
+  },
+  "repo_context": {
+    "local_docs_head": "78711438c0586f006980243a54db3130d669fbe9",
+    "current_authoritative_branch": "main",
+    "latest_deployed_runtime_sha": "e6e401a06ccf37775ff4ab463b46b6cb2907e233",
+    "runtime_sha_note": "The latest status evidence referenced by this page shows both VPS lanes on e6e401a. Local tracked docs may be ahead of the deployed runtime because docs/process commits do not require runner restart."
+  },
+  "operating_boundary": {
+    "summary": "Both lanes were RUNNING in the latest referenced packet, with recovery disabled and broker/state mismatch count 0.",
+    "truth_boundary": "Historical packet evidence only. Use scripts/Get-LpfsDualVpsStatus.ps1 for fresh broker/runtime proof before operations.",
+    "status_packet_path": "C:\\TradeAutomationEvidence\\lpfs_pending_terminal_history_repair_deploy\\20260704_150727\\05_final_dual_status\\lpfs_dual_vps_status_20260704_151830.md",
+    "status_packet_sha256": "ef1ae2bd77ff05d7335a4d4e7d32c99447ab81ed047cb7ea4da86548d01d4dbc",
+    "status_packet_manifest_sha256": "21adaa2e3b082e42e473027043b7b744d10daf52a9e4bb6c1693366ccad3e834",
+    "lanes": [
+      {
+        "name": "FTMO",
+        "task": "LPFS_Live",
+        "runtime_root": "C:\\TradeAutomationRuntime",
+        "lane_state": "RUNNING",
+        "runner_shape": "one logical watchdog/runner path",
+        "heartbeat": "fresh",
+        "kill_switch": "clear",
+        "recovery_mode": "disabled",
+        "broker_status": "OK",
+        "pending_orders": 9,
+        "active_positions": 2,
+        "state_broker_mismatch_count": 0,
+        "telemetry_failures": 0,
+        "market_data_fetch_failures": 0
+      },
+      {
+        "name": "IC",
+        "task": "LPFS_IC_Live",
+        "runtime_root": "C:\\TradeAutomationRuntimeIC",
+        "lane_state": "RUNNING",
+        "runner_shape": "one logical watchdog/runner path",
+        "heartbeat": "fresh",
+        "kill_switch": "clear",
+        "recovery_mode": "disabled",
+        "broker_status": "OK",
+        "pending_orders": 9,
+        "active_positions": 1,
+        "state_broker_mismatch_count": 0,
+        "telemetry_failures": 0,
+        "market_data_fetch_failures": 0
+      }
+    ]
+  },
+  "strategy_context": {
+    "active_strategy": "LPFS baseline: V13 mechanics + V15 risk buckets + V22 LP/FS separation",
+    "primary_outcome": "WATCH",
+    "current_decision": "No live strategy change is approved.",
+    "what_is_being_tested": "Whether repeated weak cohorts, especially H8 compressed risk and FTMO H8/long loss concentration, justify offline candidate tagging and backtests.",
+    "next_responsible_action": "Run offline cohort tagging and backtest matrix for H8/long, compressed-risk, symbol concentration, session, volatility, spread-risk, and account-outcome attribution before proposing a live rule.",
+    "not_approved": [
+      "No strategy/risk/sizing/SL/TP/broker-send change",
+      "No market recovery enablement",
+      "No reconciliation-only run or canary",
+      "No manual broker mutation",
+      "No dashboard-driven live operation without fresh status evidence"
+    ]
+  },
+  "weekly_evidence": {
+    "weekly_packet_path": "reports/live_ops/lpfs_weekly_strategy_review/20260704_152039",
+    "weekly_packet_manifest_sha256": "23a6b255fb08e502019f38e83d60d3f7afa87c466893a64716e55fda780447af",
+    "weekly_summary_path": "reports/live_ops/lpfs_weekly_strategy_review/20260704_152039/weekly/20260704_082040/weekly_summary.csv",
+    "weekly_summary_sha256": "1de9d9fbe73413e310f1c0a734265749e52d05bee0dea0bf772c5069661edc8d",
+    "window": "2026-06-29 05:00 SGT to 2026-07-04 05:00 SGT",
+    "coverage_status": "complete",
+    "performance_confidence": "complete",
+    "analysis_eligible": true,
+    "freshness_note": "The weekly packet is ignored local evidence. The stable docs/live_weekly_performance.html page may lag unless intentionally regenerated.",
+    "lanes": [
+      {
+        "lane": "FTMO",
+        "analysis_eligible": true,
+        "coverage_status": "complete",
+        "performance_confidence": "complete",
+        "closed_trades": 18,
+        "wins": 6,
+        "losses": 12,
+        "win_rate": "33.3%",
+        "net_r": "-6.67R",
+        "broker_pnl": "-$74.46",
+        "profit_factor": "0.48",
+        "historical_percentile_band": "<=p10",
+        "concern_status": "watch",
+        "account_outcome_status": "pnl_negative",
+        "r_pnl_alignment": "r_negative_pnl_negative",
+        "working": "Some H4 and isolated winners remained positive, but not enough to offset concentrated losses.",
+        "weak": "H8 had 4 closed trades, 0 wins, about -4.62R. Long side was about -4.09R. EURCHF, GBPNZD, and AUDNZD were concentrated loss contributors."
+      },
+      {
+        "lane": "IC",
+        "analysis_eligible": true,
+        "coverage_status": "complete",
+        "performance_confidence": "complete",
+        "closed_trades": 18,
+        "wins": 9,
+        "losses": 9,
+        "win_rate": "50.0%",
+        "net_r": "-0.03R",
+        "broker_pnl": "+$2.34",
+        "profit_factor": "1.00",
+        "historical_percentile_band": "p30.1",
+        "concern_status": "watch",
+        "account_outcome_status": "pnl_positive",
+        "r_pnl_alignment": "r_negative_pnl_positive",
+        "working": "Roughly flat strategy R and slightly positive broker PnL. H4 was positive.",
+        "weak": "H12 and H8 were negative, and account outcome diverged from strategy R. Treat this as attribution evidence, not a strategy failure by itself."
+      },
+      {
+        "lane": "COMBINED",
+        "analysis_eligible": true,
+        "coverage_status": "complete",
+        "performance_confidence": "complete",
+        "closed_trades": 36,
+        "wins": 15,
+        "losses": 21,
+        "win_rate": "41.7%",
+        "net_r": "-6.70R",
+        "broker_pnl": "-$72.12",
+        "profit_factor": "0.69",
+        "historical_percentile_band": "see lane rows",
+        "concern_status": "watch",
+        "account_outcome_status": "pnl_negative",
+        "r_pnl_alignment": "r_negative_pnl_negative",
+        "working": "IC did not confirm the full FTMO damage. Cross-lane comparison is still useful.",
+        "weak": "Combined week is weak because FTMO underperformed materially."
+      }
+    ]
+  },
+  "research_queue": {
+    "active_candidates": [
+      {
+        "name": "H8 compressed risk",
+        "status": "active research candidate",
+        "current_hypothesis": "H8 trades with compressed risk, especially low-spread intersections, may be a weak subset, but prior simple low-spread-only filtering was rejected.",
+        "next_test": "Build offline cohort matrix across FTMO and IC using recent 3/6/12 month windows plus long-history guardrails."
+      },
+      {
+        "name": "FTMO H8/long and symbol loss concentration",
+        "status": "watch",
+        "current_hypothesis": "The latest eligible week shows FTMO H8/long weakness and symbol concentration. Needs cross-lane and recent-window attribution.",
+        "next_test": "Tag by symbol, timeframe, side, session, ATR/risk regime, spread-risk, EMA/momentum/RSI/MACD-style context, and policy epoch."
+      },
+      {
+        "name": "Account outcome divergence",
+        "status": "watch",
+        "current_hypothesis": "Strategy R and broker PnL can diverge because of symbol pip value, commission/swap, volume rounding, broker feed, and risk policy.",
+        "next_test": "Attribute R versus broker PnL by lane, symbol, volume, pip value, commission/swap, and policy epoch."
+      }
+    ],
+    "rejected_hypotheses": [
+      {
+        "name": "Simple H8 low-spread-only filter",
+        "reason": "Rejected because it was live-weak but historically positive; do not repeat without new evidence."
+      }
+    ],
+    "data_gaps": [
+      "Stable docs/live_weekly_performance.html can lag the latest ignored weekly packet; command center must label packet freshness.",
+      "Historical consistency is unavailable when bounded current-week fetch cannot prove first-live/source-start metadata.",
+      "Offline indicator tags are not yet attached to every candidate cohort; compute them in ignored analysis packets before live filters."
+    ]
+  },
+  "drilldowns": [
+    {
+      "label": "Live Ops guide",
+      "href": "live_ops.html",
+      "purpose": "Operational gates, status, recovery hold, telemetry, and safe commands."
+    },
+    {
+      "label": "Weekly Performance dashboard",
+      "href": "live_weekly_performance.html",
+      "purpose": "Stable generated weekly monitor. May lag latest ignored packet."
+    },
+    {
+      "label": "Strategy guide",
+      "href": "strategy.html",
+      "purpose": "Current V13/V15/V22 strategy contract."
+    },
+    {
+      "label": "Evidence catalog",
+      "href": "evidence_catalog.md",
+      "purpose": "Packet paths, hashes, and current/historical labels."
+    },
+    {
+      "label": "Strategy workflow",
+      "href": "lpfs_strategy_improvement_workflow.md",
+      "purpose": "Cadence, outcomes, ownership, and candidate research loop."
+    },
+    {
+      "label": "Iteration context",
+      "href": "lpfs_strategy_iteration_context.md",
+      "purpose": "Active candidate queue, rejected ideas, and next review criteria."
+    }
+  ],
+  "ownership": {
+    "strategy_agent_reflection": "The strategy agent owns noticing weak performance, checking whether evidence is complete, converting repeated weak cohorts into offline research candidates, rejecting unsupported hypotheses, and asking for missing data or tooling before recommending live changes. This dashboard should make that ownership visible instead of hiding it inside dense weekly tables.",
+    "role_coverage": [
+      "Main Orchestrator: routes material dashboard changes through change gate.",
+      "LPFS Strategy Improvement Agent: owns candidate questions, interpretation, and next action.",
+      "Documentation and Workflow Agent: owns source-of-truth clarity and generated-page hygiene.",
+      "Repo Auditor: checks stale claims and generated artifact scope.",
+      "Reliability Reviewer: reviews live-status wording and operational boundaries.",
+      "Independent Issue Verifier: verifies issue/data truth and production-impact claims.",
+      "QA/Test Engineer: owns command-center tests and link/contract coverage.",
+      "Risk Manager: checks risk framing and no-live-change boundaries.",
+      "Strategy Trader: checks trader-facing interpretation and candidate wording.",
+      "Data Engineer: checks evidence lineage, hashes, and data-quality fields.",
+      "Dashboard/UI owner: proposed lightweight role for first-screen hierarchy, caveats, readability, and refresh workflow."
+    ],
+    "maintenance_checklist": [
+      "Update source config first, then regenerate HTML.",
+      "Do not hand-edit docs/lpfs_command_center.html.",
+      "Show freshness, packet path, and hash for every current claim.",
+      "Never present incomplete evidence as valid performance.",
+      "Keep candidate status separate from approved live strategy changes.",
+      "Run dashboard tests and process audit before publishing."
+    ]
+  }
+}

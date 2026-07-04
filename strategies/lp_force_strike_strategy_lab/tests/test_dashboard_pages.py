@@ -143,6 +143,15 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Normal / Watch / Review", html)
         self.assertTrue((DOCS_ROOT / "live_weekly_performance.html").exists())
 
+    def test_index_links_to_lpfs_command_center(self) -> None:
+        html = (DOCS_ROOT / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn("LPFS Command Center", html)
+        self.assertIn("href=\"lpfs_command_center.html\"", html)
+        self.assertIn("Static evidence summary", html)
+        self.assertIn("Fresh status required", html)
+        self.assertTrue((DOCS_ROOT / "lpfs_command_center.html").exists())
+
     def test_stable_operator_pages_link_to_live_weekly_performance(self) -> None:
         stable_pages = [
             "index.html",
@@ -152,12 +161,78 @@ class DashboardPagesTests(unittest.TestCase):
             "ftmo_challenge_profiles.html",
             "ea_migration.html",
             "live_weekly_performance.html",
+            "lpfs_command_center.html",
         ]
 
         for page in stable_pages:
             html = (DOCS_ROOT / page).read_text(encoding="utf-8")
             self.assertIn("href=\"live_weekly_performance.html\"", html, f"{page} missing weekly page link")
             self.assertIn("Weekly Performance", html, f"{page} missing weekly label")
+
+    def test_lpfs_command_center_preserves_static_evidence_contract(self) -> None:
+        html = (DOCS_ROOT / "lpfs_command_center.html").read_text(encoding="utf-8")
+        lower_html = html.lower()
+
+        self.assertIn("LPFS Command Center", html)
+        self.assertIn("class=\"dashboard-header\"", html)
+        self.assertIn("Static generated dashboard, not broker truth", html)
+        self.assertIn("fresh dual-VPS status", html)
+        self.assertIn("source_mode", html)
+        self.assertIn("static_existing_evidence_only", html)
+        self.assertIn("FTMO", html)
+        self.assertIn("IC", html)
+        self.assertIn("LPFS_Live", html)
+        self.assertIn("LPFS_IC_Live", html)
+        self.assertIn("heartbeat", html)
+        self.assertIn("kill switch", html)
+        self.assertIn("recovery", html)
+        self.assertIn("disabled", html)
+        self.assertIn("pending", html)
+        self.assertIn("active", html)
+        self.assertIn("mismatch", html)
+        self.assertIn("telemetry failures", html)
+        self.assertIn("market-data failures", html)
+        self.assertIn("e6e401a06ccf37775ff4ab463b46b6cb2907e233", html)
+        self.assertIn("78711438c0586f006980243a54db3130d669fbe9", html)
+        self.assertNotIn("<script", lower_html)
+
+    def test_lpfs_command_center_preserves_weekly_evidence_fields(self) -> None:
+        html = (DOCS_ROOT / "lpfs_command_center.html").read_text(encoding="utf-8")
+
+        self.assertIn("analysis_eligible", html)
+        self.assertIn("coverage_status", html)
+        self.assertIn("performance_confidence", html)
+        self.assertIn("complete", html)
+        self.assertIn("account_outcome_status", html)
+        self.assertIn("R/PnL alignment", html)
+        self.assertIn("consistency", html)
+        self.assertIn("weekly_packet_manifest_sha256", html)
+        self.assertIn("23a6b255fb08e502019f38e83d60d3f7afa87c466893a64716e55fda780447af", html)
+        self.assertIn("1de9d9fbe73413e310f1c0a734265749e52d05bee0dea0bf772c5069661edc8d", html)
+        self.assertIn("&lt;=p10", html)
+        self.assertIn("p30.1", html)
+        self.assertIn("docs/live_weekly_performance.html page may lag", html)
+        self.assertIn("No live strategy change is approved", html)
+
+    def test_lpfs_command_center_drilldowns_and_ownership_are_present(self) -> None:
+        html = (DOCS_ROOT / "lpfs_command_center.html").read_text(encoding="utf-8")
+
+        for link in (
+            "href=\"live_ops.html\"",
+            "href=\"live_weekly_performance.html\"",
+            "href=\"strategy.html\"",
+            "href=\"evidence_catalog.md\"",
+            "href=\"lpfs_strategy_improvement_workflow.md\"",
+            "href=\"lpfs_strategy_iteration_context.md\"",
+        ):
+            self.assertIn(link, html)
+
+        self.assertIn("Strategy Research Queue", html)
+        self.assertIn("H8 compressed risk", html)
+        self.assertIn("Simple H8 low-spread-only filter", html)
+        self.assertIn("Dashboard/UI owner", html)
+        self.assertIn("Maintenance checklist", html)
+        self.assertIn("Do not hand-edit docs/lpfs_command_center.html", html)
 
     def test_ftmo_challenge_profiles_page_shows_recommendation_and_boundaries(self) -> None:
         html = (DOCS_ROOT / "ftmo_challenge_profiles.html").read_text(encoding="utf-8")

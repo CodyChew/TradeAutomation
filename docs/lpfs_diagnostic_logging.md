@@ -107,6 +107,39 @@ Files:
   evidence thresholds, and the current research action;
 - `summary.md`: short human-readable report summary.
 
+## Factor Attribution Matrix
+
+After a diagnostics packet exists, build the maintained offline factor matrix:
+
+```powershell
+.\venv\Scripts\python scripts\build_lpfs_factor_attribution.py `
+  --diagnostics-dir reports\live_ops\lpfs_trade_diagnostics\<timestamp>
+```
+
+The output directory is:
+
+```text
+reports/live_ops/lpfs_factor_attribution/<timestamp>/
+```
+
+The builder is local/reporting-only. It validates the diagnostics packet
+manifest before reading `closed_trade_diagnostics.csv` and
+`backtest_diagnostics.csv`, then writes:
+
+- `factor_attribution_matrix.csv`: lane-first rows by price-structure,
+  momentum, volume, time/session, and core symbol/timeframe/side factors;
+- `cross_lane_factor_confluence.csv`: FTMO/IC comparison for the same
+  factor/value, preserving one-lane divergence separately from both-lane
+  weakness;
+- `summary.md`: concise research-only interpretation and caveats;
+- `manifest.json`: input/output hashes, row counts, factor coverage, timestamp
+  range, data-validity flags, and explicit non-actions.
+
+Rows marked as research candidates are not live filters. They require the
+strategy-change gate: FTMO/IC evidence where comparable, recent 3/6/12 month
+support, long-history guardrails, sample-size and removal-breadth checks, and
+explicit operator approval.
+
 Older journals remain valid input. Rows before this schema simply have blank or
 missing diagnostic columns.
 

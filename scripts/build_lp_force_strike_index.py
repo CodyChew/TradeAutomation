@@ -122,6 +122,21 @@ def _live_ops_card() -> str:
     """
 
 
+def _command_center_card() -> str:
+    return """
+    <section id="lpfs-command-center" class="card featured">
+      <div class="status status-active">Command center</div>
+      <h2>LPFS Command Center</h2>
+      <p>One-screen LPFS operator and strategy-improvement readout with static source/freshness labels, lane status, eligible weekly evidence, active research candidates, rejected ideas, next action, and ownership boundaries.</p>
+      <div class="facts">
+        <div class="fact"><span>Scope</span><strong>Static evidence summary</strong></div>
+        <div class="fact"><span>Live action</span><strong>Fresh status required</strong></div>
+      </div>
+      <a class="button" href="lpfs_command_center.html">Open LPFS Command Center</a>
+    </section>
+    """
+
+
 def _weekly_performance_card() -> str:
     return """
     <section id="weekly-performance" class="card featured">
@@ -242,6 +257,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
         _baseline_card(home),
         _strategy_card(),
         _live_ops_card(),
+        _command_center_card(),
         _weekly_performance_card(),
         _account_validation_card(),
         _ftmo_challenge_profiles_card(),
@@ -476,6 +492,7 @@ def build_index(output: Path = DEFAULT_OUTPUT) -> Path:
           ("#current-baseline", "Current Baseline"),
           ("#strategy-guide", "Strategy Guide"),
           ("#live-ops", "Live Ops"),
+          ("#lpfs-command-center", "Command Center"),
           ("#weekly-performance", "Weekly Performance"),
           ("#ftmo-challenge-profiles", "FTMO Profiles"),
           ("#research-archive", "Archive"),
