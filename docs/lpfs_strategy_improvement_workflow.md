@@ -1,6 +1,6 @@
 # LPFS Strategy Improvement Workflow
 
-Last updated: 2026-06-27 ICT.
+Last updated: 2026-07-04 ICT.
 
 This document is the operating workflow for the LPFS Strategy Improvement
 Agent. It exists so strategy improvement is not ad hoc and so another Codex
@@ -52,6 +52,47 @@ LPFS has three separate evidence layers.
      backtest attribution, and readiness closeouts;
    - stays ignored unless code, docs, schemas, or small sanitized summaries are
      separately reviewed for commit.
+
+## Research Data Provenance Preflight
+
+Before any candidate research pass, trade diagnostics refresh, factor
+attribution matrix, live-vs-backtest divergence report, or indicator-tagged
+strategy conclusion, the Strategy Improvement Agent must run a provenance
+preflight. This is a required workflow step, not a new live operation.
+
+The preflight classifies each input by evidence layer:
+
+- broker/lifecycle truth: live journals, broker facts, status packets, close
+  rows, active state, heartbeat/status, and packet manifests;
+- market-context enrichment: candles, indicator tags, volume tags, spread
+  context, market snapshots, and any source data used to derive them;
+- derived strategy conclusions: cohort performance, weak buckets, candidate
+  matrices, divergence reports, and proposal-ready claims.
+
+For every input, preserve or verify:
+
+- source path or packet path;
+- lane label, if applicable;
+- manifest or hash when available;
+- account/server/feed provenance when the input is lane-specific;
+- whether the input is `safe_for_strategy_analysis`, partial, historical,
+  superseded, or quarantined;
+- which downstream conclusions may use it.
+
+If a required input is missing, stale, ambiguous, unlabeled, cross-lane,
+unverified, or quarantined, the run outcome is `DATA_GAP` unless the analysis
+can explicitly exclude that input family. Do not continue with a softer
+strategy narrative from unsafe evidence.
+
+Ownership:
+
+- Strategy Improvement Agent owns running the preflight for each analysis run.
+- Documentation and Workflow Agent owns keeping these rules and source maps
+  current.
+- Independent Issue Verifier verifies provenance when a data-integrity issue,
+  repair claim, or production-impact claim is being made.
+- Repo Auditor periodically checks that packets, docs, and builders expose
+  enough metadata to apply this preflight.
 
 ## Cadence
 
@@ -131,6 +172,7 @@ Triggered by weekly, midweek, or monthly evidence. Not scheduled by default.
 
 A candidate research pass should:
 
+- complete the research data provenance preflight above;
 - build or inspect offline diagnostics and indicator tags;
 - compare FTMO and IC together;
 - test recent 3, 6, and 12 month windows first;
@@ -202,6 +244,7 @@ reason before recommending any change:
 - unreliable or stale generated output;
 - missing backtest or recent-window comparison;
 - unsafe collection path.
+- missing or unsafe data provenance.
 
 The next action should be the smallest safe fix:
 
@@ -219,15 +262,17 @@ Do not add noisy logging that cannot answer a defined strategy question.
 ## Role Routing
 
 - Strategy Improvement Agent: accountable owner for the research workflow,
-  questions, candidates, and strategy evidence.
+  questions, candidates, strategy evidence, and per-run provenance preflight.
 - Documentation and Workflow Agent: keeps first-read docs, workflow docs,
-  handoff, and source-of-truth routing current.
+  handoff, source-of-truth routing, and research-data provenance rules current.
 - Independent Issue Verifier: verifies suspected bugs, data-integrity issues,
-  or production-impact claims before fixes are treated as true.
+  provenance failures, repair claims, or production-impact claims before fixes
+  are treated as true.
 - Reliability Reviewer: reviews live-safety, deployment, broker, status, and
   robustness changes before live use.
 - Repo Auditor: periodically looks for hidden process, evidence, test, and
-  source-of-truth risks.
+  source-of-truth risks, including whether research packets carry enough
+  manifest/provenance metadata.
 - Human operator: approves live changes, strategy changes, deployment, broker
   actions, and new recurring automations.
 

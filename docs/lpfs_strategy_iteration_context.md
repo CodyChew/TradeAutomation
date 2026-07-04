@@ -138,7 +138,9 @@ production-derived historical timestamps.
 Approved now:
 
 - Offline diagnostic reporting from safely collected local journal copies.
-- Offline candle-derived enrichment from local dataset roots.
+- Offline candle-derived enrichment from explicit provenanced candle datasets.
+  FTMO/IC live-lane attribution requires lane-authoritative candle roots;
+  unverified workstation candles are a `DATA_GAP`.
 - FTMO/IC confluence views.
 - Recent 3, 6, and 12 month analysis windows, with the full 10-year backtest
   as the robustness guardrail.
@@ -201,11 +203,13 @@ Start here in a fresh Codex chat:
 3. `docs/lpfs_strategy_iteration_context.md`
 4. `docs/lpfs_strategy_improvement_workflow.md`
 5. `docs/lpfs_diagnostic_logging.md`
-6. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md`
-7. `docs/live_weekly_performance.html`
-8. `docs/mt5_execution_contract.md`
-9. `docs/lpfs_lightsail_vps_runbook.md`
-10. `docs/lpfs_icmarkets_vps_runbook.md`
+6. `docs/evidence_catalog.md`
+7. `docs/reviews/2026-07-04-lpfs-candle-provenance-guardrail.md`
+8. `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md`
+9. `docs/live_weekly_performance.html`
+10. `docs/mt5_execution_contract.md`
+11. `docs/lpfs_lightsail_vps_runbook.md`
+12. `docs/lpfs_icmarkets_vps_runbook.md`
 
 Before touching production-adjacent data, verify current repo status and live
 status. Do not assume this handoff is live-state truth.
@@ -218,7 +222,10 @@ status. Do not assume this handoff is live-state truth.
 3. Decide whether the task is docs-only, reporting-only, research-only, or
    production-adjacent.
 4. For docs-only work, do not touch live runners or VPS state.
-5. For reporting-only work, use local journal copies and local candle datasets.
+5. For reporting-only work, use safe local journal copies and explicit
+   provenanced candle datasets. FTMO/IC live-lane candle-derived attribution
+   requires lane-authoritative candle roots; unverified workstation candles are
+   a `DATA_GAP`.
 6. For production-adjacent reads, use safe bounded/shared-read tooling and
    verify both VPS lanes afterward.
 7. For any live deploy or restart, create a separate kill-switch-first operator

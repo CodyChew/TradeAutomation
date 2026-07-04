@@ -65,9 +65,12 @@ changes and `docs/repo_maintenance_policy.md` before repo/process maintenance.
   classification.
 - LPFS Strategy Improvement Agent owns evidence-backed strategy workflow, not
   live-rule approval.
-- QA / Test Engineer owns verification sufficiency for changed surfaces.
-- Risk Manager, Strategy Trader, and Data Engineer are called when a change can
-  affect risk framing, strategy interpretation, or evidence lineage.
+- Verification sufficiency is enforced by the required tests and by Repo
+  Auditor / Reliability Reviewer review for the changed surface.
+- Research-data provenance stays with the existing role model: Strategy
+  Improvement Agent runs the preflight, Documentation and Workflow Agent owns
+  source-of-truth wording, Independent Issue Verifier verifies data-validity
+  claims, and Repo Auditor checks packet/builder metadata drift.
 
 ## Maintenance Checklist
 

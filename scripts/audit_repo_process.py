@@ -145,6 +145,19 @@ STALE_CURRENT_STATE_PHRASES: tuple[str, ...] = (
     "Pulling code alone does not start separated telemetry",
 )
 
+STALE_PROVENANCE_PHRASES: dict[str, tuple[str, ...]] = {
+    "strategies/lp_force_strike_strategy_lab/START_HERE.md": (
+        "local candle datasets only",
+    ),
+    "strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md": (
+        "local journal copies and local candle datasets",
+    ),
+    "docs/lpfs_strategy_iteration_context.md": (
+        "local dataset roots",
+        "local journal copies and local candle datasets",
+    ),
+}
+
 TEXT_SUFFIXES: tuple[str, ...] = (
     ".csv",
     ".gitignore",
@@ -260,6 +273,7 @@ def run_audit(
     issues.extend(_check_required_references(root))
     issues.extend(_check_required_context_anchors(root))
     issues.extend(_check_stale_current_state_phrases(root))
+    issues.extend(_check_stale_provenance_phrases(root))
     tracked = list(tracked_paths) if tracked_paths is not None else _load_git_tracked_paths(root)
     issues.extend(_check_line_limits(root, limits))
     issues.extend(_scan_secret_patterns(root, tracked))
@@ -405,6 +419,36 @@ def _check_stale_current_state_phrases(root: Path) -> list[AuditIssue]:
                     path=relative,
                     line=line,
                     message=f"current-state file contains stale-looking phrase {phrase!r}",
+                )
+            )
+    return issues
+
+
+def _check_stale_provenance_phrases(root: Path) -> list[AuditIssue]:
+    issues: list[AuditIssue] = []
+    for relative, phrases in STALE_PROVENANCE_PHRASES.items():
+        path = root / relative
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for phrase in phrases:
+            index = text.find(phrase)
+            if index == -1:
+                continue
+            line = text.count("\n", 0, index) + 1
+            issues.append(
+                AuditIssue(
+                    severity="error",
+                    code="stale_provenance_phrase",
+                    path=relative,
+                    line=line,
+                    message=(
+                        f"first-read file contains unsafe unqualified candle-source wording {phrase!r}; "
+                        "use explicit provenanced/lane-authoritative candle-source wording"
+                    ),
                 )
             )
     return issues

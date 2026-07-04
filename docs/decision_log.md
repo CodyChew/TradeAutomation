@@ -8,6 +8,37 @@ Do not use this file as live broker truth. Current live status still comes from
 fresh status packets, MT5 broker facts, runtime state, and the first-read docs
 listed in `AGENTS.md`.
 
+## 2026-07-04 - Tighten LPFS Research Data Provenance Ownership
+
+Decision:
+
+- Keep the existing TradeAutomation role roster.
+- Do not add a new standing team role for data provenance.
+- Make research-data provenance a required preflight owned by the LPFS Strategy
+  Improvement Agent for every diagnostics, factor-attribution,
+  live-vs-backtest, or indicator-tagged strategy-analysis run.
+- Assign Documentation and Workflow Agent ownership of the standing provenance
+  rules and source maps.
+- Require Independent Issue Verifier review for provenance failures, repair
+  claims, or production-impact claims.
+- Require Repo Auditor checks that research packets and builders expose enough
+  source metadata.
+
+Reason:
+
+- The candle-provenance incident showed a responsibility gap, not a manpower
+  gap. The right fix is a hard pre-analysis checkpoint and explicit ownership,
+  not a broader process ceremony.
+
+Evidence:
+
+- Review: `docs/reviews/2026-07-04-lpfs-research-data-provenance-ownership.md`.
+
+Follow-up:
+
+- Future strategy-analysis runs should stop as `DATA_GAP` when required input
+  provenance is missing, unverified, cross-lane, stale, or quarantined.
+
 ## 2026-07-04 - Add LPFS Candle Provenance Guardrail
 
 Decision:

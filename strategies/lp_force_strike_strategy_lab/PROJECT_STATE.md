@@ -180,7 +180,10 @@ Use `../../docs/evidence_catalog.md` for hashes and paths. Current key rows:
 2. Classify the task as docs-only, reporting-only, research-only, or
    production-adjacent.
 3. For docs-only work, do not touch live runners or VPS state.
-4. For reporting-only work, use local journal copies and local candle datasets.
+4. For reporting-only work, use safe local journal copies and explicit
+   provenanced candle datasets. FTMO/IC live-lane candle-derived attribution
+   requires lane-authoritative candle roots; unverified workstation candles are
+   a `DATA_GAP`.
 5. For production-adjacent reads, use approved safe bounded/shared-read tooling
    and verify both VPS lanes afterward.
 6. For any live deploy or restart, create a separate kill-switch-first operator

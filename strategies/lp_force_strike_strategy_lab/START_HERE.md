@@ -227,7 +227,9 @@ operational decisions.
   with offline time/session, setup bucket, recent-window, candle-indicator, and
   FTMO/IC confluence views. This work must remain outside the live runner loop;
   RSI, momentum, volume, and percentile features are computed from copied
-  journals and local candle datasets only.
+  journals and explicit provenanced candle datasets only. FTMO/IC live-lane
+  candle-derived attribution requires lane-authoritative candle roots and
+  source provenance; unverified workstation candles are a `DATA_GAP`.
 - Production host: Amazon Lightsail Windows VPS.
 - Preferred remote access: Tailscale + OpenSSH using local aliases `lpfs-vps`
   and `lpfs-ic-vps`; use Tailscale RDP to the `100.x` VPS addresses when MT5

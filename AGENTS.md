@@ -19,6 +19,14 @@ When working on LPFS, treat the role in this order:
 6. Implement strategy/risk/entry/exit changes only after explicit approval and
    supporting backtest plus live evidence.
 
+For strategy-analysis work, Codex owns the research-data provenance preflight.
+Before refreshing diagnostics, factor attribution, live-vs-backtest divergence,
+or indicator-tagged conclusions, verify the input source, lane label, manifest
+or hash, account/server/feed provenance where applicable, and whether each
+input is safe for strategy analysis. If required provenance is missing,
+unverified, cross-lane, stale, or quarantined, stop with `DATA_GAP` unless the
+analysis explicitly excludes that input family.
+
 The strategy improvement agent should also improve its own research workflow.
 This is not a mandate to rush strategy changes or force a timeline. It should
 look for gaps, blockers, friction, unclear handoffs, missing evidence fields,
@@ -237,6 +245,10 @@ Documentation and workflow priorities:
    provenance, first-read drift, decision-log hygiene, repo-maintenance
    boundaries, and change-gate checks. This is not approval authority for live
    deployment, strategy changes, issue truth, or production safety.
+9. Own the standing documentation for research-data provenance rules, evidence
+   source maps, and quarantined packet interpretation. This agent verifies that
+   future docs explain which inputs are broker/lifecycle truth, market-context
+   enrichment, or derived strategy conclusions.
 
 For documentation reviews, classify findings as blocker, important, or cleanup.
 Report findings first, then missing docs, duplicate or conflicting docs,
@@ -406,28 +418,34 @@ Follow this workflow and the cadence/ownership rules in
 2. Check whether the current journals and reports contain enough fields to
    answer the question. If not, propose or implement logging/reporting first,
    not a strategy change.
-3. Build evidence by symbol, timeframe, side, session/hour, weekday, setup
+3. Run the research-data provenance preflight for any diagnostics, factor
+   attribution, live-vs-backtest divergence, or indicator-tagged conclusion.
+   Classify inputs as broker/lifecycle truth, market-context enrichment, or
+   derived strategy conclusion; verify lane/source provenance; stop with
+   `DATA_GAP` when required provenance is missing, unsafe, cross-lane, stale,
+   or quarantined.
+4. Build evidence by symbol, timeframe, side, session/hour, weekday, setup
    geometry, volatility regime, spread-risk, slippage/execution path, recovery
    path, hold time, close reason, partial/manual close behavior, and broker
    lane.
-4. Compare FTMO and IC. Treat a one-lane issue first as broker/feed/execution
+5. Compare FTMO and IC. Treat a one-lane issue first as broker/feed/execution
    divergence unless comparable trades show the same directional weakness.
-5. Separate strategy-shape evidence from account outcome. Weekly net R,
+6. Separate strategy-shape evidence from account outcome. Weekly net R,
    profit factor, and percentile are normalized strategy metrics; broker PnL is
    the realized account-currency outcome and can diverge because of sizing,
    symbol pip value, commission/swap, broker feed, and risk-policy epoch. A
    repeated positive-R/negative-PnL pattern is an account-outcome or allocation
    research candidate, not automatically an entry-edge defect.
-6. Compare live evidence with recent backtest windows first, especially 3, 6,
+7. Compare live evidence with recent backtest windows first, especially 3, 6,
    and 12 months, then use the 10-year backtest as a robustness guardrail.
-7. Use timeframe-normalized views so sparse higher timeframes are not drowned
+8. Use timeframe-normalized views so sparse higher timeframes are not drowned
    by lower-timeframe trade counts.
-8. Separate sample variance from a real edge problem. State the sample size,
+9. Separate sample variance from a real edge problem. State the sample size,
    comparable setup count, and uncertainty before recommending action.
-9. Prefer small, reversible candidate changes that can be tested cleanly:
+10. Prefer small, reversible candidate changes that can be tested cleanly:
    filters, entry timing, setup-age/risk-distance rules, spread/session rules,
    exit handling, exposure limits, or regime-aware handling.
-10. Do not deploy any strategy change without explicit approval, recent-window
+11. Do not deploy any strategy change without explicit approval, recent-window
    support, FTMO/IC confluence where comparable, and no unacceptable
    long-backtest degradation.
 

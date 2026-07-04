@@ -125,6 +125,27 @@ class RepoProcessAuditTests(unittest.TestCase):
         self.assertEqual(report.status, "warn")
         self.assertTrue(any(issue.code == "stale_current_state_phrase" for issue in report.issues))
 
+    def test_unqualified_local_candle_dataset_wording_is_error(self) -> None:
+        module = _load_module()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            _write_required_files(root)
+            start_here = root / "strategies" / "lp_force_strike_strategy_lab" / "START_HERE.md"
+            start_here.write_text(
+                start_here.read_text(encoding="utf-8") + "\nUse local candle datasets only.\n",
+                encoding="utf-8",
+            )
+
+            report = module.run_audit(root, tracked_paths=["strategies/lp_force_strike_strategy_lab/START_HERE.md"])
+
+        self.assertEqual(report.status, "fail")
+        self.assertTrue(
+            any(
+                issue.code == "stale_provenance_phrase" and issue.severity == "error"
+                for issue in report.issues
+            )
+        )
+
     def test_current_workspace_audit_has_no_error_findings(self) -> None:
         module = _load_module()
         report = module.run_audit(WORKSPACE_ROOT)
