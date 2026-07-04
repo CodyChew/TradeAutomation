@@ -23,6 +23,9 @@ Use the narrowest durable source of truth for the question being answered.
 | `SESSION_HANDOFF.md` | Latest operational handoff and volatile continuity facts | Becoming the only decision log or long-term policy source |
 | `strategies/lp_force_strike_strategy_lab/START_HERE.md` | LPFS first-read map, environment boundaries, and resume prompts | Full research-history archive |
 | `strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md` | Detailed LPFS current strategy/live/research state | Generic repo process policy and unrelated strategy lanes |
+| `docs/context_architecture.md` | Source-of-truth routing, first-read ownership, and context maintenance checklist | Packet inventory or live operations procedures |
+| `docs/evidence_catalog.md` | Important packet paths, hashes/manifests, current/historical labels, and questions answered | Raw ignored report packets or broker truth replacement |
+| `docs/history/lpfs_operations.md` | Historical LPFS deployment, incident, and operations summaries | Current live broker truth |
 | `docs/change_gate.md` | Material-change routing, required evidence, stop conditions | One-off decision records |
 | `docs/reviews/` | Detailed review artifacts for material changes | Replacing concise current-state docs |
 | `docs/decision_log.md` | Concise index of durable material decisions and review links | Full review transcripts or packet manifests |
@@ -85,6 +88,8 @@ The audit checks:
 
 - critical first-read and process files exist;
 - oversized current-state files are visible as warnings;
+- required first-read context anchors and evidence-index fields remain present;
+- stale current-state phrases are flagged in first-read files;
 - obvious committed secret-token patterns are not present in tracked text;
 - tracked runtime, evidence, local config, broker artifact, or generated
   coverage paths are not present;

@@ -27,7 +27,8 @@ def _write_required_files(root: Path) -> None:
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         references = module.REQUIRED_REFERENCES.get(relative, ())
-        text = "\n".join((relative, *references)) + "\n"
+        anchors = module.REQUIRED_CONTEXT_ANCHORS.get(relative, ())
+        text = "\n".join((relative, *references, *anchors)) + "\n"
         path.write_text(text, encoding="utf-8")
     for relative in module.CRITICAL_DIRS:
         (root / relative).mkdir(parents=True, exist_ok=True)
@@ -91,6 +92,38 @@ class RepoProcessAuditTests(unittest.TestCase):
         self.assertTrue(report.ok)
         self.assertTrue(any(issue.code == "line_limit_exceeded" for issue in report.issues))
         self.assertTrue(all(issue.severity == "warning" for issue in report.issues))
+
+    def test_missing_context_anchor_is_warning(self) -> None:
+        module = _load_module()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            _write_required_files(root)
+            handoff = root / "SESSION_HANDOFF.md"
+            handoff.write_text(
+                "SESSION_HANDOFF.md\n" + "\n".join(module.REQUIRED_REFERENCES["SESSION_HANDOFF.md"]),
+                encoding="utf-8",
+            )
+
+            report = module.run_audit(root, tracked_paths=["SESSION_HANDOFF.md"])
+
+        self.assertEqual(report.status, "warn")
+        self.assertTrue(any(issue.code == "missing_context_anchor" for issue in report.issues))
+
+    def test_stale_current_state_phrase_is_warning(self) -> None:
+        module = _load_module()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            _write_required_files(root)
+            project_state = root / "PROJECT_STATE.md"
+            project_state.write_text(
+                project_state.read_text(encoding="utf-8") + "\nFTMO remains contained\n",
+                encoding="utf-8",
+            )
+
+            report = module.run_audit(root, tracked_paths=["PROJECT_STATE.md"])
+
+        self.assertEqual(report.status, "warn")
+        self.assertTrue(any(issue.code == "stale_current_state_phrase" for issue in report.issues))
 
     def test_current_workspace_audit_has_no_error_findings(self) -> None:
         module = _load_module()

@@ -8,6 +8,41 @@ Do not use this file as live broker truth. Current live status still comes from
 fresh status packets, MT5 broker facts, runtime state, and the first-read docs
 listed in `AGENTS.md`.
 
+## 2026-07-04 - Add Context Architecture And Evidence Catalog
+
+Decision:
+
+- Add `docs/context_architecture.md` as the source-of-truth routing map for
+  first-read docs, history, review artifacts, and role ownership.
+- Add `docs/evidence_catalog.md` as the durable packet/hash index for important
+  operational, strategy, deployment, and process evidence.
+- Move old LPFS operational narratives into `docs/history/lpfs_operations.md`
+  and LPFS experiment chronology into
+  `strategies/lp_force_strike_strategy_lab/docs/experiment_history.md`.
+- Compress `PROJECT_STATE.md`, `SESSION_HANDOFF.md`, and LPFS
+  `PROJECT_STATE.md` into current-state control files that link to the new
+  owners.
+- Harden `scripts/audit_repo_process.py` to check required context anchors,
+  evidence-index fields, and stale current-state phrases.
+
+Reason:
+
+- The oversized current-state files mixed current handoff, live-safety facts,
+  deployment history, experiment history, packet inventories, and old prompts.
+  That made stale-current drift more likely as LPFS evidence grew.
+- A separate evidence catalog preserves packet paths, hashes, status labels,
+  questions answered, and non-actions without committing ignored raw evidence.
+
+Evidence:
+
+- Review: `docs/reviews/2026-07-04-context-architecture-hardening.md`.
+
+Follow-up:
+
+- Keep first-read files short and current. Add packet details to
+  `docs/evidence_catalog.md` and historical narratives to focused history or
+  review artifacts.
+
 ## 2026-07-04 - Add Repo Maintenance Policy And Process Audit
 
 Decision:

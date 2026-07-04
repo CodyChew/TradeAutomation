@@ -11,7 +11,8 @@ read `strategies/majority_flush_strategy_lab/START_HERE.md`.
 For Codex branch and worktree hygiene, read
 `docs/codex_worktree_workflow.md` and confirm `AGENTS.md` is present in the
 active checkout before editing. For repo-structure, onboarding, workflow, or
-decision-history maintenance, read `docs/repo_maintenance_policy.md` and
+decision-history maintenance, read `docs/context_architecture.md`,
+`docs/evidence_catalog.md`, `docs/repo_maintenance_policy.md`, and
 `docs/decision_log.md`.
 
 ## Structure
@@ -25,6 +26,8 @@ decision-history maintenance, read `docs/repo_maintenance_policy.md` and
 - `reports/`: local generated research outputs, ignored by git.
 - `docs/reviews/` and `docs/decision_log.md`: material review artifacts and
   the concise durable-decision index.
+- `docs/context_architecture.md` and `docs/evidence_catalog.md`: first-read
+  source-of-truth routing and packet/hash index.
 
 `TradeAutomation` is the active Git repo. Preserved local side labs that are
 not part of this repo live beside it in `../TradingResearchLabs/`. Keep

@@ -25,8 +25,12 @@ CRITICAL_FILES: tuple[str, ...] = (
     "docs/codex_worktree_workflow.md",
     "docs/system_troubleshooting.md",
     "docs/lpfs_strategy_improvement_workflow.md",
+    "docs/context_architecture.md",
+    "docs/evidence_catalog.md",
+    "docs/history/lpfs_operations.md",
     "docs/repo_maintenance_policy.md",
     "docs/decision_log.md",
+    "strategies/lp_force_strike_strategy_lab/docs/experiment_history.md",
 )
 
 CRITICAL_DIRS: tuple[str, ...] = (
@@ -46,11 +50,22 @@ REQUIRED_REFERENCES: dict[str, tuple[str, ...]] = {
     "README.md": (
         "SESSION_HANDOFF.md",
         "PROJECT_STATE.md",
+        "docs/context_architecture.md",
+        "docs/evidence_catalog.md",
         "docs/repo_maintenance_policy.md",
     ),
     "PROJECT_STATE.md": (
+        "docs/context_architecture.md",
+        "docs/evidence_catalog.md",
+        "docs/history/lpfs_operations.md",
         "docs/repo_maintenance_policy.md",
         "docs/decision_log.md",
+    ),
+    "SESSION_HANDOFF.md": (
+        "docs/context_architecture.md",
+        "docs/evidence_catalog.md",
+        "docs/history/lpfs_operations.md",
+        "docs/repo_maintenance_policy.md",
     ),
     "AGENTS.md": (
         "docs/change_gate.md",
@@ -64,7 +79,71 @@ REQUIRED_REFERENCES: dict[str, tuple[str, ...]] = {
         "scripts/audit_repo_process.py",
         "docs/decision_log.md",
     ),
+    "docs/context_architecture.md": (
+        "SESSION_HANDOFF.md",
+        "PROJECT_STATE.md",
+        "docs/evidence_catalog.md",
+        "docs/decision_log.md",
+    ),
+    "docs/evidence_catalog.md": (
+        "current_label",
+        "hash_or_manifest",
+        "non_actions",
+    ),
+    "strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md": (
+        "docs/evidence_catalog.md",
+        "docs/experiment_history.md",
+        "docs/lpfs_strategy_iteration_context.md",
+    ),
 }
+
+REQUIRED_CONTEXT_ANCHORS: dict[str, tuple[str, ...]] = {
+    "SESSION_HANDOFF.md": (
+        "historical packet facts only",
+        "No live strategy change is approved",
+        "active state/broker mismatch count",
+    ),
+    "PROJECT_STATE.md": (
+        "historical facts only",
+        "No reconciliation, canary, recovery enablement",
+        "Current decision: no live strategy change",
+    ),
+    "strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md": (
+        "No live strategy change is approved",
+        "H8 compressed risk",
+        "H8 low-spread-only",
+    ),
+    "docs/evidence_catalog.md": (
+        "historical packet facts only",
+        "lpfs-status-20260627",
+        "lpfs-research-closeout-20260627",
+    ),
+}
+
+CURRENT_STATE_FILES: tuple[str, ...] = (
+    "PROJECT_STATE.md",
+    "SESSION_HANDOFF.md",
+    "strategies/lp_force_strike_strategy_lab/START_HERE.md",
+    "strategies/lp_force_strike_strategy_lab/PROJECT_STATE.md",
+)
+
+STALE_CURRENT_STATE_PHRASES: tuple[str, ...] = (
+    "FTMO remains contained",
+    "IC remains contained",
+    "remain paused",
+    "remains paused",
+    "production remains paused",
+    "Production remains intentionally paused",
+    "stop before Stage 5",
+    "Stop before Stage 5",
+    "kill switches active",
+    "contained IC Stage 3 point-in-time boundary",
+    "current handoff boundary is the contained IC Stage 3",
+    "Refresh both lanes before any approved Stage 5 resumption",
+    "before any approved Stage 5 resumption",
+    "locally verified but not deployed",
+    "Pulling code alone does not start separated telemetry",
+)
 
 TEXT_SUFFIXES: tuple[str, ...] = (
     ".csv",
@@ -179,6 +258,8 @@ def run_audit(
     issues: list[AuditIssue] = []
     issues.extend(_check_required_paths(root))
     issues.extend(_check_required_references(root))
+    issues.extend(_check_required_context_anchors(root))
+    issues.extend(_check_stale_current_state_phrases(root))
     tracked = list(tracked_paths) if tracked_paths is not None else _load_git_tracked_paths(root)
     issues.extend(_check_line_limits(root, limits))
     issues.extend(_scan_secret_patterns(root, tracked))
@@ -276,6 +357,56 @@ def _check_required_references(root: Path) -> list[AuditIssue]:
                         message=f"expected reference to {needle}",
                     )
                 )
+    return issues
+
+
+def _check_required_context_anchors(root: Path) -> list[AuditIssue]:
+    issues: list[AuditIssue] = []
+    for relative, required in REQUIRED_CONTEXT_ANCHORS.items():
+        path = root / relative
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for needle in required:
+            if needle not in text:
+                issues.append(
+                    AuditIssue(
+                        severity="warning",
+                        code="missing_context_anchor",
+                        path=relative,
+                        message=f"expected first-read context anchor {needle!r}",
+                    )
+                )
+    return issues
+
+
+def _check_stale_current_state_phrases(root: Path) -> list[AuditIssue]:
+    issues: list[AuditIssue] = []
+    for relative in CURRENT_STATE_FILES:
+        path = root / relative
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for phrase in STALE_CURRENT_STATE_PHRASES:
+            index = text.find(phrase)
+            if index == -1:
+                continue
+            line = text.count("\n", 0, index) + 1
+            issues.append(
+                AuditIssue(
+                    severity="warning",
+                    code="stale_current_state_phrase",
+                    path=relative,
+                    line=line,
+                    message=f"current-state file contains stale-looking phrase {phrase!r}",
+                )
+            )
     return issues
 
 
