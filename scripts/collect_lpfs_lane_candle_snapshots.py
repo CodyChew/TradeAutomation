@@ -392,7 +392,16 @@ def main() -> int:
     sys.path.insert(0, str(repo / "shared" / "market_data_lab" / "src"))
 
     import MetaTrader5 as mt5_module  # type: ignore
-    from market_data_lab import DatasetConfig, pull_mt5_dataset
+    from market_data_lab import (
+        DatasetConfig,
+        build_dataset_manifest,
+        normalize_timeframe,
+        pull_symbol_rates,
+        resolve_date_window,
+        write_dataset_manifest,
+        write_rates_csv,
+    )
+    from market_data_lab.mt5 import account_metadata, ensure_symbol, symbol_metadata, terminal_metadata
 
     payload = json.loads(Path(args.config).read_text(encoding="utf-8"))
     config_kwargs = {
@@ -408,13 +417,63 @@ def main() -> int:
     if "allow_symbol_select" in getattr(DatasetConfig, "__dataclass_fields__", {}):
         config_kwargs["allow_symbol_select"] = False
     config = DatasetConfig(**config_kwargs)
-    results = pull_mt5_dataset(config, mt5_module=StrictMT5Proxy(mt5_module), stop_on_error=True)
+    strict_mt5 = StrictMT5Proxy(mt5_module)
+    if not strict_mt5.initialize():
+        raise RuntimeError(f"MetaTrader5 initialize failed: {strict_mt5.last_error()}")
+    start, end = resolve_date_window(config)
+    account = account_metadata(strict_mt5.account_info())
+    terminal = terminal_metadata(strict_mt5.terminal_info())
+    items = []
+    try:
+        for symbol in config.symbols:
+            for timeframe in config.timeframes:
+                label = normalize_timeframe(timeframe)
+                try:
+                    info = ensure_symbol(strict_mt5, symbol, allow_symbol_select=False)
+                except TypeError:
+                    info = ensure_symbol(strict_mt5, symbol)
+                frame = pull_symbol_rates(
+                    strict_mt5,
+                    symbol=symbol,
+                    timeframe=label,
+                    start=start.to_pydatetime(),
+                    end=end.to_pydatetime(),
+                )
+                data_path = write_rates_csv(config.data_root, frame, symbol=symbol, timeframe=label)
+                manifest = build_dataset_manifest(
+                    frame,
+                    symbol=symbol,
+                    timeframe=label,
+                    source="mt5",
+                    data_path=data_path,
+                    requested_start_utc=start,
+                    requested_end_utc=end,
+                    symbol_metadata=symbol_metadata(info, symbol),
+                    account_metadata=account,
+                    terminal_metadata=terminal,
+                )
+                manifest_path = write_dataset_manifest(config.data_root, manifest)
+                items.append(
+                    {
+                        "symbol": str(symbol).upper(),
+                        "timeframe": label,
+                        "status": "ok",
+                        "rows": int(len(frame)),
+                        "data_path": str(data_path),
+                        "manifest_path": str(manifest_path),
+                        "coverage_start_utc": manifest["coverage_start_utc"],
+                        "coverage_end_utc": manifest["coverage_end_utc"],
+                    }
+                )
+    finally:
+        strict_mt5.shutdown()
     Path(args.output).write_text(
         json.dumps(
             {
                 "result": "PASS",
                 "allow_symbol_select": False,
-                "items": [item.to_dict() for item in results],
+                "storage_format": "csv",
+                "items": items,
             },
             indent=2,
             sort_keys=True,

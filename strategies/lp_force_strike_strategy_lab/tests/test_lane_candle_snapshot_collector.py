@@ -74,6 +74,8 @@ class LaneCandleSnapshotCollectorTests(unittest.TestCase):
         self.assertIn("collect_script_sha256", script)
         self.assertIn("StrictMT5Proxy", helper)
         self.assertIn("symbol_select is disabled", helper)
+        self.assertIn("write_rates_csv", helper)
+        self.assertIn('"storage_format": "csv"', helper)
         self.assertIn(module.REMOTE_MARKER, script)
         self.assertIn("Compress-Archive", script)
         forbidden = (
