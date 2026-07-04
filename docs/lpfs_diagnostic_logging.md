@@ -155,6 +155,25 @@ strategy attribution, the provenance must be lane-authoritative, such as a
 reviewed snapshot collected from that lane's VPS/broker-feed source. Local
 workstation MT5 candles are not lane-authoritative for FTMO or IC.
 
+Use the lane candle snapshot collector to produce ignored, manifest-backed
+broker-feed roots before enabling candle-derived RSI/MACD/EMA/volume/structure
+diagnostics for live lanes:
+
+```powershell
+.\venv\Scripts\python scripts\collect_lpfs_lane_candle_snapshots.py `
+  --lane FTMO `
+  --lane IC `
+  --history-years 1
+```
+
+The collector is read-only with respect to LPFS live operations: it does not
+change tasks, kill switches, configs, runtime state, journals, orders, or
+positions. It also sets `allow_symbol_select=false` for the MT5 dataset pull,
+so hidden symbols stop the packet as a data gap instead of mutating terminal
+symbol visibility. Increase `--history-years` or use explicit
+`--date-start-utc` / `--date-end-utc` only when the research question needs a
+larger lane-feed window.
+
 ```powershell
 .\venv\Scripts\python scripts\build_lpfs_trade_diagnostics.py `
   --journal "FTMO=path\to\lpfs_live_journal.jsonl" `

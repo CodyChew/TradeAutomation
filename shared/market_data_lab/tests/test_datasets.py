@@ -45,6 +45,7 @@ class FakeMT5:
     def __init__(self) -> None:
         self.initialized = False
         self.shutdown_called = False
+        self.symbol_select_calls: list[tuple[str, bool]] = []
 
     def initialize(self) -> bool:
         self.initialized = True
@@ -59,10 +60,12 @@ class FakeMT5:
     def symbol_info(self, symbol: str) -> FakeInfo | None:
         if symbol == "MISSING":
             return None
+        if symbol == "INVISIBLE":
+            return FakeInfo(visible=False)
         return FakeInfo()
 
     def symbol_select(self, symbol: str, selected: bool) -> bool:
-        del symbol, selected
+        self.symbol_select_calls.append((symbol, selected))
         return True
 
     def account_info(self):
@@ -120,6 +123,27 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(len(config.symbols), 28)
             self.assertIn("EURUSD", config.symbols)
             self.assertEqual(config.timeframes, ("M30", "H4", "H8", "H12"))
+            self.assertTrue(config.allow_symbol_select)
+
+    def test_load_dataset_config_can_disable_symbol_select(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "dataset.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "dataset_name": "fx",
+                        "data_root": "data/raw",
+                        "symbols": ["EURUSD"],
+                        "timeframes": ["M30"],
+                        "allow_symbol_select": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config = load_dataset_config(path)
+
+            self.assertFalse(config.allow_symbol_select)
 
     def test_resolve_date_window_uses_history_years(self) -> None:
         config = DatasetConfig(
@@ -158,6 +182,42 @@ class DatasetTests(unittest.TestCase):
 
             frame = load_rates_parquet(temp_dir, symbol="EURUSD", timeframe="M30")
             self.assertEqual(len(frame), 2)
+
+    def test_pull_mt5_dataset_can_fail_closed_without_symbol_select(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = DatasetConfig(
+                dataset_name="fx",
+                data_root=temp_dir,
+                symbols=("INVISIBLE",),
+                timeframes=("M30",),
+                date_start_utc="2026-01-01T00:00:00Z",
+                date_end_utc="2026-01-02T00:00:00Z",
+                allow_symbol_select=False,
+            )
+            fake = FakeMT5()
+
+            results = pull_mt5_dataset(config, mt5_module=fake)
+
+            self.assertEqual(results[0].status, "failed")
+            self.assertIn("symbol_select is disabled", str(results[0].error))
+            self.assertEqual(fake.symbol_select_calls, [])
+
+    def test_pull_mt5_dataset_preserves_default_symbol_select_behavior(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = DatasetConfig(
+                dataset_name="fx",
+                data_root=temp_dir,
+                symbols=("INVISIBLE",),
+                timeframes=("M30",),
+                date_start_utc="2026-01-01T00:00:00Z",
+                date_end_utc="2026-01-02T00:00:00Z",
+            )
+            fake = FakeMT5()
+
+            results = pull_mt5_dataset(config, mt5_module=fake)
+
+            self.assertEqual(results[0].status, "ok")
+            self.assertEqual(fake.symbol_select_calls, [("INVISIBLE", True)])
 
     def test_dataset_coverage_report_marks_ready_when_manifest_covers_request(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -8,6 +8,39 @@ Do not use this file as live broker truth. Current live status still comes from
 fresh status packets, MT5 broker facts, runtime state, and the first-read docs
 listed in `AGENTS.md`.
 
+## 2026-07-04 - Add LPFS Lane Candle Snapshot Workflow
+
+Decision:
+
+- Add a read-only LPFS lane candle snapshot workflow for FTMO/IC
+  broker-feed market-context enrichment.
+- Keep workstation-local MT5 candle roots blocked for live-lane
+  RSI/MACD/EMA/volume/structure conclusions.
+- Default lane snapshots to a recent one-year window; require an intentional
+  argument for larger lane-feed pulls.
+- Run the generic MT5 dataset puller with `allow_symbol_select=false` from the
+  lane collector, so hidden symbols become `DATA_GAP` instead of mutating
+  terminal symbol visibility.
+- Align IC lane broker-feed validation with the current preserved live status
+  evidence: `ICMarketsSC-MT5-2` / `Raw Trading`.
+
+Reason:
+
+- The candle-provenance guardrail created a safe consumer, but there was no
+  maintained producer for lane-authoritative candle roots. Strategy attribution
+  needs a reproducible source before using candle-derived indicators or
+  structure/momentum/volume buckets.
+
+Evidence:
+
+- Review: `docs/reviews/2026-07-04-lpfs-lane-candle-snapshot-workflow.md`.
+
+Follow-up:
+
+- Run the collector only as an approved read-only, production-adjacent data
+  collection step. If the packet fails validation, classify the research pass
+  as `DATA_GAP` and do not use local workstation candles as a substitute.
+
 ## 2026-07-04 - Tighten LPFS Research Data Provenance Ownership
 
 Decision:

@@ -257,6 +257,16 @@ Each dataset should have a manifest containing:
 - symbol metadata when available;
 - account and terminal metadata when available.
 
+LPFS lane-authoritative candle snapshots add a root packet manifest around
+these per-symbol manifests. The packet records the lane (`FTMO` or `IC`),
+broker server/company expectation, command/stdout/stderr/exit-code sidecars,
+request scope, file hashes, validation summary, and
+`safe_for_strategy_analysis`. The LPFS collector sets
+`allow_symbol_select=false`; if a requested symbol is not already visible in
+the lane terminal, the collection fails closed instead of mutating terminal
+symbol visibility. Generic local dataset pulls keep the historical default
+`allow_symbol_select=true`.
+
 ## Candle Data Sufficiency
 
 Candle data is enough for bar-close indicators, swing logic, candle patterns,

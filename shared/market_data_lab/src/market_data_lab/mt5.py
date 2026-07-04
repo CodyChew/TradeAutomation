@@ -70,14 +70,17 @@ def _optional_object_fields(obj: Any, fields: list[str]) -> dict[str, Any]:
     return {field: getattr(obj, field, None) for field in fields}
 
 
-def ensure_symbol(mt5_module: Any, symbol: str) -> Any:
+def ensure_symbol(mt5_module: Any, symbol: str, *, allow_symbol_select: bool = True) -> Any:
     """Select one MT5 symbol and return its symbol_info object."""
 
     info = mt5_module.symbol_info(symbol)
     if info is None:
         raise RuntimeError(f"symbol_info unavailable for {symbol}: {mt5_module.last_error()}")
-    if not getattr(info, "visible", True) and not mt5_module.symbol_select(symbol, True):
-        raise RuntimeError(f"symbol_select failed for {symbol}: {mt5_module.last_error()}")
+    if not getattr(info, "visible", True):
+        if not allow_symbol_select:
+            raise RuntimeError(f"symbol {symbol} is not visible and symbol_select is disabled")
+        if not mt5_module.symbol_select(symbol, True):
+            raise RuntimeError(f"symbol_select failed for {symbol}: {mt5_module.last_error()}")
     return info
 
 
@@ -203,6 +206,7 @@ def pull_mt5_rates(
     start: datetime | str | pd.Timestamp,
     end: datetime | str | pd.Timestamp,
     mt5_module: Any | None = None,
+    allow_symbol_select: bool = True,
 ) -> MT5PullResult:
     """Pull, validate, store, and manifest one MT5 rates dataset."""
 
@@ -211,7 +215,7 @@ def pull_mt5_rates(
         raise RuntimeError(f"MetaTrader5 initialize failed: {module.last_error()}")
 
     try:
-        info = ensure_symbol(module, symbol)
+        info = ensure_symbol(module, symbol, allow_symbol_select=allow_symbol_select)
         frame = pull_symbol_rates(module, symbol=symbol, timeframe=timeframe, start=start, end=end)
         data_path = write_rates_parquet(data_root, frame, symbol=symbol, timeframe=timeframe)
         manifest = build_dataset_manifest(

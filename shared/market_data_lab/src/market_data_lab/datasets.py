@@ -28,6 +28,7 @@ class DatasetConfig:
     date_start_utc: str | None = None
     date_end_utc: str | None = None
     source: str = "mt5"
+    allow_symbol_select: bool = True
 
 
 @dataclass(frozen=True)
@@ -81,6 +82,7 @@ def load_dataset_config(path: str | Path) -> DatasetConfig:
         date_start_utc=None if payload.get("date_start_utc") in (None, "") else str(payload["date_start_utc"]),
         date_end_utc=None if payload.get("date_end_utc") in (None, "") else str(payload["date_end_utc"]),
         source=str(payload.get("source", "mt5")),
+        allow_symbol_select=bool(payload.get("allow_symbol_select", True)),
     )
 
 
@@ -152,7 +154,7 @@ def pull_mt5_dataset(
             for timeframe in config.timeframes:
                 label = normalize_timeframe(timeframe)
                 try:
-                    info = ensure_symbol(module, symbol)
+                    info = ensure_symbol(module, symbol, allow_symbol_select=config.allow_symbol_select)
                     frame = pull_symbol_rates(
                         module,
                         symbol=symbol,

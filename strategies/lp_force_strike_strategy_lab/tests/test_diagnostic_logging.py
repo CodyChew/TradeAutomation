@@ -479,6 +479,36 @@ class DiagnosticLoggingTests(unittest.TestCase):
             self.assertEqual(manifest["row_counts"]["closed_trade_diagnostics_with_candle_enrichment"], 0)
             self.assertEqual(manifest["row_counts"]["closed_trade_diagnostics_with_blocked_candle_enrichment"], 1)
 
+    def test_ic_lane_broker_feed_current_server_metadata_is_validated(self) -> None:
+        module_path = WORKSPACE_ROOT / "scripts" / "build_lpfs_trade_diagnostics.py"
+        spec = importlib.util.spec_from_file_location("trade_diagnostics", module_path)
+        self.assertIsNotNone(spec)
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            candle_dir = Path(tmpdir) / "candles" / "EURUSD" / "H4"
+            candle_dir.mkdir(parents=True)
+            (candle_dir / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "account_metadata": {"server": "ICMarketsSC-MT5-2", "company": "Raw Trading Ltd"},
+                        "terminal_metadata": {"company": "Raw Trading Ltd"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            status, error = module._validate_candle_source_metadata(
+                lane="IC",
+                path=Path(tmpdir) / "candles",
+                provenance="vps_lane_broker_feed",
+            )
+
+        self.assertEqual(status, "validated")
+        self.assertEqual(error, "")
+
     def test_gate_attribution_remote_script_uses_shared_bounded_reader(self) -> None:
         module_path = WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_gate_attribution.py"
         spec = importlib.util.spec_from_file_location("gate_script", module_path)

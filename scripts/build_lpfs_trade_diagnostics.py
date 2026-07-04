@@ -57,7 +57,7 @@ SAFE_CANDLE_PROVENANCE = frozenset({"vps_lane_broker_feed", "backtest_reference"
 KNOWN_CANDLE_PROVENANCE = SAFE_CANDLE_PROVENANCE | {"local_unverified"}
 LANE_BROKER_SERVER_EXPECTATIONS = {
     "FTMO": {"server": "FTMO-Server", "company_contains": "FTMO"},
-    "IC": {"server": "ICMarketsSC-MT5-3", "company_contains": "Raw Trading"},
+    "IC": {"server": "ICMarketsSC-MT5-2", "company_contains": "Raw Trading"},
 }
 
 

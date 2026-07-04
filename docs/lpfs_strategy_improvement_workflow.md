@@ -84,6 +84,16 @@ unverified, or quarantined, the run outcome is `DATA_GAP` unless the analysis
 can explicitly exclude that input family. Do not continue with a softer
 strategy narrative from unsafe evidence.
 
+For live FTMO/IC candle-derived enrichment, use ignored lane-authoritative
+snapshot packets produced by `scripts/collect_lpfs_lane_candle_snapshots.py`.
+Those packets must identify the lane, expected server/company, command
+sidecars, manifests, hashes, requested symbol/timeframe window, and
+`safe_for_strategy_analysis`. The default snapshot window is one recent year;
+longer lane-feed pulls require an intentional argument and should be tied to a
+specific research question. Workstation-local MT5 candle roots remain
+unverified and must not support live-lane RSI/MACD/EMA/volume/structure
+conclusions.
+
 Ownership:
 
 - Strategy Improvement Agent owns running the preflight for each analysis run.

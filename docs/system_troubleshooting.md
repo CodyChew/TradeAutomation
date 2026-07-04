@@ -369,6 +369,12 @@ LPFS underperformance analysis:
 - Build per-trade diagnostic reports with
   `scripts/build_lpfs_trade_diagnostics.py` from safely collected local journal
   copies.
+- For live-lane candle-derived RSI/MACD/EMA/volume/structure attribution, first
+  collect ignored lane-authoritative candle roots with
+  `scripts/collect_lpfs_lane_candle_snapshots.py`. A missing manifest, wrong
+  lane server/company, hidden symbol, missing symbol/timeframe, failed SSH/SCP,
+  or zip/hash mismatch is a `DATA_GAP`; do not substitute workstation-local MT5
+  candles.
 - Do not change live heuristics until enriched diagnostics are compared against
   the 10-year backtest and a separate strategy-change plan is approved.
 
