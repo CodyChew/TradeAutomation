@@ -215,14 +215,20 @@ def collect_lane_candle_snapshots(
             lane_results.append(lane_result)
             if not dry_run and lane_result["result"] != "PASS":
                 packet_result = "STOPPED"
+        os.replace(staging_dir, final_dir)
+        lane_results = _rewrite_packet_local_paths(
+            packet_dir=final_dir,
+            old_root=staging_dir,
+            new_root=final_dir,
+            lane_results=lane_results,
+        )
         _write_packet_manifest(
-            staging_dir,
+            final_dir,
             packet_result=packet_result,
             collection_time=collection_time,
             dry_run=dry_run,
             lane_results=lane_results,
         )
-        os.replace(staging_dir, final_dir)
     except Exception:
         shutil.rmtree(staging_dir, ignore_errors=True)
         raise
@@ -835,6 +841,36 @@ def _write_packet_manifest(
     manifest_path = packet_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     (packet_dir / "manifest.sha256.txt").write_text(_sha256_file(manifest_path) + "\n", encoding="ascii")
+
+
+def _rewrite_packet_local_paths(
+    *,
+    packet_dir: Path,
+    old_root: Path,
+    new_root: Path,
+    lane_results: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    old_text = str(old_root)
+    new_text = str(new_root)
+    rewritten_results = [_replace_string_prefixes(dict(result), old_text=old_text, new_text=new_text) for result in lane_results]
+    for validation_path in packet_dir.glob("*/validation_summary.json"):
+        try:
+            payload = json.loads(validation_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        rewritten = _replace_string_prefixes(payload, old_text=old_text, new_text=new_text)
+        validation_path.write_text(json.dumps(rewritten, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return rewritten_results
+
+
+def _replace_string_prefixes(value: Any, *, old_text: str, new_text: str) -> Any:
+    if isinstance(value, str):
+        return value.replace(old_text, new_text)
+    if isinstance(value, list):
+        return [_replace_string_prefixes(item, old_text=old_text, new_text=new_text) for item in value]
+    if isinstance(value, dict):
+        return {key: _replace_string_prefixes(item, old_text=old_text, new_text=new_text) for key, item in value.items()}
+    return value
 
 
 def _run_ssh_powershell(alias: str, script: str, *, timeout: int) -> CommandResult:

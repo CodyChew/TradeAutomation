@@ -263,6 +263,69 @@ class LaneCandleSnapshotCollectorTests(unittest.TestCase):
             self.assertIn("remote collection result was STOPPED", validation["failures"])
             self.assertTrue(any("GBPUSD:H4" in failure for failure in validation["failures"]))
 
+    def test_success_packet_rewrites_local_paths_to_final_packet_directory(self) -> None:
+        module = _load_collector()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            remote_root = root / "remote"
+            candle_root = remote_root / "candles"
+            _write_manifest(
+                candle_root,
+                symbol="EURUSD",
+                timeframe="H4",
+                server="FTMO-Server",
+                company="FTMO",
+            )
+            remote_zip = root / "snapshot.zip"
+            with zipfile.ZipFile(remote_zip, "w") as archive:
+                for path in sorted(remote_root.rglob("*")):
+                    if path.is_file():
+                        archive.write(path, path.relative_to(remote_root).as_posix())
+            remote_summary = {
+                "result": "PASS",
+                "remote_zip_scp_path": "C:/Windows/Temp/lpfs_test/snapshot.zip",
+                "remote_zip_sha256": module._sha256_file(remote_zip),
+                "failed_item_count": 0,
+                "item_count": 1,
+            }
+
+            def runner(*_args, **_kwargs):
+                return module.CommandResult(
+                    args=("ssh",),
+                    stdout=module.REMOTE_MARKER + json.dumps(remote_summary, sort_keys=True) + "\n",
+                    stderr="",
+                    returncode=0,
+                )
+
+            def fetcher(_alias, _remote_path, local_zip, **_kwargs):
+                shutil.copyfile(remote_zip, local_zip)
+                return module.CommandResult(args=("scp",), stdout="", stderr="", returncode=0)
+
+            packet = module.collect_lane_candle_snapshots(
+                lanes=("FTMO",),
+                symbols=("EURUSD",),
+                timeframes=("H4",),
+                history_years=1,
+                date_start_utc=None,
+                date_end_utc=None,
+                output_root=root / "packets",
+                timeout=60,
+                frame_timeout_seconds=180,
+                dry_run=False,
+                now=datetime(2026, 7, 4, 12, 0, tzinfo=timezone.utc),
+                runner=runner,
+                fetcher=fetcher,
+            )
+
+            manifest = json.loads((packet / "manifest.json").read_text(encoding="utf-8"))
+            validation = json.loads((packet / "ftmo" / "validation_summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["result"], "PASS")
+            self.assertNotIn(".tmp", manifest["lane_results"][0]["local_candle_root"])
+            self.assertTrue(manifest["lane_results"][0]["local_candle_root"].startswith(str(packet)))
+            self.assertNotIn(".tmp", validation["validation"]["candle_root"])
+            self.assertTrue(validation["validation"]["candle_root"].startswith(str(packet)))
+
 
 def _write_manifest(candle_root: Path, *, symbol: str, timeframe: str, server: str, company: str) -> None:
     candle_dir = candle_root / symbol / timeframe

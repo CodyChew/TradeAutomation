@@ -100,6 +100,8 @@ Resolution:
   the requested window in manifests while avoiding slow date-range history
   downloads where possible;
 - keep `symbol_select` disabled and keep partial/failed lanes as `STOPPED`.
+- rewrite packet-local metadata paths after the atomic move so manifests and
+  validation summaries point at the final packet directory, not staging `.tmp`.
 
 A small IC `EURUSD/H4` read-only probe passed after the fix. Full dual-lane
 strategy evidence still requires a clean committed collector SHA and a fresh
