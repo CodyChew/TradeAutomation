@@ -327,8 +327,8 @@ New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null
 if (-not (Test-Path -LiteralPath $Repo)) {{ throw "repo path not found: $Repo" }}
 if (-not (Test-Path -LiteralPath $Python)) {{ throw "python path not found: $Python" }}
 if (-not (Test-Path -LiteralPath $SharedMarketDataSrc)) {{ throw "market_data_lab source path not found: $SharedMarketDataSrc" }}
-[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{config_b64}')) | Set-Content -LiteralPath $ConfigPath -Encoding UTF8
-[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{request_b64}')) | Set-Content -LiteralPath $RequestPath -Encoding UTF8
+[IO.File]::WriteAllBytes($ConfigPath, [Convert]::FromBase64String('{config_b64}'))
+[IO.File]::WriteAllBytes($RequestPath, [Convert]::FromBase64String('{request_b64}'))
 [IO.File]::WriteAllBytes($CollectScriptPath, [Convert]::FromBase64String('{python_source_b64}'))
 $CollectScriptHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $CollectScriptPath).Hash.ToLowerInvariant()
 if ($CollectScriptHash -ne '{python_source_sha256}') {{ throw "collect script hash mismatch: $CollectScriptHash" }}
