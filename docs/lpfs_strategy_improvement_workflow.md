@@ -139,6 +139,12 @@ A candidate research pass should:
 - record decision status: rejected, active research candidate, or proposal
   ready.
 
+Indicator, structure, momentum, and volume tags for live FTMO/IC attribution
+must come from a lane-authoritative candle source. Local workstation MT5
+candles are not acceptable FTMO/IC broker-feed evidence unless separately
+proven to match the lane source, and unverified candle roots must be treated as
+a `DATA_GAP`, not as strategy evidence.
+
 ## Triage Outcomes
 
 Every weekly or midweek review should end with exactly one primary outcome.

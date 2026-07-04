@@ -52,6 +52,10 @@ class FactorAttributionBuilderTests(unittest.TestCase):
             self.assertEqual(manifest["row_counts"]["excluded_from_strategy_analysis"], 1)
             self.assertEqual(manifest["row_counts"]["usable_for_strategy_attribution"], 7)
             self.assertIn("policy_id_unavailable", manifest["data_validity_flags"])
+            self.assertIn("candle_source_provenance_unverified", manifest["data_validity_flags"])
+            self.assertFalse(
+                any(item["dimension"].startswith("candle_") for item in manifest["factor_dimensions_used"])
+            )
             self.assertIn("no_vps_access", manifest["non_actions"])
             self.assertTrue(any(output["path"].endswith("factor_attribution_matrix.csv") for output in manifest["outputs"]))
             self.assertIn("not live approval", summary.lower())
@@ -95,6 +99,42 @@ class FactorAttributionBuilderTests(unittest.TestCase):
             matrix = _read_csv(tmp / "out" / "20260704_000000" / "factor_attribution_matrix.csv")
             self.assertTrue(any(row["dimension"] == "timeframe" for row in matrix))
 
+    def test_safe_candle_source_manifest_keeps_candle_factor_dimensions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            diagnostics = tmp / "diagnostics"
+            _write_diagnostics_packet(diagnostics, include_safe_candle_source=True)
+
+            result = _run_builder(diagnostics, tmp / "out")
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            output_dir = tmp / "out" / "20260704_000000"
+            manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+            matrix = _read_csv(output_dir / "factor_attribution_matrix.csv")
+            self.assertNotIn("candle_source_provenance_unverified", manifest["data_validity_flags"])
+            self.assertTrue(
+                any(item["dimension"] == "candle_macd_histogram_regime" for item in manifest["factor_dimensions_used"])
+            )
+            self.assertTrue(any(row["dimension"] == "candle_macd_histogram_regime" for row in matrix))
+
+    def test_unverified_candle_source_manifest_strips_candle_factor_dimensions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            diagnostics = tmp / "diagnostics"
+            _write_diagnostics_packet(diagnostics, include_unsafe_candle_source=True)
+
+            result = _run_builder(diagnostics, tmp / "out")
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            output_dir = tmp / "out" / "20260704_000000"
+            manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+            matrix = _read_csv(output_dir / "factor_attribution_matrix.csv")
+            self.assertIn("candle_source_provenance_unverified", manifest["data_validity_flags"])
+            self.assertFalse(
+                any(item["dimension"].startswith("candle_") for item in manifest["factor_dimensions_used"])
+            )
+            self.assertFalse(any(row["dimension"].startswith("candle_") for row in matrix))
+
 
 def _run_builder(diagnostics: Path, output_root: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
@@ -129,6 +169,8 @@ def _write_diagnostics_packet(
     tamper_manifest: bool = False,
     omit_live_lane: bool = False,
     omit_optional_factors: bool = False,
+    include_safe_candle_source: bool = False,
+    include_unsafe_candle_source: bool = False,
 ) -> None:
     diagnostics.mkdir(parents=True)
     live_fields = [
@@ -203,12 +245,33 @@ def _write_diagnostics_packet(
         "scope": "offline_read_only_strategy_attribution",
         "schema_version": 1,
         "generated_at_utc": "2026-07-04T00:00:00+00:00",
+        "inputs": {},
         "outputs": outputs,
         "row_counts": {
             "closed_trade_diagnostics": len(live_rows),
             "backtest_diagnostics": len(backtest_rows),
         },
     }
+    if include_safe_candle_source:
+        manifest["inputs"]["candle_sources"] = [
+            {
+                "lane": "FTMO",
+                "path": str(diagnostics / "safe_candles"),
+                "provenance": "vps_lane_broker_feed",
+                "validation_status": "validated",
+                "safe_for_strategy_analysis": True,
+            }
+        ]
+    if include_unsafe_candle_source:
+        manifest["inputs"]["candle_sources"] = [
+            {
+                "lane": "FTMO",
+                "path": str(diagnostics / "unsafe_candles"),
+                "provenance": "local_unverified",
+                "validation_status": "unverified",
+                "safe_for_strategy_analysis": False,
+            }
+        ]
     (diagnostics / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 

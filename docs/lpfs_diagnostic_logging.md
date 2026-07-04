@@ -149,21 +149,27 @@ does not require a collector manifest. For production evidence, prefer
 snapshots produced by `scripts/collect_lpfs_live_journal_snapshots.py`. Never
 pass an active VPS runtime journal path directly.
 
-Offline indicator enrichment uses local candle roots only. The report defaults
-to `data/raw/ftmo/forex` for FTMO and `data/raw/lpfs_new_mt5_account/forex` for
-IC when those folders exist, and can be overridden with:
+Offline indicator enrichment never uses local candle roots by default. A candle
+root must be explicit and must include source provenance. For live FTMO/IC
+strategy attribution, the provenance must be lane-authoritative, such as a
+reviewed snapshot collected from that lane's VPS/broker-feed source. Local
+workstation MT5 candles are not lane-authoritative for FTMO or IC.
 
 ```powershell
 .\venv\Scripts\python scripts\build_lpfs_trade_diagnostics.py `
   --journal "FTMO=path\to\lpfs_live_journal.jsonl" `
   --journal "IC=path\to\lpfs_ic_live_journal.jsonl" `
-  --candle-root "FTMO=data\raw\ftmo\forex" `
-  --candle-root "IC=data\raw\lpfs_new_mt5_account\forex"
+  --candle-root "FTMO=path\to\ftmo_vps_broker_feed_candles" `
+  --candle-source-provenance "FTMO=vps_lane_broker_feed" `
+  --candle-root "IC=path\to\ic_vps_broker_feed_candles" `
+  --candle-source-provenance "IC=vps_lane_broker_feed"
 ```
 
 Derived fields are computed offline from copied journals, benchmark CSVs, and
-local candle datasets. Do not add RSI, momentum, volume regime, or percentile
-work to the live runner loop for strategy review.
+explicit candle datasets. If provenance is `local_unverified`, the report
+records the source but blocks candle enrichment from strategy-analysis fields.
+Do not add RSI, momentum, volume regime, or percentile work to the live runner
+loop for strategy review.
 
 ## Safe Collection Rules
 

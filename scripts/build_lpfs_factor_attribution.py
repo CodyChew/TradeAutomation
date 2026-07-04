@@ -158,11 +158,17 @@ def build_factor_attribution(
     _require_columns("backtest_diagnostics.csv", backtest_columns, REQUIRED_BACKTEST_COLUMNS)
 
     missing_window_columns = sorted(set(RECENT_WINDOW_COLUMNS) - set(backtest_columns))
-    factor_columns = {dimension for _, dimension in FACTOR_DIMENSIONS}
+    active_factor_dimensions, candle_policy_flags = _active_factor_dimensions(
+        source_manifest=source_manifest,
+        live_columns=live_columns,
+        backtest_columns=backtest_columns,
+    )
+    factor_columns = {dimension for _, dimension in active_factor_dimensions}
     live_missing_factor_columns = sorted(factor_columns - set(live_columns))
     backtest_missing_factor_columns = sorted(factor_columns - set(backtest_columns))
 
     data_flags: list[str] = []
+    data_flags.extend(candle_policy_flags)
     if live_missing_factor_columns:
         data_flags.append("live_missing_factor_columns")
     if backtest_missing_factor_columns:
@@ -189,6 +195,7 @@ def build_factor_attribution(
         candidate_net_r=candidate_net_r,
         investigate_net_r=investigate_net_r,
         candidate_gap_vs_all=candidate_gap_vs_all,
+        factor_dimensions=active_factor_dimensions,
     )
     if not matrix_rows:
         data_flags.append("no_factor_rows")
@@ -196,7 +203,7 @@ def build_factor_attribution(
 
     live_timestamps = _timestamps(usable_live_rows)
     backtest_timestamps = _timestamps(backtest_rows)
-    factor_coverage = _factor_coverage(usable_live_rows, backtest_rows)
+    factor_coverage = _factor_coverage(usable_live_rows, backtest_rows, factor_dimensions=active_factor_dimensions)
     backtest_missing_factor_values = sorted(
         dimension
         for dimension, coverage in factor_coverage.items()
@@ -236,6 +243,7 @@ def build_factor_attribution(
         backtest_row_count=len(backtest_rows),
         factor_coverage=factor_coverage,
         data_flags=data_flags,
+        factor_dimensions=active_factor_dimensions,
         policy_ledger=policy_ledger,
         missing_columns={
             "live_missing_factor_columns": live_missing_factor_columns,
@@ -327,6 +335,26 @@ def _require_result_column(columns: Sequence[str]) -> None:
         raise FactorAttributionError("closed_trade_diagnostics.csv missing r_result or aggregate_r_result")
 
 
+def _active_factor_dimensions(
+    *,
+    source_manifest: dict[str, Any],
+    live_columns: Sequence[str],
+    backtest_columns: Sequence[str],
+) -> tuple[tuple[tuple[str, str], ...], list[str]]:
+    candle_dimensions = {dimension for _, dimension in FACTOR_DIMENSIONS if dimension.startswith("candle_")}
+    candle_columns_present = bool((set(live_columns) | set(backtest_columns)) & candle_dimensions)
+    if not candle_columns_present:
+        return FACTOR_DIMENSIONS, []
+    candle_sources = ((source_manifest.get("inputs") or {}).get("candle_sources") or [])
+    sources_safe = bool(candle_sources) and all(
+        isinstance(source, dict) and source.get("safe_for_strategy_analysis") is True for source in candle_sources
+    )
+    if sources_safe:
+        return FACTOR_DIMENSIONS, []
+    active = tuple((family, dimension) for family, dimension in FACTOR_DIMENSIONS if not dimension.startswith("candle_"))
+    return active, ["candle_source_provenance_unverified"]
+
+
 def _live_counts(rows: Sequence[dict[str, str]]) -> dict[str, Any]:
     by_lane: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "excluded": 0, "usable": 0})
     excluded = 0
@@ -355,6 +383,7 @@ def _factor_matrix_rows(
     candidate_net_r: float,
     investigate_net_r: float,
     candidate_gap_vs_all: float,
+    factor_dimensions: Sequence[tuple[str, str]],
 ) -> list[dict[str, Any]]:
     live_buckets: dict[tuple[str, str, str, str], _Stats] = defaultdict(_Stats)
     backtest_buckets: dict[tuple[str, str, str, str, str], _Stats] = defaultdict(_Stats)
@@ -364,7 +393,7 @@ def _factor_matrix_rows(
         result = _row_result(row)
         if result is None:
             continue
-        for family, dimension in FACTOR_DIMENSIONS:
+        for family, dimension in factor_dimensions:
             value = _factor_value(row, dimension)
             if value == "":
                 continue
@@ -375,7 +404,7 @@ def _factor_matrix_rows(
         result = _float(row.get("r_result"))
         if result is None:
             continue
-        for family, dimension in FACTOR_DIMENSIONS:
+        for family, dimension in factor_dimensions:
             value = _factor_value(row, dimension)
             if value == "":
                 continue
@@ -648,9 +677,14 @@ def _row_caveats(row: dict[str, Any]) -> str:
     return ";".join(caveats)
 
 
-def _factor_coverage(live_rows: Sequence[dict[str, str]], backtest_rows: Sequence[dict[str, str]]) -> dict[str, Any]:
+def _factor_coverage(
+    live_rows: Sequence[dict[str, str]],
+    backtest_rows: Sequence[dict[str, str]],
+    *,
+    factor_dimensions: Sequence[tuple[str, str]],
+) -> dict[str, Any]:
     result: dict[str, Any] = {}
-    for family, dimension in FACTOR_DIMENSIONS:
+    for family, dimension in factor_dimensions:
         live_present = sum(1 for row in live_rows if _factor_value(row, dimension) != "")
         backtest_present = sum(1 for row in backtest_rows if _factor_value(row, dimension) != "")
         result[dimension] = {
@@ -754,6 +788,7 @@ def _manifest(
     backtest_row_count: int,
     factor_coverage: dict[str, Any],
     data_flags: Sequence[str],
+    factor_dimensions: Sequence[tuple[str, str]],
     policy_ledger: Path | None,
     missing_columns: dict[str, list[str]],
 ) -> dict[str, Any]:
@@ -781,6 +816,9 @@ def _manifest(
             "backtest": backtest_timestamps,
         },
         "factor_coverage": factor_coverage,
+        "factor_dimensions_used": [
+            {"family": family, "dimension": dimension} for family, dimension in factor_dimensions
+        ],
         "data_validity_flags": sorted(set(data_flags)),
         "missing_columns": missing_columns,
         "non_actions": list(NON_ACTIONS),

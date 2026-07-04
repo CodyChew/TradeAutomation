@@ -317,14 +317,18 @@ collection, and never pass an active VPS runtime journal path to the diagnostic
 builder. Compact summaries are stricter: they require a collector-produced,
 manifest-backed `--journal-snapshot`.
 
-Optional explicit candle roots:
+Optional explicit candle roots require provenance. For FTMO/IC live attribution,
+only use lane-authoritative VPS/broker-feed candle snapshots. Do not use local
+workstation MT5 candles as FTMO or IC indicator/structure/momentum/volume truth.
 
 ```powershell
 .\venv\Scripts\python scripts\build_lpfs_trade_diagnostics.py `
   --journal "FTMO=path\to\lpfs_live_journal.jsonl" `
   --journal "IC=path\to\lpfs_ic_live_journal.jsonl" `
-  --candle-root "FTMO=data\raw\ftmo\forex" `
-  --candle-root "IC=data\raw\lpfs_new_mt5_account\forex"
+  --candle-root "FTMO=path\to\ftmo_vps_broker_feed_candles" `
+  --candle-source-provenance "FTMO=vps_lane_broker_feed" `
+  --candle-root "IC=path\to\ic_vps_broker_feed_candles" `
+  --candle-source-provenance "IC=vps_lane_broker_feed"
 ```
 
 Focused verification for this work:
@@ -363,7 +367,8 @@ Expected files:
 
 - `closed_trade_diagnostics.csv`: closed live trades with result fields,
   flattened diagnostics, offline time/session/setup buckets, execution buckets,
-  recent-window flags, and candle-derived regimes where available.
+  recent-window flags, and candle-derived regimes only when the candle source is
+  explicitly proven for the lane.
 - `backtest_diagnostics.csv`: benchmark backtest trades enriched with matching
   offline fields where available.
 - `backtest_comparison.csv`: live-versus-backtest grouped comparisons across

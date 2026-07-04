@@ -116,6 +116,9 @@ Pause before implementation when any of these are true:
 - a research data, backtest, or transaction-cost change lacks reproducible
   inputs, dataset/data-quality checks, simulator tests, or broker-fact support
   for cost assumptions;
+- live-lane candle-derived strategy attribution uses workstation-local,
+  unlabeled, unverified, or cross-lane candle data instead of an explicit
+  lane-authoritative source with broker/account/server provenance checks;
 - a journal/report/dashboard change would read active production journals
   unsafely, rewrite append-only evidence, count unresolved audit rows as closed
   trades, or treat bounded current-week evidence as historical consistency;

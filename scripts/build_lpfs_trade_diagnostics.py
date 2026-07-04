@@ -37,8 +37,6 @@ from lp_force_strike_strategy_lab.live_trade_summary import (  # noqa: E402
 
 
 DEFAULT_OUTPUT_ROOT = REPO_ROOT / "reports" / "live_ops" / "lpfs_trade_diagnostics"
-DEFAULT_FTMO_CANDLE_ROOT = REPO_ROOT / "data" / "raw" / "ftmo" / "forex"
-DEFAULT_IC_CANDLE_ROOT = REPO_ROOT / "data" / "raw" / "lpfs_new_mt5_account" / "forex"
 DEFAULT_FTMO_TRADES = (
     REPO_ROOT
     / "reports"
@@ -55,6 +53,37 @@ DEFAULT_IC_TRADES = (
     / "20260505_165121"
     / "ic_markets_raw_spread_commission_adjusted_trades.csv"
 )
+SAFE_CANDLE_PROVENANCE = frozenset({"vps_lane_broker_feed", "backtest_reference", "synthetic_fixture"})
+KNOWN_CANDLE_PROVENANCE = SAFE_CANDLE_PROVENANCE | {"local_unverified"}
+LANE_BROKER_SERVER_EXPECTATIONS = {
+    "FTMO": {"server": "FTMO-Server", "company_contains": "FTMO"},
+    "IC": {"server": "ICMarketsSC-MT5-3", "company_contains": "Raw Trading"},
+}
+
+
+class CandleSource:
+    def __init__(
+        self,
+        *,
+        lane: str,
+        path: Path,
+        provenance: str,
+        validation_status: str,
+        validation_error: str = "",
+    ) -> None:
+        self.lane = lane
+        self.path = path
+        self.provenance = provenance
+        self.validation_status = validation_status
+        self.validation_error = validation_error
+
+    @property
+    def safe_for_strategy_analysis(self) -> bool:
+        return self.provenance in SAFE_CANDLE_PROVENANCE and self.validation_status in {
+            "validated",
+            "not_required_for_synthetic_fixture",
+            "not_required_for_backtest_reference",
+        }
 
 
 def main() -> int:
@@ -76,8 +105,18 @@ def main() -> int:
         action="append",
         default=[],
         help=(
-            "Optional candle data root for offline indicator enrichment, or LANE=path. "
-            "Defaults to local FTMO and IC 10-year candle roots when present."
+            "Optional explicit candle data root for offline indicator enrichment as LANE=path. "
+            "Requires matching --candle-source-provenance LANE=..."
+        ),
+    )
+    parser.add_argument(
+        "--candle-source-provenance",
+        action="append",
+        default=[],
+        help=(
+            "Candle source provenance as LANE=vps_lane_broker_feed, "
+            "LANE=backtest_reference, LANE=synthetic_fixture, or LANE=local_unverified. "
+            "Unverified sources are recorded but blocked from strategy-analysis enrichment."
         ),
     )
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
@@ -103,7 +142,10 @@ def main() -> int:
         as_of = as_of.tz_convert("UTC")
     output_dir = Path(args.output_root) / as_of.strftime("%Y%m%d_%H%M%S")
     output_dir.mkdir(parents=True, exist_ok=True)
-    candle_roots = _candle_roots(args.candle_root)
+    try:
+        candle_sources = _candle_sources(args.candle_root, args.candle_source_provenance)
+    except ValueError as exc:
+        parser.error(str(exc))
     exclusion_windows = _parse_exclusion_windows(args.exclude_window)
 
     live_rows: list[dict[str, Any]] = []
@@ -113,7 +155,7 @@ def main() -> int:
         journal_specs.append((lane or Path(path).stem, Path(path)))
         events = load_live_journal_events(path)
         live_rows.extend(closed_trade_diagnostic_rows(events, lane=lane or Path(path).stem))
-    live_rows = _enrich_rows(live_rows, as_of_utc=as_of, candle_roots=candle_roots)
+    live_rows = _enrich_rows(live_rows, as_of_utc=as_of, candle_sources=candle_sources)
     _apply_exclusion_windows(live_rows, exclusion_windows)
 
     benchmark_specs = args.benchmark_trades or [
@@ -128,7 +170,7 @@ def main() -> int:
         benchmark_file_specs.append((lane or path_obj.stem, path_obj))
         if path_obj.exists():
             benchmark_rows.extend(_load_backtest_rows(path_obj, lane=lane or path_obj.stem))
-    benchmark_rows = _enrich_rows(benchmark_rows, as_of_utc=as_of, candle_roots=candle_roots)
+    benchmark_rows = _enrich_rows(benchmark_rows, as_of_utc=as_of, candle_sources=candle_sources)
 
     diagnostic_csv = output_dir / "closed_trade_diagnostics.csv"
     benchmark_csv = output_dir / "backtest_diagnostics.csv"
@@ -153,7 +195,7 @@ def main() -> int:
                 output_dir=output_dir,
                 journal_specs=journal_specs,
                 benchmark_specs=benchmark_file_specs,
-                candle_roots=candle_roots,
+                candle_sources=candle_sources,
                 exclusion_windows=exclusion_windows,
                 outputs=[diagnostic_csv, benchmark_csv, comparison_csv, confluence_csv, candidates_csv, summary_md],
                 live_rows=live_rows,
@@ -236,17 +278,71 @@ def _apply_exclusion_windows(rows: Sequence[dict[str, Any]], windows: Sequence[d
                 break
 
 
-def _candle_roots(raw_roots: Sequence[str]) -> dict[str, Path]:
-    roots: dict[str, Path] = {}
-    if DEFAULT_FTMO_CANDLE_ROOT.exists():
-        roots["FTMO"] = DEFAULT_FTMO_CANDLE_ROOT
-    if DEFAULT_IC_CANDLE_ROOT.exists():
-        roots["IC"] = DEFAULT_IC_CANDLE_ROOT
+def _candle_sources(raw_roots: Sequence[str], raw_provenance: Sequence[str]) -> dict[str, CandleSource]:
+    provenance_by_lane: dict[str, str] = {}
+    for raw in raw_provenance:
+        lane, provenance = _split_label(raw)
+        if not lane or not provenance:
+            raise ValueError("--candle-source-provenance must use LANE=provenance")
+        lane_key = _lane_key(lane)
+        normalized = provenance.strip().lower()
+        if normalized not in KNOWN_CANDLE_PROVENANCE:
+            allowed = ", ".join(sorted(KNOWN_CANDLE_PROVENANCE))
+            raise ValueError(f"Unknown candle source provenance {provenance!r}; expected one of: {allowed}.")
+        provenance_by_lane[lane_key] = normalized
+
+    roots: dict[str, CandleSource] = {}
     for raw in raw_roots:
         lane, path = _split_label(raw)
-        key = _lane_key(lane) if lane else "*"
-        roots[key] = Path(path)
+        if not lane:
+            raise ValueError("--candle-root must use LANE=path so candle provenance is lane-explicit")
+        key = _lane_key(lane)
+        provenance = provenance_by_lane.get(key)
+        if provenance is None:
+            raise ValueError(f"--candle-root {lane}=... requires --candle-source-provenance {lane}=...")
+        path_obj = Path(path)
+        validation_status, validation_error = _validate_candle_source_metadata(
+            lane=key,
+            path=path_obj,
+            provenance=provenance,
+        )
+        roots[key] = CandleSource(
+            lane=key,
+            path=path_obj,
+            provenance=provenance,
+            validation_status=validation_status,
+            validation_error=validation_error,
+        )
     return roots
+
+
+def _validate_candle_source_metadata(*, lane: str, path: Path, provenance: str) -> tuple[str, str]:
+    if provenance == "synthetic_fixture":
+        return "not_required_for_synthetic_fixture", ""
+    if provenance == "backtest_reference":
+        return "not_required_for_backtest_reference", ""
+    if provenance != "vps_lane_broker_feed":
+        return "unverified", "candle source provenance is not lane-authoritative"
+    expectation = LANE_BROKER_SERVER_EXPECTATIONS.get(_lane_key(lane))
+    if expectation is None:
+        return "failed", f"no broker metadata expectation configured for lane {lane!r}"
+    manifests = sorted(path.glob("*/*/manifest.json"))
+    if not manifests:
+        return "failed", "no candle manifest files found for broker-source validation"
+    for manifest_path in manifests[:20]:
+        try:
+            payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            return "failed", f"could not parse candle manifest {manifest_path}: {exc}"
+        account = payload.get("account_metadata") or {}
+        terminal = payload.get("terminal_metadata") or {}
+        server = str(account.get("server") or "")
+        company_text = " ".join(str(value or "") for value in (account.get("company"), terminal.get("company"), terminal.get("name")))
+        if server != expectation["server"]:
+            return "failed", f"{manifest_path} server {server!r} does not match expected {expectation['server']!r}"
+        if expectation["company_contains"] not in company_text:
+            return "failed", f"{manifest_path} company metadata does not contain {expectation['company_contains']!r}"
+    return "validated", ""
 
 
 def _load_backtest_rows(path: Path, *, lane: str) -> list[dict[str, Any]]:
@@ -313,9 +409,9 @@ def _enrich_rows(
     rows: Sequence[dict[str, Any]],
     *,
     as_of_utc: pd.Timestamp,
-    candle_roots: dict[str, Path],
+    candle_sources: dict[str, CandleSource],
 ) -> list[dict[str, Any]]:
-    cache = _CandleFeatureCache(candle_roots)
+    cache = _CandleFeatureCache(candle_sources)
     enriched_rows: list[dict[str, Any]] = []
     for row in rows:
         enriched = dict(row)
@@ -728,7 +824,7 @@ def _manifest(
     output_dir: Path,
     journal_specs: Sequence[tuple[str, Path]],
     benchmark_specs: Sequence[tuple[str, Path]],
-    candle_roots: dict[str, Path],
+    candle_sources: dict[str, CandleSource],
     exclusion_windows: Sequence[dict[str, Any]],
     outputs: Sequence[Path],
     live_rows: Sequence[dict[str, Any]],
@@ -753,9 +849,18 @@ def _manifest(
         "inputs": {
             "journals": [_labeled_fingerprint(label, path) for label, path in journal_specs],
             "benchmark_trades": [_labeled_fingerprint(label, path) for label, path in benchmark_specs],
-            "candle_roots": [
-                {"lane": lane, "path": str(path), "exists": path.exists(), "type": "directory"}
-                for lane, path in sorted(candle_roots.items())
+            "candle_sources": [
+                {
+                    "lane": lane,
+                    "path": str(source.path),
+                    "exists": source.path.exists(),
+                    "type": "directory",
+                    "provenance": source.provenance,
+                    "validation_status": source.validation_status,
+                    "validation_error": source.validation_error,
+                    "safe_for_strategy_analysis": source.safe_for_strategy_analysis,
+                }
+                for lane, source in sorted(candle_sources.items())
             ],
         },
         "exclusion_windows": [
@@ -772,6 +877,12 @@ def _manifest(
                 1 for row in live_rows if row.get("excluded_from_strategy_analysis") is True
             ),
             "closed_trade_diagnostics_with_candle_enrichment": sum(1 for row in live_rows if row.get("candle_time_utc")),
+            "closed_trade_diagnostics_with_blocked_candle_enrichment": sum(
+                1
+                for row in live_rows
+                if row.get("candle_enrichment_status")
+                in {"blocked_unverified_candle_source", "blocked_candle_source_validation_failed"}
+            ),
             "backtest_diagnostics": len(benchmark_rows),
             "research_candidates": len(candidate_rows),
         },
@@ -813,6 +924,12 @@ def _render_summary(
 ) -> str:
     enriched = sum(1 for row in live_rows if row.get("diagnostic_schema_version"))
     candle_enriched = sum(1 for row in live_rows if row.get("candle_time_utc"))
+    candle_blocked = sum(
+        1
+        for row in live_rows
+        if row.get("candle_enrichment_status")
+        in {"blocked_unverified_candle_source", "blocked_candle_source_validation_failed"}
+    )
     excluded = sum(1 for row in live_rows if row.get("excluded_from_strategy_analysis") is True)
     lines = [
         "# LPFS Trade Diagnostics",
@@ -822,8 +939,14 @@ def _render_summary(
         f"Closed trades excluded from strategy analysis: `{excluded}`",
         f"Rows with diagnostic payloads: `{enriched}`",
         f"Rows with offline candle enrichment: `{candle_enriched}`",
+        f"Rows with blocked/unverified candle enrichment: `{candle_blocked}`",
         "",
         "This report is additive/offline and does not change live trading behavior.",
+        "",
+        "Candle source policy: live lane indicator attribution requires an explicit "
+        "lane-authoritative candle source. Local workstation candle roots are not "
+        "used by default and unverified sources are blocked from RSI/MACD/EMA/"
+        "volume/structure enrichment.",
         "",
         "Evidence policy: H8 or any other timeframe is not a selected change "
         "candidate until FTMO and IC diagnostics plus recent/full backtests support it.",
@@ -999,9 +1122,9 @@ def _lane_key(value: Any) -> str:
     return text
 
 
-def _root_for_lane(roots: dict[str, Path], lane: str) -> Path | None:
+def _source_for_lane(sources: dict[str, CandleSource], lane: str) -> CandleSource | None:
     lane_key = _lane_key(lane)
-    return roots.get(lane_key) or roots.get("*")
+    return sources.get(lane_key)
 
 
 def _timeframe_frequency_class(timeframe: str) -> str:
@@ -1056,26 +1179,41 @@ def _timeframe_sort_key(value: str) -> tuple[int, str]:
 
 
 class _CandleFeatureCache:
-    def __init__(self, roots: dict[str, Path]) -> None:
-        self._roots = roots
+    def __init__(self, sources: dict[str, CandleSource]) -> None:
+        self._sources = sources
         self._cache: dict[tuple[Path, str, str], pd.DataFrame] = {}
 
     def lookup(self, *, lane: str, symbol: str, timeframe: str, timestamp: pd.Timestamp | None) -> dict[str, Any]:
         if timestamp is None or not symbol or not timeframe:
-            return {}
-        root = _root_for_lane(self._roots, lane)
-        if root is None:
-            return {}
-        frame = self._frame(root, symbol.upper(), timeframe.upper())
+            return {"candle_enrichment_status": "missing_lookup_key"}
+        source = _source_for_lane(self._sources, lane)
+        if source is None:
+            return {"candle_enrichment_status": "no_candle_source"}
+        base_payload = {
+            "candle_source_root": str(source.path),
+            "candle_source_provenance": source.provenance,
+            "candle_source_validation_status": source.validation_status,
+            "candle_source_validation_error": source.validation_error,
+            "candle_source_safe_for_strategy_analysis": source.safe_for_strategy_analysis,
+        }
+        if not source.safe_for_strategy_analysis:
+            status = (
+                "blocked_candle_source_validation_failed"
+                if source.provenance == "vps_lane_broker_feed"
+                else "blocked_unverified_candle_source"
+            )
+            return {**base_payload, "candle_enrichment_status": status}
+        frame = self._frame(source.path, symbol.upper(), timeframe.upper())
         if frame.empty:
-            return {}
+            return {**base_payload, "candle_enrichment_status": "missing_candle_frame"}
         times = pd.to_datetime(frame["time_utc"], utc=True)
         index = int(times.searchsorted(timestamp, side="right") - 1)
         if index < 0 or index >= len(frame):
-            return {}
+            return {**base_payload, "candle_enrichment_status": "no_candle_before_analysis_time"}
         row = frame.iloc[index]
         return {
-            "candle_source_root": str(root),
+            **base_payload,
+            "candle_enrichment_status": "enriched",
             "candle_time_utc": _timestamp_text(row.get("time_utc")),
             "candle_rsi_14": _first_float(row.get("rsi_14")),
             "candle_rsi_regime": row.get("rsi_regime") or "",

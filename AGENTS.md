@@ -482,6 +482,11 @@ The evidence stream should preserve enough information to analyze:
 - Offline indicator research: signal-time candle features, indicator values,
   regime buckets, and derived tags should be generated in ignored analysis
   packets with manifests before being considered for live strategy logic.
+- Live FTMO/IC indicator attribution must use lane-authoritative candle
+  evidence. Do not use local workstation MT5 candles as FTMO or IC broker-feed
+  truth unless a reviewed provenance record proves they match the lane source.
+  If candle provenance is missing or unverified, classify the analysis as a
+  data gap and do not draw RSI/MACD/EMA/momentum/volume/structure conclusions.
 
 If these fields are missing, hard to join, unsafe to collect, or too expensive
 to collect, document the gap before recommending a strategy change. Add

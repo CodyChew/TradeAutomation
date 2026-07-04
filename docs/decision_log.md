@@ -8,6 +8,43 @@ Do not use this file as live broker truth. Current live status still comes from
 fresh status packets, MT5 broker facts, runtime state, and the first-read docs
 listed in `AGENTS.md`.
 
+## 2026-07-04 - Add LPFS Candle Provenance Guardrail
+
+Decision:
+
+- Remove implicit workstation-local candle roots from LPFS trade diagnostics.
+- Require every candle enrichment source to be passed as `LANE=path` with an
+  explicit provenance label.
+- Treat workstation-local or unverified candle sources as blocked for
+  RSI/MACD/EMA/volume/structure enrichment.
+- Validate `vps_lane_broker_feed` candle manifests against the expected lane
+  broker server/company metadata before allowing strategy-analysis enrichment.
+- Make downstream factor attribution drop candle-derived factor dimensions
+  unless the source diagnostics manifest proves safe candle provenance.
+- Quarantine candle-derived conclusions from the 2026-06-27 and 2026-07-04
+  diagnostics packets that were generated before this guardrail.
+
+Reason:
+
+- A diagnostics refresh used local workstation MT5 candle data for lane
+  attribution. That source is not FTMO/IC lane-authoritative and can mix broker
+  feeds, which weakens strategy-analysis correctness even though broker/live
+  execution was not mutated.
+- Strategy research needs reproducible, lane-provenanced market context before
+  it can justify filters or heuristic candidates.
+
+Evidence:
+
+- Review: `docs/reviews/2026-07-04-lpfs-candle-provenance-guardrail.md`.
+
+Follow-up:
+
+- Regenerate candle-derived diagnostics only from validated FTMO/IC
+  lane-authoritative candle sources or from explicitly labeled backtest
+  reference fixtures.
+- Do not use quarantined candle factors from old packets for strategy
+  conclusions.
+
 ## 2026-07-04 - Add Offline LPFS Factor Attribution Builder
 
 Decision:

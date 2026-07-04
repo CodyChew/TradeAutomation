@@ -224,6 +224,8 @@ class DiagnosticLoggingTests(unittest.TestCase):
                     f"FTMO={benchmark}",
                     "--candle-root",
                     f"FTMO={candle_root}",
+                    "--candle-source-provenance",
+                    "FTMO=synthetic_fixture",
                     "--output-root",
                     str(tmp / "reports"),
                     "--as-of-utc",
@@ -280,6 +282,8 @@ class DiagnosticLoggingTests(unittest.TestCase):
                     f"FTMO={benchmark}",
                     "--candle-root",
                     f"FTMO={candle_root}",
+                    "--candle-source-provenance",
+                    "FTMO=synthetic_fixture",
                     "--output-root",
                     str(tmp / "excluded_reports"),
                     "--as-of-utc",
@@ -306,6 +310,174 @@ class DiagnosticLoggingTests(unittest.TestCase):
                 excluded_manifest["row_counts"]["closed_trade_diagnostics_excluded_from_strategy_analysis"],
                 1,
             )
+
+    def test_trade_diagnostics_requires_explicit_candle_provenance(self) -> None:
+        module_path = WORKSPACE_ROOT / "scripts" / "build_lpfs_trade_diagnostics.py"
+        spec = importlib.util.spec_from_file_location("trade_diagnostics_script", module_path)
+        self.assertIsNotNone(spec)
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+
+        self.assertEqual(module._candle_sources([], []), {})
+        with self.assertRaisesRegex(ValueError, "requires --candle-source-provenance"):
+            module._candle_sources(["FTMO=C:/tmp/candles"], [])
+        with self.assertRaisesRegex(ValueError, "LANE=path"):
+            module._candle_sources(["C:/tmp/candles"], ["*=synthetic_fixture"])
+
+    def test_unverified_candle_source_is_blocked_from_indicator_enrichment(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            journal = tmp / "journal.jsonl"
+            benchmark = tmp / "backtest.csv"
+            candle_root = tmp / "candles"
+            diagnostics = build_setup_diagnostics(_setup(), config=LiveSendExecutorConfig(), signal_key="sig")
+            rows = [
+                _row("position_opened", {"position_id": 1, "opened_utc": "2026-01-01T00:00:00Z"}),
+                _row(
+                    "take_profit_hit",
+                    fields_with_diagnostics(
+                        {"position_id": 1, "entry": 1.1, "close_price": 1.105, "r_result": 1.0, "closed_utc": "2026-01-01T04:00:00Z"},
+                        diagnostics,
+                    ),
+                ),
+            ]
+            journal.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
+            benchmark.write_text(
+                (
+                    "symbol,timeframe,side,signal_index,entry_index,entry_time_utc,exit_time_utc,"
+                    "net_r,meta_risk_atr,meta_bars_from_lp_break,meta_fs_signal_time_utc\n"
+                    "EURUSD,H4,long,10,11,2026-01-01T00:00:00Z,2026-01-01T04:00:00Z,0.25,0.5,2,2026-01-01T00:00:00Z\n"
+                ),
+                encoding="utf-8",
+            )
+            candle_dir = candle_root / "EURUSD" / "H4"
+            candle_dir.mkdir(parents=True)
+            (candle_dir / "EURUSD_H4.csv").write_text(
+                "\n".join(
+                    [
+                        "time_utc,symbol,timeframe,open,high,low,close,tick_volume,spread_points,real_volume",
+                        "2026-01-01T00:00:00Z,EURUSD,H4,1.0,1.2,0.9,1.1,100,1,0",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(WORKSPACE_ROOT / "scripts" / "build_lpfs_trade_diagnostics.py"),
+                    "--journal",
+                    f"FTMO={journal}",
+                    "--benchmark-trades",
+                    f"FTMO={benchmark}",
+                    "--candle-root",
+                    f"FTMO={candle_root}",
+                    "--candle-source-provenance",
+                    "FTMO=local_unverified",
+                    "--output-root",
+                    str(tmp / "reports"),
+                    "--as-of-utc",
+                    "2026-05-23T00:00:00Z",
+                ],
+                cwd=WORKSPACE_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            output_dir = tmp / "reports" / "20260523_000000"
+            with (output_dir / "closed_trade_diagnostics.csv").open("r", encoding="utf-8", newline="") as handle:
+                closed_rows = list(csv.DictReader(handle))
+            self.assertEqual(closed_rows[0]["candle_enrichment_status"], "blocked_unverified_candle_source")
+            self.assertEqual(closed_rows[0]["candle_source_provenance"], "local_unverified")
+            self.assertEqual(closed_rows[0]["candle_source_safe_for_strategy_analysis"], "False")
+            self.assertEqual(closed_rows[0].get("candle_time_utc", ""), "")
+            manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["row_counts"]["closed_trade_diagnostics_with_candle_enrichment"], 0)
+            self.assertEqual(manifest["row_counts"]["closed_trade_diagnostics_with_blocked_candle_enrichment"], 1)
+
+    def test_lane_broker_feed_source_with_wrong_server_is_blocked_from_indicator_enrichment(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            journal = tmp / "journal.jsonl"
+            benchmark = tmp / "backtest.csv"
+            candle_root = tmp / "candles"
+            diagnostics = build_setup_diagnostics(_setup(), config=LiveSendExecutorConfig(), signal_key="sig")
+            rows = [
+                _row("position_opened", {"position_id": 1, "opened_utc": "2026-01-01T00:00:00Z"}),
+                _row(
+                    "take_profit_hit",
+                    fields_with_diagnostics(
+                        {"position_id": 1, "entry": 1.1, "close_price": 1.105, "r_result": 1.0, "closed_utc": "2026-01-01T04:00:00Z"},
+                        diagnostics,
+                    ),
+                ),
+            ]
+            journal.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
+            benchmark.write_text(
+                (
+                    "symbol,timeframe,side,signal_index,entry_index,entry_time_utc,exit_time_utc,"
+                    "net_r,meta_risk_atr,meta_bars_from_lp_break,meta_fs_signal_time_utc\n"
+                    "EURUSD,H4,long,10,11,2026-01-01T00:00:00Z,2026-01-01T04:00:00Z,0.25,0.5,2,2026-01-01T00:00:00Z\n"
+                ),
+                encoding="utf-8",
+            )
+            candle_dir = candle_root / "EURUSD" / "H4"
+            candle_dir.mkdir(parents=True)
+            (candle_dir / "EURUSD_H4.csv").write_text(
+                "\n".join(
+                    [
+                        "time_utc,symbol,timeframe,open,high,low,close,tick_volume,spread_points,real_volume",
+                        "2026-01-01T00:00:00Z,EURUSD,H4,1.0,1.2,0.9,1.1,100,1,0",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (candle_dir / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "account_metadata": {"server": "ICMarketsSC-MT5-3", "company": "Raw Trading Ltd"},
+                        "terminal_metadata": {"company": "Raw Trading Ltd"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(WORKSPACE_ROOT / "scripts" / "build_lpfs_trade_diagnostics.py"),
+                    "--journal",
+                    f"FTMO={journal}",
+                    "--benchmark-trades",
+                    f"FTMO={benchmark}",
+                    "--candle-root",
+                    f"FTMO={candle_root}",
+                    "--candle-source-provenance",
+                    "FTMO=vps_lane_broker_feed",
+                    "--output-root",
+                    str(tmp / "reports"),
+                    "--as-of-utc",
+                    "2026-05-23T00:00:00Z",
+                ],
+                cwd=WORKSPACE_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            output_dir = tmp / "reports" / "20260523_000000"
+            with (output_dir / "closed_trade_diagnostics.csv").open("r", encoding="utf-8", newline="") as handle:
+                closed_rows = list(csv.DictReader(handle))
+            self.assertEqual(closed_rows[0]["candle_enrichment_status"], "blocked_candle_source_validation_failed")
+            self.assertEqual(closed_rows[0]["candle_source_provenance"], "vps_lane_broker_feed")
+            self.assertEqual(closed_rows[0]["candle_source_safe_for_strategy_analysis"], "False")
+            self.assertIn("FTMO-Server", closed_rows[0]["candle_source_validation_error"])
+            self.assertEqual(closed_rows[0].get("candle_time_utc", ""), "")
+            manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["row_counts"]["closed_trade_diagnostics_with_candle_enrichment"], 0)
+            self.assertEqual(manifest["row_counts"]["closed_trade_diagnostics_with_blocked_candle_enrichment"], 1)
 
     def test_gate_attribution_remote_script_uses_shared_bounded_reader(self) -> None:
         module_path = WORKSPACE_ROOT / "scripts" / "summarize_lpfs_live_gate_attribution.py"
