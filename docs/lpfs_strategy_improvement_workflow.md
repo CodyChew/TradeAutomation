@@ -184,6 +184,10 @@ A candidate research pass should:
 
 - complete the research data provenance preflight above;
 - build or inspect offline diagnostics and indicator tags;
+- use `scripts/build_lpfs_trade_diagnostics.py`,
+  `scripts/build_lpfs_factor_attribution.py`, and
+  `scripts/build_lpfs_candidate_backtest_matrix.py` for the maintained
+  diagnostics/factor/candidate path when their inputs are available;
 - compare FTMO and IC together;
 - test recent 3, 6, and 12 month windows first;
 - use long-history backtests as robustness guardrails;

@@ -1,7 +1,7 @@
 # LPFS Strategy Iteration Context
 
-Last updated: 2026-06-27 ICT after the H8 compressed-risk research readiness
-closeout.
+Last updated: 2026-07-05 ICT after the maintained candidate-matrix builder
+and guarded July 2026 candidate matrix.
 
 This is the durable handoff for the current LPFS diagnostic reporting and
 strategy-iteration work. A new Codex chat should be able to read this file,
@@ -24,13 +24,16 @@ The current work is reporting/context only. It is not a live strategy change,
 not a live deployment, and not approval to change entries, exits, risk,
 timeframe selection, spread gates, recovery behavior, or broker execution.
 
-The current active research candidate is H8 compressed risk:
-`timeframe=H8` and `risk_atr_bucket=lt_0p5`, especially its low-spread
-intersection. This is a research candidate only, not a live filter. The
-2026-06-27 research pass rejected the simple H8 low-spread-only filter because
-low-spread H8 was live-weak but historically positive; it is diagnostic context,
-not a causal rule. No live strategy, risk, sizing, SL/TP, spread, recovery,
-broker-send, or config change is approved.
+The current leading active research candidate is H8 compressed risk:
+`timeframe=H8` and `risk_atr_bucket=lt_0p5`. This is a research candidate only,
+not a live filter. The maintained 2026-07-05 candidate matrix keeps the bucket
+active because current live, 3M backtest, 6M backtest, and all-history backtest
+are weak, with acceptable removal breadth. It is still not proposal-ready
+because the current live sample is small and the 12M backtest window is
+positive. The 2026-06-27 research pass rejected the simple H8 low-spread-only
+filter because low-spread H8 was live-weak but historically positive; it remains
+diagnostic context, not a causal rule. No live strategy, risk, sizing, SL/TP,
+spread, recovery, broker-send, or config change is approved.
 
 Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO and IC
 live data collection are running again, recovery remains disabled, and later
@@ -78,6 +81,15 @@ production-derived historical timestamps.
   as the primary research candidate, reject the H8 low-spread-only filter, and
   require the next eligible weekly packet to test the explicit watch criteria
   before escalating any formal candidate proposal.
+- Current maintained candidate matrix:
+  `reports/live_ops/lpfs_candidate_backtest_matrix/20260705_064500`, manifest
+  SHA-256 `23c3d3da7afff6fab030816bcfc30645c0a900da443a8490d6a257ded53f4b6a`.
+  It was built from safe July 4 diagnostics and factor-attribution packets.
+  H8 `risk_atr_bucket=lt_0p5` is the leading active research candidate, broad
+  buckets such as `long_side`, `setup_age_bars_bucket=1`, and
+  `fs_total_bars_bucket=3_to_4` are diagnostic only, and incomplete
+  candle/spread factor coverage is a data gap rather than proposal-grade
+  evidence.
 - Historical 2026-05-30 weekly checkpoint:
   `reports/live_ops/lpfs_weekly_performance/20260530_150637`. Its generated
   dashboard had an FTMO fetch-timeout caveat, so the authoritative FTMO
@@ -129,6 +141,11 @@ production-derived historical timestamps.
   this file and the first-read docs so another agent can continue from the repo.
   The agent should look portfolio-wide first, then candidate buckets; a narrow
   bucket such as H8 compressed risk is only one current hypothesis.
+- Candidate matrices now have a maintained builder:
+  `scripts/build_lpfs_candidate_backtest_matrix.py`, with definitions in
+  `configs/strategy_research/lpfs_candidate_matrix_current.json`. Use this path
+  instead of ad hoc spreadsheets or one-off scripts so factor coverage,
+  guardrails, and non-actions are recorded in a manifest.
 - The standing cadence, trigger/triage outcomes, data-gap escalation rules, and
   human-operator timeline are defined in
   `docs/lpfs_strategy_improvement_workflow.md`.
@@ -175,9 +192,12 @@ preserve paths and hashes in handoff docs instead.
 - Trade diagnostics packet:
   `reports/live_ops/lpfs_trade_diagnostics/20260627_121200`; manifest SHA-256
   `d30a72bea2669ba87e547eacd2604b34c0aaa8772dbab03b7adf2d716a81bb13`.
-- Candidate backtest matrix:
+- Historical candidate backtest matrix:
   `reports/live_ops/lpfs_candidate_backtest_matrix/20260627_122800`; manifest
   SHA-256 `4e3191ef8075f7c2511d9ed419884fe1ea389b0696c50e119cf6315875621d60`.
+- Current maintained candidate backtest matrix:
+  `reports/live_ops/lpfs_candidate_backtest_matrix/20260705_064500`; manifest
+  SHA-256 `23c3d3da7afff6fab030816bcfc30645c0a900da443a8490d6a257ded53f4b6a`.
 - Live-vs-backtest divergence attribution:
   `reports/live_ops/lpfs_live_backtest_divergence/20260627_124500`; manifest
   SHA-256 `e76af5226a87a5c885f81f049a80234a558101fffb171f665f1dcabd04b7e9b7`.
@@ -440,8 +460,9 @@ handoff.
 ## Recommended Next Implementation Steps
 
 1. Keep the live runners unchanged.
-2. At the next eligible weekly checkpoint, evaluate the explicit criteria in
-   `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500/next_run_watch_criteria.csv`.
+2. Use the maintained 2026-07-05 candidate matrix as the current research
+   queue and keep the 2026-06-27 readiness packet as historical context for
+   how the H8 compressed-risk watch item was promoted.
 3. Track H8 compressed risk (`timeframe=H8`, `risk_atr_bucket=lt_0p5`) and its
    low-spread intersection, but keep the analysis portfolio-wide by also
    reviewing symbol, side, session/hour, weekday, spread-risk, risk/ATR, and
@@ -455,14 +476,18 @@ handoff.
    packets where `analysis_eligible=true` and `coverage_status=complete`, and
    use bounded/local lifecycle evidence when remote fetch coverage is
    incomplete.
-7. If the H8 compressed-risk candidate repeats, narrow it until the 12M
+7. Add skipped-opportunity diagnostics for non-executed, strategy-relevant
+   broker-minimum skips such as `volume_below_min`. These should be analyzed
+   separately from executed closed trades and separately from execution-quality
+   rejects such as spread or market-closed blocks.
+8. If the H8 compressed-risk candidate repeats, narrow it until the 12M
    guardrail no longer contradicts the rule and long-history removal breadth is
    within the preferred 15% or maximum 20% boundary.
-8. If evidence thresholds are met, create a separate formal strategy-change
+9. If evidence thresholds are met, create a separate formal strategy-change
    proposal for one small reversible heuristic candidate, with recent 3/6/12
    month support, FTMO/IC confluence or explained divergence, and full-history
    guardrails.
-9. Request explicit user approval before any live strategy-change deployment.
+10. Request explicit user approval before any live strategy-change deployment.
 
 ## Next Codex Handoff
 
@@ -473,13 +498,17 @@ Read SESSION_HANDOFF.md, strategies/lp_force_strike_strategy_lab/START_HERE.md,
 docs/lpfs_strategy_improvement_workflow.md,
 docs/lpfs_strategy_iteration_context.md, and docs/lpfs_diagnostic_logging.md.
 Continue the LPFS diagnostic reporting and evidence-gated strategy-improvement
-workflow from the current git state. Treat the 2026-06-27 strategy research
-readiness packet as the current research queue: H8 compressed risk is active,
-H8 low-spread-only is rejected, and no live strategy change is approved. Use
-the workflow doc for cadence, trigger/triage outcomes, candidate-register
-rules, data-gap escalation, and human-operator responsibilities. Do not change
-live strategy behavior, entry/exit logic, risk settings, broker/execution
-logic, config defaults, live state, journals, MT5 orders, or MT5 positions.
+workflow from the current git state. Treat the maintained 2026-07-05 candidate
+matrix packet as the current research queue: H8 compressed risk remains the
+leading active research candidate, broad long/setup-age/structure buckets are
+diagnostic only, incomplete candle/spread factor coverage is a data gap, and no
+live strategy change is approved. Keep the 2026-06-27 readiness packet as
+historical context for the H8 compressed-risk watch item and the rejected H8
+low-spread-only filter. Use the workflow doc for cadence, trigger/triage
+outcomes, candidate-register rules, data-gap escalation, and human-operator
+responsibilities. Do not change live strategy behavior, entry/exit logic, risk
+settings, broker/execution logic, config defaults, live state, journals, MT5
+orders, or MT5 positions.
 ```
 
 Before making any change, the new chat should run `git status --short`, inspect

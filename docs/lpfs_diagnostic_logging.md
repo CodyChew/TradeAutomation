@@ -140,6 +140,53 @@ strategy-change gate: FTMO/IC evidence where comparable, recent 3/6/12 month
 support, long-history guardrails, sample-size and removal-breadth checks, and
 explicit operator approval.
 
+## Candidate Backtest Matrix
+
+After factor attribution identifies a research candidate, build the maintained
+candidate matrix from the same diagnostics packet:
+
+```powershell
+.\venv\Scripts\python scripts\build_lpfs_candidate_backtest_matrix.py `
+  --diagnostics-dir reports\live_ops\lpfs_trade_diagnostics\<timestamp> `
+  --factor-attribution-dir reports\live_ops\lpfs_factor_attribution\<timestamp> `
+  --candidate-config configs\strategy_research\lpfs_candidate_matrix_current.json
+```
+
+The output directory is:
+
+```text
+reports/live_ops/lpfs_candidate_backtest_matrix/<timestamp>/
+```
+
+The builder is local/reporting-only. It validates source manifests and hashes
+before reading `closed_trade_diagnostics.csv`, `backtest_diagnostics.csv`, and
+the optional factor-attribution packet, then writes:
+
+- `candidate_definitions.csv`: research-only candidate IDs, labels, filter
+  expressions, factor families, candle-provenance requirements, and rationale;
+- `candidate_filter_matrix.csv`: per candidate/window/lane baseline,
+  candidate-subset, after-exclusion, removal share, delta R, and coverage
+  status;
+- `candidate_live_context.csv`: current safe live packet context by FTMO, IC,
+  and combined;
+- `candidate_guardrails.csv`: live confluence, sample status, factor coverage,
+  removal breadth, and decision boundary;
+- `candidate_overlap_matrix.csv`: overlap and confound checks across candidate
+  pairs for live and backtest windows;
+- `candidate_decision_summary.csv`: one row per candidate with the current
+  decision and recommended next step;
+- `summary.md` and `manifest.json`.
+
+Incomplete factor coverage is a data gap, not a pass/fail backtest guardrail.
+For example, candle-derived or spread-risk fields may be valid live diagnostics
+while still lacking long-history backtest coverage. Such candidates must not be
+promoted to `PROPOSAL_READY` until their factor coverage is sufficient or the
+proposal explicitly excludes that factor family from its proof.
+
+Candidate matrix rows remain research-only. They do not approve live filters,
+risk haircuts, sizing changes, SL/TP changes, config changes, recovery changes,
+VPS actions, or broker-send changes.
+
 Older journals remain valid input. Rows before this schema simply have blank or
 missing diagnostic columns.
 

@@ -8,6 +8,40 @@ Do not use this file as live broker truth. Current live status still comes from
 fresh status packets, MT5 broker facts, runtime state, and the first-read docs
 listed in `AGENTS.md`.
 
+## 2026-07-05 - Add Offline LPFS Candidate Matrix Builder
+
+Decision:
+
+- Add `scripts/build_lpfs_candidate_backtest_matrix.py` as the maintained
+  offline builder for LPFS candidate backtest matrices.
+- Keep current candidate definitions in research-only config
+  `configs/strategy_research/lpfs_candidate_matrix_current.json`.
+- Require source diagnostics and optional factor-attribution manifests to
+  validate file hashes before reading inputs.
+- Write ignored packets under
+  `reports/live_ops/lpfs_candidate_backtest_matrix/` with candidate
+  definitions, live context, 3/6/12 month and long-history windows, guardrails,
+  overlap/confound rows, summary, manifest, and explicit non-actions.
+- Mark incomplete factor coverage as a data gap so candle-derived or
+  spread-risk candidates cannot become proposal-grade evidence by accident.
+
+Reason:
+
+- The 2026-07-05 candidate matrix identified useful research candidates, but it
+  was generated ad hoc. Strategy improvement needs a reproducible path before
+  any filter or risk-haircut proposal can be trusted.
+
+Evidence:
+
+- Review: `docs/reviews/2026-07-05-lpfs-candidate-matrix-builder.md`.
+
+Follow-up:
+
+- Use the maintained builder for future candidate matrices.
+- Add skipped-opportunity diagnostics next, especially `volume_below_min`, so
+  account-size and broker-minimum skips are analyzed separately from executed
+  trades and execution-quality rejections.
+
 ## 2026-07-04 - Add LPFS Lane Candle Snapshot Workflow
 
 Decision:

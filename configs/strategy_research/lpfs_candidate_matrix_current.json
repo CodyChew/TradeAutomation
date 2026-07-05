@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "description": "Research-only LPFS candidate matrix definitions. This config is not a live strategy, risk, sizing, SL/TP, broker-send, scheduler, VPS, or runtime config.",
+  "decision_boundary": "research_only_not_live_approval",
+  "candidate_defaults": {
+    "min_live_trades": 20,
+    "max_removal_share": 0.2,
+    "complete_coverage_threshold": 0.8
+  },
+  "candidates": [
+    {
+      "candidate_id": "h8_risk_atr_lt_0p5",
+      "candidate_label": "H8 + Risk/ATR < 0.5",
+      "candidate_type": "primary_defensive_candidate",
+      "source_factor_family": "price_structure",
+      "filters": {
+        "timeframe": "h8",
+        "risk_atr_bucket": "lt_0p5"
+      },
+      "rationale": "Repeated live weakness and full-history derived risk/ATR coverage."
+    },
+    {
+      "candidate_id": "h8_risk_atr_lt_0p5_momentum_down_or_flat",
+      "candidate_label": "H8 + Risk/ATR < 0.5 + momentum down/flat",
+      "candidate_type": "exploratory_interaction",
+      "source_factor_family": "momentum",
+      "filters": {
+        "timeframe": "h8",
+        "risk_atr_bucket": "lt_0p5",
+        "candle_momentum_3_regime": [
+          "down",
+          "flat"
+        ]
+      },
+      "rationale": "Narrow compressed-risk momentum interaction; candle factor needs coverage caveat."
+    },
+    {
+      "candidate_id": "h8_risk_atr_lt_0p5_atr_low",
+      "candidate_label": "H8 + Risk/ATR < 0.5 + ATR low",
+      "candidate_type": "exploratory_interaction",
+      "source_factor_family": "price_structure",
+      "filters": {
+        "timeframe": "h8",
+        "risk_atr_bucket": "lt_0p5",
+        "candle_atr_regime_252": "low"
+      },
+      "rationale": "Tests whether low-volatility context explains compressed-risk weakness."
+    },
+    {
+      "candidate_id": "h8_atr_low_spread_low",
+      "candidate_label": "H8 + ATR low + spread regime low",
+      "candidate_type": "exploratory_interaction",
+      "source_factor_family": "price_structure",
+      "filters": {
+        "timeframe": "h8",
+        "candle_atr_regime_252": "low",
+        "candle_spread_regime_252": "low"
+      },
+      "rationale": "Interaction control for prior rejected H8 low-spread-only hypothesis."
+    },
+    {
+      "candidate_id": "h8_atr_low_macd_negative",
+      "candidate_label": "H8 + ATR low + MACD negative",
+      "candidate_type": "exploratory_interaction",
+      "source_factor_family": "momentum",
+      "filters": {
+        "timeframe": "h8",
+        "candle_atr_regime_252": "low",
+        "candle_macd_histogram_regime": "negative"
+      },
+      "rationale": "Tests if low ATR only matters when momentum is negative."
+    },
+    {
+      "candidate_id": "h8_macd_negative",
+      "candidate_label": "H8 + MACD histogram negative",
+      "candidate_type": "exploratory_interaction",
+      "source_factor_family": "momentum",
+      "filters": {
+        "timeframe": "h8",
+        "candle_macd_histogram_regime": "negative"
+      },
+      "rationale": "Momentum intersection inside H8."
+    },
+    {
+      "candidate_id": "h8_long",
+      "candidate_label": "H8 + long side",
+      "candidate_type": "exploratory_interaction",
+      "source_factor_family": "core",
+      "filters": {
+        "timeframe": "h8",
+        "side": "long"
+      },
+      "rationale": "Tests whether H8 weakness is mostly long-side exposure."
+    },
+    {
+      "candidate_id": "h8_spread_risk_5_to_10",
+      "candidate_label": "H8 + spread risk 5-10%",
+      "candidate_type": "data_gap_control",
+      "source_factor_family": "price_structure",
+      "filters": {
+        "timeframe": "h8",
+        "spread_risk_bucket": "5_to_10pct"
+      },
+      "rationale": "Live-relevant spread-risk bucket; backtest field coverage is expected to be limited."
+    },
+    {
+      "candidate_id": "h8_all",
+      "candidate_label": "H8 all",
+      "candidate_type": "broad_control",
+      "source_factor_family": "core",
+      "filters": {
+        "timeframe": "h8"
+      },
+      "rationale": "Broad control; expected not deployable unless narrow factors fail."
+    },
+    {
+      "candidate_id": "h12_all",
+      "candidate_label": "H12 all",
+      "candidate_type": "watch_control",
+      "source_factor_family": "core",
+      "filters": {
+        "timeframe": "h12"
+      },
+      "rationale": "Watch/control: live weak but historical windows were positive."
+    },
+    {
+      "candidate_id": "macd_negative",
+      "candidate_label": "MACD histogram negative",
+      "candidate_type": "broad_diagnostic",
+      "source_factor_family": "momentum",
+      "filters": {
+        "candle_macd_histogram_regime": "negative"
+      },
+      "rationale": "Broad cross-lane weak diagnostic; too broad without narrower interaction."
+    },
+    {
+      "candidate_id": "long_side",
+      "candidate_label": "Long side",
+      "candidate_type": "broad_diagnostic",
+      "source_factor_family": "core",
+      "filters": {
+        "side": "long"
+      },
+      "rationale": "Broad side diagnostic; not directly deployable."
+    },
+    {
+      "candidate_id": "early_fs_3_to_4",
+      "candidate_label": "Short FS structure 3-4 bars",
+      "candidate_type": "broad_diagnostic",
+      "source_factor_family": "price_structure",
+      "filters": {
+        "fs_total_bars_bucket": "3_to_4"
+      },
+      "rationale": "Broad structure diagnostic; not directly deployable."
+    },
+    {
+      "candidate_id": "setup_age_1",
+      "candidate_label": "Setup age bucket 1",
+      "candidate_type": "broad_diagnostic",
+      "source_factor_family": "price_structure",
+      "filters": {
+        "setup_age_bars_bucket": "1"
+      },
+      "rationale": "Broad setup-age diagnostic; not directly deployable."
+    }
+  ]
+}
