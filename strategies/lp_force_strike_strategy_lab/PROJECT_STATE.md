@@ -1,6 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-07-04 ICT after context architecture hardening.
+Last updated: 2026-07-05 ICT after LPFS candidate and skipped-opportunity
+research tooling.
 
 This is the current LPFS strategy/live/research state. Historical packet
 narratives moved to `../../docs/history/lpfs_operations.md`, packet hashes to
@@ -112,18 +113,30 @@ Current research closeout:
 manifest SHA-256
 `1a6136209337be1b1d4b28e3da4e8e7f4da97421872d67c74af8270f09065ec6`.
 
+Current maintained candidate matrix:
+`../../reports/live_ops/lpfs_candidate_backtest_matrix/20260705_064500`,
+manifest SHA-256
+`23c3d3da7afff6fab030816bcfc30645c0a900da443a8490d6a257ded53f4b6a`.
+
+Current skipped-opportunity diagnostics:
+`../../reports/live_ops/lpfs_skipped_opportunity_diagnostics/20260705_080000`,
+manifest SHA-256
+`ca63c162ee7e89fc8cf0846f65fc2075f7fb546e576143cc9a0846acb1fcc03f`.
+It found `4` IC `volume_below_min` broker-minimum skips and `0` FTMO
+broker-minimum skips in the safe July 4 filtered lifecycle evidence window.
+
 Decision:
 
 - No live strategy change is approved.
 - Reject the H8 low-spread-only filter because it was live-weak but
   historically positive.
-- Keep H8 compressed risk (`timeframe=H8`, `risk_atr_bucket=lt_0p5`),
-  especially the low-spread intersection, as the active research candidate.
-- Deployment is blocked by contradictory 12M evidence, asymmetric FTMO/IC
-  long-history support, and broad H8 trade removal.
-- The next eligible weekly packet must evaluate
-  `../../reports/live_ops/lpfs_strategy_research_readiness/20260627_131500/next_run_watch_criteria.csv`
-  before escalation.
+- Keep H8 compressed risk (`timeframe=H8`, `risk_atr_bucket=lt_0p5`) as the
+  leading active research candidate.
+- Deployment is blocked by small live sample size and contradictory 12M
+  backtest evidence.
+- Treat broad long-side, setup-age, and structure buckets as diagnostic only.
+- Treat IC `volume_below_min` rows as account-size comparability evidence, not
+  closed-trade performance or live sizing-change approval.
 
 Use `../../docs/lpfs_strategy_iteration_context.md` for the current strategy
 queue and `../../docs/lpfs_strategy_improvement_workflow.md` for cadence,
@@ -168,6 +181,8 @@ Use `../../docs/evidence_catalog.md` for hashes and paths. Current key rows:
 
 - `lpfs-status-20260627`
 - `lpfs-weekly-20260627`
+- `lpfs-candidate-matrix-20260705`
+- `lpfs-skipped-opportunities-20260705`
 - `lpfs-research-closeout-20260627`
 - `lpfs-ra002-ra003-20260615`
 - `lpfs-active-repair-final-20260609`

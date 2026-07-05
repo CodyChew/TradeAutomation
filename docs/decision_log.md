@@ -8,6 +8,44 @@ Do not use this file as live broker truth. Current live status still comes from
 fresh status packets, MT5 broker facts, runtime state, and the first-read docs
 listed in `AGENTS.md`.
 
+## 2026-07-05 - Add LPFS Skipped Opportunity Diagnostics
+
+Decision:
+
+- Add `scripts/build_lpfs_skipped_opportunity_diagnostics.py` as the maintained
+  offline builder for broker-minimum skipped-opportunity diagnostics.
+- Treat `volume_below_min` as a strategy-relevant non-executed setup class,
+  deduplicated by lane, signal key, and rejection reason.
+- Keep retryable spread/session blocks, `order_check_failed`,
+  `order_rejected`, closed trades, partial closes, and final closes out of the
+  skipped-opportunity dataset; those remain covered by gate attribution,
+  lifecycle summaries, and broker/close reports.
+- Write ignored packets under
+  `reports/live_ops/lpfs_skipped_opportunity_diagnostics/` with source journal
+  hashes, event rows, reason summaries, manifest, and explicit non-actions.
+
+Reason:
+
+- IC can miss valid LPFS forward-test setups because the account/broker minimum
+  lot size blocks order intent. Strategy analysis needs to separate that
+  account-size comparability issue from executed closed-trade performance and
+  from spread or market-session execution rejects.
+
+Evidence:
+
+- Review: `docs/reviews/2026-07-05-lpfs-skipped-opportunity-diagnostics.md`.
+- Current packet:
+  `reports/live_ops/lpfs_skipped_opportunity_diagnostics/20260705_080000`,
+  manifest SHA-256
+  `ca63c162ee7e89fc8cf0846f65fc2075f7fb546e576143cc9a0846acb1fcc03f`.
+
+Follow-up:
+
+- Use the maintained skipped-opportunity packet alongside closed-trade
+  diagnostics and candidate matrices when evaluating IC/FTMO comparability or
+  account-size policy effects. Do not treat skipped opportunities as closed
+  trades or as live sizing-change approval.
+
 ## 2026-07-05 - Add Offline LPFS Candidate Matrix Builder
 
 Decision:
@@ -38,9 +76,8 @@ Evidence:
 Follow-up:
 
 - Use the maintained builder for future candidate matrices.
-- Add skipped-opportunity diagnostics next, especially `volume_below_min`, so
-  account-size and broker-minimum skips are analyzed separately from executed
-  trades and execution-quality rejections.
+- Pair candidate matrices with skipped-opportunity diagnostics when a candidate
+  may be distorted by account-size or broker-minimum skips.
 
 ## 2026-07-04 - Add LPFS Lane Candle Snapshot Workflow
 

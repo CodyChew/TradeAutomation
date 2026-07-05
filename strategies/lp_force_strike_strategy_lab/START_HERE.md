@@ -1,7 +1,7 @@
 # LPFS Start Here
 
-Last updated: 2026-06-27 ICT after the LPFS H8 compressed-risk strategy
-research readiness closeout.
+Last updated: 2026-07-05 ICT after LPFS candidate and skipped-opportunity
+research tooling.
 
 This is the canonical first-read file for future AI agents taking over the
 LP + Force Strike project. Use it to orient yourself, then verify current live
@@ -182,12 +182,26 @@ operational decisions.
   `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500`,
   manifest SHA-256
   `1a6136209337be1b1d4b28e3da4e8e7f4da97421872d67c74af8270f09065ec6`.
-  No live strategy change is justified. Reject the H8 low-spread-only filter.
-  Keep H8 compressed risk (`timeframe=H8`, `risk_atr_bucket=lt_0p5`),
-  especially the low-spread intersection, as the active research candidate
-  until the next eligible weekly packet confirms or weakens the thesis.
-  Portfolio-level improvement remains the objective; this bucket is one current
-  hypothesis, not the whole strategy.
+  This remains historical context for the H8 compressed-risk watch item and the
+  rejected H8 low-spread-only filter.
+- Current maintained candidate matrix:
+  `reports/live_ops/lpfs_candidate_backtest_matrix/20260705_064500`, manifest
+  SHA-256 `23c3d3da7afff6fab030816bcfc30645c0a900da443a8490d6a257ded53f4b6a`.
+  No live strategy change is justified. H8 compressed risk (`timeframe=H8`,
+  `risk_atr_bucket=lt_0p5`) is the leading active research candidate, but it is
+  not proposal-ready because the live sample is small and the 12M backtest
+  window remains contradictory. Broad long/setup-age/structure buckets are
+  diagnostic only.
+- Current skipped-opportunity diagnostics:
+  `reports/live_ops/lpfs_skipped_opportunity_diagnostics/20260705_080000`,
+  manifest SHA-256
+  `ca63c162ee7e89fc8cf0846f65fc2075f7fb546e576143cc9a0846acb1fcc03f`.
+  It found `4` IC `volume_below_min` broker-minimum skips and `0` FTMO
+  broker-minimum skips in the safe July 4 filtered lifecycle evidence window.
+  These rows are account-size comparability evidence, not closed trades and not
+  live sizing-change approval. Portfolio-level improvement remains the
+  objective; H8 compressed risk and volume-minimum skips are current
+  hypotheses, not the whole strategy.
 - First-month monthly evidence state: review
   `docs/lpfs_monthly_evidence_20260530.md`.
   Against the accepted V22 separated commission-adjusted monthly backtest

@@ -1,6 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-07-04 ICT after context architecture hardening.
+Last updated: 2026-07-05 ICT after LPFS candidate and skipped-opportunity
+research tooling.
 
 This is the concise workspace control file. It points to current owners for
 live handoff, LPFS strategy context, evidence packets, and history. It does not
@@ -109,11 +110,24 @@ Latest strategy research readiness packet:
 `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500`, manifest
 SHA-256 `1a6136209337be1b1d4b28e3da4e8e7f4da97421872d67c74af8270f09065ec6`.
 
+Latest maintained candidate matrix:
+`reports/live_ops/lpfs_candidate_backtest_matrix/20260705_064500`, manifest
+SHA-256 `23c3d3da7afff6fab030816bcfc30645c0a900da443a8490d6a257ded53f4b6a`.
+
+Latest skipped-opportunity diagnostics:
+`reports/live_ops/lpfs_skipped_opportunity_diagnostics/20260705_080000`,
+manifest SHA-256
+`ca63c162ee7e89fc8cf0846f65fc2075f7fb546e576143cc9a0846acb1fcc03f`.
+It found `4` IC `volume_below_min` broker-minimum skips and `0` FTMO
+broker-minimum skips in the safe July 4 filtered lifecycle window.
+
 Current decision: no live strategy change now. The simple H8 low-spread-only
 filter is rejected. H8 compressed risk (`timeframe=H8`,
-`risk_atr_bucket=lt_0p5`) remains a research-only candidate and must be tested
-against the next eligible weekly packet plus recent-window and long-history
-guardrails before any formal proposal.
+`risk_atr_bucket=lt_0p5`) remains the leading research-only candidate, but it
+is not proposal-ready because live sample size is still small and the 12M
+backtest window remains contradictory. `volume_below_min` rows are
+account-size comparability evidence only; they are not closed trades and do
+not approve a sizing/config change.
 
 Live sizing policy epochs are tracked in `configs/live_policy_ledger.csv`.
 Segment IC rows explicitly around `2026-05-30T17:14:27Z` until reporting

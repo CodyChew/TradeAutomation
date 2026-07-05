@@ -188,6 +188,9 @@ A candidate research pass should:
   `scripts/build_lpfs_factor_attribution.py`, and
   `scripts/build_lpfs_candidate_backtest_matrix.py` for the maintained
   diagnostics/factor/candidate path when their inputs are available;
+- use `scripts/build_lpfs_skipped_opportunity_diagnostics.py` when IC/FTMO
+  comparability, account size, or broker-minimum lot constraints may explain
+  missing forward-test evidence;
 - compare FTMO and IC together;
 - test recent 3, 6, and 12 month windows first;
 - use long-history backtests as robustness guardrails;
@@ -255,6 +258,7 @@ reason before recommending any change:
 - insufficient FTMO/IC confluence;
 - small sample size;
 - account-outcome divergence rather than strategy-shape weakness;
+- broker/account minimum-volume skips that reduce comparable live samples;
 - unreliable or stale generated output;
 - missing backtest or recent-window comparison;
 - unsafe collection path.

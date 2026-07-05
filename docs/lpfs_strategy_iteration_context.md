@@ -1,7 +1,7 @@
 # LPFS Strategy Iteration Context
 
 Last updated: 2026-07-05 ICT after the maintained candidate-matrix builder
-and guarded July 2026 candidate matrix.
+and skipped-opportunity diagnostics.
 
 This is the durable handoff for the current LPFS diagnostic reporting and
 strategy-iteration work. A new Codex chat should be able to read this file,
@@ -90,6 +90,14 @@ production-derived historical timestamps.
   `fs_total_bars_bucket=3_to_4` are diagnostic only, and incomplete
   candle/spread factor coverage is a data gap rather than proposal-grade
   evidence.
+- Current skipped-opportunity diagnostics:
+  `reports/live_ops/lpfs_skipped_opportunity_diagnostics/20260705_080000`,
+  manifest SHA-256
+  `ca63c162ee7e89fc8cf0846f65fc2075f7fb546e576143cc9a0846acb1fcc03f`.
+  It was built from safe July 4 filtered lifecycle copies and found `4` IC
+  `volume_below_min` account/broker-minimum skips and `0` FTMO
+  broker-minimum skips in that evidence window. These are non-executed setup
+  diagnostics, not closed trades, broker PnL, or live sizing-change approval.
 - Historical 2026-05-30 weekly checkpoint:
   `reports/live_ops/lpfs_weekly_performance/20260530_150637`. Its generated
   dashboard had an FTMO fetch-timeout caveat, so the authoritative FTMO
@@ -146,6 +154,11 @@ production-derived historical timestamps.
   `configs/strategy_research/lpfs_candidate_matrix_current.json`. Use this path
   instead of ad hoc spreadsheets or one-off scripts so factor coverage,
   guardrails, and non-actions are recorded in a manifest.
+- Broker-minimum skipped opportunities now have a maintained builder:
+  `scripts/build_lpfs_skipped_opportunity_diagnostics.py`. Use it to analyze
+  `volume_below_min` from safe local lifecycle copies when IC/FTMO
+  comparability or account-size policy effects matter. Do not mix these rows
+  into closed-trade performance.
 - The standing cadence, trigger/triage outcomes, data-gap escalation rules, and
   human-operator timeline are defined in
   `docs/lpfs_strategy_improvement_workflow.md`.
@@ -198,6 +211,10 @@ preserve paths and hashes in handoff docs instead.
 - Current maintained candidate backtest matrix:
   `reports/live_ops/lpfs_candidate_backtest_matrix/20260705_064500`; manifest
   SHA-256 `23c3d3da7afff6fab030816bcfc30645c0a900da443a8490d6a257ded53f4b6a`.
+- Current skipped-opportunity diagnostics:
+  `reports/live_ops/lpfs_skipped_opportunity_diagnostics/20260705_080000`;
+  manifest SHA-256
+  `ca63c162ee7e89fc8cf0846f65fc2075f7fb546e576143cc9a0846acb1fcc03f`.
 - Live-vs-backtest divergence attribution:
   `reports/live_ops/lpfs_live_backtest_divergence/20260627_124500`; manifest
   SHA-256 `e76af5226a87a5c885f81f049a80234a558101fffb171f665f1dcabd04b7e9b7`.
@@ -476,10 +493,10 @@ handoff.
    packets where `analysis_eligible=true` and `coverage_status=complete`, and
    use bounded/local lifecycle evidence when remote fetch coverage is
    incomplete.
-7. Add skipped-opportunity diagnostics for non-executed, strategy-relevant
-   broker-minimum skips such as `volume_below_min`. These should be analyzed
-   separately from executed closed trades and separately from execution-quality
-   rejects such as spread or market-closed blocks.
+7. Use skipped-opportunity diagnostics when judging IC/FTMO comparability:
+   current safe evidence shows four IC `volume_below_min` skips and no FTMO
+   broker-minimum skips in the July 4 filtered lifecycle window. Treat these
+   as account-size comparability evidence, not closed-trade performance.
 8. If the H8 compressed-risk candidate repeats, narrow it until the 12M
    guardrail no longer contradicts the rule and long-history removal breadth is
    within the preferred 15% or maximum 20% boundary.

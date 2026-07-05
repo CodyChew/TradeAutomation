@@ -1,6 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-07-04 ICT after context architecture hardening.
+Last updated: 2026-07-05 ICT after LPFS candidate and skipped-opportunity
+research tooling.
 
 This is the latest volatile handoff. It is not live broker truth by itself.
 Before any live operation, capture fresh broker/status evidence from the
@@ -78,16 +79,28 @@ Latest strategy research readiness packet:
 `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500`, manifest
 SHA-256 `1a6136209337be1b1d4b28e3da4e8e7f4da97421872d67c74af8270f09065ec6`.
 
+Latest maintained candidate matrix:
+`reports/live_ops/lpfs_candidate_backtest_matrix/20260705_064500`, manifest
+SHA-256 `23c3d3da7afff6fab030816bcfc30645c0a900da443a8490d6a257ded53f4b6a`.
+
+Latest skipped-opportunity diagnostics:
+`reports/live_ops/lpfs_skipped_opportunity_diagnostics/20260705_080000`,
+manifest SHA-256
+`ca63c162ee7e89fc8cf0846f65fc2075f7fb546e576143cc9a0846acb1fcc03f`.
+That packet found `4` IC `volume_below_min` broker-minimum skips and `0` FTMO
+broker-minimum skips in the safe July 4 filtered lifecycle evidence window.
+
 Current strategy decision:
 
 - No live strategy change is approved.
 - Reject the simple H8 low-spread-only filter unless future evidence overturns
   the 2026-06-27 rejection.
-- Keep H8 compressed risk (`timeframe=H8`, `risk_atr_bucket=lt_0p5`),
-  especially the low-spread intersection, as the active research candidate.
-- The next eligible weekly packet must evaluate
-  `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500/next_run_watch_criteria.csv`
-  before any formal candidate proposal is escalated.
+- Keep H8 compressed risk (`timeframe=H8`, `risk_atr_bucket=lt_0p5`) as the
+  leading active research candidate, but do not promote it yet because the
+  live sample is still small and the 12M backtest window remains contradictory.
+- Treat broad long-side, setup-age, and structure buckets as diagnostic only.
+- Treat IC `volume_below_min` rows as account-size comparability evidence, not
+  closed-trade performance and not live sizing-change approval.
 
 Use `docs/lpfs_strategy_iteration_context.md` for the current strategy queue
 and `docs/evidence_catalog.md` for packet hashes.

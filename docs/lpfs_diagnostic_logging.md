@@ -187,6 +187,47 @@ Candidate matrix rows remain research-only. They do not approve live filters,
 risk haircuts, sizing changes, SL/TP changes, config changes, recovery changes,
 VPS actions, or broker-send changes.
 
+## Skipped Opportunity Diagnostics
+
+Closed-trade diagnostics only analyze trades that actually reached a final
+close row. Some valid LPFS signals can still be blocked before order placement
+because the account/broker minimum volume is larger than the calculated risk
+size. Build the skipped-opportunity report from safely collected local
+lifecycle copies when IC/FTMO comparability or account-size effects matter:
+
+```powershell
+.\venv\Scripts\python scripts\build_lpfs_skipped_opportunity_diagnostics.py `
+  --journal "FTMO=path\to\copied_ftmo_lifecycle.jsonl" `
+  --journal "IC=path\to\copied_ic_lifecycle.jsonl"
+```
+
+The output directory is:
+
+```text
+reports/live_ops/lpfs_skipped_opportunity_diagnostics/<timestamp>/
+```
+
+The builder is local/reporting-only. It records input journal hashes and writes:
+
+- `skipped_opportunity_events.csv`: one logical skipped opportunity per lane,
+  signal key, and rejection reason;
+- `volume_below_min_opportunities.csv`: the focused account-size subset, with
+  raw/rounded/min volume, symbol, timeframe, side, signal key, risk/ATR,
+  spread-risk context, and setup diagnostics where available;
+- `skipped_opportunity_summary.csv`: reason and lane summaries with
+  `closed_trade_count_impact=0`;
+- `summary.md`, `manifest.json`, and `manifest.sha256.txt`.
+
+This first report intentionally includes only `volume_below_min`. It excludes
+retryable spread/session blocks, `order_check_failed`, `order_rejected`,
+closed trades, partial closes, and final closes. Use
+`scripts/summarize_lpfs_live_gate_attribution.py` for broader gate behavior.
+
+Skipped opportunities are not closed trades, are not broker PnL, and are not
+direct evidence that a live filter or sizing change should be deployed. They
+answer a narrower question: whether account size or broker minimum volume is
+causing forward-test evidence to differ between FTMO and IC.
+
 Older journals remain valid input. Rows before this schema simply have blank or
 missing diagnostic columns.
 
