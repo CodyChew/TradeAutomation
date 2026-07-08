@@ -1,7 +1,7 @@
 # TradeAutomation Project State
 
-Last updated: 2026-07-05 ICT after LPFS candidate and skipped-opportunity
-research tooling.
+Last updated: 2026-07-09 ICT after operator-approved LPFS flatten and project
+hold.
 
 This is the concise workspace control file. It points to current owners for
 live handoff, LPFS strategy context, evidence packets, and history. It does not
@@ -14,27 +14,40 @@ Read `AGENTS.md`, `SESSION_HANDOFF.md`,
 `strategies/lp_force_strike_strategy_lab/START_HERE.md`, and
 `docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
 
-LPFS live data collection is running on both VPS lanes. The latest accepted
-operating boundary is the 2026-06-15 RA-002/RA-003 robustness deploy at runtime
-SHA `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. It includes the RA-002 final
+LPFS live trading and live data collection are on hold. On 2026-07-09 ICT the
+operator approved flattening both LPFS lanes and pausing the project for review
+and next-step planning. Both lane tasks are disabled, both kill switches are
+active, and broker-authoritative LPFS pending orders and active positions are
+`0` on both FTMO and IC.
+
+Flatten/hold packet:
+`reports/live_ops/lpfs_flatten_hold_20260709_050513`, manifest SHA-256
+`2e0cf51d45b705cef5a23f5126e330028cf69b3de006a874f6b29d698aef55c0`.
+Final dual-status report:
+`reports/live_ops/lpfs_flatten_hold_20260709_050513/final_dual_status/lpfs_dual_vps_status_20260709_051800.md`,
+SHA-256 `e8bba7a9dbdb5cdd37dc2332cff022becf29671a3dbdba644e7e96bc1939e7f1`.
+
+The final status is expected to be `AMBIGUOUS` because the broker was manually
+flattened while runtime state and journals were left immutable. Treat
+state-not-in-broker entries as quarantined hold-state evidence. Do not clear
+kill switches, enable tasks, resume runners, run reconciliation, edit runtime
+state, or change broker exposure without a separate reviewed plan.
+Prior running exposure counts are historical facts only and superseded by the
+flatten/hold packet.
+
+The latest deployed robustness/runtime boundary before the hold remains the
+2026-06-15 RA-002/RA-003 robustness deploy at runtime SHA
+`6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. It includes the RA-002 final
 pre-send quote-unavailable block, RA-003 Stage 5 contract pin refresh, Phase 1
 live quote telemetry separation at SHA
 `027e0afe932081713067dc24b2bc457cddf1041e`, active-position state/broker repair
 at SHA `45efa748423f20881507cda9d4f81e4afe617bde`, and transient market-data
 frame-skip handling.
 
-Latest recorded same-day dual status packet:
-`reports/live_ops/lpfs_dual_vps_status_20260627_080624.md`, SHA-256
-`b56f0ad7bf543ac157522522173620a01c2ce584b1c4925974738681e616728d`. It showed
-both lanes `RUNNING`, runtime SHA `6c4ecb1`, kill switches clear, broker status
-`OK`, recovery disabled, telemetry failures `0`, market-data fetch failures
-`0`, and active state/broker mismatch count `0`. Broker exposure counts in
-that packet are historical facts only; capture a fresh dual VPS status packet
-before future live operations.
-
-No reconciliation, canary, recovery enablement, manual broker mutation,
-strategy/risk/sizing/SL/TP/broker-send/config change was performed during the
-latest robustness deployment.
+Non-actions during the hold: No reconciliation, canary, recovery enablement,
+strategy/risk/sizing/SL/TP/broker-send/config change, production journal edit,
+or runtime-state edit. The only broker mutation was the operator-approved LPFS
+flatten.
 
 ## Source-Of-Truth Route
 

@@ -482,7 +482,7 @@
 
       <div class="kpi">
         <span>Generated</span>
-        <strong>2026-07-04 16:30 ICT</strong>
+        <strong>2026-07-09 05:35 ICT</strong>
 
       </div>
 
@@ -503,7 +503,7 @@
 
       <div class="kpi">
         <span>Primary outcome</span>
-        <strong>WATCH</strong>
+        <strong>PROJECT_HOLD</strong>
 
       </div>
 
@@ -512,20 +512,20 @@
 
     <section id="operating-boundary">
       <h2>Current Operating Boundary</h2>
-      <p class="section-note">Both lanes were RUNNING in the latest referenced packet, with recovery disabled and broker/state mismatch count 0.</p>
-      <p class="callout warning">Historical packet evidence only. Use scripts/Get-LpfsDualVpsStatus.ps1 for fresh broker/runtime proof before operations.</p>
+      <p class="section-note">Both LPFS lanes are HELD/FLAT after the 2026-07-09 operator-approved flatten. Tasks are disabled, kill switches are active, and broker-authoritative LPFS pending orders and active positions are 0 on both lanes.</p>
+      <p class="callout warning">Current hold packet evidence only. Final status is AMBIGUOUS by design because runtime state and journals were not rewritten after manual broker flatten, creating an expected state/broker mismatch. Do not resume or reconcile without a separate reviewed plan.</p>
       <div class="evidence-strip">
-        <div><span>Status packet</span><strong>C:\TradeAutomationEvidence\lpfs_pending_terminal_history_repair_deploy\20260704_150727\05_final_dual_status\lpfs_dual_vps_status_20260704_151830.md</strong></div>
-        <div><span>Status SHA-256</span><strong>ef1ae2bd77ff05d7335a4d4e7d32c99447ab81ed047cb7ea4da86548d01d4dbc</strong></div>
-        <div><span>Packet manifest SHA-256</span><strong>21adaa2e3b082e42e473027043b7b744d10daf52a9e4bb6c1693366ccad3e834</strong></div>
+        <div><span>Status packet</span><strong>reports/live_ops/lpfs_flatten_hold_20260709_050513/final_dual_status/lpfs_dual_vps_status_20260709_051800.md</strong></div>
+        <div><span>Status SHA-256</span><strong>e8bba7a9dbdb5cdd37dc2332cff022becf29671a3dbdba644e7e96bc1939e7f1</strong></div>
+        <div><span>Packet manifest SHA-256</span><strong>2e0cf51d45b705cef5a23f5126e330028cf69b3de006a874f6b29d698aef55c0</strong></div>
       </div>
       <div class="lane-grid">
 
         <article class="lane-card">
           <h3>FTMO</h3>
           <div class="chip-row">
-            <span class="chip chip-good"><strong>state</strong>RUNNING</span>
-            <span class="chip chip-neutral"><strong>heartbeat</strong>fresh</span>
+            <span class="chip chip-warn"><strong>state</strong>HELD_FLAT</span>
+            <span class="chip chip-warn"><strong>heartbeat</strong>stale after intentional stop</span>
             <span class="chip chip-good"><strong>broker</strong>OK</span>
             <span class="chip chip-bad"><strong>recovery</strong>disabled</span>
           </div>
@@ -540,35 +540,35 @@
 
       <div class="kpi">
         <span>runner path</span>
-        <strong>one logical watchdog/runner path</strong>
+        <strong>stopped; runner/watchdog rows 0</strong>
 
       </div>
 
 
       <div class="kpi">
         <span>kill switch</span>
-        <strong>clear</strong>
+        <strong>active</strong>
 
       </div>
 
 
       <div class="kpi">
         <span>pending</span>
-        <strong>9</strong>
+        <strong>0</strong>
 
       </div>
 
 
       <div class="kpi">
         <span>active</span>
-        <strong>2</strong>
+        <strong>0</strong>
 
       </div>
 
 
       <div class="kpi">
         <span>mismatch</span>
-        <strong>0</strong>
+        <strong>expected state_not_in_broker after flatten</strong>
 
       </div>
 
@@ -592,8 +592,8 @@
         <article class="lane-card">
           <h3>IC</h3>
           <div class="chip-row">
-            <span class="chip chip-good"><strong>state</strong>RUNNING</span>
-            <span class="chip chip-neutral"><strong>heartbeat</strong>fresh</span>
+            <span class="chip chip-warn"><strong>state</strong>HELD_FLAT</span>
+            <span class="chip chip-warn"><strong>heartbeat</strong>stale after intentional stop</span>
             <span class="chip chip-good"><strong>broker</strong>OK</span>
             <span class="chip chip-bad"><strong>recovery</strong>disabled</span>
           </div>
@@ -608,35 +608,35 @@
 
       <div class="kpi">
         <span>runner path</span>
-        <strong>one logical watchdog/runner path</strong>
+        <strong>stopped; runner/watchdog rows 0</strong>
 
       </div>
 
 
       <div class="kpi">
         <span>kill switch</span>
-        <strong>clear</strong>
+        <strong>active</strong>
 
       </div>
 
 
       <div class="kpi">
         <span>pending</span>
-        <strong>9</strong>
+        <strong>0</strong>
 
       </div>
 
 
       <div class="kpi">
         <span>active</span>
-        <strong>1</strong>
+        <strong>0</strong>
 
       </div>
 
 
       <div class="kpi">
         <span>mismatch</span>
-        <strong>0</strong>
+        <strong>expected state_not_in_broker after flatten</strong>
 
       </div>
 
@@ -719,8 +719,8 @@
 
       <div class="kpi">
         <span>Primary outcome</span>
-        <strong>WATCH</strong>
-        <span class="kpi-note">No live strategy change is approved.</span>
+        <strong>PROJECT_HOLD</strong>
+        <span class="kpi-note">No live strategy change or resumption is approved; LPFS is flat and paused for planning.</span>
       </div>
 
 
@@ -733,23 +733,23 @@
 
       <div class="kpi">
         <span>Deployed runtime SHA</span>
-        <strong>e6e401a06ccf37775ff4ab463b46b6cb2907e233</strong>
+        <strong>6c4ecb131d7499e455ef42cfeb91ba0bc0a75490</strong>
 
       </div>
 
 
       <div class="kpi">
         <span>Local docs HEAD</span>
-        <strong>78711438c0586f006980243a54db3130d669fbe9</strong>
+        <strong>67616b8e799d6e87deb395778f64e7939806158c</strong>
 
       </div>
 
       </div>
-      <p><strong>What is being tested now:</strong> Whether repeated weak cohorts, especially H8 compressed risk and FTMO H8/long loss concentration, justify offline candidate tagging and backtests.</p>
-      <p><strong>Next responsible action:</strong> Run offline cohort tagging and backtest matrix for H8/long, compressed-risk, symbol concentration, session, volatility, spread-risk, and account-outcome attribution before proposing a live rule.</p>
+      <p><strong>What is being tested now:</strong> Offline only: whether repeated weak cohorts, spread/commission drag, H8 compressed risk, and lane divergence explain forward underperformance well enough to justify a future reversible proposal.</p>
+      <p><strong>Next responsible action:</strong> Review flattened live evidence, isolate spread/execution and cohort drivers, then produce a no-live-change research plan before any resumption or filter proposal.</p>
       <div class="callout stop">
         <strong>Explicitly not approved:</strong>
-        <ul><li>No strategy/risk/sizing/SL/TP/broker-send change</li><li>No market recovery enablement</li><li>No reconciliation-only run or canary</li><li>No manual broker mutation</li><li>No dashboard-driven live operation without fresh status evidence</li></ul>
+        <ul><li>No strategy/risk/sizing/SL/TP/broker-send change</li><li>No market recovery enablement</li><li>No reconciliation-only run or canary</li><li>No further manual broker mutation</li><li>No runner/task restart while project is on hold</li><li>No dashboard-driven live operation without fresh status evidence</li></ul>
       </div>
     </section>
 

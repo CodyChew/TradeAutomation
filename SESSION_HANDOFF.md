@@ -1,7 +1,7 @@
 # TradeAutomation Session Handoff
 
-Last updated: 2026-07-05 ICT after LPFS candidate and skipped-opportunity
-research tooling.
+Last updated: 2026-07-09 ICT after operator-approved LPFS flatten and project
+hold.
 
 This is the latest volatile handoff. It is not live broker truth by itself.
 Before any live operation, capture fresh broker/status evidence from the
@@ -40,9 +40,38 @@ approved dual-lane status path and follow `AGENTS.md`.
 
 ## Current Handoff Boundary
 
-LPFS live data collection is running on both VPS lanes. The latest accepted
-operating boundary is the 2026-06-15 RA-002/RA-003 robustness deploy at runtime
-SHA `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. It includes:
+LPFS live trading and live data collection are on hold. On 2026-07-09 ICT the
+operator approved flattening both LPFS lanes and pausing the project for review
+and next-step planning. Both lane tasks are disabled, both kill switches are
+active, and the operation targeted LPFS-managed exposure only.
+
+Flatten/hold packet:
+`reports/live_ops/lpfs_flatten_hold_20260709_050513`, manifest SHA-256
+`2e0cf51d45b705cef5a23f5126e330028cf69b3de006a874f6b29d698aef55c0`.
+Final dual-status report:
+`reports/live_ops/lpfs_flatten_hold_20260709_050513/final_dual_status/lpfs_dual_vps_status_20260709_051800.md`,
+SHA-256 `e8bba7a9dbdb5cdd37dc2332cff022becf29671a3dbdba644e7e96bc1939e7f1`.
+
+Final broker/ops facts from that packet:
+
+- FTMO: `LPFS_Live` disabled, kill switch active, runner/watchdog rows `0`,
+  broker status `OK`, LPFS pending orders `0`, LPFS active positions `0`.
+- IC: `LPFS_IC_Live` disabled, kill switch active, runner/watchdog rows `0`,
+  broker status `OK`, LPFS pending orders `0`, LPFS active positions `0`.
+- Recovery remained disabled on both lanes.
+- No reconciliation-only run, canary, market-recovery enablement,
+  strategy/risk/sizing/SL/TP/broker-send/config change, production journal
+  edit, or runtime-state edit was performed.
+
+Important: status is expected to show state/broker mismatch after the manual
+broker flatten because local runtime state and journals were intentionally not
+rewritten. Treat the old state entries as quarantined hold-state evidence. Do
+not resume, reconcile, edit runtime state, or interpret the mismatch as an
+active broker exposure without a separate reviewed plan and fresh MT5 proof.
+
+The latest deployed robustness/runtime boundary before the hold remains the
+2026-06-15 RA-002/RA-003 robustness deploy at runtime SHA
+`6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. It includes:
 
 - RA-002 final pre-send quote-unavailable block;
 - RA-003 Stage 5 contract pin refresh;
@@ -52,7 +81,7 @@ SHA `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. It includes:
   `45efa748423f20881507cda9d4f81e4afe617bde`;
 - transient market-data frame-skip handling.
 
-The latest same-day dual VPS status packet recorded in first-read context is
+The previous same-day dual VPS status packet recorded in first-read context is
 `reports/live_ops/lpfs_dual_vps_status_20260627_080624.md`, SHA-256
 `b56f0ad7bf543ac157522522173620a01c2ce584b1c4925974738681e616728d`.
 It showed both lanes `RUNNING`, runtime SHA `6c4ecb1`, kill switches clear,
@@ -61,9 +90,10 @@ telemetry write/retention failures `0`, and active state/broker mismatch count
 `0`. Broker exposure in that packet was FTMO `7` pending / `4` active strategy
 items and IC `2` pending / `5` active strategy items.
 
-Treat those counts as historical packet facts only. Capture a fresh dual VPS
-status packet before future live operations, deployment decisions, restarts,
-reconciliation, canaries, broker-adjacent actions, or runtime-state decisions.
+Treat those counts as superseded historical packet facts only. Capture a fresh
+dual VPS status packet before future live operations, deployment decisions,
+restarts, reconciliation, canaries, broker-adjacent actions, or runtime-state
+decisions.
 
 ## Current Strategy And Evidence State
 
@@ -112,12 +142,16 @@ journals, broker orders, broker positions, kill switches, reconciliation,
 canaries, runner restarts, VPS pulls, runtime-state edits, or market recovery
 unless the user explicitly approves that operational scope.
 
-For approved live deployments, preserve the FTMO-first, IC-second review order
-unless a new reviewed plan says otherwise. Keep `live_send.market_recovery_mode`
-disabled unless a separate recovery re-enable plan is approved. Stop on
-ambiguity, duplicate runner uncertainty, stale heartbeat, MT5 `ERROR/UNKNOWN`,
-unexplained broker exposure, active-position drift, nonzero active
-state/broker mismatch, telemetry failure, market-data degradation affecting the
+For approved future live operations, first acknowledge that both lanes are held
+flat and local runtime state is intentionally stale. A restart/resumption plan
+must include broker-truth prechecks, a state/journal handling decision, and
+reviewer approval before clearing kill switches or enabling tasks. Preserve the
+FTMO-first, IC-second review order unless a new reviewed plan says otherwise.
+Keep `live_send.market_recovery_mode` disabled unless a separate recovery
+re-enable plan is approved. Stop on ambiguity, duplicate runner uncertainty,
+stale heartbeat, MT5 `ERROR/UNKNOWN`, unexplained broker exposure,
+active-position drift, unreviewed state/broker mismatch, telemetry failure,
+market-data degradation affecting the
 decision, or recovery-mode drift.
 
 Do not build automation that assumes `scripts/Get-LpfsLiveStatus.ps1` emits

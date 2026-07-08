@@ -587,13 +587,12 @@ Once both lanes are safely migrated and normalized evidence exists:
 
 - Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO was
   resumed first and IC was resumed only after FTMO post-start evidence was
-  clean. A later active-position state/broker repair deploy is now the current
-  accepted operating boundary: both tasks running, kill switches clear,
-  recovery disabled, telemetry failures `0`, active state/broker mismatch count
-  `0`, FTMO `3` pending LPFS orders plus `2` active positions, and IC `2`
-  pending LPFS orders plus `1` active position. Pending orders must match the
-  fresh broker baseline or be fully journal-explained; do not require zero
-  pending orders for a healthy running lane.
+  clean. Later telemetry, active-position repair, market-data frame-skip, and
+  RA-002/RA-003 robustness deploys are historical runtime context. Current
+  live-ops state is the 2026-07-09 operator-approved flatten/hold: both tasks
+  disabled, both kill switches are active, broker LPFS pending orders `0`,
+  broker LPFS active positions `0`, recovery disabled, and expected
+  state/broker mismatch because runtime state and journals were not rewritten.
 - Active-position state/broker repair deployed runtime SHA
   `45efa748423f20881507cda9d4f81e4afe617bde`. FTMO packet:
   `C:\TradeAutomationEvidence\lpfs_active_position_repair_deploy\20260609_232004\ftmo_v3`,

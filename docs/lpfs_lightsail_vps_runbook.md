@@ -5,22 +5,22 @@
 Read `lpfs_c01_live_safety_release.md` before using this runbook. Stage 5
 minimum-safety resumption completed on 2026-06-07 ICT: FTMO `LPFS_Live` was
 resumed first and IC `LPFS_IC_Live` was resumed only after FTMO post-start
-evidence was clean. The latest accepted operating boundary is the 2026-06-15
-RA-002/RA-003 robustness deploy at runtime SHA
-`6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. Final proof recorded both tasks
-running, kill switches clear, recovery disabled, telemetry failures `0`,
-market-data fetch failures `0`, active state/broker mismatch count `0`, FTMO
-`9` pending LPFS orders / `3` active positions, and IC `8` pending LPFS orders
-/ `1` active position. `live_send.market_recovery_mode="disabled"` remains
-mandatory.
+evidence was clean. Current state is the 2026-07-09 operator-approved
+flatten/hold: both lane tasks are disabled, both kill switches are active, and
+broker-authoritative LPFS pending orders and active positions are `0` on both
+FTMO and IC. The latest deployed robustness/runtime boundary before the hold
+was the 2026-06-15 RA-002/RA-003 robustness deploy at runtime SHA
+`6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. `live_send.market_recovery_mode="disabled"`
+remains mandatory.
 
 Do not start a duplicate runner, run reconciliation, run a canary, or manually
-modify broker orders or positions. Before any maintenance, run
+modify broker orders or positions. Do not clear kill switches or enable tasks
+without a separate reviewed resumption plan. Before any maintenance, run
 `scripts\Get-LpfsDualVpsStatus.ps1` and use MT5 broker state, heartbeat, and
-journal evidence as current truth.
+journal evidence as current truth. The post-flatten state/broker mismatch is
+expected because runtime state and journals were intentionally not rewritten.
 
-Last updated: 2026-06-15 after the RA-002/RA-003 robustness deploy completed
-on FTMO and IC.
+Last updated: 2026-07-09 after operator-approved LPFS flatten and project hold.
 
 This runbook moves the existing Python + MT5 live runner to Amazon Lightsail
 without rewriting strategy logic. The exact strategy behavior remains owned by
@@ -33,8 +33,9 @@ The live production environment is the Amazon Lightsail Windows VPS, not the
 local OneDrive workspace.
 
 - VPS repo path: `C:\TradeAutomation`.
-- VPS repo status: RA-002/RA-003 final proof showed clean `main...origin/main`
-  at `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`.
+- VPS repo status: latest runtime SHA before hold was
+  `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`; capture fresh repo/status proof
+  before future maintenance.
 - VPS runtime root: `C:\TradeAutomationRuntime`.
 - VPS scheduled task: `LPFS_Live`.
 - VPS startup alert task: `LPFS_FTMO_Startup_Alert`.
@@ -46,7 +47,23 @@ should be performed from the VPS first. The local repo remains the development
 workspace unless changes are explicitly pushed/pulled to the VPS and
 `LPFS_Live` is intentionally restarted.
 
-Latest RA-002/RA-003 robustness deploy proof:
+Current flatten/hold proof:
+
+- packet:
+  `reports/live_ops/lpfs_flatten_hold_20260709_050513`
+- manifest SHA-256:
+  `2e0cf51d45b705cef5a23f5126e330028cf69b3de006a874f6b29d698aef55c0`
+- final dual-status report:
+  `reports/live_ops/lpfs_flatten_hold_20260709_050513/final_dual_status/lpfs_dual_vps_status_20260709_051800.md`
+- final dual-status SHA-256:
+  `e8bba7a9dbdb5cdd37dc2332cff022becf29671a3dbdba644e7e96bc1939e7f1`
+- final FTMO state: `LPFS_Live` disabled, kill switch active, runner/watchdog
+  rows `0`, broker `OK`, LPFS pending orders `0`, LPFS active positions `0`
+- non-actions: no reconciliation-only run, canary, recovery enablement,
+  strategy/risk/sizing/SL/TP/broker-send/config change, production journal
+  edit, or runtime-state edit
+
+Historical RA-002/RA-003 robustness deploy proof:
 
 - packet:
   `C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_ra002_ra003_deploy_20260615_001507`

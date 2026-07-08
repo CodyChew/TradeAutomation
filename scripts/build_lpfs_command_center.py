@@ -30,7 +30,7 @@ def _status_class(value: Any) -> str:
     text = str(value or "").lower()
     if any(token in text for token in ("running", "complete", "true", "ok", "sent")):
         return "good"
-    if any(token in text for token in ("watch", "warning", "incomplete", "ambiguous")):
+    if any(token in text for token in ("watch", "warning", "incomplete", "ambiguous", "held", "flat", "stopped", "stale")):
         return "warn"
     if any(token in text for token in ("fail", "blocked", "rejected", "false", "disabled")):
         return "bad"

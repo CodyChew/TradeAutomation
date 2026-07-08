@@ -1,7 +1,7 @@
 # TradeAutomation System Troubleshooting Map
 
-Last updated: 2026-06-15 after the LPFS RA-002/RA-003 live robustness deploy
-and deployment-proof workflow cleanup.
+Last updated: 2026-07-09 after the operator-approved LPFS flatten and project
+hold.
 
 This map is for future developers and AI agents who need to understand or
 troubleshoot the existing TradeAutomation systems without accidentally changing
@@ -9,20 +9,38 @@ live trading state.
 
 ## Current LPFS Safety Boundary
 
-Read `lpfs_c01_live_safety_release.md` first. LPFS minimum-safety resumption
-completed on 2026-06-07 ICT, Phase 1 live quote telemetry separation, the
-active-position state/broker repair, and the transient market-data frame-skip
-patch are deployed on both VPS lanes. The current deployed runtime code SHA is
+Read `lpfs_c01_live_safety_release.md` and `SESSION_HANDOFF.md` first. LPFS
+minimum-safety resumption completed on 2026-06-07 ICT, Phase 1 live quote
+telemetry separation, the active-position state/broker repair, and the
+transient market-data frame-skip patch were deployed on both VPS lanes. The
+latest deployed runtime code SHA before hold was
 `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`; it also includes the RA-002 final
 pre-send quote-unavailable block and the RA-003 Stage 5 contract pin refresh.
-Both VPS lanes are running with
-kill switches clear: FTMO `LPFS_Live` and IC `LPFS_IC_Live`. FTMO was resumed
-and deployed first, and IC was touched only after FTMO proof was clean. Skip
-canaries by default. Do not run reconcile-only mode, a live canary, or manual
-broker order/position changes unless a separate operator-approved step
-authorizes it.
 
-Authoritative final packets:
+Current state: LPFS live trading and live data collection are on hold. On
+2026-07-09 ICT the operator approved flattening both LPFS lanes and pausing
+the project. Both lane tasks are disabled, both kill switches are active,
+broker status was `OK`, and broker-authoritative LPFS pending orders and active
+positions were `0` on both FTMO and IC in the final hold packet. Do not run
+reconcile-only mode, a live canary, clear kill switches, enable tasks, edit
+runtime state, or manually modify broker order/position state unless a
+separate operator-approved step authorizes it.
+
+Current hold packet:
+
+- `reports/live_ops/lpfs_flatten_hold_20260709_050513`, manifest SHA-256
+  `2e0cf51d45b705cef5a23f5126e330028cf69b3de006a874f6b29d698aef55c0`
+- final dual-status report:
+  `reports/live_ops/lpfs_flatten_hold_20260709_050513/final_dual_status/lpfs_dual_vps_status_20260709_051800.md`
+- final dual-status SHA-256:
+  `e8bba7a9dbdb5cdd37dc2332cff022becf29671a3dbdba644e7e96bc1939e7f1`
+
+The final status is expected to be `AMBIGUOUS` because runtime state and
+journals were intentionally not rewritten after manual broker flatten. Treat
+state-not-in-broker entries as quarantined hold-state evidence until a separate
+reviewed reconciliation/state-repair plan exists.
+
+Historical final packets:
 
 - Active-position state/broker repair runtime SHA:
   `45efa748423f20881507cda9d4f81e4afe617bde`

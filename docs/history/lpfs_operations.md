@@ -1,6 +1,6 @@
 # LPFS Operations History
 
-Last updated: 2026-07-04 ICT.
+Last updated: 2026-07-09 ICT.
 
 This file preserves dated operational, deployment, and reporting history that
 should not bloat current-state first-read files. Historical packet facts are
@@ -10,15 +10,59 @@ decision.
 
 ## Current Operating Boundary
 
-The latest accepted operating boundary remains the 2026-06-15 RA-002/RA-003
-robustness deploy at runtime SHA
-`6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. See `docs/evidence_catalog.md`
-row `lpfs-ra002-ra003-20260615`.
+The current live-ops boundary is the 2026-07-09 operator-approved LPFS
+flatten/hold. Both lane tasks are disabled, both kill switches are active, and
+broker-authoritative LPFS pending orders and active positions are `0` on both
+FTMO and IC. See `docs/evidence_catalog.md` row
+`lpfs-flatten-hold-20260709`.
+
+The latest accepted deployed robustness/runtime boundary before the hold
+remains the 2026-06-15 RA-002/RA-003 deploy at runtime SHA
+`6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`.
 
 Current first-read docs keep only the active safety capsule. Packet paths,
 hashes, and non-actions are indexed in `docs/evidence_catalog.md`.
 
 ## Timeline
+
+### 2026-07-09 Operator-Approved Flatten And Project Hold
+
+The operator approved flattening both LPFS lanes and putting the project on
+hold for planning. The operation targeted LPFS-managed exposure only:
+
+- FTMO `131500` / `LPFS`, task `LPFS_Live`
+- IC `231500` / `LPFSIC`, task `LPFS_IC_Live`
+
+Sequence: capture pre-operation dual status, contain FTMO, flatten FTMO,
+capture post-FTMO status, contain IC, flatten IC, capture final dual status.
+
+Final proof:
+
+- FTMO: kill switch active, `LPFS_Live` disabled, runner/watchdog rows `0`,
+  broker `OK`, LPFS pending orders `0`, LPFS active positions `0`.
+- IC: kill switch active, `LPFS_IC_Live` disabled, runner/watchdog rows `0`,
+  broker `OK`, LPFS pending orders `0`, LPFS active positions `0`.
+- Recovery remained disabled.
+
+The final status is expected to be `AMBIGUOUS` because manual broker flatten
+made local runtime state stale and runtime state/journals were intentionally
+not rewritten. Treat state-not-in-broker entries as quarantined hold-state
+evidence until a separate reviewed reconciliation/state-repair plan exists.
+
+Evidence:
+
+- packet: `reports/live_ops/lpfs_flatten_hold_20260709_050513`
+- packet manifest SHA-256:
+  `2e0cf51d45b705cef5a23f5126e330028cf69b3de006a874f6b29d698aef55c0`
+- final dual-status report:
+  `reports/live_ops/lpfs_flatten_hold_20260709_050513/final_dual_status/lpfs_dual_vps_status_20260709_051800.md`
+- final dual-status SHA-256:
+  `e8bba7a9dbdb5cdd37dc2332cff022becf29671a3dbdba644e7e96bc1939e7f1`
+
+Non-actions: no reconciliation-only run, canary, market recovery enablement,
+strategy/risk/sizing/SL/TP/broker-send/config change, production journal edit,
+or runtime-state edit. Broker mutation was limited to the approved LPFS
+flatten.
 
 ### 2026-06-27 Weekly Strategy Review And Research Readiness
 

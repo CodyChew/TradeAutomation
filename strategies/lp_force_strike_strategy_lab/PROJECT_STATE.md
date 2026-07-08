@@ -1,7 +1,7 @@
 # LP Force Strike Strategy Lab Project State
 
-Last updated: 2026-07-05 ICT after LPFS candidate and skipped-opportunity
-research tooling.
+Last updated: 2026-07-09 ICT after operator-approved LPFS flatten and project
+hold.
 
 This is the current LPFS strategy/live/research state. Historical packet
 narratives moved to `../../docs/history/lpfs_operations.md`, packet hashes to
@@ -13,24 +13,30 @@ narratives moved to `../../docs/history/lpfs_operations.md`, packet hashes to
 Read `START_HERE.md`, `../../SESSION_HANDOFF.md`, and
 `../../docs/lpfs_c01_live_safety_release.md` before any LPFS operation.
 
-Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO
-`LPFS_Live` was resumed first and IC `LPFS_IC_Live` was resumed only after
-FTMO post-start evidence was clean. The latest accepted operating boundary is
-the 2026-06-15 RA-002/RA-003 robustness deploy at runtime SHA
-`6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. Final proof records both lanes
-running, kill switches clear, broker status `OK`, recovery disabled, telemetry
-failures `0`, market-data fetch failures `0`, and active state/broker mismatch
-count `0`.
+LPFS live trading and live data collection are on hold. On 2026-07-09 ICT the
+operator approved flattening both LPFS lanes and pausing the project for review
+and next-step planning. Both lane tasks are disabled, both kill switches are
+active, and broker-authoritative LPFS pending orders and active positions are
+`0` on both FTMO and IC.
 
-Latest same-day dual VPS status packet:
-`../../reports/live_ops/lpfs_dual_vps_status_20260627_080624.md`, SHA-256
-`b56f0ad7bf543ac157522522173620a01c2ce584b1c4925974738681e616728d`. It
-showed both lanes `RUNNING`, runtime SHA `6c4ecb1`, kill switches clear,
-broker status `OK`, recovery disabled, market-data fetch failures `0`,
-telemetry write/retention failures `0`, and active state/broker mismatch count
-`0`. Exposure counts in that packet were FTMO `7` pending / `4` active and IC
-`2` pending / `5` active strategy items. Treat them as historical packet facts
-only; capture fresh dual-lane status before live operations.
+Flatten/hold packet:
+`../../reports/live_ops/lpfs_flatten_hold_20260709_050513`, manifest SHA-256
+`2e0cf51d45b705cef5a23f5126e330028cf69b3de006a874f6b29d698aef55c0`.
+Final dual-status report:
+`../../reports/live_ops/lpfs_flatten_hold_20260709_050513/final_dual_status/lpfs_dual_vps_status_20260709_051800.md`,
+SHA-256 `e8bba7a9dbdb5cdd37dc2332cff022becf29671a3dbdba644e7e96bc1939e7f1`.
+
+The final status is expected to be `AMBIGUOUS` because the broker was manually
+flattened while runtime state and journals were left immutable. Treat the
+state/broker mismatch and state-not-in-broker entries as quarantined hold-state
+evidence. A future resumption requires a separate reviewed plan for
+broker-truth prechecks, state/journal handling, and sequential FTMO-first then
+IC proof.
+
+The latest deployed robustness/runtime boundary before the hold remains the
+2026-06-15 RA-002/RA-003 robustness deploy at runtime SHA
+`6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. Historical running packets before
+2026-07-09 are superseded for current operations.
 
 Relevant deployed safety history:
 
@@ -47,8 +53,9 @@ Relevant deployed safety history:
 
 Do not rerun reconciliation, run a canary, start a duplicate runner, manually
 modify broker orders or positions, enable recovery, edit runtime state, edit
-production journals, or change strategy/risk/sizing/SL/TP/broker-send behavior
-without a separately approved operation.
+production journals, clear kill switches, enable tasks, or change
+strategy/risk/sizing/SL/TP/broker-send behavior without a separately approved
+operation.
 
 Historical IC promotion state is superseded by Stage 5 resumption and the
 latest dual VPS status packet for current IC. Older C-01, Stage 3, and Stage 5

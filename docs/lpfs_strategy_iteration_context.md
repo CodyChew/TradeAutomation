@@ -1,7 +1,7 @@
 # LPFS Strategy Iteration Context
 
-Last updated: 2026-07-05 ICT after the maintained candidate-matrix builder
-and skipped-opportunity diagnostics.
+Last updated: 2026-07-09 ICT after operator-approved LPFS flatten and project
+hold.
 
 This is the durable handoff for the current LPFS diagnostic reporting and
 strategy-iteration work. A new Codex chat should be able to read this file,
@@ -20,9 +20,10 @@ read-only trigger; deeper indicator-tagging and backtest research should start
 only when eligible weekly evidence shows repeated weakness, account-outcome
 divergence that needs attribution, or a clear evidence gap.
 
-The current work is reporting/context only. It is not a live strategy change,
-not a live deployment, and not approval to change entries, exits, risk,
-timeframe selection, spread gates, recovery behavior, or broker execution.
+The current work is planning/research while LPFS is on hold. It is not a live
+strategy change, not a live deployment, and not approval to resume entries,
+exits, risk, timeframe selection, spread gates, recovery behavior, or broker
+execution.
 
 The current leading active research candidate is H8 compressed risk:
 `timeframe=H8` and `risk_atr_bucket=lt_0p5`. This is a research candidate only,
@@ -35,17 +36,19 @@ filter because low-spread H8 was live-weak but historically positive; it remains
 diagnostic context, not a causal rule. No live strategy, risk, sizing, SL/TP,
 spread, recovery, broker-send, or config change is approved.
 
-Stage 5 minimum-safety resumption completed on 2026-06-07 ICT. FTMO and IC
-live data collection are running again, recovery remains disabled, and later
-deployments added telemetry separation, active-position repair, and transient
-market-data frame-skip handling. Before strategy analysis, refresh current
-status from the dual VPS status packet and use normalized C-01 evidence for
-production-derived historical timestamps.
+LPFS live trading and live data collection are currently on hold. On
+2026-07-09 ICT the operator approved flattening both LPFS lanes and pausing the
+project for review and next-step planning. Both lane tasks are disabled, both
+kill switches are active, and broker-authoritative LPFS pending orders and
+active positions are `0` on both FTMO and IC. Before strategy analysis, use the
+flatten/hold packet as current broker/ops context, then use normalized C-01
+evidence for production-derived historical timestamps.
 
 ## Current Project State
 
-- LPFS live operation has two production lanes: FTMO and IC. They run the same
-  strategy and should be reviewed together for confluence.
+- LPFS live operation has two production lanes: FTMO and IC. They ran the same
+  strategy and should be reviewed together for confluence, but both lanes are
+  now held flat pending planning.
 - Live sizing policy epochs are tracked in `configs/live_policy_ledger.csv`.
   Use that ledger when reading live results across FTMO and IC so analysis does
   not mix strategy performance with risk-policy changes. The active IC
@@ -65,15 +68,17 @@ production-derived historical timestamps.
   `1.21`, historical band `p46.9`; IC had 22 closed trades, `-4.84R`, broker
   PnL `-11.79`, 9 wins / 13 losses, PF `0.65`, historical band `<=p10`;
   combined was 42 closed trades, `-2.85R`, broker PnL `-0.55`, PF `0.88`.
-- Latest same-day dual status report:
-  `reports/live_ops/lpfs_dual_vps_status_20260627_080624.md`, SHA-256
-  `b56f0ad7bf543ac157522522173620a01c2ce584b1c4925974738681e616728d`.
-  It showed both lanes `RUNNING`, runtime SHA `6c4ecb1`, kill switches clear,
-  broker status `OK`, recovery disabled, market-data fetch failures `0`,
-  telemetry write/retention failures `0`, and active state/broker mismatch
-  count `0`. Exposure in that packet was FTMO 7 pending / 4 active and IC
-  2 pending / 5 active strategy items. Treat those as historical packet facts;
-  capture fresh status before live operations.
+- Current flatten/hold packet:
+  `reports/live_ops/lpfs_flatten_hold_20260709_050513`, manifest SHA-256
+  `2e0cf51d45b705cef5a23f5126e330028cf69b3de006a874f6b29d698aef55c0`.
+  Final dual-status report:
+  `reports/live_ops/lpfs_flatten_hold_20260709_050513/final_dual_status/lpfs_dual_vps_status_20260709_051800.md`,
+  SHA-256 `e8bba7a9dbdb5cdd37dc2332cff022becf29671a3dbdba644e7e96bc1939e7f1`.
+  It shows both lanes contained, broker `OK`, LPFS pending orders `0`, and
+  LPFS active positions `0`. State/broker mismatch is expected because runtime
+  state and journals were intentionally not rewritten after manual flatten.
+  Treat the mismatch as quarantined hold-state evidence, not active broker
+  exposure.
 - Current research closeout:
   `reports/live_ops/lpfs_strategy_research_readiness/20260627_131500`, manifest
   SHA-256 `1a6136209337be1b1d4b28e3da4e8e7f4da97421872d67c74af8270f09065ec6`.

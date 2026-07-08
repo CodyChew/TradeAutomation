@@ -457,6 +457,7 @@
       <a class="page-link" href="index.html">Home</a>
       <a class="page-link" href="strategy.html">Strategy</a>
       <a class="page-link active" href="live_ops.html">Live Ops</a>
+      <a class="page-link" href="lpfs_command_center.html">LPFS Command Center</a>
       <a class="page-link" href="live_weekly_performance.html">Weekly Performance</a>
       <a class="page-link" href="account_validation.html">Account Validation</a>
       <a class="page-link" href="ftmo_challenge_profiles.html">FTMO Challenge Profiles</a>
@@ -488,7 +489,7 @@
     <section id="proof" class="ops-hero" aria-labelledby="proof-title">
       <div class="eyebrow">Static Verification Guide</div>
       <h2 id="proof-title">What Proves The Runner Is Correct</h2>
-      <p class="callout warning"><strong>Current accepted operating state:</strong> accepted RA-002/RA-003 final proof shows FTMO <code>LPFS_Live</code> and IC <code>LPFS_IC_Live</code> running on deployed SHA <code>6c4ecb131d7499e455ef42cfeb91ba0bc0a75490</code>, kill switches clear, recovery disabled, telemetry failures 0, market-data fetch failures 0, and active state/broker mismatch count 0. Pending broker orders are not required to be zero; final proof recorded FTMO 9 and IC 8 pending LPFS orders, each expected to match broker truth or be fully journal-explained.</p>
+      <p class="callout warning"><strong>Current accepted operating state:</strong> LPFS is on hold after the 2026-07-09 operator-approved flatten. FTMO <code>LPFS_Live</code> and IC <code>LPFS_IC_Live</code> are disabled, kill switches are active, recovery remains disabled, telemetry failures 0 and market-data fetch failures 0 in the last captured heartbeat/status evidence, and broker-authoritative LPFS pending orders plus active positions are 0 on both lanes. The latest deployed runtime boundary before hold was <code>6c4ecb131d7499e455ef42cfeb91ba0bc0a75490</code>. Post-flatten status is expected to show state/broker mismatch because runtime state and journals were intentionally not rewritten.</p>
       <p class="callout warning"><strong>Phase 1 telemetry and active-position repair completed:</strong> lifecycle journals no longer receive new live <code>market_snapshot</code> rows, separated telemetry journals exist/grow, and broker-missing active positions are removed from local state only with full MT5 close-deal volume proof. No historical journal cleanup was done.</p>
       <p class="callout warning"><strong>Real orders can be sent.</strong> Correctness is proven from MT5 broker state, local state, and lifecycle journal rows. Quote telemetry is stored separately after the Phase 1 telemetry split. Telegram is useful for operator awareness, but Telegram is reporting only and does not prove broker state.</p>
       <div class="ops-grid">
@@ -564,7 +565,7 @@
 
         <article class="checklist-card">
           <h3>While running</h3>
-          <ul><li>Monitor RUNNER STARTED / STOPPED cards and the latest cycle summary.</li><li>Monitor lpfs_live_heartbeat.json and the latest timestamped log when using the Phase 2 wrapper.</li><li>Use MT5 orders_get / positions_get as the source of truth for open exposure.</li><li>Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled; quote telemetry lives in lpfs_live_market_snapshots.jsonl after the Phase 1 telemetry split.</li><li>Phase 1 telemetry is active on both lanes after deliberate FTMO-first and IC-second restarts; active-position repair later deployed on both lanes at runtime SHA 45efa748423f20881507cda9d4f81e4afe617bde, and the latest accepted robustness boundary is RA-002/RA-003 runtime SHA 6c4ecb131d7499e455ef42cfeb91ba0bc0a75490.</li><li>Treat spread waits and broker market-closed placement blocks as retryable until entry touch or bar-count expiry makes the setup invalid. C-01 holds market recovery disabled.</li></ul>
+          <ul><li>Monitor RUNNER STARTED / STOPPED cards and the latest cycle summary.</li><li>Monitor lpfs_live_heartbeat.json and the latest timestamped log when using the Phase 2 wrapper.</li><li>Use MT5 orders_get / positions_get as the source of truth for open exposure.</li><li>Use lpfs_live_journal.jsonl to audit why a setup was sent, skipped, adopted, or cancelled; quote telemetry lives in lpfs_live_market_snapshots.jsonl after the Phase 1 telemetry split.</li><li>Phase 1 telemetry, active-position repair, market-data frame skip, and RA-002/RA-003 robustness were deployed before the 2026-07-09 hold. Both lanes are now intentionally stopped under kill switch after operator-approved flatten; do not resume without a reviewed plan.</li><li>Treat spread waits and broker market-closed placement blocks as retryable until entry touch or bar-count expiry makes the setup invalid. C-01 holds market recovery disabled.</li></ul>
         </article>
 
 
@@ -1197,8 +1198,8 @@ Get-CimInstance Win32_Process |
 
         <article class="ops-fact">
           <span>Active-position repair state</span>
-          <strong>LPFS_IC_Live running</strong>
-          <p>Historical active-position repair proof recorded IC running on runtime SHA 45efa748423f20881507cda9d4f81e4afe617bde after FTMO proof, with broker-proven stale-position close rows. Latest RA-002/RA-003 proof later recorded runtime SHA 6c4ecb131d7499e455ef42cfeb91ba0bc0a75490, kill switch clear, one logical runner path, fresh heartbeat, 8 pending LPFS orders, 1 active position, mismatch count 0, telemetry failures 0, and market-data fetch failures 0. Run the dual VPS status packet for current truth before maintenance.</p>
+          <strong>Historical, now held flat</strong>
+          <p>Historical active-position repair proof recorded IC running on runtime SHA 45efa748423f20881507cda9d4f81e4afe617bde after FTMO proof, with broker-proven stale-position close rows. Later RA-002/RA-003 proof recorded runtime SHA 6c4ecb131d7499e455ef42cfeb91ba0bc0a75490. Current proof is the 2026-07-09 flatten/hold packet: task disabled, kill switch active, broker LPFS pending orders 0, active positions 0, and expected state/broker mismatch because runtime state was not rewritten.</p>
         </article>
 
 
@@ -1228,7 +1229,7 @@ Get-CimInstance Win32_Process |
 
     <section id="commands" aria-labelledby="commands-title">
       <h2 id="commands-title">Operator Commands</h2>
-      <p class="callout warning"><strong>Current accepted operating state:</strong> Stage 5 minimum-safety resumption, Phase 1 telemetry deploy, active-position state/broker repair, market-data frame-skip, and RA-002/RA-003 robustness deploys completed with FTMO first and IC second. Both live data-collection tasks were accepted as running at runtime SHA <code>6c4ecb131d7499e455ef42cfeb91ba0bc0a75490</code> with kill switches clear, recovery disabled, telemetry failures 0, market-data fetch failures 0, active state/broker mismatch count 0, FTMO 9 pending orders plus 3 active positions, and IC 8 pending orders plus 1 active position. Pending orders must match broker truth or be fully journal-explained; do not require zero pending orders for a healthy running lane. Do not run reconciliation, run a canary, manually mutate broker exposure, clean historical journals, or start duplicate runners; use the dual VPS status packet for current process and broker truth.</p>
+      <p class="callout warning"><strong>Current accepted operating state:</strong> Stage 5 minimum-safety resumption, Phase 1 telemetry deploy, active-position state/broker repair, market-data frame-skip, and RA-002/RA-003 robustness deploys are historical runtime context. Current proof is the 2026-07-09 operator-approved flatten/hold: both tasks disabled, both kill switches active, recovery disabled, broker LPFS pending orders 0, broker LPFS active positions 0, and expected state/broker mismatch because runtime state and journals were intentionally not rewritten. Do not run reconciliation, run a canary, manually mutate broker exposure, clean historical journals, clear kill switches, enable tasks, or start duplicate runners without a separate reviewed plan.</p>
       <p>Run these from the repository root after confirming <code>config.local.json</code> is intentionally set for the target account. Run <code>scripts/run_core_coverage.py</code> serially; it uses shared coverage files in the repo root and must not run concurrently with other coverage jobs or subagents in the same checkout.</p>
       <div class="command-list">
 

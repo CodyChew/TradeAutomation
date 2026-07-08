@@ -5,17 +5,27 @@
 Read `lpfs_c01_live_safety_release.md` before using this runbook. Stage 5
 minimum-safety resumption completed on 2026-06-07 ICT: FTMO was resumed first
 and IC was resumed only after FTMO post-start evidence was clean. Accepted
-current operating proof is the 2026-06-15 RA-002/RA-003 robustness deploy at
-runtime SHA `6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. Both tasks were
-running, kill switches clear, recovery disabled, telemetry failures `0`,
-market-data fetch failures `0`, active state/broker mismatch count `0`, FTMO
-`9` pending LPFS orders / `3` active positions, and IC `8` pending LPFS orders
-/ `1` active position. Pending orders are healthy only when they match the
-fresh broker baseline or are fully journal-explained; do not require zero
-pending orders for a running lane. Keep
+current state is the 2026-07-09 operator-approved flatten/hold: both lane
+tasks are disabled, both kill switches are active, and broker-authoritative
+LPFS pending orders and active positions are `0` on both FTMO and IC. The
+latest deployed robustness/runtime boundary before hold was the 2026-06-15
+RA-002/RA-003 robustness deploy at runtime SHA
+`6c4ecb131d7499e455ef42cfeb91ba0bc0a75490`. Keep
 `live_send.market_recovery_mode="disabled"`.
 
-RA-002/RA-003 deploy evidence:
+Flatten/hold packet:
+`reports/live_ops/lpfs_flatten_hold_20260709_050513`; manifest SHA-256
+`2e0cf51d45b705cef5a23f5126e330028cf69b3de006a874f6b29d698aef55c0`.
+Final dual-status report:
+`reports/live_ops/lpfs_flatten_hold_20260709_050513/final_dual_status/lpfs_dual_vps_status_20260709_051800.md`;
+final dual-status SHA-256
+`e8bba7a9dbdb5cdd37dc2332cff022becf29671a3dbdba644e7e96bc1939e7f1`.
+Final IC state: `LPFS_IC_Live` disabled, kill switch active, runner/watchdog
+rows `0`, broker `OK`, LPFS pending orders `0`, LPFS active positions `0`.
+The post-flatten state/broker mismatch is expected because runtime state and
+journals were intentionally not rewritten.
+
+Historical RA-002/RA-003 deploy evidence:
 `C:\Users\Cody\OneDrive\Desktop\TradeAutomation\reports\live_ops\lpfs_ra002_ra003_deploy_20260615_001507`;
 manual manifest SHA-256
 `892523e60613e868ceba84d161aecf5ab8a02a2f22b8b701d9e7026f87b60a72`.
@@ -35,8 +45,9 @@ positions `4439978943` and `4440556829`. The IC PermissionError observed during
 packet collection is a follow-up note, not a rollback blocker, because final
 status and broker proof passed after restart.
 
-Do not run a canary, rerun reconciliation, start a duplicate runner, or
-manually modify broker orders or positions. Before IC maintenance, run
+Do not run a canary, rerun reconciliation, start a duplicate runner, clear kill
+switches, enable tasks, edit runtime state, or manually modify broker orders
+or positions without a separate reviewed plan. Before IC maintenance, run
 `scripts\Get-LpfsDualVpsStatus.ps1` and use MT5 broker state, heartbeat, and
 journal evidence as current truth.
 
@@ -569,11 +580,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\TradeAutomation\scri
 If the task is already running: do not start a new instance. Configure Task
 Scheduler with `MultipleInstances=IgnoreNew`.
 
-`LPFS_IC_Live` is installed and the latest accepted operating boundary has it
-running with kill switch clear. Treat a fresh dual-VPS status packet as current
-truth before maintenance. Do not replace it or start a second manual runner
-while the scheduled task is active. Use `Get-LpfsDualVpsStatus.ps1`, the
-gate-attribution report, or the IC status command above before maintenance.
+`LPFS_IC_Live` is installed but currently disabled under the 2026-07-09
+flatten/hold boundary, with the IC kill switch active. Treat a fresh dual-VPS
+status packet as current truth before maintenance. Do not replace it, clear the
+kill switch, enable the task, or start a second manual runner without a
+separate reviewed plan. Use `Get-LpfsDualVpsStatus.ps1`, the gate-attribution
+report, or the IC status command above before maintenance.
 
 Startup alert task for `LPFS_IC_Startup_Alert`:
 

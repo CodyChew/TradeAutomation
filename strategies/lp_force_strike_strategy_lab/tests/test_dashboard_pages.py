@@ -192,8 +192,12 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("mismatch", html)
         self.assertIn("telemetry failures", html)
         self.assertIn("market-data failures", html)
-        self.assertIn("e6e401a06ccf37775ff4ab463b46b6cb2907e233", html)
-        self.assertIn("78711438c0586f006980243a54db3130d669fbe9", html)
+        self.assertIn("HELD_FLAT", html)
+        self.assertIn("operator-approved flatten", html)
+        self.assertIn("broker-authoritative LPFS pending orders and active positions are 0", html)
+        self.assertIn("state/broker mismatch", html)
+        self.assertIn("6c4ecb131d7499e455ef42cfeb91ba0bc0a75490", html)
+        self.assertIn("67616b8e799d6e87deb395778f64e7939806158c", html)
         self.assertNotIn("<script", lower_html)
 
     def test_lpfs_command_center_preserves_weekly_evidence_fields(self) -> None:
@@ -212,7 +216,7 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("&lt;=p10", html)
         self.assertIn("p30.1", html)
         self.assertIn("docs/live_weekly_performance.html page may lag", html)
-        self.assertIn("No live strategy change is approved", html)
+        self.assertIn("No live strategy change or resumption is approved", html)
 
     def test_lpfs_command_center_drilldowns_and_ownership_are_present(self) -> None:
         html = (DOCS_ROOT / "lpfs_command_center.html").read_text(encoding="utf-8")
@@ -233,6 +237,8 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Dashboard/UI owner", html)
         self.assertIn("Maintenance checklist", html)
         self.assertIn("Do not hand-edit docs/lpfs_command_center.html", html)
+        self.assertIn("HELD_FLAT", html)
+        self.assertIn("stopped; runner/watchdog rows 0", html)
 
     def test_ftmo_challenge_profiles_page_shows_recommendation_and_boundaries(self) -> None:
         html = (DOCS_ROOT / "ftmo_challenge_profiles.html").read_text(encoding="utf-8")
@@ -337,19 +343,19 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("Market recovery", html)
         self.assertIn("MARKET RECOVERY", html)
         self.assertIn("Current accepted operating state", html)
-        self.assertIn("LPFS_Live</code> and IC <code>LPFS_IC_Live</code> running", html)
-        self.assertIn("kill switches clear", html)
-        self.assertIn("FTMO 9 and IC 8 pending LPFS orders", html)
-        self.assertIn("Pending orders must match broker truth", html)
+        self.assertIn("operator-approved flatten", html)
+        self.assertIn("LPFS_Live</code> and IC <code>LPFS_IC_Live</code> are disabled", html)
+        self.assertIn("kill switches are active", html)
+        self.assertIn("broker-authoritative LPFS pending orders plus active positions are 0", html)
+        self.assertIn("expected state/broker mismatch", html)
         self.assertIn("Active-position repair state", html)
         self.assertIn("broker-proven stale-position close rows", html)
-        self.assertIn("use the dual VPS status packet for current process and broker truth", html)
+        self.assertIn("Do not run reconciliation", html)
         self.assertIn("audit_lpfs_local_configs.py", html)
         self.assertIn("run_core_coverage.py</code> serially", html)
         self.assertNotIn("C-01 containment active", html)
         self.assertNotIn("C-01 contained review hold", html)
         self.assertNotIn("remain paused", html)
-        self.assertNotIn("kill switches active", html)
         self.assertNotIn("Refresh both lanes with read-only status and strict MT5 evidence before either watchdog restart", html)
         self.assertNotIn("IC was not accessed", html)
         self.assertNotIn("both production lanes are paused with kill switches active", html)
@@ -412,7 +418,7 @@ class DashboardPagesTests(unittest.TestCase):
         self.assertIn("C:\\TradeAutomationRuntimeIC", html)
         self.assertIn("lpfs_ic_live_heartbeat.json", html)
         self.assertIn("scripts/Get-LpfsDualVpsStatus.ps1", html)
-        self.assertIn("LPFS_IC_Live running", html)
+        self.assertIn("LPFS_IC_Live", html)
         self.assertIn("configs/live_policy_ledger.csv", html)
         self.assertIn("ledger scale 1.0", html)
         self.assertIn("docs/lpfs_icmarkets_vps_runbook.md", html)
@@ -542,18 +548,27 @@ class DashboardPagesTests(unittest.TestCase):
         )
 
         for name, text in docs.items():
-            self.assertIn("Stage 5", text, f"{name} missing Stage 5 context")
-            self.assertIn("resum", text.lower(), f"{name} missing resumption context")
-            self.assertIn("kill switches clear", text, f"{name} missing current kill-switch truth")
-            self.assertIn("027e0afe932081713067dc24b2bc457cddf1041e", text, f"{name} missing Phase 1 telemetry runtime SHA")
+            normalized_text = " ".join(text.split())
+            self.assertIn("Stage 5", normalized_text, f"{name} missing Stage 5 context")
+            self.assertIn("resum", normalized_text.lower(), f"{name} missing resumption context")
+            self.assertIn(
+                "kill switches are active",
+                normalized_text,
+                f"{name} missing current kill-switch truth",
+            )
+            self.assertIn(
+                "027e0afe932081713067dc24b2bc457cddf1041e",
+                normalized_text,
+                f"{name} missing Phase 1 telemetry runtime SHA",
+            )
             self.assertIn(
                 "45efa748423f20881507cda9d4f81e4afe617bde",
-                text,
+                normalized_text,
                 f"{name} missing active-position repair deployed SHA",
             )
-            self.assertIn("mismatch", text.lower(), f"{name} missing active state/broker mismatch context")
+            self.assertIn("mismatch", normalized_text.lower(), f"{name} missing active state/broker mismatch context")
             for phrase in stale_current_phrases:
-                self.assertNotIn(phrase, text, f"{name} has stale current-state wording: {phrase}")
+                self.assertNotIn(phrase, normalized_text, f"{name} has stale current-state wording: {phrase}")
 
     def test_session_handoff_does_not_present_historical_ic_runner_as_current(self) -> None:
         handoff = (WORKSPACE_ROOT / "SESSION_HANDOFF.md").read_text(encoding="utf-8")
